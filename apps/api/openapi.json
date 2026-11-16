@@ -155441,6 +155441,3527 @@
         }
       }
     },
+    "/api/v1/finance/ticketed-events": {
+      "get": {
+        "operationId": "listTicketedEvents",
+        "summary": "Biletli etkinlikleri listele",
+        "tags": [
+          "finance-event-tickets"
+        ],
+        "description": "Etkinlikler başlangıca göre yakın önce (`when=past` en yeni önce); kontenjan, etkin, boş, kullanılan, ödeme bekleyen bilet ve tahsil edilen tutar her okumada hesaplanır (DOM-FIN-103). `q` ad ve salonda arar. Roller: `yonetici`, `onburo` (K-324). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Ad ve salonda arama, Türkçe harf duyarsız"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "upcoming",
+                "past"
+              ]
+            },
+            "in": "query",
+            "name": "when",
+            "required": false,
+            "description": "`upcoming` başlamamış, `past` başlamış etkinlikler"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "startsAt": {
+                            "type": "string",
+                            "description": "Başlangıç anı (ISO 8601 UTC)"
+                          },
+                          "venue": {
+                            "type": "string"
+                          },
+                          "schoolEventId": {
+                            "description": "Bağlı okul takvimi etkinliği",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "schoolEventTitle": {
+                            "description": "Takvim etkinliğinin başlığı",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "seatingMode": {
+                            "type": "string",
+                            "enum": [
+                              "seated",
+                              "general"
+                            ],
+                            "description": "`seated` numaralı, `general` numarasız"
+                          },
+                          "rowCount": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "seatsPerRow": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "blockedSeats": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "description": "Satışa kapalı koltuklar"
+                          },
+                          "capacity": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Numarasız etkinliğin kontenjanı"
+                          },
+                          "ticketTypes": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "key": {
+                                  "type": "string",
+                                  "description": "Bilet türü anahtarı (ayırmada `ticketTypeKey`)"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "invitation",
+                                    "paid"
+                                  ],
+                                  "description": "`invitation` ücretsiz davetiye, `paid` ücretli"
+                                },
+                                "priceCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Fiyat, kuruş; davetiyede 0"
+                                }
+                              },
+                              "required": [
+                                "key",
+                                "name",
+                                "kind",
+                                "priceCents"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "perStudentLimit": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Öğrenci başına üst sınır; boşsa sınırsız"
+                          },
+                          "salesOpen": {
+                            "type": "boolean"
+                          },
+                          "totalCapacity": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Satışa açık koltuk ya da kontenjan"
+                          },
+                          "activeCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Etkin (iptal edilmemiş) bilet"
+                          },
+                          "availableCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Boş yer"
+                          },
+                          "invitationCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Etkin davetiye"
+                          },
+                          "usedCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Girişte kullanılan bilet"
+                          },
+                          "unpaidCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Ödemesi beklenen ücretli bilet"
+                          },
+                          "collectedCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Ödenmiş etkin biletlerin toplamı, kuruş (iade düşer)"
+                          },
+                          "takenSeats": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "description": "Etkin bileti olan koltuklar (koltuk haritası)"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için etkinliğin sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "startsAt",
+                          "venue",
+                          "schoolEventId",
+                          "schoolEventTitle",
+                          "seatingMode",
+                          "rowCount",
+                          "seatsPerRow",
+                          "blockedSeats",
+                          "capacity",
+                          "ticketTypes",
+                          "perStudentLimit",
+                          "salesOpen",
+                          "totalCapacity",
+                          "activeCount",
+                          "availableCount",
+                          "invitationCount",
+                          "usedCount",
+                          "unpaidCount",
+                          "collectedCents",
+                          "takenSeats",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createTicketedEvent",
+        "summary": "Biletli etkinlik aç",
+        "tags": [
+          "finance-event-tickets"
+        ],
+        "description": "Gösteri ya da tören için etkinlik açar (DOM-FIN-103, K-325): Ad (2–120), başlangıç anı (ISO 8601, gelecekte; 422 `event_starts_in_past`), salon (2–120), isteğe bağlı okul takvimi etkinliği (`schoolEventId`; kurumda yoksa 422 `event_school_event_not_found`), oturma düzeni: `seated` sıra sayısı (1–26, A–Z) × sıra başına koltuk (1–60) ve kapalı koltuklar (`A1` biçimi) ya da `general` kontenjan (1–5000); bilet türleri (1–5; `invitation` fiyat 0, `paid` fiyat > 0 kuruş, ad tekil) ve öğrenci başına üst sınır (1–20, boşsa sınırsız). Satış açık başlar. Rol: `yonetici` (K-324). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  },
+                  "startsAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                    "description": "Başlangıç anı (ISO 8601); gösterim Europe/Istanbul"
+                  },
+                  "venue": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  },
+                  "schoolEventId": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "İsteğe bağlı okul takvimi etkinliği (`schoolEvents` kaydı)"
+                  },
+                  "seatingMode": {
+                    "type": "string",
+                    "enum": [
+                      "seated",
+                      "general"
+                    ]
+                  },
+                  "rowCount": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 26
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Numaralı salonda sıra sayısı (A’dan başlar)"
+                  },
+                  "seatsPerRow": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 60
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Numaralı salonda sıra başına koltuk"
+                  },
+                  "blockedSeats": {
+                    "maxItems": 1560,
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Satışa kapalı koltuklar (ör. teknik masa, protokol)"
+                  },
+                  "capacity": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 5000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Numarasız etkinlikte kişi kontenjanı"
+                  },
+                  "ticketTypes": {
+                    "minItems": 1,
+                    "maxItems": 5,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "key": {
+                          "description": "Var olan türün anahtarı; yeni türde verilmez, sunucu üretir",
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9-]{1,40}$"
+                        },
+                        "name": {
+                          "type": "string",
+                          "minLength": 2,
+                          "maxLength": 60
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "invitation",
+                            "paid"
+                          ]
+                        },
+                        "priceCents": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000000,
+                          "description": "Kuruş; davetiyede 0, ücretlide 0’dan büyük"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "kind",
+                        "priceCents"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "perStudentLimit": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 20
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Öğrenci (aile) başına etkin bilet üst sınırı; boşsa sınırsız"
+                  }
+                },
+                "required": [
+                  "name",
+                  "startsAt",
+                  "venue",
+                  "seatingMode",
+                  "ticketTypes"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "startsAt": {
+                          "type": "string",
+                          "description": "Başlangıç anı (ISO 8601 UTC)"
+                        },
+                        "venue": {
+                          "type": "string"
+                        },
+                        "schoolEventId": {
+                          "description": "Bağlı okul takvimi etkinliği",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "schoolEventTitle": {
+                          "description": "Takvim etkinliğinin başlığı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "seatingMode": {
+                          "type": "string",
+                          "enum": [
+                            "seated",
+                            "general"
+                          ],
+                          "description": "`seated` numaralı, `general` numarasız"
+                        },
+                        "rowCount": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "seatsPerRow": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "blockedSeats": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Satışa kapalı koltuklar"
+                        },
+                        "capacity": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Numarasız etkinliğin kontenjanı"
+                        },
+                        "ticketTypes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string",
+                                "description": "Bilet türü anahtarı (ayırmada `ticketTypeKey`)"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "invitation",
+                                  "paid"
+                                ],
+                                "description": "`invitation` ücretsiz davetiye, `paid` ücretli"
+                              },
+                              "priceCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Fiyat, kuruş; davetiyede 0"
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "name",
+                              "kind",
+                              "priceCents"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "perStudentLimit": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Öğrenci başına üst sınır; boşsa sınırsız"
+                        },
+                        "salesOpen": {
+                          "type": "boolean"
+                        },
+                        "totalCapacity": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Satışa açık koltuk ya da kontenjan"
+                        },
+                        "activeCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Etkin (iptal edilmemiş) bilet"
+                        },
+                        "availableCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Boş yer"
+                        },
+                        "invitationCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Etkin davetiye"
+                        },
+                        "usedCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Girişte kullanılan bilet"
+                        },
+                        "unpaidCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Ödemesi beklenen ücretli bilet"
+                        },
+                        "collectedCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Ödenmiş etkin biletlerin toplamı, kuruş (iade düşer)"
+                        },
+                        "takenSeats": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Etkin bileti olan koltuklar (koltuk haritası)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için etkinliğin sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "startsAt",
+                        "venue",
+                        "schoolEventId",
+                        "schoolEventTitle",
+                        "seatingMode",
+                        "rowCount",
+                        "seatsPerRow",
+                        "blockedSeats",
+                        "capacity",
+                        "ticketTypes",
+                        "perStudentLimit",
+                        "salesOpen",
+                        "totalCapacity",
+                        "activeCount",
+                        "availableCount",
+                        "invitationCount",
+                        "usedCount",
+                        "unpaidCount",
+                        "collectedCents",
+                        "takenSeats",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/ticketed-events/{eventId}": {
+      "get": {
+        "operationId": "getTicketedEvent",
+        "summary": "Etkinlik ayrıntısı ve koltuk haritası",
+        "tags": [
+          "finance-event-tickets"
+        ],
+        "description": "Etkinlik, özet sayılar ve etkin bileti olan koltuklar (`takenSeats`); koltuk haritası salon düzeni, kapalı ve alınmış koltuklardan çizilir. Olmayan, arşivli ya da başka kurumun etkinliği 404. Roller: `yonetici`, `onburo` (K-324). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "eventId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "startsAt": {
+                          "type": "string",
+                          "description": "Başlangıç anı (ISO 8601 UTC)"
+                        },
+                        "venue": {
+                          "type": "string"
+                        },
+                        "schoolEventId": {
+                          "description": "Bağlı okul takvimi etkinliği",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "schoolEventTitle": {
+                          "description": "Takvim etkinliğinin başlığı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "seatingMode": {
+                          "type": "string",
+                          "enum": [
+                            "seated",
+                            "general"
+                          ],
+                          "description": "`seated` numaralı, `general` numarasız"
+                        },
+                        "rowCount": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "seatsPerRow": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "blockedSeats": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Satışa kapalı koltuklar"
+                        },
+                        "capacity": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Numarasız etkinliğin kontenjanı"
+                        },
+                        "ticketTypes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string",
+                                "description": "Bilet türü anahtarı (ayırmada `ticketTypeKey`)"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "invitation",
+                                  "paid"
+                                ],
+                                "description": "`invitation` ücretsiz davetiye, `paid` ücretli"
+                              },
+                              "priceCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Fiyat, kuruş; davetiyede 0"
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "name",
+                              "kind",
+                              "priceCents"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "perStudentLimit": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Öğrenci başına üst sınır; boşsa sınırsız"
+                        },
+                        "salesOpen": {
+                          "type": "boolean"
+                        },
+                        "totalCapacity": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Satışa açık koltuk ya da kontenjan"
+                        },
+                        "activeCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Etkin (iptal edilmemiş) bilet"
+                        },
+                        "availableCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Boş yer"
+                        },
+                        "invitationCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Etkin davetiye"
+                        },
+                        "usedCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Girişte kullanılan bilet"
+                        },
+                        "unpaidCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Ödemesi beklenen ücretli bilet"
+                        },
+                        "collectedCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Ödenmiş etkin biletlerin toplamı, kuruş (iade düşer)"
+                        },
+                        "takenSeats": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Etkin bileti olan koltuklar (koltuk haritası)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için etkinliğin sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "startsAt",
+                        "venue",
+                        "schoolEventId",
+                        "schoolEventTitle",
+                        "seatingMode",
+                        "rowCount",
+                        "seatsPerRow",
+                        "blockedSeats",
+                        "capacity",
+                        "ticketTypes",
+                        "perStudentLimit",
+                        "salesOpen",
+                        "totalCapacity",
+                        "activeCount",
+                        "availableCount",
+                        "invitationCount",
+                        "usedCount",
+                        "unpaidCount",
+                        "collectedCents",
+                        "takenSeats",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateTicketedEvent",
+        "summary": "Etkinliği düzelt, satışı aç ya da kapat",
+        "tags": [
+          "finance-event-tickets"
+        ],
+        "description": "Kısmi düzeltme (K-325): verilen alanlar mevcut kayıtla birleşip bütün olarak denetlenir; `salesOpen` satışı açar ya da kapatır. Etkin bilet varken oturma düzeni türü değişmez (422 `event_seating_locked`), biletli koltuk kapatılamaz ya da salondan çıkarılamaz (422 `event_seat_in_use`), kontenjan bilet sayısının altına inmez (422 `event_capacity_below_sold`), bileti olan tür kaldırılamaz (422 `event_ticket_type_in_use`); var olan türün anahtarı korunur, bilinmeyen anahtar 422 `event_ticket_type_unknown`. Değişiklik yoksa 422 `event_unchanged`. Satılmış bilet ayırma anındaki ad ve fiyatı taşır. `If-Match` zorunlu. Rol: `yonetici` (K-324). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  },
+                  "startsAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                    "description": "Başlangıç anı (ISO 8601); gösterim Europe/Istanbul"
+                  },
+                  "venue": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  },
+                  "schoolEventId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "İsteğe bağlı okul takvimi etkinliği (`schoolEvents` kaydı)"
+                  },
+                  "seatingMode": {
+                    "type": "string",
+                    "enum": [
+                      "seated",
+                      "general"
+                    ]
+                  },
+                  "rowCount": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 26
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Numaralı salonda sıra sayısı (A’dan başlar)"
+                  },
+                  "seatsPerRow": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 60
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Numaralı salonda sıra başına koltuk"
+                  },
+                  "blockedSeats": {
+                    "maxItems": 1560,
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Satışa kapalı koltuklar (ör. teknik masa, protokol)"
+                  },
+                  "capacity": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 5000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Numarasız etkinlikte kişi kontenjanı"
+                  },
+                  "ticketTypes": {
+                    "minItems": 1,
+                    "maxItems": 5,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "key": {
+                          "description": "Var olan türün anahtarı; yeni türde verilmez, sunucu üretir",
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9-]{1,40}$"
+                        },
+                        "name": {
+                          "type": "string",
+                          "minLength": 2,
+                          "maxLength": 60
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "invitation",
+                            "paid"
+                          ]
+                        },
+                        "priceCents": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 10000000,
+                          "description": "Kuruş; davetiyede 0, ücretlide 0’dan büyük"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "kind",
+                        "priceCents"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "perStudentLimit": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 20
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Öğrenci (aile) başına etkin bilet üst sınırı; boşsa sınırsız"
+                  },
+                  "salesOpen": {
+                    "description": "Bilet ayırma açık mı",
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "eventId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "startsAt": {
+                          "type": "string",
+                          "description": "Başlangıç anı (ISO 8601 UTC)"
+                        },
+                        "venue": {
+                          "type": "string"
+                        },
+                        "schoolEventId": {
+                          "description": "Bağlı okul takvimi etkinliği",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "schoolEventTitle": {
+                          "description": "Takvim etkinliğinin başlığı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "seatingMode": {
+                          "type": "string",
+                          "enum": [
+                            "seated",
+                            "general"
+                          ],
+                          "description": "`seated` numaralı, `general` numarasız"
+                        },
+                        "rowCount": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "seatsPerRow": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "blockedSeats": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Satışa kapalı koltuklar"
+                        },
+                        "capacity": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Numarasız etkinliğin kontenjanı"
+                        },
+                        "ticketTypes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string",
+                                "description": "Bilet türü anahtarı (ayırmada `ticketTypeKey`)"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "invitation",
+                                  "paid"
+                                ],
+                                "description": "`invitation` ücretsiz davetiye, `paid` ücretli"
+                              },
+                              "priceCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Fiyat, kuruş; davetiyede 0"
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "name",
+                              "kind",
+                              "priceCents"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "perStudentLimit": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Öğrenci başına üst sınır; boşsa sınırsız"
+                        },
+                        "salesOpen": {
+                          "type": "boolean"
+                        },
+                        "totalCapacity": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Satışa açık koltuk ya da kontenjan"
+                        },
+                        "activeCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Etkin (iptal edilmemiş) bilet"
+                        },
+                        "availableCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Boş yer"
+                        },
+                        "invitationCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Etkin davetiye"
+                        },
+                        "usedCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Girişte kullanılan bilet"
+                        },
+                        "unpaidCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Ödemesi beklenen ücretli bilet"
+                        },
+                        "collectedCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Ödenmiş etkin biletlerin toplamı, kuruş (iade düşer)"
+                        },
+                        "takenSeats": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Etkin bileti olan koltuklar (koltuk haritası)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için etkinliğin sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "startsAt",
+                        "venue",
+                        "schoolEventId",
+                        "schoolEventTitle",
+                        "seatingMode",
+                        "rowCount",
+                        "seatsPerRow",
+                        "blockedSeats",
+                        "capacity",
+                        "ticketTypes",
+                        "perStudentLimit",
+                        "salesOpen",
+                        "totalCapacity",
+                        "activeCount",
+                        "availableCount",
+                        "invitationCount",
+                        "usedCount",
+                        "unpaidCount",
+                        "collectedCents",
+                        "takenSeats",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "archiveTicketedEvent",
+        "summary": "Etkinliği arşivle",
+        "tags": [
+          "finance-event-tickets"
+        ],
+        "description": "Etkin bileti olan etkinlik arşivlenmez (422 `event_has_tickets`; önce biletler iptal edilir). Olmayan ya da başka kurumun etkinliği 404; `If-Match` zorunlu. Rol: `yonetici` (K-324). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "eventId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "archivedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "archivedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/ticketed-events/{eventId}/tickets": {
+      "get": {
+        "operationId": "listEventTickets",
+        "summary": "Etkinliğin satış listesi",
+        "tags": [
+          "finance-event-tickets"
+        ],
+        "description": "Biletler ayırma sırasıyla; `state` (`valid`, `unpaid`, `used`, `cancelled`), `studentId` süzer, `q` bilet sahibi, öğrenci adı, koltuk ve kodda arar (DOM-FIN-103). Başka kurumun etkinliği 404. `Accept: text/csv` süzgeçle eşleşen bütün biletleri verir (`;` ayırıcı, UTF-8 BOM, formül kaçışı, zamanlar Europe/Istanbul); bilet kodu yazılmaz. Bilet sahibi ve öğrenci adı taşıdığı için taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.event_ticket_export` (K-327). Roller: `yonetici`, `onburo` (K-324). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Bilet sahibi, öğrenci adı, koltuk ve kodda arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "valid",
+                "unpaid",
+                "used",
+                "cancelled"
+              ]
+            },
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "description": "Bilet durumu"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "in": "query",
+            "name": "studentId",
+            "required": false,
+            "description": "Öğrencinin biletleri"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "eventId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "eventId": {
+                            "type": "string"
+                          },
+                          "code": {
+                            "type": "string",
+                            "description": "Bilet kodu (`XXXX-XXXX-XXXX`); PDF ve girişte kullanılır"
+                          },
+                          "ticketTypeKey": {
+                            "type": "string"
+                          },
+                          "ticketTypeName": {
+                            "type": "string",
+                            "description": "Ayırma anındaki tür adı"
+                          },
+                          "ticketKind": {
+                            "type": "string",
+                            "enum": [
+                              "invitation",
+                              "paid"
+                            ]
+                          },
+                          "priceCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Ayırma anındaki fiyat, kuruş"
+                          },
+                          "seat": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "studentId": {
+                            "type": "string"
+                          },
+                          "studentName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "holderName": {
+                            "type": "string",
+                            "description": "Bileti kullanacak veli ya da misafir"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "active",
+                              "cancelled"
+                            ]
+                          },
+                          "paymentStatus": {
+                            "type": "string",
+                            "enum": [
+                              "not_required",
+                              "unpaid",
+                              "paid"
+                            ]
+                          },
+                          "paymentMethod": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "cash",
+                                  "transfer"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "paidAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "refundedAt": {
+                            "description": "Ödenmiş biletin iptalinde bedelin iade edildiği an",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "usedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "cancelledAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "cancelReason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "state": {
+                            "type": "string",
+                            "enum": [
+                              "valid",
+                              "unpaid",
+                              "used",
+                              "cancelled"
+                            ],
+                            "description": "`valid` girişe hazır, `unpaid` ödeme bekliyor, `used` kullanıldı, `cancelled` iptal"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için biletin sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "eventId",
+                          "code",
+                          "ticketTypeKey",
+                          "ticketTypeName",
+                          "ticketKind",
+                          "priceCents",
+                          "seat",
+                          "studentId",
+                          "studentName",
+                          "holderName",
+                          "status",
+                          "paymentStatus",
+                          "paymentMethod",
+                          "paidAt",
+                          "refundedAt",
+                          "usedAt",
+                          "cancelledAt",
+                          "cancelReason",
+                          "state",
+                          "createdAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "allocateEventTickets",
+        "summary": "Öğrenci ailesine bilet ayır",
+        "tags": [
+          "finance-event-tickets"
+        ],
+        "description": "Bir öğrencinin ailesine 1–10 bilet ayırır (K-325): bilet başına tür, bilet sahibinin adı (veli ya da misafir) ve numaralı salonda koltuk. Satış kapalıysa 422 `event_sales_closed`; öğrenci kurumda yoksa 422 `event_ticket_student_not_found` (başka kurumun öğrencisi de), etkin değilse `event_ticket_student_inactive`. Koltuk: eksik `event_seat_required`, salonda yok `event_seat_unknown`, kapalı `event_seat_blocked`, istekte iki kez `event_seat_duplicate`, başka bilette 409 `event_seat_taken` (eşzamanlı ayırma kurum kilidiyle sıraya girer; kısmi tekil indeks son güvencedir). Numarasızda koltuk 422 `event_seat_not_allowed`, kontenjan aşımı `event_sold_out`; öğrenci başına üst sınır `event_ticket_limit_exceeded` (iptal edilen bilet sayılmaz). Ücretli bilet ödenmemiş başlar. Her bilete tahmin edilemez kod verilir (K-326). `Idempotency-Key` zorunlu. Roller: `yonetici`, `onburo` (K-324). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "studentId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64,
+                    "description": "Biletin ayrıldığı öğrenci (ailesi); üst sınır öğrenci başınadır"
+                  },
+                  "items": {
+                    "minItems": 1,
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "ticketTypeKey": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 40
+                        },
+                        "seat": {
+                          "description": "Numaralı salonda koltuk; numarasızda boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "holderName": {
+                          "type": "string",
+                          "minLength": 2,
+                          "maxLength": 120,
+                          "description": "Bileti kullanacak veli ya da misafirin adı"
+                        }
+                      },
+                      "required": [
+                        "ticketTypeKey",
+                        "holderName"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "studentId",
+                  "items"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "eventId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "eventId": {
+                            "type": "string"
+                          },
+                          "code": {
+                            "type": "string",
+                            "description": "Bilet kodu (`XXXX-XXXX-XXXX`); PDF ve girişte kullanılır"
+                          },
+                          "ticketTypeKey": {
+                            "type": "string"
+                          },
+                          "ticketTypeName": {
+                            "type": "string",
+                            "description": "Ayırma anındaki tür adı"
+                          },
+                          "ticketKind": {
+                            "type": "string",
+                            "enum": [
+                              "invitation",
+                              "paid"
+                            ]
+                          },
+                          "priceCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Ayırma anındaki fiyat, kuruş"
+                          },
+                          "seat": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "studentId": {
+                            "type": "string"
+                          },
+                          "studentName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "holderName": {
+                            "type": "string",
+                            "description": "Bileti kullanacak veli ya da misafir"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "active",
+                              "cancelled"
+                            ]
+                          },
+                          "paymentStatus": {
+                            "type": "string",
+                            "enum": [
+                              "not_required",
+                              "unpaid",
+                              "paid"
+                            ]
+                          },
+                          "paymentMethod": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "cash",
+                                  "transfer"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "paidAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "refundedAt": {
+                            "description": "Ödenmiş biletin iptalinde bedelin iade edildiği an",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "usedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "cancelledAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "cancelReason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "state": {
+                            "type": "string",
+                            "enum": [
+                              "valid",
+                              "unpaid",
+                              "used",
+                              "cancelled"
+                            ],
+                            "description": "`valid` girişe hazır, `unpaid` ödeme bekliyor, `used` kullanıldı, `cancelled` iptal"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için biletin sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "eventId",
+                          "code",
+                          "ticketTypeKey",
+                          "ticketTypeName",
+                          "ticketKind",
+                          "priceCents",
+                          "seat",
+                          "studentId",
+                          "studentName",
+                          "holderName",
+                          "status",
+                          "paymentStatus",
+                          "paymentMethod",
+                          "paidAt",
+                          "refundedAt",
+                          "usedAt",
+                          "cancelledAt",
+                          "cancelReason",
+                          "state",
+                          "createdAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/ticketed-events/{eventId}/check-in": {
+      "post": {
+        "operationId": "checkInEventTicket",
+        "summary": "Girişte bilet kodunu okut",
+        "tags": [
+          "finance-event-tickets"
+        ],
+        "description": "Kodu okunan bileti \"kullanıldı\" işaretler (K-326). Kod boşluk, tire ve küçük harf fark etmeden okunur (`O`→`0`, `I`/`L`→`1`). Kurumda olmayan kod 404; başka etkinliğin bileti 422 `event_ticket_wrong_event`, iptal edilmiş 422 `event_ticket_cancelled`, ödemesi alınmamış 422 `event_ticket_unpaid`, ikinci okutma 409 `event_ticket_already_used`. Roller: `yonetici`, `onburo` (K-324). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40,
+                    "description": "Biletteki kod (`XXXX-XXXX-XXXX`); boşluk, tire ve küçük harf fark etmez"
+                  }
+                },
+                "required": [
+                  "code"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "eventId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "eventId": {
+                          "type": "string"
+                        },
+                        "code": {
+                          "type": "string",
+                          "description": "Bilet kodu (`XXXX-XXXX-XXXX`); PDF ve girişte kullanılır"
+                        },
+                        "ticketTypeKey": {
+                          "type": "string"
+                        },
+                        "ticketTypeName": {
+                          "type": "string",
+                          "description": "Ayırma anındaki tür adı"
+                        },
+                        "ticketKind": {
+                          "type": "string",
+                          "enum": [
+                            "invitation",
+                            "paid"
+                          ]
+                        },
+                        "priceCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Ayırma anındaki fiyat, kuruş"
+                        },
+                        "seat": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "holderName": {
+                          "type": "string",
+                          "description": "Bileti kullanacak veli ya da misafir"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "cancelled"
+                          ]
+                        },
+                        "paymentStatus": {
+                          "type": "string",
+                          "enum": [
+                            "not_required",
+                            "unpaid",
+                            "paid"
+                          ]
+                        },
+                        "paymentMethod": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "cash",
+                                "transfer"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "paidAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "refundedAt": {
+                          "description": "Ödenmiş biletin iptalinde bedelin iade edildiği an",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "usedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "valid",
+                            "unpaid",
+                            "used",
+                            "cancelled"
+                          ],
+                          "description": "`valid` girişe hazır, `unpaid` ödeme bekliyor, `used` kullanıldı, `cancelled` iptal"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için biletin sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "eventId",
+                        "code",
+                        "ticketTypeKey",
+                        "ticketTypeName",
+                        "ticketKind",
+                        "priceCents",
+                        "seat",
+                        "studentId",
+                        "studentName",
+                        "holderName",
+                        "status",
+                        "paymentStatus",
+                        "paymentMethod",
+                        "paidAt",
+                        "refundedAt",
+                        "usedAt",
+                        "cancelledAt",
+                        "cancelReason",
+                        "state",
+                        "createdAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/event-tickets/{ticketId}/pay": {
+      "post": {
+        "operationId": "payEventTicket",
+        "summary": "Bilet ödemesini işaretle",
+        "tags": [
+          "finance-event-tickets"
+        ],
+        "description": "Ücretli biletin ödemesini elle işaretler: `cash` nakit, `transfer` havale/EFT; çevrim içi ödeme yoktur (K-326). Ödeme gün sonuna ve muhasebe aktarımına girmez (M-49). Davetiye 422 `event_ticket_free`, iptal edilmiş 422 `event_ticket_cancelled`, ödenmiş 409 `event_ticket_already_paid`. Başka kurumun bileti 404. `Idempotency-Key` zorunlu; `If-Match` verilirse biletin sürümüdür. Roller: `yonetici`, `onburo` (K-324). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "method": {
+                    "type": "string",
+                    "enum": [
+                      "cash",
+                      "transfer"
+                    ]
+                  }
+                },
+                "required": [
+                  "method"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "ticketId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": false,
+            "description": "İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`). Tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "eventId": {
+                          "type": "string"
+                        },
+                        "code": {
+                          "type": "string",
+                          "description": "Bilet kodu (`XXXX-XXXX-XXXX`); PDF ve girişte kullanılır"
+                        },
+                        "ticketTypeKey": {
+                          "type": "string"
+                        },
+                        "ticketTypeName": {
+                          "type": "string",
+                          "description": "Ayırma anındaki tür adı"
+                        },
+                        "ticketKind": {
+                          "type": "string",
+                          "enum": [
+                            "invitation",
+                            "paid"
+                          ]
+                        },
+                        "priceCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Ayırma anındaki fiyat, kuruş"
+                        },
+                        "seat": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "holderName": {
+                          "type": "string",
+                          "description": "Bileti kullanacak veli ya da misafir"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "cancelled"
+                          ]
+                        },
+                        "paymentStatus": {
+                          "type": "string",
+                          "enum": [
+                            "not_required",
+                            "unpaid",
+                            "paid"
+                          ]
+                        },
+                        "paymentMethod": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "cash",
+                                "transfer"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "paidAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "refundedAt": {
+                          "description": "Ödenmiş biletin iptalinde bedelin iade edildiği an",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "usedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "valid",
+                            "unpaid",
+                            "used",
+                            "cancelled"
+                          ],
+                          "description": "`valid` girişe hazır, `unpaid` ödeme bekliyor, `used` kullanıldı, `cancelled` iptal"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için biletin sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "eventId",
+                        "code",
+                        "ticketTypeKey",
+                        "ticketTypeName",
+                        "ticketKind",
+                        "priceCents",
+                        "seat",
+                        "studentId",
+                        "studentName",
+                        "holderName",
+                        "status",
+                        "paymentStatus",
+                        "paymentMethod",
+                        "paidAt",
+                        "refundedAt",
+                        "usedAt",
+                        "cancelledAt",
+                        "cancelReason",
+                        "state",
+                        "createdAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/event-tickets/{ticketId}/cancel": {
+      "post": {
+        "operationId": "cancelEventTicket",
+        "summary": "Bileti iptal et",
+        "tags": [
+          "finance-event-tickets"
+        ],
+        "description": "Bileti iptal eder; koltuk boşa çıkar ve yeniden ayrılabilir (K-326). Ödenmiş biletin bedeli iptalle elle iade edilmiş sayılır (`refundedAt`; kısmi iade yok), bu yüzden taze oturum ister (eskiyse 403 `reauthentication_required`). Kullanılmış bilet 422 `event_ticket_used`, iptal edilmiş 409 `event_ticket_already_cancelled`. İsteğe bağlı not (≤ 200) denetime yazılmaz. Başka kurumun bileti 404. `Idempotency-Key` zorunlu; `If-Match` verilirse biletin sürümüdür. Roller: `yonetici`, `onburo` (K-324). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "description": "İsteğe bağlı iptal notu",
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "ticketId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": false,
+            "description": "İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`). Tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "eventId": {
+                          "type": "string"
+                        },
+                        "code": {
+                          "type": "string",
+                          "description": "Bilet kodu (`XXXX-XXXX-XXXX`); PDF ve girişte kullanılır"
+                        },
+                        "ticketTypeKey": {
+                          "type": "string"
+                        },
+                        "ticketTypeName": {
+                          "type": "string",
+                          "description": "Ayırma anındaki tür adı"
+                        },
+                        "ticketKind": {
+                          "type": "string",
+                          "enum": [
+                            "invitation",
+                            "paid"
+                          ]
+                        },
+                        "priceCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Ayırma anındaki fiyat, kuruş"
+                        },
+                        "seat": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "holderName": {
+                          "type": "string",
+                          "description": "Bileti kullanacak veli ya da misafir"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "cancelled"
+                          ]
+                        },
+                        "paymentStatus": {
+                          "type": "string",
+                          "enum": [
+                            "not_required",
+                            "unpaid",
+                            "paid"
+                          ]
+                        },
+                        "paymentMethod": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "cash",
+                                "transfer"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "paidAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "refundedAt": {
+                          "description": "Ödenmiş biletin iptalinde bedelin iade edildiği an",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "usedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "valid",
+                            "unpaid",
+                            "used",
+                            "cancelled"
+                          ],
+                          "description": "`valid` girişe hazır, `unpaid` ödeme bekliyor, `used` kullanıldı, `cancelled` iptal"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için biletin sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "eventId",
+                        "code",
+                        "ticketTypeKey",
+                        "ticketTypeName",
+                        "ticketKind",
+                        "priceCents",
+                        "seat",
+                        "studentId",
+                        "studentName",
+                        "holderName",
+                        "status",
+                        "paymentStatus",
+                        "paymentMethod",
+                        "paidAt",
+                        "refundedAt",
+                        "usedAt",
+                        "cancelledAt",
+                        "cancelReason",
+                        "state",
+                        "createdAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/finance/supply-requests": {
       "get": {
         "operationId": "listSupplyRequests",

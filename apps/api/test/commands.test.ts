@@ -124,6 +124,11 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // Mezun belge talebi ücreti dondurur ve dosya bağlar; çift tıklama ikinci talep açmaz
   // (routes/enrollment-alumni-documents.ts; DOM-KAY-044, ON-260).
   'POST /api/v1/prospects/alumni-document-requests',
+  // Etkinlik bileti ayırma, ödeme işareti ve iptal (iade); çift tıklama ikinci bileti, ödemeyi ya da
+  // iadeyi yazmaz (routes/finance-event-tickets.ts; DOM-FIN-103, ON-159).
+  'POST /api/v1/finance/ticketed-events/{eventId}/tickets',
+  'POST /api/v1/finance/event-tickets/{ticketId}/pay',
+  'POST /api/v1/finance/event-tickets/{ticketId}/cancel',
 ]
 // Onur: kayıt ve finans sonu
 

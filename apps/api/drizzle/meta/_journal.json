@@ -785,6 +785,13 @@
       "when": 1794837577043,
       "tag": "0111_create_alumni_document_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 112,
+      "version": "7",
+      "when": 1794838469020,
+      "tag": "0112_create_event_tickets",
+      "breakpoints": true
     }
   ]
 }

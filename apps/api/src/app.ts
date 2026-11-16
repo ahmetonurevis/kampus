@@ -41,6 +41,7 @@ import { registerFinanceBudgetActualsRoutes } from './routes/finance-budget-actu
 import { registerFinanceCorporateRoutes } from './routes/finance-corporate.ts'
 import { registerFinanceCostReportRoutes } from './routes/finance-cost-reports.ts'
 import { registerFinanceEOzelRoutes } from './routes/finance-e-ozel.ts'
+import { registerFinanceEventTicketRoutes } from './routes/finance-event-tickets.ts'
 import { registerFinanceDayClosingRoutes } from './routes/finance-day-closings.ts'
 import { registerFinanceExportRoutes } from './routes/finance-exports.ts'
 import { registerFinanceFixedAssetAssignmentRoutes } from './routes/finance-fixed-asset-assignments.ts'
@@ -549,6 +550,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceFixedAssetAssignmentRoutes(app)
   registerFinanceFixedAssetCountRoutes(app)
   registerFinanceChemicalRoutes(app)
+  registerFinanceEventTicketRoutes(app)
   registerFinanceSupplyRequestRoutes(app)
   registerFinanceMaintenanceRequestRoutes(app)
   registerFinanceSeveranceRoutes(app)

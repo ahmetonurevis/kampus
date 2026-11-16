@@ -2330,6 +2330,54 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: etkinlik bileti ve oturma (ON-159; DOM-FIN-103).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/ticketed-events', 'get(EVENTS, a.admin)'],
+        [
+          'gövde',
+          'POST /api/v1/finance/ticketed-events',
+          'createEvent(a.admin, { ...SEATED, institutionId: b.id })',
+        ],
+        ['kayıt', 'GET /api/v1/finance/ticketed-events/:eventId', 'get(bUrl, a.admin)'],
+        ['kayıt', 'PATCH /api/v1/finance/ticketed-events/:eventId', "call('PATCH', bUrl, a.admin"],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/ticketed-events/:eventId',
+          "call('DELETE', bUrl, a.admin",
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/ticketed-events/:eventId/tickets',
+          'get(`${bUrl}/tickets`, a.admin)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/ticketed-events/:eventId/tickets',
+          'allocate(a.admin, bEvent',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/ticketed-events/:eventId/check-in',
+          'checkIn(a.admin, bEvent, bTicket.code)',
+        ],
+        ['kayıt', 'POST /api/v1/finance/event-tickets/:ticketId/pay', 'pay(a.admin, bTicket)'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/event-tickets/:ticketId/cancel',
+          'cancel(a.admin, bTicket)',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-event-tickets.test.ts',
+        'DOM-FIN-103: başka kurumun etkinliği, bileti ve kodu 404',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

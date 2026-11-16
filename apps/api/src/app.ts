@@ -60,6 +60,7 @@ import { registerFinancePayrollParameterRoutes } from './routes/finance-payroll-
 import { registerFinanceBudgetDraftRoutes } from './routes/finance-budget-drafts.ts'
 import { registerFinanceMaterialSetRoutes } from './routes/finance-material-sets.ts'
 import { registerFinancePaidActivityRoutes } from './routes/finance-paid-activities.ts'
+import { registerFinancePayrollExportRoutes } from './routes/finance-payroll-exports.ts'
 import { registerFinanceStockCountRoutes } from './routes/finance-stock-counts.ts'
 import { registerFinanceOpeningWatchRoutes } from './routes/finance-opening-watch.ts'
 import { registerFinanceReferralRoutes } from './routes/finance-referrals.ts'
@@ -546,6 +547,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceStakeholderRoutes(app)
   registerFinancePayRateRoutes(app)
   registerFinancePaidActivityRoutes(app)
+  registerFinancePayrollExportRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

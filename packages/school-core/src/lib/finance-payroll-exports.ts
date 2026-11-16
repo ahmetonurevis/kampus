@@ -543,6 +543,10 @@ export const payrollExportProfileSchema = z
   })
 export type PayrollExportProfile = z.output<typeof payrollExportProfileSchema>
 
+/** Üretilen dosyanın biçimi: genel dosya ya da kurum şablonu. */
+export const PAYROLL_EXPORT_FORMATS = ['standard', 'profile'] as const
+export type PayrollExportFormat = (typeof PAYROLL_EXPORT_FORMATS)[number]
+
 /** Gövde: `null` kurumu genel dosyaya döndürür. */
 export const setPayrollExportProfileSchema = z.strictObject({
   profile: payrollExportProfileSchema.nullable(),

@@ -175321,6 +175321,2344 @@
         }
       }
     },
+    "/api/v1/finance/refund-invoices": {
+      "get": {
+        "operationId": "listRefundInvoices",
+        "summary": "İade faturaları ve iptal istekleri",
+        "tags": [
+          "finance-refund-invoices"
+        ],
+        "description": "Vazgeçilmemiş belgeler, en yeni önce (DOM-FIN-096). `status`, `kind` ve `withdrawalId` ile süzülür; sayfalıdır, bilinmeyen parametre 400. `Accept: text/csv` ile entegratör portalına elle giriş için dosya iner (sayfa yok sayılır, en çok 5000 belge; aşarsa 422 `refund_invoice_export_too_large`): `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı; alıcının kimliği ve IBAN'ı yazılmaz (K-295); taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.refund_invoice_export`. Rol: `yonetici` (K-295). Modül `finance`; kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "ready",
+                "sent",
+                "cancelled"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Durum"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "cancellation",
+                "return_invoice"
+              ]
+            },
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "description": "Belge türü"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "withdrawalId",
+            "required": false,
+            "description": "Ayrılış iadesi"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "withdrawalId": {
+                            "type": "string",
+                            "description": "Belgenin dayandığı ayrılış iadesi"
+                          },
+                          "studentName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "withdrawalDate": {
+                            "type": "string",
+                            "description": "Ayrılış günü `YYYY-MM-DD`"
+                          },
+                          "refundCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "İade tutarı, kuruş"
+                          },
+                          "refundPaidDate": {
+                            "description": "İadenin ödendiği gün",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "cancellation",
+                              "return_invoice"
+                            ],
+                            "description": "`cancellation` asıl faturanın iptal isteği, `return_invoice` iade faturası (K-292)"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "draft",
+                              "ready",
+                              "sent",
+                              "cancelled"
+                            ],
+                            "description": "`draft` taslak, `ready` gönderime hazır, `sent` iade faturası gönderildi, `cancelled` asıl fatura iptal edildi (K-294)"
+                          },
+                          "originalInvoice": {
+                            "type": "object",
+                            "properties": {
+                              "number": {
+                                "type": "string",
+                                "description": "GİB numarası"
+                              },
+                              "date": {
+                                "type": "string"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "e_archive",
+                                  "e_invoice"
+                                ]
+                              },
+                              "totalCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "KDV dahil tutar, kuruş"
+                              },
+                              "vatRateBasisPoints": {
+                                "anyOf": [
+                                  {
+                                    "type": "number",
+                                    "enum": [
+                                      0
+                                    ]
+                                  },
+                                  {
+                                    "type": "number",
+                                    "enum": [
+                                      100
+                                    ]
+                                  },
+                                  {
+                                    "type": "number",
+                                    "enum": [
+                                      1000
+                                    ]
+                                  },
+                                  {
+                                    "type": "number",
+                                    "enum": [
+                                      2000
+                                    ]
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "number",
+                              "date",
+                              "type",
+                              "totalCents",
+                              "vatRateBasisPoints"
+                            ],
+                            "additionalProperties": false,
+                            "description": "Kampüs dışında kesilmiş asıl fatura; elle girilir"
+                          },
+                          "cancelWindowEndsOn": {
+                            "type": "string",
+                            "description": "İptal penceresinin son günü (dahil): e-Arşivde fatura günü + 7, e-Faturada + 8"
+                          },
+                          "amountCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Belge tutarı (KDV dahil), kuruş"
+                          },
+                          "netCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "KDV hariç tutar, kuruş"
+                          },
+                          "vatCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "KDV, kuruş"
+                          },
+                          "partial": {
+                            "type": "boolean",
+                            "description": "Belge asıl faturanın tamamından az mı (kısmi iade)"
+                          },
+                          "note": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "documentNumber": {
+                            "description": "Gönderilen iade faturasının numarası",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "completedDate": {
+                            "description": "Sonucun işlendiği gün",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "readyAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "completedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "actions": {
+                            "type": "object",
+                            "properties": {
+                              "ready": {
+                                "type": "boolean"
+                              },
+                              "complete": {
+                                "type": "boolean"
+                              },
+                              "discard": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "ready",
+                              "complete",
+                              "discard"
+                            ],
+                            "additionalProperties": false,
+                            "description": "Oturumdaki kullanıcının yapabilecekleri"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "withdrawalId",
+                          "studentName",
+                          "withdrawalDate",
+                          "refundCents",
+                          "refundPaidDate",
+                          "kind",
+                          "status",
+                          "originalInvoice",
+                          "cancelWindowEndsOn",
+                          "amountCents",
+                          "netCents",
+                          "vatCents",
+                          "partial",
+                          "note",
+                          "documentNumber",
+                          "completedDate",
+                          "createdAt",
+                          "readyAt",
+                          "completedAt",
+                          "actions",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createRefundInvoice",
+        "summary": "İade faturası ya da iptal isteği taslağı aç",
+        "tags": [
+          "finance-refund-invoices"
+        ],
+        "description": "Ödenmiş ayrılış iadesi (DOM-FIN-041) için asıl faturaya bağlı taslak (DOM-FIN-096). Asıl faturanın GİB numarası (16 karakter; yıl fatura gününün yılı), tarihi, türü (`e_archive`, `e_invoice`), KDV dahil tutarı ve KDV oranı (on binde birlik: 0, 100, 1000, 2000) elle girilir. `kind` verilmezse önerilen tür yazılır: iade asıl faturanın tamamıysa ve bugün iptal penceresindeyse (e-Arşiv 7, e-Fatura 8 gün; doğrulanmalı) iptal isteği, değilse iade faturası (K-292). İade faturası her zaman seçilir; iptal isteği kısmi iadede 422 `refund_invoice_cancel_partial`, pencere dışında 422 `refund_invoice_cancel_window_closed`. Tutar iadeyi (422 `refund_invoice_amount_exceeds_refund`) ve asıl faturayı (422 `refund_invoice_amount_exceeds_invoice`) aşamaz; KDV asıl faturanın oranıyla ayrılır (K-293). İade ödenmemişse 422 `refund_invoice_refund_not_paid`, iade yoksa 422 `refund_invoice_no_refund`; asıl fatura bugünden sonra 422 `refund_invoice_original_date_future`, iade ödemesinden sonra 422 `refund_invoice_original_after_refund`. Aynı iadeye vazgeçilmemiş ikinci belge 409 `refund_invoice_exists`. Olmayan ya da başka kurumun ayrılışı 404; gövdedeki `institutionId` 400. `Idempotency-Key` zorunlu; aynı anahtar ilk yanıtı tekrarlar. 201 ve `Location`. Rol: `yonetici` (K-295). Modül `finance`; kapalıysa 403 `module_disabled`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "withdrawalId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "cancellation",
+                      "return_invoice"
+                    ]
+                  },
+                  "originalInvoice": {
+                    "type": "object",
+                    "properties": {
+                      "number": {
+                        "type": "string",
+                        "pattern": "^[A-Z0-9]{3}(\\d{4})\\d{9}$"
+                      },
+                      "date": {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "e_archive",
+                          "e_invoice"
+                        ]
+                      },
+                      "totalCents": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 10000000000
+                      },
+                      "vatRateBasisPoints": {
+                        "type": "number",
+                        "enum": [
+                          0,
+                          100,
+                          1000,
+                          2000
+                        ]
+                      }
+                    },
+                    "required": [
+                      "number",
+                      "date",
+                      "type",
+                      "totalCents",
+                      "vatRateBasisPoints"
+                    ]
+                  },
+                  "amountCents": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 10000000000
+                  },
+                  "note": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "withdrawalId",
+                  "originalInvoice",
+                  "amountCents"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "withdrawalId": {
+                          "type": "string",
+                          "description": "Belgenin dayandığı ayrılış iadesi"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "withdrawalDate": {
+                          "type": "string",
+                          "description": "Ayrılış günü `YYYY-MM-DD`"
+                        },
+                        "refundCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "İade tutarı, kuruş"
+                        },
+                        "refundPaidDate": {
+                          "description": "İadenin ödendiği gün",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "cancellation",
+                            "return_invoice"
+                          ],
+                          "description": "`cancellation` asıl faturanın iptal isteği, `return_invoice` iade faturası (K-292)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "ready",
+                            "sent",
+                            "cancelled"
+                          ],
+                          "description": "`draft` taslak, `ready` gönderime hazır, `sent` iade faturası gönderildi, `cancelled` asıl fatura iptal edildi (K-294)"
+                        },
+                        "originalInvoice": {
+                          "type": "object",
+                          "properties": {
+                            "number": {
+                              "type": "string",
+                              "description": "GİB numarası"
+                            },
+                            "date": {
+                              "type": "string"
+                            },
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "e_archive",
+                                "e_invoice"
+                              ]
+                            },
+                            "totalCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "KDV dahil tutar, kuruş"
+                            },
+                            "vatRateBasisPoints": {
+                              "anyOf": [
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    0
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    100
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    1000
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    2000
+                                  ]
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "number",
+                            "date",
+                            "type",
+                            "totalCents",
+                            "vatRateBasisPoints"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Kampüs dışında kesilmiş asıl fatura; elle girilir"
+                        },
+                        "cancelWindowEndsOn": {
+                          "type": "string",
+                          "description": "İptal penceresinin son günü (dahil): e-Arşivde fatura günü + 7, e-Faturada + 8"
+                        },
+                        "amountCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Belge tutarı (KDV dahil), kuruş"
+                        },
+                        "netCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "KDV hariç tutar, kuruş"
+                        },
+                        "vatCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "KDV, kuruş"
+                        },
+                        "partial": {
+                          "type": "boolean",
+                          "description": "Belge asıl faturanın tamamından az mı (kısmi iade)"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "documentNumber": {
+                          "description": "Gönderilen iade faturasının numarası",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "completedDate": {
+                          "description": "Sonucun işlendiği gün",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "readyAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "completedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "actions": {
+                          "type": "object",
+                          "properties": {
+                            "ready": {
+                              "type": "boolean"
+                            },
+                            "complete": {
+                              "type": "boolean"
+                            },
+                            "discard": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "ready",
+                            "complete",
+                            "discard"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Oturumdaki kullanıcının yapabilecekleri"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "withdrawalId",
+                        "studentName",
+                        "withdrawalDate",
+                        "refundCents",
+                        "refundPaidDate",
+                        "kind",
+                        "status",
+                        "originalInvoice",
+                        "cancelWindowEndsOn",
+                        "amountCents",
+                        "netCents",
+                        "vatCents",
+                        "partial",
+                        "note",
+                        "documentNumber",
+                        "completedDate",
+                        "createdAt",
+                        "readyAt",
+                        "completedAt",
+                        "actions",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/refund-invoices/{refundInvoiceId}": {
+      "get": {
+        "operationId": "getRefundInvoice",
+        "summary": "İade belgesi ayrıntısı",
+        "tags": [
+          "finance-refund-invoices"
+        ],
+        "description": "Olmayan, vazgeçilmiş ya da başka kurumun belgesi 404. Rol: `yonetici` (K-295). Modül `finance`; kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "refundInvoiceId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "withdrawalId": {
+                          "type": "string",
+                          "description": "Belgenin dayandığı ayrılış iadesi"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "withdrawalDate": {
+                          "type": "string",
+                          "description": "Ayrılış günü `YYYY-MM-DD`"
+                        },
+                        "refundCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "İade tutarı, kuruş"
+                        },
+                        "refundPaidDate": {
+                          "description": "İadenin ödendiği gün",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "cancellation",
+                            "return_invoice"
+                          ],
+                          "description": "`cancellation` asıl faturanın iptal isteği, `return_invoice` iade faturası (K-292)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "ready",
+                            "sent",
+                            "cancelled"
+                          ],
+                          "description": "`draft` taslak, `ready` gönderime hazır, `sent` iade faturası gönderildi, `cancelled` asıl fatura iptal edildi (K-294)"
+                        },
+                        "originalInvoice": {
+                          "type": "object",
+                          "properties": {
+                            "number": {
+                              "type": "string",
+                              "description": "GİB numarası"
+                            },
+                            "date": {
+                              "type": "string"
+                            },
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "e_archive",
+                                "e_invoice"
+                              ]
+                            },
+                            "totalCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "KDV dahil tutar, kuruş"
+                            },
+                            "vatRateBasisPoints": {
+                              "anyOf": [
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    0
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    100
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    1000
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    2000
+                                  ]
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "number",
+                            "date",
+                            "type",
+                            "totalCents",
+                            "vatRateBasisPoints"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Kampüs dışında kesilmiş asıl fatura; elle girilir"
+                        },
+                        "cancelWindowEndsOn": {
+                          "type": "string",
+                          "description": "İptal penceresinin son günü (dahil): e-Arşivde fatura günü + 7, e-Faturada + 8"
+                        },
+                        "amountCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Belge tutarı (KDV dahil), kuruş"
+                        },
+                        "netCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "KDV hariç tutar, kuruş"
+                        },
+                        "vatCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "KDV, kuruş"
+                        },
+                        "partial": {
+                          "type": "boolean",
+                          "description": "Belge asıl faturanın tamamından az mı (kısmi iade)"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "documentNumber": {
+                          "description": "Gönderilen iade faturasının numarası",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "completedDate": {
+                          "description": "Sonucun işlendiği gün",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "readyAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "completedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "actions": {
+                          "type": "object",
+                          "properties": {
+                            "ready": {
+                              "type": "boolean"
+                            },
+                            "complete": {
+                              "type": "boolean"
+                            },
+                            "discard": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "ready",
+                            "complete",
+                            "discard"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Oturumdaki kullanıcının yapabilecekleri"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "withdrawalId",
+                        "studentName",
+                        "withdrawalDate",
+                        "refundCents",
+                        "refundPaidDate",
+                        "kind",
+                        "status",
+                        "originalInvoice",
+                        "cancelWindowEndsOn",
+                        "amountCents",
+                        "netCents",
+                        "vatCents",
+                        "partial",
+                        "note",
+                        "documentNumber",
+                        "completedDate",
+                        "createdAt",
+                        "readyAt",
+                        "completedAt",
+                        "actions",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/refund-invoices/{refundInvoiceId}/ready": {
+      "post": {
+        "operationId": "markRefundInvoiceReady",
+        "summary": "Belgeyi gönderime hazır işaretle",
+        "tags": [
+          "finance-refund-invoices"
+        ],
+        "description": "Taslak gönderime hazır olur (K-294); taslak değilse 422 `refund_invoice_not_draft`. İptal isteğinde pencere yeniden denetlenir: süre geçtiyse 422 `refund_invoice_cancel_window_closed` (belgeden vazgeçilip iade faturası açılır). Entegratör bağlantısı olmadığından belge hazırda kalır; CSV ile dışa aktarılır. `If-Match` belgenin sürümüdür; tutmazsa 409 `version_conflict`. `Idempotency-Key` isteğe bağlı. Olmayan, vazgeçilmiş ya da başka kurumun belgesi 404. Rol: `yonetici` (K-295). Modül `finance`; kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "refundInvoiceId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "withdrawalId": {
+                          "type": "string",
+                          "description": "Belgenin dayandığı ayrılış iadesi"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "withdrawalDate": {
+                          "type": "string",
+                          "description": "Ayrılış günü `YYYY-MM-DD`"
+                        },
+                        "refundCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "İade tutarı, kuruş"
+                        },
+                        "refundPaidDate": {
+                          "description": "İadenin ödendiği gün",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "cancellation",
+                            "return_invoice"
+                          ],
+                          "description": "`cancellation` asıl faturanın iptal isteği, `return_invoice` iade faturası (K-292)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "ready",
+                            "sent",
+                            "cancelled"
+                          ],
+                          "description": "`draft` taslak, `ready` gönderime hazır, `sent` iade faturası gönderildi, `cancelled` asıl fatura iptal edildi (K-294)"
+                        },
+                        "originalInvoice": {
+                          "type": "object",
+                          "properties": {
+                            "number": {
+                              "type": "string",
+                              "description": "GİB numarası"
+                            },
+                            "date": {
+                              "type": "string"
+                            },
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "e_archive",
+                                "e_invoice"
+                              ]
+                            },
+                            "totalCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "KDV dahil tutar, kuruş"
+                            },
+                            "vatRateBasisPoints": {
+                              "anyOf": [
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    0
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    100
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    1000
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    2000
+                                  ]
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "number",
+                            "date",
+                            "type",
+                            "totalCents",
+                            "vatRateBasisPoints"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Kampüs dışında kesilmiş asıl fatura; elle girilir"
+                        },
+                        "cancelWindowEndsOn": {
+                          "type": "string",
+                          "description": "İptal penceresinin son günü (dahil): e-Arşivde fatura günü + 7, e-Faturada + 8"
+                        },
+                        "amountCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Belge tutarı (KDV dahil), kuruş"
+                        },
+                        "netCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "KDV hariç tutar, kuruş"
+                        },
+                        "vatCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "KDV, kuruş"
+                        },
+                        "partial": {
+                          "type": "boolean",
+                          "description": "Belge asıl faturanın tamamından az mı (kısmi iade)"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "documentNumber": {
+                          "description": "Gönderilen iade faturasının numarası",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "completedDate": {
+                          "description": "Sonucun işlendiği gün",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "readyAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "completedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "actions": {
+                          "type": "object",
+                          "properties": {
+                            "ready": {
+                              "type": "boolean"
+                            },
+                            "complete": {
+                              "type": "boolean"
+                            },
+                            "discard": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "ready",
+                            "complete",
+                            "discard"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Oturumdaki kullanıcının yapabilecekleri"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "withdrawalId",
+                        "studentName",
+                        "withdrawalDate",
+                        "refundCents",
+                        "refundPaidDate",
+                        "kind",
+                        "status",
+                        "originalInvoice",
+                        "cancelWindowEndsOn",
+                        "amountCents",
+                        "netCents",
+                        "vatCents",
+                        "partial",
+                        "note",
+                        "documentNumber",
+                        "completedDate",
+                        "createdAt",
+                        "readyAt",
+                        "completedAt",
+                        "actions",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/refund-invoices/{refundInvoiceId}/complete": {
+      "post": {
+        "operationId": "completeRefundInvoice",
+        "summary": "Entegratördeki sonucu işle",
+        "tags": [
+          "finance-refund-invoices"
+        ],
+        "description": "Gönderime hazır belgenin sonucu (K-294): iade faturası `documentNumber` (GİB numarası; yıl işlem gününün yılı, asıl faturanınkinden farklı) ile `sent`, iptal isteği numarasız `cancelled` olur. Hazır değilse 422 `refund_invoice_not_ready`; gün bugünden sonra 422 `refund_invoice_completed_date_future`, asıl faturadan önce 422 `refund_invoice_completed_before_original`; iptal pencere dışında 422 `refund_invoice_cancel_window_closed`; iade faturasında numara yoksa 422 `refund_invoice_number_required`, iptalde numara 422 `refund_invoice_number_not_applicable`; numara kurumda kayıtlıysa 409 `refund_invoice_number_exists`. Sonucu işlenen belge değişmez. `If-Match` belgenin sürümüdür; tutmazsa 409 `version_conflict`. `Idempotency-Key` isteğe bağlı. Olmayan, vazgeçilmiş ya da başka kurumun belgesi 404. Rol: `yonetici` (K-295). Modül `finance`; kapalıysa 403 `module_disabled`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "completedDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "documentNumber": {
+                    "type": "string",
+                    "pattern": "^[A-Z0-9]{3}(\\d{4})\\d{9}$"
+                  }
+                },
+                "required": [
+                  "completedDate"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "refundInvoiceId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "withdrawalId": {
+                          "type": "string",
+                          "description": "Belgenin dayandığı ayrılış iadesi"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "withdrawalDate": {
+                          "type": "string",
+                          "description": "Ayrılış günü `YYYY-MM-DD`"
+                        },
+                        "refundCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "İade tutarı, kuruş"
+                        },
+                        "refundPaidDate": {
+                          "description": "İadenin ödendiği gün",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "cancellation",
+                            "return_invoice"
+                          ],
+                          "description": "`cancellation` asıl faturanın iptal isteği, `return_invoice` iade faturası (K-292)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "ready",
+                            "sent",
+                            "cancelled"
+                          ],
+                          "description": "`draft` taslak, `ready` gönderime hazır, `sent` iade faturası gönderildi, `cancelled` asıl fatura iptal edildi (K-294)"
+                        },
+                        "originalInvoice": {
+                          "type": "object",
+                          "properties": {
+                            "number": {
+                              "type": "string",
+                              "description": "GİB numarası"
+                            },
+                            "date": {
+                              "type": "string"
+                            },
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "e_archive",
+                                "e_invoice"
+                              ]
+                            },
+                            "totalCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "KDV dahil tutar, kuruş"
+                            },
+                            "vatRateBasisPoints": {
+                              "anyOf": [
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    0
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    100
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    1000
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    2000
+                                  ]
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "number",
+                            "date",
+                            "type",
+                            "totalCents",
+                            "vatRateBasisPoints"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Kampüs dışında kesilmiş asıl fatura; elle girilir"
+                        },
+                        "cancelWindowEndsOn": {
+                          "type": "string",
+                          "description": "İptal penceresinin son günü (dahil): e-Arşivde fatura günü + 7, e-Faturada + 8"
+                        },
+                        "amountCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Belge tutarı (KDV dahil), kuruş"
+                        },
+                        "netCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "KDV hariç tutar, kuruş"
+                        },
+                        "vatCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "KDV, kuruş"
+                        },
+                        "partial": {
+                          "type": "boolean",
+                          "description": "Belge asıl faturanın tamamından az mı (kısmi iade)"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "documentNumber": {
+                          "description": "Gönderilen iade faturasının numarası",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "completedDate": {
+                          "description": "Sonucun işlendiği gün",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "readyAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "completedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "actions": {
+                          "type": "object",
+                          "properties": {
+                            "ready": {
+                              "type": "boolean"
+                            },
+                            "complete": {
+                              "type": "boolean"
+                            },
+                            "discard": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "ready",
+                            "complete",
+                            "discard"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Oturumdaki kullanıcının yapabilecekleri"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "withdrawalId",
+                        "studentName",
+                        "withdrawalDate",
+                        "refundCents",
+                        "refundPaidDate",
+                        "kind",
+                        "status",
+                        "originalInvoice",
+                        "cancelWindowEndsOn",
+                        "amountCents",
+                        "netCents",
+                        "vatCents",
+                        "partial",
+                        "note",
+                        "documentNumber",
+                        "completedDate",
+                        "createdAt",
+                        "readyAt",
+                        "completedAt",
+                        "actions",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/refund-invoices/{refundInvoiceId}/discard": {
+      "post": {
+        "operationId": "discardRefundInvoice",
+        "summary": "Belgeden vazgeç",
+        "tags": [
+          "finance-refund-invoices"
+        ],
+        "description": "Taslak ya da hazır belge gerekçeyle (5–500 karakter) arşivlenir; aynı iade için yeni belge açılabilir (K-294). Sonucu işlenmiş belge 422 `refund_invoice_completed`. Yanıt arşivlenen belgenin son hâlidir. `If-Match` belgenin sürümüdür; tutmazsa 409 `version_conflict`. `Idempotency-Key` isteğe bağlı. Olmayan, vazgeçilmiş ya da başka kurumun belgesi 404. Rol: `yonetici` (K-295). Modül `finance`; kapalıysa 403 `module_disabled`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "refundInvoiceId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "withdrawalId": {
+                          "type": "string",
+                          "description": "Belgenin dayandığı ayrılış iadesi"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "withdrawalDate": {
+                          "type": "string",
+                          "description": "Ayrılış günü `YYYY-MM-DD`"
+                        },
+                        "refundCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "İade tutarı, kuruş"
+                        },
+                        "refundPaidDate": {
+                          "description": "İadenin ödendiği gün",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "cancellation",
+                            "return_invoice"
+                          ],
+                          "description": "`cancellation` asıl faturanın iptal isteği, `return_invoice` iade faturası (K-292)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "ready",
+                            "sent",
+                            "cancelled"
+                          ],
+                          "description": "`draft` taslak, `ready` gönderime hazır, `sent` iade faturası gönderildi, `cancelled` asıl fatura iptal edildi (K-294)"
+                        },
+                        "originalInvoice": {
+                          "type": "object",
+                          "properties": {
+                            "number": {
+                              "type": "string",
+                              "description": "GİB numarası"
+                            },
+                            "date": {
+                              "type": "string"
+                            },
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "e_archive",
+                                "e_invoice"
+                              ]
+                            },
+                            "totalCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "KDV dahil tutar, kuruş"
+                            },
+                            "vatRateBasisPoints": {
+                              "anyOf": [
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    0
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    100
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    1000
+                                  ]
+                                },
+                                {
+                                  "type": "number",
+                                  "enum": [
+                                    2000
+                                  ]
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "number",
+                            "date",
+                            "type",
+                            "totalCents",
+                            "vatRateBasisPoints"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Kampüs dışında kesilmiş asıl fatura; elle girilir"
+                        },
+                        "cancelWindowEndsOn": {
+                          "type": "string",
+                          "description": "İptal penceresinin son günü (dahil): e-Arşivde fatura günü + 7, e-Faturada + 8"
+                        },
+                        "amountCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Belge tutarı (KDV dahil), kuruş"
+                        },
+                        "netCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "KDV hariç tutar, kuruş"
+                        },
+                        "vatCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "KDV, kuruş"
+                        },
+                        "partial": {
+                          "type": "boolean",
+                          "description": "Belge asıl faturanın tamamından az mı (kısmi iade)"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "documentNumber": {
+                          "description": "Gönderilen iade faturasının numarası",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "completedDate": {
+                          "description": "Sonucun işlendiği gün",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "readyAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "completedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "actions": {
+                          "type": "object",
+                          "properties": {
+                            "ready": {
+                              "type": "boolean"
+                            },
+                            "complete": {
+                              "type": "boolean"
+                            },
+                            "discard": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "ready",
+                            "complete",
+                            "discard"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Oturumdaki kullanıcının yapabilecekleri"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "withdrawalId",
+                        "studentName",
+                        "withdrawalDate",
+                        "refundCents",
+                        "refundPaidDate",
+                        "kind",
+                        "status",
+                        "originalInvoice",
+                        "cancelWindowEndsOn",
+                        "amountCents",
+                        "netCents",
+                        "vatCents",
+                        "partial",
+                        "note",
+                        "documentNumber",
+                        "completedDate",
+                        "createdAt",
+                        "readyAt",
+                        "completedAt",
+                        "actions",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

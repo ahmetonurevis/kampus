@@ -24,6 +24,7 @@ import { ReferralRewardsSection } from './ReferralRewardsSection.tsx'
 import { FinanceDayClosingSection } from './FinanceDayClosingSection.tsx'
 import { FinanceOpeningWatchSection } from './FinanceOpeningWatchSection.tsx'
 import { OPENING_WATCH_VIEW } from './finance-opening-watch.ts'
+import { REFUND_INVOICES_VIEW } from './finance-refund-invoices.ts'
 import { ScholarshipFundsSection } from './ScholarshipFundsSection.tsx'
 import { ScholarshipsSection } from './ScholarshipsSection.tsx'
 import { FinanceExportSection } from './FinanceExportSection.tsx'
@@ -81,6 +82,9 @@ const FinanceMaterialSetsSection = lazy(async () => ({
 const FinanceSeveranceSection = lazy(async () => ({
   default: (await import('./FinanceSeveranceSection.tsx')).FinanceSeveranceSection,
 }))
+const FinanceRefundInvoicesSection = lazy(async () => ({
+  default: (await import('./FinanceRefundInvoicesSection.tsx')).FinanceRefundInvoicesSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -102,6 +106,7 @@ const VIEWS = {
   freeTuition: { label: 'Ücretsiz okutma', param: 'ucretsiz' },
   referrals: { label: 'Referans hakları', param: 'referans' },
   withdrawals: { label: 'Ayrılış ve iade', param: 'ayrilis' },
+  refundInvoices: { label: 'İade belgeleri', param: REFUND_INVOICES_VIEW },
   exports: { label: 'Muhasebe aktarımı', param: 'aktarim' },
   budget: { label: 'Bütçe', param: 'butce' },
   budgetDrafts: { label: 'Bütçe taslakları', param: 'butce-taslak' },
@@ -148,6 +153,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Bütçe taslakları (DOM-FIN-093) ikisine açıktır; ön büro yalnız sorumlusu olduğu birimi görür,
  * onay yöneticide (K-256, K-257).
  * Ücretsiz okutma (DOM-FIN-026) yalnız yöneticidedir; gerekçe ve belge hassastır (K-269).
+ * İade belgeleri (DOM-FIN-096) yalnız yöneticidedir; faturayı muhasebe düzeltir (K-295).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -161,7 +167,8 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'supplierLedger' ||
       value === 'fixedAssets' ||
       value === 'severance' ||
-      value === 'freeTuition'
+      value === 'freeTuition' ||
+      value === 'refundInvoices'
     )
       return isManager
     if (value === 'packages' || value === 'courseOffers' || value === 'corporate')
@@ -289,6 +296,11 @@ export function FinancePage({ page }: { page: NavPage }) {
       {tab === 'corporate' ? <CorporateCustomersSection canCancel={isManager} /> : null}
       {tab === 'referrals' ? <ReferralRewardsSection /> : null}
       {tab === 'withdrawals' ? <WithdrawalsSection canManage={isManager} /> : null}
+      {tab === 'refundInvoices' ? (
+        <Suspense fallback={<SummaryLoading />}>
+          <FinanceRefundInvoicesSection />
+        </Suspense>
+      ) : null}
       {tab === 'exports' ? <FinanceExportSection canDownload={isManager} /> : null}
       {tab === 'exports' && isManager ? (
         <FinanceReconciliationSection

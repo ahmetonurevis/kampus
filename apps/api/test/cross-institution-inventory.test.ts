@@ -2039,6 +2039,46 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: iade faturası ve iptal isteği (ON-266; DOM-FIN-096).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/refund-invoices', "call('GET', URL, a.admin)"],
+        [
+          'gövde',
+          'POST /api/v1/finance/refund-invoices',
+          'create({ ...a, withdrawalId: b.withdrawalId })',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/refund-invoices/:refundInvoiceId',
+          '`${URL}/${String(bDoc.id)}`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/refund-invoices/:refundInvoiceId/ready',
+          "step(a.admin, bDoc, 'ready')",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/refund-invoices/:refundInvoiceId/complete',
+          "step(a.admin, bDoc, 'complete'",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/refund-invoices/:refundInvoiceId/discard',
+          "step(a.admin, bDoc, 'discard'",
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-refund-invoices.test.ts',
+        'DOM-FIN-096: başka kurumun ayrılışı ve belgesi 404; B değişmez, A listesinde B yok',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

@@ -104,6 +104,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/supply-requests',
   'POST /api/v1/finance/supply-requests/{requestId}/fulfill',
   'POST /api/v1/finance/supply-requests/{requestId}/convert',
+  // İade faturası ve iptal isteği taslağı; çift tıklama aynı iadeye iki belge açmaz
+  // (routes/finance-refund-invoices.ts; DOM-FIN-096).
+  'POST /api/v1/finance/refund-invoices',
 ]
 // Onur: kayıt ve finans sonu
 

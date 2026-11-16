@@ -4,7 +4,7 @@ import type { State } from '../data/seed.ts'
 import { CSV_SEPARATOR, csvAmount, csvCell } from './csv.ts'
 import { daySchema } from './domain.ts'
 import { DomainError } from './errors.ts'
-import { FEE_ITEM_KIND_LABELS } from './fee-tariffs.ts'
+import { INVOICE_FEE_KIND_LABELS } from './fee-tariffs.ts'
 import { receiptNumberLabel } from './finance-receipt.ts'
 import { dayKey } from './format.ts'
 import { isOpeningImport, OPENING_IMPORT_METHOD } from './payments.ts'
@@ -207,7 +207,7 @@ export function invoiceLines(
           ...studentCells(students, invoice.studentId),
           installment: invoice.installment,
           feeKind:
-            (FEE_ITEM_KIND_LABELS as Readonly<Record<string, string>>)[
+            (INVOICE_FEE_KIND_LABELS as Readonly<Record<string, string>>)[
               invoice.feeKind ?? 'tuition'
             ] ?? '',
           status: invoice.paidAt ? 'Ödendi' : paidCents > 0 ? 'Kısmi' : 'Açık',

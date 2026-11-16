@@ -175321,6 +175321,1950 @@
         }
       }
     },
+    "/api/v1/finance/pay-rate-staff": {
+      "get": {
+        "operationId": "listPayRateStaff",
+        "summary": "Personel ve ücret özeti",
+        "tags": [
+          "finance-pay-rates"
+        ],
+        "description": "Kurumun yönetici, öğretmen ve ön büro üyelikleri ada göre; her satırda `date` günündeki (varsayılan bugün) ana ücret türü ve başlangıcı, yürürlükteki ek ders ve yan hak sayısı. Liste varsayılan **maskelidir**: ana ücret tutarı `null` döner (K-306). `showAmounts=true` tutarı verir ve okuma denetim kaydına `finance.pay_rate.read` olarak düşer (K-307). Pasif (ayrılan) personel de listelenir. Rol: yalnız `yonetici` (K-306; muhasebe rolü açılsa da ücret görmez). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Personel adında arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "passive"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "`active` etkin, `passive` pasifleştirilmiş (ayrılan) personel"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "date",
+            "required": false,
+            "description": "Geçerli ücretin hesaplanacağı gün (YYYY-MM-DD); varsayılan bugün (Europe/Istanbul)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "in": "query",
+            "name": "showAmounts",
+            "required": false,
+            "description": "`true` tutarları verir ve okuma denetim kaydına düşer (K-307); varsayılan maskeli"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "membershipId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "role": {
+                            "type": "string",
+                            "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                          },
+                          "active": {
+                            "type": "boolean",
+                            "description": "Pasifleştirilmiş (ayrılan) personelde `false`"
+                          },
+                          "wage": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "rateType": {
+                                    "type": "string",
+                                    "enum": [
+                                      "monthly_gross",
+                                      "monthly_net",
+                                      "hourly",
+                                      "lesson_hour",
+                                      "extra",
+                                      "duty",
+                                      "meal",
+                                      "transport",
+                                      "child",
+                                      "service"
+                                    ],
+                                    "description": "Ana ücret türü (aylık brüt, aylık net, saatlik, ders saati)"
+                                  },
+                                  "amountCents": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Tutar, kuruş; maskeli listede (`showAmounts` yok) `null` (K-306)"
+                                  },
+                                  "startDate": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "rateType",
+                                  "amountCents",
+                                  "startDate"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Gündeki ana ücret; tanım yoksa boş"
+                          },
+                          "lessonRateCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Gündeki ek ders ücreti tanımı sayısı"
+                          },
+                          "benefitCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Gündeki yan hak sayısı"
+                          },
+                          "rateCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "İptal edilmemiş bütün tanımların sayısı"
+                          }
+                        },
+                        "required": [
+                          "membershipId",
+                          "name",
+                          "role",
+                          "active",
+                          "wage",
+                          "lessonRateCount",
+                          "benefitCount",
+                          "rateCount"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/pay-rate-staff/{membershipId}": {
+      "get": {
+        "operationId": "getStaffPayRates",
+        "summary": "Personelin ücret geçmişi ve geçerli ücreti",
+        "tags": [
+          "finance-pay-rates"
+        ],
+        "description": "İptal edilmemiş bütün tanımlar ve `date` gününde (varsayılan bugün) yürürlükteki tanımlar (\"şu tarihte geçerli ücret\", DOM-FIN-099). Tutar içerdiği için her okuma denetim kaydına `finance.pay_rate.read` olarak düşer (yalnız alan adı; K-307); denetim yazılamazsa yanıt dönmez. Olmayan, başka kurumun ya da personel olmayan (öğrenci, veli) üyelik 404. Rol: yalnız `yonetici` (K-306; muhasebe rolü açılsa da ücret görmez). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "date",
+            "required": false,
+            "description": "Geçerli ücretin hesaplanacağı gün (YYYY-MM-DD); varsayılan bugün (Europe/Istanbul)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "path",
+            "name": "membershipId",
+            "required": true,
+            "description": "Personelin kurum üyeliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "membershipId": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "type": "string"
+                        },
+                        "active": {
+                          "type": "boolean"
+                        },
+                        "date": {
+                          "type": "string",
+                          "description": "Geçerli ücretin hesaplandığı gün"
+                        },
+                        "rates": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "component": {
+                                "type": "string",
+                                "enum": [
+                                  "wage",
+                                  "lesson",
+                                  "benefit"
+                                ],
+                                "description": "`wage` ana ücret, `lesson` ek ders, `benefit` yan hak"
+                              },
+                              "rateType": {
+                                "type": "string",
+                                "enum": [
+                                  "monthly_gross",
+                                  "monthly_net",
+                                  "hourly",
+                                  "lesson_hour",
+                                  "extra",
+                                  "duty",
+                                  "meal",
+                                  "transport",
+                                  "child",
+                                  "service"
+                                ],
+                                "description": "Bileşenin türü"
+                              },
+                              "amountCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Tutar, kuruş"
+                              },
+                              "currency": {
+                                "type": "string",
+                                "enum": [
+                                  "TRY"
+                                ]
+                              },
+                              "benefitForm": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "cash",
+                                      "in_kind"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Yan hakta nakdi ya da ayni"
+                              },
+                              "taxable": {
+                                "description": "Yan hak vergiye tabi mi",
+                                "type": [
+                                  "boolean",
+                                  "null"
+                                ]
+                              },
+                              "startDate": {
+                                "type": "string",
+                                "description": "Yürürlük başlangıcı (YYYY-MM-DD)"
+                              },
+                              "endDate": {
+                                "description": "Yürürlük bitişi (dahil); boşsa süresiz",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "autoClosed": {
+                                "type": "boolean",
+                                "description": "Bitiş sonraki tanımla kendiliğinden çekildiyse `true` (K-304)"
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "scheduled",
+                                  "active",
+                                  "ended"
+                                ],
+                                "description": "Bugüne göre: `scheduled` ileri tarihli, `active` yürürlükte, `ended` sona erdi"
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için kayıt sürümü (bitiş ve iptal)"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "membershipId",
+                              "component",
+                              "rateType",
+                              "amountCents",
+                              "currency",
+                              "benefitForm",
+                              "taxable",
+                              "startDate",
+                              "endDate",
+                              "note",
+                              "autoClosed",
+                              "state",
+                              "createdAt",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "İptal edilmemiş bütün tanımlar (yuva ve başlangıca göre)"
+                        },
+                        "effective": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "component": {
+                                "type": "string",
+                                "enum": [
+                                  "wage",
+                                  "lesson",
+                                  "benefit"
+                                ],
+                                "description": "`wage` ana ücret, `lesson` ek ders, `benefit` yan hak"
+                              },
+                              "rateType": {
+                                "type": "string",
+                                "enum": [
+                                  "monthly_gross",
+                                  "monthly_net",
+                                  "hourly",
+                                  "lesson_hour",
+                                  "extra",
+                                  "duty",
+                                  "meal",
+                                  "transport",
+                                  "child",
+                                  "service"
+                                ],
+                                "description": "Bileşenin türü"
+                              },
+                              "amountCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Tutar, kuruş"
+                              },
+                              "currency": {
+                                "type": "string",
+                                "enum": [
+                                  "TRY"
+                                ]
+                              },
+                              "benefitForm": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "cash",
+                                      "in_kind"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Yan hakta nakdi ya da ayni"
+                              },
+                              "taxable": {
+                                "description": "Yan hak vergiye tabi mi",
+                                "type": [
+                                  "boolean",
+                                  "null"
+                                ]
+                              },
+                              "startDate": {
+                                "type": "string",
+                                "description": "Yürürlük başlangıcı (YYYY-MM-DD)"
+                              },
+                              "endDate": {
+                                "description": "Yürürlük bitişi (dahil); boşsa süresiz",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "autoClosed": {
+                                "type": "boolean",
+                                "description": "Bitiş sonraki tanımla kendiliğinden çekildiyse `true` (K-304)"
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "scheduled",
+                                  "active",
+                                  "ended"
+                                ],
+                                "description": "Bugüne göre: `scheduled` ileri tarihli, `active` yürürlükte, `ended` sona erdi"
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için kayıt sürümü (bitiş ve iptal)"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "membershipId",
+                              "component",
+                              "rateType",
+                              "amountCents",
+                              "currency",
+                              "benefitForm",
+                              "taxable",
+                              "startDate",
+                              "endDate",
+                              "note",
+                              "autoClosed",
+                              "state",
+                              "createdAt",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "`date` gününde yürürlükteki tanımlar"
+                        }
+                      },
+                      "required": [
+                        "membershipId",
+                        "name",
+                        "role",
+                        "active",
+                        "date",
+                        "rates",
+                        "effective"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/pay-rates": {
+      "post": {
+        "operationId": "createPayRate",
+        "summary": "Ücret tanımı yaz",
+        "tags": [
+          "finance-pay-rates"
+        ],
+        "description": "Ana ücret (`component: wage`; aylık brüt, aylık net, saatlik ya da ders saati), ek ders ücreti (`lesson`; ek ders ya da nöbet, saat başı) ya da yan hak (`benefit`; yemek, yol, çocuk yardımı, servis; nakdi/ayni ve vergiye tabi işareti, aylık). Tutar kuruş, yürürlük başlangıcı ve isteğe bağlı bitiş günü (K-305). Çakışma yuvası ana ücrette tektir, ek ders ve yan hak türlerinde ayrıdır; yeni tanım yuvanın son tanımından sonra başlamalıdır (422 `pay_rate_start_not_after_latest`), son tanım hâlâ yürürlükteyse bitişi yeni başlangıçtan bir gün önceye kendiliğinden çekilir ve yanıtta `closedRate` olarak döner (K-304). Olmayan üyelik 422 `pay_rate_staff_not_found`, öğrenci ya da veli 422 `pay_rate_not_staff`, pasif personel 422 `pay_rate_staff_inactive`. Denetim kaydına alan adları yazılır, tutar ve not yazılmaz. `Idempotency-Key` isteğe bağlı. Rol: yalnız `yonetici` (K-306; muhasebe rolü açılsa da ücret görmez). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "component": {
+                        "type": "string",
+                        "enum": [
+                          "wage"
+                        ]
+                      },
+                      "rateType": {
+                        "type": "string",
+                        "enum": [
+                          "monthly_gross",
+                          "monthly_net",
+                          "hourly",
+                          "lesson_hour"
+                        ],
+                        "description": "`monthly_gross` aylık brüt, `monthly_net` aylık net, `hourly` saatlik, `lesson_hour` ders saati"
+                      },
+                      "membershipId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100,
+                        "description": "Tanımın yapıldığı personelin kurum üyeliği"
+                      },
+                      "amountCents": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 1000000000,
+                        "description": "Tutar, kuruş: ana ücrette türün birimi (aylık, saat ya da ders saati başı), ek derste saat başı, yan hakta aylık"
+                      },
+                      "startDate": {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                        "description": "Yürürlük başlangıcı (gün)"
+                      },
+                      "endDate": {
+                        "default": null,
+                        "description": "İsteğe bağlı bitiş (gün, dahil)",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "note": {
+                        "description": "İsteğe bağlı not, en çok 200 karakter",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 200
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "component",
+                      "rateType",
+                      "membershipId",
+                      "amountCents",
+                      "startDate"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "component": {
+                        "type": "string",
+                        "enum": [
+                          "lesson"
+                        ]
+                      },
+                      "rateType": {
+                        "type": "string",
+                        "enum": [
+                          "extra",
+                          "duty"
+                        ],
+                        "description": "`extra` ek ders (ders yükü üstü, yedek ders dahil), `duty` nöbet"
+                      },
+                      "membershipId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100,
+                        "description": "Tanımın yapıldığı personelin kurum üyeliği"
+                      },
+                      "amountCents": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 1000000000,
+                        "description": "Tutar, kuruş: ana ücrette türün birimi (aylık, saat ya da ders saati başı), ek derste saat başı, yan hakta aylık"
+                      },
+                      "startDate": {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                        "description": "Yürürlük başlangıcı (gün)"
+                      },
+                      "endDate": {
+                        "default": null,
+                        "description": "İsteğe bağlı bitiş (gün, dahil)",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "note": {
+                        "description": "İsteğe bağlı not, en çok 200 karakter",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 200
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "component",
+                      "rateType",
+                      "membershipId",
+                      "amountCents",
+                      "startDate"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "component": {
+                        "type": "string",
+                        "enum": [
+                          "benefit"
+                        ]
+                      },
+                      "rateType": {
+                        "type": "string",
+                        "enum": [
+                          "meal",
+                          "transport",
+                          "child",
+                          "service"
+                        ],
+                        "description": "`meal` yemek, `transport` yol, `child` çocuk yardımı, `service` servis"
+                      },
+                      "benefitForm": {
+                        "type": "string",
+                        "enum": [
+                          "cash",
+                          "in_kind"
+                        ],
+                        "description": "`cash` nakdi, `in_kind` ayni"
+                      },
+                      "taxable": {
+                        "type": "boolean",
+                        "description": "Gelir vergisine tabi mi"
+                      },
+                      "membershipId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100,
+                        "description": "Tanımın yapıldığı personelin kurum üyeliği"
+                      },
+                      "amountCents": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 1000000000,
+                        "description": "Tutar, kuruş: ana ücrette türün birimi (aylık, saat ya da ders saati başı), ek derste saat başı, yan hakta aylık"
+                      },
+                      "startDate": {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                        "description": "Yürürlük başlangıcı (gün)"
+                      },
+                      "endDate": {
+                        "default": null,
+                        "description": "İsteğe bağlı bitiş (gün, dahil)",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "note": {
+                        "description": "İsteğe bağlı not, en çok 200 karakter",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 200
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "component",
+                      "rateType",
+                      "benefitForm",
+                      "taxable",
+                      "membershipId",
+                      "amountCents",
+                      "startDate"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "rate": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "membershipId": {
+                              "type": "string"
+                            },
+                            "component": {
+                              "type": "string",
+                              "enum": [
+                                "wage",
+                                "lesson",
+                                "benefit"
+                              ],
+                              "description": "`wage` ana ücret, `lesson` ek ders, `benefit` yan hak"
+                            },
+                            "rateType": {
+                              "type": "string",
+                              "enum": [
+                                "monthly_gross",
+                                "monthly_net",
+                                "hourly",
+                                "lesson_hour",
+                                "extra",
+                                "duty",
+                                "meal",
+                                "transport",
+                                "child",
+                                "service"
+                              ],
+                              "description": "Bileşenin türü"
+                            },
+                            "amountCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Tutar, kuruş"
+                            },
+                            "currency": {
+                              "type": "string",
+                              "enum": [
+                                "TRY"
+                              ]
+                            },
+                            "benefitForm": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "cash",
+                                    "in_kind"
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Yan hakta nakdi ya da ayni"
+                            },
+                            "taxable": {
+                              "description": "Yan hak vergiye tabi mi",
+                              "type": [
+                                "boolean",
+                                "null"
+                              ]
+                            },
+                            "startDate": {
+                              "type": "string",
+                              "description": "Yürürlük başlangıcı (YYYY-MM-DD)"
+                            },
+                            "endDate": {
+                              "description": "Yürürlük bitişi (dahil); boşsa süresiz",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "note": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "autoClosed": {
+                              "type": "boolean",
+                              "description": "Bitiş sonraki tanımla kendiliğinden çekildiyse `true` (K-304)"
+                            },
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "scheduled",
+                                "active",
+                                "ended"
+                              ],
+                              "description": "Bugüne göre: `scheduled` ileri tarihli, `active` yürürlükte, `ended` sona erdi"
+                            },
+                            "createdAt": {
+                              "type": "string"
+                            },
+                            "version": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "`If-Match` için kayıt sürümü (bitiş ve iptal)"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "membershipId",
+                            "component",
+                            "rateType",
+                            "amountCents",
+                            "currency",
+                            "benefitForm",
+                            "taxable",
+                            "startDate",
+                            "endDate",
+                            "note",
+                            "autoClosed",
+                            "state",
+                            "createdAt",
+                            "version"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "closedRate": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "membershipId": {
+                                  "type": "string"
+                                },
+                                "component": {
+                                  "type": "string",
+                                  "enum": [
+                                    "wage",
+                                    "lesson",
+                                    "benefit"
+                                  ],
+                                  "description": "`wage` ana ücret, `lesson` ek ders, `benefit` yan hak"
+                                },
+                                "rateType": {
+                                  "type": "string",
+                                  "enum": [
+                                    "monthly_gross",
+                                    "monthly_net",
+                                    "hourly",
+                                    "lesson_hour",
+                                    "extra",
+                                    "duty",
+                                    "meal",
+                                    "transport",
+                                    "child",
+                                    "service"
+                                  ],
+                                  "description": "Bileşenin türü"
+                                },
+                                "amountCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Tutar, kuruş"
+                                },
+                                "currency": {
+                                  "type": "string",
+                                  "enum": [
+                                    "TRY"
+                                  ]
+                                },
+                                "benefitForm": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "cash",
+                                        "in_kind"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Yan hakta nakdi ya da ayni"
+                                },
+                                "taxable": {
+                                  "description": "Yan hak vergiye tabi mi",
+                                  "type": [
+                                    "boolean",
+                                    "null"
+                                  ]
+                                },
+                                "startDate": {
+                                  "type": "string",
+                                  "description": "Yürürlük başlangıcı (YYYY-MM-DD)"
+                                },
+                                "endDate": {
+                                  "description": "Yürürlük bitişi (dahil); boşsa süresiz",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "note": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "autoClosed": {
+                                  "type": "boolean",
+                                  "description": "Bitiş sonraki tanımla kendiliğinden çekildiyse `true` (K-304)"
+                                },
+                                "state": {
+                                  "type": "string",
+                                  "enum": [
+                                    "scheduled",
+                                    "active",
+                                    "ended"
+                                  ],
+                                  "description": "Bugüne göre: `scheduled` ileri tarihli, `active` yürürlükte, `ended` sona erdi"
+                                },
+                                "createdAt": {
+                                  "type": "string"
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "`If-Match` için kayıt sürümü (bitiş ve iptal)"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "membershipId",
+                                "component",
+                                "rateType",
+                                "amountCents",
+                                "currency",
+                                "benefitForm",
+                                "taxable",
+                                "startDate",
+                                "endDate",
+                                "note",
+                                "autoClosed",
+                                "state",
+                                "createdAt",
+                                "version"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Kendiliğinden kapanan önceki tanım (K-304)"
+                        }
+                      },
+                      "required": [
+                        "rate",
+                        "closedRate"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/pay-rates/{rateId}/end": {
+      "post": {
+        "operationId": "endPayRate",
+        "summary": "Ücret tanımının bitişini değiştir",
+        "tags": [
+          "finance-pay-rates"
+        ],
+        "description": "Yalnız yuvanın son tanımının bitişi değişir; öncekilerin bitişini sonraki tanım belirler (422 `pay_rate_not_latest`, K-304). `endDate: null` süresiz yapar. Başlangıçtan önceki gün 422 `pay_rate_end_before_start`, aynı bitiş 422 `pay_rate_end_unchanged`. `If-Match` zorunlu. Başka kurumun tanımı 404. Rol: yalnız `yonetici` (K-306; muhasebe rolü açılsa da ücret görmez). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "endDate": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Yeni bitiş günü (dahil); `null` süresiz yapar"
+                  }
+                },
+                "required": [
+                  "endDate"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "rateId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "membershipId": {
+                          "type": "string"
+                        },
+                        "component": {
+                          "type": "string",
+                          "enum": [
+                            "wage",
+                            "lesson",
+                            "benefit"
+                          ],
+                          "description": "`wage` ana ücret, `lesson` ek ders, `benefit` yan hak"
+                        },
+                        "rateType": {
+                          "type": "string",
+                          "enum": [
+                            "monthly_gross",
+                            "monthly_net",
+                            "hourly",
+                            "lesson_hour",
+                            "extra",
+                            "duty",
+                            "meal",
+                            "transport",
+                            "child",
+                            "service"
+                          ],
+                          "description": "Bileşenin türü"
+                        },
+                        "amountCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Tutar, kuruş"
+                        },
+                        "currency": {
+                          "type": "string",
+                          "enum": [
+                            "TRY"
+                          ]
+                        },
+                        "benefitForm": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "cash",
+                                "in_kind"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Yan hakta nakdi ya da ayni"
+                        },
+                        "taxable": {
+                          "description": "Yan hak vergiye tabi mi",
+                          "type": [
+                            "boolean",
+                            "null"
+                          ]
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "description": "Yürürlük başlangıcı (YYYY-MM-DD)"
+                        },
+                        "endDate": {
+                          "description": "Yürürlük bitişi (dahil); boşsa süresiz",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "autoClosed": {
+                          "type": "boolean",
+                          "description": "Bitiş sonraki tanımla kendiliğinden çekildiyse `true` (K-304)"
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "scheduled",
+                            "active",
+                            "ended"
+                          ],
+                          "description": "Bugüne göre: `scheduled` ileri tarihli, `active` yürürlükte, `ended` sona erdi"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü (bitiş ve iptal)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "membershipId",
+                        "component",
+                        "rateType",
+                        "amountCents",
+                        "currency",
+                        "benefitForm",
+                        "taxable",
+                        "startDate",
+                        "endDate",
+                        "note",
+                        "autoClosed",
+                        "state",
+                        "createdAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/pay-rates/{rateId}/cancel": {
+      "post": {
+        "operationId": "cancelPayRate",
+        "summary": "Ücret tanımını iptal et",
+        "tags": [
+          "finance-pay-rates"
+        ],
+        "description": "Yanlış tanım gerekçeyle (5–500 karakter) iptal edilir; tanım düzeltilmez. Yalnız yuvanın son tanımı iptal edilir (422 `pay_rate_not_latest`); iptal edilen tanım öncekini kendiliğinden kapattıysa önceki tanımın eski bitişi geri yazılır ve `reopenedRate` olarak döner (K-304). Gerekçe denetim kaydına yazılmaz. `If-Match` zorunlu. Başka kurumun ya da iptal edilmiş tanım 404. Rol: yalnız `yonetici` (K-306; muhasebe rolü açılsa da ücret görmez). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500,
+                    "description": "İptal gerekçesi; denetim kaydına yazılmaz"
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "rateId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "reopenedRate": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "membershipId": {
+                                  "type": "string"
+                                },
+                                "component": {
+                                  "type": "string",
+                                  "enum": [
+                                    "wage",
+                                    "lesson",
+                                    "benefit"
+                                  ],
+                                  "description": "`wage` ana ücret, `lesson` ek ders, `benefit` yan hak"
+                                },
+                                "rateType": {
+                                  "type": "string",
+                                  "enum": [
+                                    "monthly_gross",
+                                    "monthly_net",
+                                    "hourly",
+                                    "lesson_hour",
+                                    "extra",
+                                    "duty",
+                                    "meal",
+                                    "transport",
+                                    "child",
+                                    "service"
+                                  ],
+                                  "description": "Bileşenin türü"
+                                },
+                                "amountCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Tutar, kuruş"
+                                },
+                                "currency": {
+                                  "type": "string",
+                                  "enum": [
+                                    "TRY"
+                                  ]
+                                },
+                                "benefitForm": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "cash",
+                                        "in_kind"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Yan hakta nakdi ya da ayni"
+                                },
+                                "taxable": {
+                                  "description": "Yan hak vergiye tabi mi",
+                                  "type": [
+                                    "boolean",
+                                    "null"
+                                  ]
+                                },
+                                "startDate": {
+                                  "type": "string",
+                                  "description": "Yürürlük başlangıcı (YYYY-MM-DD)"
+                                },
+                                "endDate": {
+                                  "description": "Yürürlük bitişi (dahil); boşsa süresiz",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "note": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "autoClosed": {
+                                  "type": "boolean",
+                                  "description": "Bitiş sonraki tanımla kendiliğinden çekildiyse `true` (K-304)"
+                                },
+                                "state": {
+                                  "type": "string",
+                                  "enum": [
+                                    "scheduled",
+                                    "active",
+                                    "ended"
+                                  ],
+                                  "description": "Bugüne göre: `scheduled` ileri tarihli, `active` yürürlükte, `ended` sona erdi"
+                                },
+                                "createdAt": {
+                                  "type": "string"
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "`If-Match` için kayıt sürümü (bitiş ve iptal)"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "membershipId",
+                                "component",
+                                "rateType",
+                                "amountCents",
+                                "currency",
+                                "benefitForm",
+                                "taxable",
+                                "startDate",
+                                "endDate",
+                                "note",
+                                "autoClosed",
+                                "state",
+                                "createdAt",
+                                "version"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "İptal edilen tanımın kapattığı, eski bitişi geri yazılan tanım"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "reopenedRate"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

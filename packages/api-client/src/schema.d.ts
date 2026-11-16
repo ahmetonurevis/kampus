@@ -8020,6 +8020,138 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/paid-activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ücretli gezi ve etkinlikleri listele
+         * @description Yeni etkinlik günü önce; iptal edilenler dahil (`status` ile süzülür). Satırda iptal edilmemiş katılımcı ve ödenmemiş iade sayısı (DOM-FIN-098). Roller: `yonetici`, `onburo` (K-300). Modül `finance`.
+         */
+        get: operations["listPaidActivities"];
+        put?: never;
+        /**
+         * Ücretli gezi ya da etkinlik tanımla
+         * @description Ad, tür (`trip`, `event`), gün (geçmiş olamaz: 422 `paid_activity_date_past`), kişi başı ücret, son katılım ve son iptal günü (etkinlik gününden sonra olamaz), kontenjan ve geç iptalin kuralı: `percent` (`lateRefundPercent` 0–100 iade) ya da `cost` (`lateCostCents` kişi başı masraf düşülür, en çok ücret). İsteğe bağlı `externalRef` gezi planına bağlanacak alandır (K-300). Ücret, gün ve iade koşulları sonradan değişmez. Rol: `yonetici` (K-300). Modül `finance`.
+         */
+        post: operations["createPaidActivity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/paid-activities/{activityId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Etkinlik ayrıntısı
+         * @description Olmayan ya da başka kurumun etkinliği 404. Roller: `yonetici`, `onburo` (K-300). Modül `finance`.
+         */
+        get: operations["getPaidActivity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Etkinliği düzelt
+         * @description Ad, kontenjan (katılımcı sayısının altına inemez: 422 `paid_activity_capacity_below_participants`), son katılım günü (etkinlik gününü geçemez: 422 `paid_activity_join_after_date`) ve dış referans. İptal edilmiş etkinlik 409 `paid_activity_cancelled`; değişiklik yoksa 422 `paid_activity_unchanged`. `If-Match` zorunlu. Rol: `yonetici` (K-300). Modül `finance`.
+         */
+        patch: operations["updatePaidActivity"];
+        trace?: never;
+    };
+    "/api/v1/finance/paid-activities/{activityId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Etkinliği kurum adına iptal et
+         * @description Gerekçeyle (5–500 karakter). Bütün iptal edilmemiş katılımlar tam iadeyle kapanır: ödenmemiş taksit kapanır, alınan tutar iade kaydı olur (K-302). İptal edilmiş etkinlik 409 `paid_activity_cancelled`; okumadan sonra katılım eklendiyse 409. `If-Match` ve `Idempotency-Key` zorunlu. Rol: `yonetici` (K-300). Modül `finance`.
+         */
+        post: operations["cancelPaidActivity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/paid-activities/{activityId}/participants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Katılımcılar ve ödeme durumu
+         * @description Önce iptal edilmemiş katılımlar, ada göre. Satırda taksit tutarı, alınan tutar ve ödeme durumu (taksit ve iptal edilmemiş tahsilattan türetilir, DOM-FIN-030), iptal edilmişte kesinti, iade ve iade durumu; IBAN yalnız son dört hane. Olmayan ya da başka kurumun etkinliği 404. Roller: `yonetici`, `onburo` (K-300). Modül `finance`.
+         */
+        get: operations["listPaidActivityParticipants"];
+        put?: never;
+        /**
+         * Öğrenciyi etkinliğe yaz
+         * @description Öğrenciye kişi başı ücret kadar sözleşmesiz taksit açar (`feeKind: activity`, vade son katılım günü; K-301); veli ekranında borç olarak görünür. İptal edilmiş etkinlik 409 `paid_activity_cancelled`, son katılım günü geçtiyse 422 `paid_activity_join_closed`, olmayan ya da etkin olmayan öğrenci 422 `paid_activity_student_not_found`, iptal edilmemiş katılımı olan öğrenci 409 `paid_activity_participant_exists`, kontenjan doluysa 409 `paid_activity_full`. `Idempotency-Key` zorunlu. Olmayan ya da başka kurumun etkinliği 404. Roller: `yonetici`, `onburo` (K-300). Modül `finance`.
+         */
+        post: operations["joinPaidActivity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/paid-activity-participants/{participantId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Katılımı iptal et
+         * @description Son iptal gününe kadar (dahil) tam iade; sonra etkinliğin kuralı: oran kadar iade ya da kişi başı masraf düşülür (K-302). Tam ödenmiş taksit kalır, ödenenin kesintiyi aşan kısmı iade kaydı olur; bütünüyle ödenmemiş taksit kapanır, alınan tutar kesintiyi aşarsa fark iade edilir, azsa kalan kesinti bugün vadeli yeni taksit olur. İptal edilmiş katılım 409 `paid_activity_participation_cancelled`. `If-Match` ve `Idempotency-Key` zorunlu. Roller: `yonetici`, `onburo` (K-300). Modül `finance`.
+         */
+        post: operations["cancelPaidActivityParticipation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/paid-activity-participants/{participantId}/pay-refund": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Katılım iadesini ödenmiş işaretle
+         * @description Ayrılış iadesinin kurallarıyla (DOM-FIN-041, K-303): hesap sahibi öğrencinin kayıtlı velisi (velisi yoksa kendisi) değilse 422 `refund_holder_mismatch`, kurum hesabı geçersizse 422 `refund_bank_account_invalid`, ödeme günü kapatılmışsa 422 `finance_day_closed`, iptal gününden önce 422 `paid_activity_refund_before_cancel`, iade yoksa 409 `paid_activity_refund_not_due`, ödenmişse 409 `refund_already_paid`. İade ödeme gününün gün sonuna girer (M-13). Taze oturum; `If-Match` ve `Idempotency-Key` zorunlu; anahtar kaydı maskeli IBAN ve hesap sahibini saklamaz. Rol: `yonetici` (K-300). Modül `finance`.
+         */
+        post: operations["payPaidActivityRefund"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -34222,6 +34354,8 @@ export interface operations {
                                 withdrawalId: string | null;
                                 /** @description Ücretsiz okutma iadesinde hak kaydı (DOM-FIN-026); değilse boş */
                                 freeTuitionAwardId: string | null;
+                                /** @description Gezi ve etkinlik katılımı iadesinde katılım kaydı (DOM-FIN-098); değilse boş */
+                                paidActivityParticipantId: string | null;
                                 studentName: string | null;
                                 /** @description Ödenen iade (kuruş) */
                                 amountCents: number;
@@ -85189,6 +85323,1300 @@ export interface operations {
                                 /** @description `If-Match` için kayıt sürümü (bitiş ve iptal) */
                                 version: number;
                             } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listPaidActivities: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Etkinlik durumu */
+                status?: "open" | "cancelled";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description `trip` gezi, `event` etkinlik
+                             * @enum {string}
+                             */
+                            kind: "trip" | "event";
+                            name: string;
+                            /** @description Etkinlik günü (YYYY-MM-DD) */
+                            activityDate: string;
+                            /** @description Kişi başı ücret, kuruş */
+                            feeCents: number;
+                            /** @description Son katılım günü (dahil); katılım taksitinin vadesi */
+                            joinDeadline: string;
+                            /** @description Son iptal günü (dahil); bu güne kadar tam iade */
+                            cancelDeadline: string;
+                            capacity: number;
+                            /**
+                             * @description Geç iptal: `percent` oran kadar iade, `cost` masraf düşülür
+                             * @enum {string}
+                             */
+                            lateRefundRule: "percent" | "cost";
+                            lateRefundPercent: number | null;
+                            lateCostCents: number | null;
+                            /** @description Gezi planı ya da başka kaynak kaydı (ON-155) */
+                            externalRef: string | null;
+                            /** @enum {string} */
+                            status: "open" | "cancelled";
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /** @description İptal edilmemiş katılımcı sayısı */
+                            participantCount: number;
+                            /** @description Ödenmemiş iade sayısı */
+                            pendingRefundCount: number;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createPaidActivity: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    /** @enum {string} */
+                    kind: "trip" | "event";
+                    activityDate: string;
+                    feeCents: number;
+                    joinDeadline: string;
+                    cancelDeadline: string;
+                    capacity: number;
+                    /** @enum {string} */
+                    lateRefundRule: "percent" | "cost";
+                    lateRefundPercent: number | null;
+                    lateCostCents: number | null;
+                    /** @default null */
+                    externalRef?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description `trip` gezi, `event` etkinlik
+                             * @enum {string}
+                             */
+                            kind: "trip" | "event";
+                            name: string;
+                            /** @description Etkinlik günü (YYYY-MM-DD) */
+                            activityDate: string;
+                            /** @description Kişi başı ücret, kuruş */
+                            feeCents: number;
+                            /** @description Son katılım günü (dahil); katılım taksitinin vadesi */
+                            joinDeadline: string;
+                            /** @description Son iptal günü (dahil); bu güne kadar tam iade */
+                            cancelDeadline: string;
+                            capacity: number;
+                            /**
+                             * @description Geç iptal: `percent` oran kadar iade, `cost` masraf düşülür
+                             * @enum {string}
+                             */
+                            lateRefundRule: "percent" | "cost";
+                            lateRefundPercent: number | null;
+                            lateCostCents: number | null;
+                            /** @description Gezi planı ya da başka kaynak kaydı (ON-155) */
+                            externalRef: string | null;
+                            /** @enum {string} */
+                            status: "open" | "cancelled";
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /** @description İptal edilmemiş katılımcı sayısı */
+                            participantCount: number;
+                            /** @description Ödenmemiş iade sayısı */
+                            pendingRefundCount: number;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPaidActivity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                activityId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description `trip` gezi, `event` etkinlik
+                             * @enum {string}
+                             */
+                            kind: "trip" | "event";
+                            name: string;
+                            /** @description Etkinlik günü (YYYY-MM-DD) */
+                            activityDate: string;
+                            /** @description Kişi başı ücret, kuruş */
+                            feeCents: number;
+                            /** @description Son katılım günü (dahil); katılım taksitinin vadesi */
+                            joinDeadline: string;
+                            /** @description Son iptal günü (dahil); bu güne kadar tam iade */
+                            cancelDeadline: string;
+                            capacity: number;
+                            /**
+                             * @description Geç iptal: `percent` oran kadar iade, `cost` masraf düşülür
+                             * @enum {string}
+                             */
+                            lateRefundRule: "percent" | "cost";
+                            lateRefundPercent: number | null;
+                            lateCostCents: number | null;
+                            /** @description Gezi planı ya da başka kaynak kaydı (ON-155) */
+                            externalRef: string | null;
+                            /** @enum {string} */
+                            status: "open" | "cancelled";
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /** @description İptal edilmemiş katılımcı sayısı */
+                            participantCount: number;
+                            /** @description Ödenmemiş iade sayısı */
+                            pendingRefundCount: number;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updatePaidActivity: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                activityId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    capacity?: number;
+                    joinDeadline?: string;
+                    externalRef?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description `trip` gezi, `event` etkinlik
+                             * @enum {string}
+                             */
+                            kind: "trip" | "event";
+                            name: string;
+                            /** @description Etkinlik günü (YYYY-MM-DD) */
+                            activityDate: string;
+                            /** @description Kişi başı ücret, kuruş */
+                            feeCents: number;
+                            /** @description Son katılım günü (dahil); katılım taksitinin vadesi */
+                            joinDeadline: string;
+                            /** @description Son iptal günü (dahil); bu güne kadar tam iade */
+                            cancelDeadline: string;
+                            capacity: number;
+                            /**
+                             * @description Geç iptal: `percent` oran kadar iade, `cost` masraf düşülür
+                             * @enum {string}
+                             */
+                            lateRefundRule: "percent" | "cost";
+                            lateRefundPercent: number | null;
+                            lateCostCents: number | null;
+                            /** @description Gezi planı ya da başka kaynak kaydı (ON-155) */
+                            externalRef: string | null;
+                            /** @enum {string} */
+                            status: "open" | "cancelled";
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /** @description İptal edilmemiş katılımcı sayısı */
+                            participantCount: number;
+                            /** @description Ödenmemiş iade sayısı */
+                            pendingRefundCount: number;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelPaidActivity: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                activityId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description `trip` gezi, `event` etkinlik
+                             * @enum {string}
+                             */
+                            kind: "trip" | "event";
+                            name: string;
+                            /** @description Etkinlik günü (YYYY-MM-DD) */
+                            activityDate: string;
+                            /** @description Kişi başı ücret, kuruş */
+                            feeCents: number;
+                            /** @description Son katılım günü (dahil); katılım taksitinin vadesi */
+                            joinDeadline: string;
+                            /** @description Son iptal günü (dahil); bu güne kadar tam iade */
+                            cancelDeadline: string;
+                            capacity: number;
+                            /**
+                             * @description Geç iptal: `percent` oran kadar iade, `cost` masraf düşülür
+                             * @enum {string}
+                             */
+                            lateRefundRule: "percent" | "cost";
+                            lateRefundPercent: number | null;
+                            lateCostCents: number | null;
+                            /** @description Gezi planı ya da başka kaynak kaydı (ON-155) */
+                            externalRef: string | null;
+                            /** @enum {string} */
+                            status: "open" | "cancelled";
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /** @description İptal edilmemiş katılımcı sayısı */
+                            participantCount: number;
+                            /** @description Ödenmemiş iade sayısı */
+                            pendingRefundCount: number;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listPaidActivityParticipants: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Katılım durumu */
+                status?: "active" | "cancelled";
+                /** @description İade durumu */
+                refundStatus?: "none" | "pending" | "paid";
+            };
+            header?: never;
+            path: {
+                activityId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            activityId: string;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @description Katılım taksiti (`feeKind: activity`) */
+                            invoiceId: string;
+                            feeCents: number;
+                            joinedDate: string;
+                            /** @enum {string} */
+                            status: "active" | "cancelled";
+                            /** @description Katılım taksitinin tutarı */
+                            amountCents: number;
+                            /** @description Taksite alınan tutar; iptal edilmişte iptal anındaki değer */
+                            collectedCents: number;
+                            /** @enum {string} */
+                            paymentStatus: "unpaid" | "partial" | "paid";
+                            /** @description `participant` katılımcı iptali, `activity` kurum etkinliği iptal etti */
+                            cancelKind: ("participant" | "activity") | null;
+                            cancelledDate: string | null;
+                            /** @description İptal anında alınmış tutar */
+                            paidCents: number | null;
+                            /** @description Katılımcıda kalan kesinti */
+                            retainedCents: number | null;
+                            /** @description İade edilecek tutar */
+                            refundCents: number;
+                            /** @description İptalde kapanan taksit */
+                            closedInvoiceId: string | null;
+                            /** @description Kesinti alınandan fazlaysa açılan taksit */
+                            debtInvoiceId: string | null;
+                            /** @enum {string} */
+                            refundStatus: "none" | "pending" | "paid";
+                            refundPaidDate: string | null;
+                            /** @description Yalnız son dört hane */
+                            maskedIban: string | null;
+                            refundAccountHolder: string | null;
+                            refundBankAccountId: string | null;
+                            refundBankAccountLabel: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    joinPaidActivity: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                activityId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    studentId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            activityId: string;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @description Katılım taksiti (`feeKind: activity`) */
+                            invoiceId: string;
+                            feeCents: number;
+                            joinedDate: string;
+                            /** @enum {string} */
+                            status: "active" | "cancelled";
+                            /** @description Katılım taksitinin tutarı */
+                            amountCents: number;
+                            /** @description Taksite alınan tutar; iptal edilmişte iptal anındaki değer */
+                            collectedCents: number;
+                            /** @enum {string} */
+                            paymentStatus: "unpaid" | "partial" | "paid";
+                            /** @description `participant` katılımcı iptali, `activity` kurum etkinliği iptal etti */
+                            cancelKind: ("participant" | "activity") | null;
+                            cancelledDate: string | null;
+                            /** @description İptal anında alınmış tutar */
+                            paidCents: number | null;
+                            /** @description Katılımcıda kalan kesinti */
+                            retainedCents: number | null;
+                            /** @description İade edilecek tutar */
+                            refundCents: number;
+                            /** @description İptalde kapanan taksit */
+                            closedInvoiceId: string | null;
+                            /** @description Kesinti alınandan fazlaysa açılan taksit */
+                            debtInvoiceId: string | null;
+                            /** @enum {string} */
+                            refundStatus: "none" | "pending" | "paid";
+                            refundPaidDate: string | null;
+                            /** @description Yalnız son dört hane */
+                            maskedIban: string | null;
+                            refundAccountHolder: string | null;
+                            refundBankAccountId: string | null;
+                            refundBankAccountLabel: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelPaidActivityParticipation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                participantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            activityId: string;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @description Katılım taksiti (`feeKind: activity`) */
+                            invoiceId: string;
+                            feeCents: number;
+                            joinedDate: string;
+                            /** @enum {string} */
+                            status: "active" | "cancelled";
+                            /** @description Katılım taksitinin tutarı */
+                            amountCents: number;
+                            /** @description Taksite alınan tutar; iptal edilmişte iptal anındaki değer */
+                            collectedCents: number;
+                            /** @enum {string} */
+                            paymentStatus: "unpaid" | "partial" | "paid";
+                            /** @description `participant` katılımcı iptali, `activity` kurum etkinliği iptal etti */
+                            cancelKind: ("participant" | "activity") | null;
+                            cancelledDate: string | null;
+                            /** @description İptal anında alınmış tutar */
+                            paidCents: number | null;
+                            /** @description Katılımcıda kalan kesinti */
+                            retainedCents: number | null;
+                            /** @description İade edilecek tutar */
+                            refundCents: number;
+                            /** @description İptalde kapanan taksit */
+                            closedInvoiceId: string | null;
+                            /** @description Kesinti alınandan fazlaysa açılan taksit */
+                            debtInvoiceId: string | null;
+                            /** @enum {string} */
+                            refundStatus: "none" | "pending" | "paid";
+                            refundPaidDate: string | null;
+                            /** @description Yalnız son dört hane */
+                            maskedIban: string | null;
+                            refundAccountHolder: string | null;
+                            refundBankAccountId: string | null;
+                            refundBankAccountLabel: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    payPaidActivityRefund: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                participantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    paidDate: string;
+                    iban: string;
+                    accountHolder: string;
+                    /** Format: uuid */
+                    bankAccountId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            activityId: string;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @description Katılım taksiti (`feeKind: activity`) */
+                            invoiceId: string;
+                            feeCents: number;
+                            joinedDate: string;
+                            /** @enum {string} */
+                            status: "active" | "cancelled";
+                            /** @description Katılım taksitinin tutarı */
+                            amountCents: number;
+                            /** @description Taksite alınan tutar; iptal edilmişte iptal anındaki değer */
+                            collectedCents: number;
+                            /** @enum {string} */
+                            paymentStatus: "unpaid" | "partial" | "paid";
+                            /** @description `participant` katılımcı iptali, `activity` kurum etkinliği iptal etti */
+                            cancelKind: ("participant" | "activity") | null;
+                            cancelledDate: string | null;
+                            /** @description İptal anında alınmış tutar */
+                            paidCents: number | null;
+                            /** @description Katılımcıda kalan kesinti */
+                            retainedCents: number | null;
+                            /** @description İade edilecek tutar */
+                            refundCents: number;
+                            /** @description İptalde kapanan taksit */
+                            closedInvoiceId: string | null;
+                            /** @description Kesinti alınandan fazlaysa açılan taksit */
+                            debtInvoiceId: string | null;
+                            /** @enum {string} */
+                            refundStatus: "none" | "pending" | "paid";
+                            refundPaidDate: string | null;
+                            /** @description Yalnız son dört hane */
+                            maskedIban: string | null;
+                            refundAccountHolder: string | null;
+                            refundBankAccountId: string | null;
+                            refundBankAccountLabel: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
                         };
                     };
                 };

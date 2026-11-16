@@ -2,7 +2,7 @@ import { and, asc, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm'
 import type { AnyPgColumn } from 'drizzle-orm/pg-core'
 import { z } from 'zod'
 
-import { FEE_ITEM_KINDS, type FeeItemKind } from '@kampus/school-core/lib/fee-tariffs.ts'
+import { INVOICE_FEE_KINDS, type InvoiceFeeKind } from '@kampus/school-core/lib/fee-tariffs.ts'
 import { INVOICE_METHODS, type InvoiceMethod } from '@kampus/school-core/lib/payments.ts'
 
 import { AppError, MESSAGES } from '../errors.ts'
@@ -70,7 +70,7 @@ export const invoiceRecordSchema = z
     method: z.enum(INVOICE_METHODS).nullable(),
     reminderAt: instantSchema.nullable(),
     /** Core yalnız kalem türü anahtarı yazar (DOM-FIN-004); tablo kısıtı `invoices_fee_kind_check`. */
-    feeKind: z.enum(FEE_ITEM_KINDS).optional(),
+    feeKind: z.enum(INVOICE_FEE_KINDS).optional(),
     contractId: idSchema.optional(),
     academicYear: z.number().int().optional(),
     createdAt: instantSchema.optional(),
@@ -125,8 +125,8 @@ export function invoiceToColumns(data: RecordData, rootContractId: string | null
   }
 }
 
-const isFeeItemKind = (value: string): value is FeeItemKind =>
-  (FEE_ITEM_KINDS as readonly string[]).includes(value)
+const isFeeItemKind = (value: string): value is InvoiceFeeKind =>
+  (INVOICE_FEE_KINDS as readonly string[]).includes(value)
 
 const iso = (value: Date | null) => (value === null ? null : value.toISOString())
 

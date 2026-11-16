@@ -13,11 +13,12 @@ import {
   lt,
   lte,
   max,
+  ne,
   or,
   sql,
 } from 'drizzle-orm'
 
-import type { FeeItemKind } from '@kampus/school-core/lib/fee-tariffs.ts'
+import { ACTIVITY_FEE_KIND, type FeeItemKind } from '@kampus/school-core/lib/fee-tariffs.ts'
 import type {
   BilledInvoiceKey,
   BillableLine,
@@ -415,7 +416,10 @@ export async function endCustomerLink(
 
 // --- Taksit adayları -----------------------------------------------------------------------------
 
-/** Öğrencilerin dönemde vadesi gelen, iptal edilmemiş taksitleri. */
+/**
+ * Öğrencilerin dönemde vadesi gelen, iptal edilmemiş taksitleri. Gezi ve etkinlik katılımı kişisel
+ * borçtur, toplu faturaya girmez (DOM-FIN-098, K-301); kalem kısıtı da tarife türlerini kabul eder.
+ */
 export async function loadInvoiceCandidates(
   db: Database,
   institutionId: string,
@@ -441,6 +445,7 @@ export async function loadInvoiceCandidates(
         isNull(invoices.archivedAt),
         gte(invoices.dueDate, period.from),
         lte(invoices.dueDate, period.to),
+        or(isNull(invoices.feeKind), ne(invoices.feeKind, ACTIVITY_FEE_KIND)),
       ),
     )
   return rows.map((row) => ({ ...row, feeKind: row.feeKind as FeeItemKind | null }))

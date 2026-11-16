@@ -2238,6 +2238,57 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: gezi ve etkinlik ücreti (ON-142; DOM-FIN-098).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/paid-activities', "send('GET', BASE, a.cookie)"],
+        ['gövde', 'POST /api/v1/finance/paid-activities', '{ ...EARLY, institutionId: b.id }'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/paid-activities/:activityId',
+          "send('GET', `${BASE}/${bActivity.id}`, a.cookie)",
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/paid-activities/:activityId',
+          "send('PATCH', `${BASE}/${bActivity.id}`, a.cookie",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/paid-activities/:activityId/cancel',
+          '`${BASE}/${bActivity.id}/cancel`',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/paid-activities/:activityId/participants',
+          '`${BASE}/${bActivity.id}/participants`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/paid-activities/:activityId/participants',
+          'join(a.cookie, bActivity.id)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/paid-activity-participants/:participantId/cancel',
+          'cancelParticipant(a.cookie, bParticipant)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/paid-activity-participants/:participantId/pay-refund',
+          '`${PARTICIPANTS}/${bParticipant.id}/pay-refund`',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-paid-activities.test.ts',
+        'DOM-FIN-098: başka kurumun etkinliği ve katılımı 404',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

@@ -137,6 +137,9 @@ const FinanceStakeholdersSection = lazy(async () => ({
 const FinancePayRatesSection = lazy(async () => ({
   default: (await import('./FinancePayRatesSection.tsx')).FinancePayRatesSection,
 }))
+const FinancePaidActivitiesSection = lazy(async () => ({
+  default: (await import('./FinancePaidActivitiesSection.tsx')).FinancePaidActivitiesSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -182,6 +185,7 @@ const VIEWS = {
   donations: { label: 'Bağışlar', param: 'bagis' },
   stakeholders: { label: 'Paydaşlar ve sponsorlar', param: 'paydas' },
   payRates: { label: 'Ücret tanımları', param: 'ucret-tanimi' },
+  paidActivities: { label: 'Gezi ve etkinlik ücretleri', param: 'gezi-etkinlik' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -214,6 +218,8 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Bağışlar (DOM-FIN-097) yalnız yöneticidedir; bağışçı verisi kişiseldir (K-299).
  * Paydaşlar ve sponsorlar (DOM-FIN-102) yalnız yöneticidedir (K-317).
  * Ücret tanımları (DOM-FIN-099) yalnız yöneticidedir; ücret kişisel veridir (K-306).
+ * Gezi ve etkinlik ücretleri (DOM-FIN-098) ikisine açıktır; ön büro katılım yazar ve iptal eder,
+ * etkinliği ve iadeyi yönetici yönetir (K-300).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -419,6 +425,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'donations' ? <DonationsSection /> : null}
         {tab === 'stakeholders' ? <FinanceStakeholdersSection /> : null}
         {tab === 'payRates' ? <FinancePayRatesSection /> : null}
+        {tab === 'paidActivities' ? <FinancePaidActivitiesSection isManager={isManager} /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

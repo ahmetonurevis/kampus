@@ -46,6 +46,7 @@ import {
 } from '../db/finance-bank-transactions.ts'
 import { isFinanceDayClosed } from '../db/finance-day-closings.ts'
 import { studentFreeTuitionCoverage } from '../db/finance-free-tuition.ts'
+import { cancelledActivityInvoiceIds } from '../db/finance-paid-activities.ts'
 import { withdrawalsForReversal } from '../db/withdrawals.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
@@ -320,6 +321,12 @@ export async function reversePaymentCommand(
           ctx.institutionId,
           payment.studentId,
         )
+        // Gezi ve etkinlik katılımının iadesi ve kesintisi iptal anındaki tahsilata dayanır (K-302).
+        const activityInvoiceIds = await cancelledActivityInvoiceIds(
+          tx,
+          ctx.institutionId,
+          payment.studentId,
+        )
         // İptal iptal gününe yazılır: tahsilatın günü kapalı olabilir, bugün kapalıysa olmaz.
         const todayClosed = await isFinanceDayClosed(tx, ctx.institutionId, dayKey(ctx.now))
         return {
@@ -334,6 +341,7 @@ export async function reversePaymentCommand(
                 allocations: payment.allocations,
                 withdrawals,
                 freeTuitionInvoiceIds: refundedInvoiceIds,
+                activityInvoiceIds,
               },
               input,
             )

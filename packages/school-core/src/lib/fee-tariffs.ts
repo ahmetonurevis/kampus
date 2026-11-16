@@ -34,6 +34,15 @@ export const FEE_ITEM_KINDS = [
 ] as const
 export type FeeItemKind = (typeof FEE_ITEM_KINDS)[number]
 
+/**
+ * Gezi ve etkinlik katılımının taksit türü (DOM-FIN-098, K-301). Tarife kalemi değildir: yalnız
+ * veli talebiyle yazılan katılım açar; tarife, indirim ve sözleşme bu türü görmez.
+ */
+export const ACTIVITY_FEE_KIND = 'activity' as const
+/** Taksitte (`invoices.fee_kind`) yazılabilen türler: tarife kalemleri ve etkinlik katılımı. */
+export const INVOICE_FEE_KINDS = [...FEE_ITEM_KINDS, ACTIVITY_FEE_KIND] as const
+export type InvoiceFeeKind = (typeof INVOICE_FEE_KINDS)[number]
+
 /** Öğrenim ücreti birimi kurum türüne bağlıdır (DOM-FIN-006). */
 export const FEE_UNITS = ['year', 'month', 'lesson_hour', 'item'] as const
 export type FeeUnit = (typeof FEE_UNITS)[number]
@@ -47,6 +56,10 @@ export const FEE_ITEM_KIND_LABELS: Readonly<Record<FeeItemKind, string>> = {
   stationery: 'Kitap ve kırtasiye',
   uniform: 'Kıyafet',
   tutoring: 'Etüt',
+}
+export const INVOICE_FEE_KIND_LABELS: Readonly<Record<InvoiceFeeKind, string>> = {
+  ...FEE_ITEM_KIND_LABELS,
+  activity: 'Gezi ve etkinlik',
 }
 export const FEE_UNIT_LABELS: Readonly<Record<FeeUnit, string>> = {
   year: 'Yıl',

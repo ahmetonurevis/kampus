@@ -764,6 +764,20 @@
       "when": 1794835341362,
       "tag": "0108_create_staff_pay_rates",
       "breakpoints": true
+    },
+    {
+      "idx": 109,
+      "version": "7",
+      "when": 1794836563341,
+      "tag": "0109_create_paid_activities",
+      "breakpoints": true
+    },
+    {
+      "idx": 110,
+      "version": "7",
+      "when": 1794836571385,
+      "tag": "0110_validate_invoice_fee_kind_activity",
+      "breakpoints": true
     }
   ]
 }

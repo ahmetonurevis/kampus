@@ -2215,6 +2215,29 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: personel ücret tanımı (ON-194; DOM-FIN-099).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/pay-rate-staff', 'staffListOf(a.admin)'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/pay-rate-staff/:membershipId',
+          '`${STAFF}/${bStaff}`, a.admin',
+        ],
+        ['gövde', 'POST /api/v1/finance/pay-rates', 'institutionId: b.id'],
+        ['kayıt', 'POST /api/v1/finance/pay-rates/:rateId/end', '`${bUrl}/end`'],
+        ['kayıt', 'POST /api/v1/finance/pay-rates/:rateId/cancel', '`${bUrl}/cancel`'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-pay-rates.test.ts',
+        'başka kurumun personeli ve tanımı 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

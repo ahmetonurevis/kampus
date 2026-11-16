@@ -134,6 +134,9 @@ const DonationsSection = lazy(async () => ({
 const FinanceStakeholdersSection = lazy(async () => ({
   default: (await import('./FinanceStakeholdersSection.tsx')).FinanceStakeholdersSection,
 }))
+const FinancePayRatesSection = lazy(async () => ({
+  default: (await import('./FinancePayRatesSection.tsx')).FinancePayRatesSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -178,6 +181,7 @@ const VIEWS = {
   payrollParameters: { label: 'Bordro parametreleri', param: 'bordro-parametreleri' },
   donations: { label: 'Bağışlar', param: 'bagis' },
   stakeholders: { label: 'Paydaşlar ve sponsorlar', param: 'paydas' },
+  payRates: { label: 'Ücret tanımları', param: 'ucret-tanimi' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -209,6 +213,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Bordro parametreleri (DOM-FIN-100) ikisine açıktır; kurum kopyasını yönetici yazar (K-309).
  * Bağışlar (DOM-FIN-097) yalnız yöneticidedir; bağışçı verisi kişiseldir (K-299).
  * Paydaşlar ve sponsorlar (DOM-FIN-102) yalnız yöneticidedir (K-317).
+ * Ücret tanımları (DOM-FIN-099) yalnız yöneticidedir; ücret kişisel veridir (K-306).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -223,6 +228,7 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'fixedAssets' ||
       value === 'severance' ||
       value === 'freeTuition' ||
+      value === 'payRates' ||
       value === 'stakeholders' ||
       value === 'donations' ||
       value === 'refundInvoices'
@@ -412,6 +418,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         ) : null}
         {tab === 'donations' ? <DonationsSection /> : null}
         {tab === 'stakeholders' ? <FinanceStakeholdersSection /> : null}
+        {tab === 'payRates' ? <FinancePayRatesSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

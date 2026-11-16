@@ -7920,6 +7920,106 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/pay-rate-staff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Personel ve ücret özeti
+         * @description Kurumun yönetici, öğretmen ve ön büro üyelikleri ada göre; her satırda `date` günündeki (varsayılan bugün) ana ücret türü ve başlangıcı, yürürlükteki ek ders ve yan hak sayısı. Liste varsayılan **maskelidir**: ana ücret tutarı `null` döner (K-306). `showAmounts=true` tutarı verir ve okuma denetim kaydına `finance.pay_rate.read` olarak düşer (K-307). Pasif (ayrılan) personel de listelenir. Rol: yalnız `yonetici` (K-306; muhasebe rolü açılsa da ücret görmez). Modül `finance`.
+         */
+        get: operations["listPayRateStaff"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/pay-rate-staff/{membershipId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Personelin ücret geçmişi ve geçerli ücreti
+         * @description İptal edilmemiş bütün tanımlar ve `date` gününde (varsayılan bugün) yürürlükteki tanımlar ("şu tarihte geçerli ücret", DOM-FIN-099). Tutar içerdiği için her okuma denetim kaydına `finance.pay_rate.read` olarak düşer (yalnız alan adı; K-307); denetim yazılamazsa yanıt dönmez. Olmayan, başka kurumun ya da personel olmayan (öğrenci, veli) üyelik 404. Rol: yalnız `yonetici` (K-306; muhasebe rolü açılsa da ücret görmez). Modül `finance`.
+         */
+        get: operations["getStaffPayRates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/pay-rates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ücret tanımı yaz
+         * @description Ana ücret (`component: wage`; aylık brüt, aylık net, saatlik ya da ders saati), ek ders ücreti (`lesson`; ek ders ya da nöbet, saat başı) ya da yan hak (`benefit`; yemek, yol, çocuk yardımı, servis; nakdi/ayni ve vergiye tabi işareti, aylık). Tutar kuruş, yürürlük başlangıcı ve isteğe bağlı bitiş günü (K-305). Çakışma yuvası ana ücrette tektir, ek ders ve yan hak türlerinde ayrıdır; yeni tanım yuvanın son tanımından sonra başlamalıdır (422 `pay_rate_start_not_after_latest`), son tanım hâlâ yürürlükteyse bitişi yeni başlangıçtan bir gün önceye kendiliğinden çekilir ve yanıtta `closedRate` olarak döner (K-304). Olmayan üyelik 422 `pay_rate_staff_not_found`, öğrenci ya da veli 422 `pay_rate_not_staff`, pasif personel 422 `pay_rate_staff_inactive`. Denetim kaydına alan adları yazılır, tutar ve not yazılmaz. `Idempotency-Key` isteğe bağlı. Rol: yalnız `yonetici` (K-306; muhasebe rolü açılsa da ücret görmez). Modül `finance`.
+         */
+        post: operations["createPayRate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/pay-rates/{rateId}/end": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ücret tanımının bitişini değiştir
+         * @description Yalnız yuvanın son tanımının bitişi değişir; öncekilerin bitişini sonraki tanım belirler (422 `pay_rate_not_latest`, K-304). `endDate: null` süresiz yapar. Başlangıçtan önceki gün 422 `pay_rate_end_before_start`, aynı bitiş 422 `pay_rate_end_unchanged`. `If-Match` zorunlu. Başka kurumun tanımı 404. Rol: yalnız `yonetici` (K-306; muhasebe rolü açılsa da ücret görmez). Modül `finance`.
+         */
+        post: operations["endPayRate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/pay-rates/{rateId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ücret tanımını iptal et
+         * @description Yanlış tanım gerekçeyle (5–500 karakter) iptal edilir; tanım düzeltilmez. Yalnız yuvanın son tanımı iptal edilir (422 `pay_rate_not_latest`); iptal edilen tanım öncekini kendiliğinden kapattıysa önceki tanımın eski bitişi geri yazılır ve `reopenedRate` olarak döner (K-304). Gerekçe denetim kaydına yazılmaz. `If-Match` zorunlu. Başka kurumun ya da iptal edilmiş tanım 404. Rol: yalnız `yonetici` (K-306; muhasebe rolü açılsa da ücret görmez). Modül `finance`.
+         */
+        post: operations["cancelPayRate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -84235,6 +84335,860 @@ export interface operations {
                             terminationReason: string | null;
                             terminatedAt: string | null;
                             createdAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listPayRateStaff: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Personel adında arama */
+                q?: string;
+                /** @description `active` etkin, `passive` pasifleştirilmiş (ayrılan) personel */
+                status?: "active" | "passive";
+                /** @description Geçerli ücretin hesaplanacağı gün (YYYY-MM-DD); varsayılan bugün (Europe/Istanbul) */
+                date?: string;
+                /** @description `true` tutarları verir ve okuma denetim kaydına düşer (K-307); varsayılan maskeli */
+                showAmounts?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            membershipId: string;
+                            name: string;
+                            /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                            role: string;
+                            /** @description Pasifleştirilmiş (ayrılan) personelde `false` */
+                            active: boolean;
+                            /** @description Gündeki ana ücret; tanım yoksa boş */
+                            wage: {
+                                /**
+                                 * @description Ana ücret türü (aylık brüt, aylık net, saatlik, ders saati)
+                                 * @enum {string}
+                                 */
+                                rateType: "monthly_gross" | "monthly_net" | "hourly" | "lesson_hour" | "extra" | "duty" | "meal" | "transport" | "child" | "service";
+                                /** @description Tutar, kuruş; maskeli listede (`showAmounts` yok) `null` (K-306) */
+                                amountCents: number | null;
+                                startDate: string;
+                            } | null;
+                            /** @description Gündeki ek ders ücreti tanımı sayısı */
+                            lessonRateCount: number;
+                            /** @description Gündeki yan hak sayısı */
+                            benefitCount: number;
+                            /** @description İptal edilmemiş bütün tanımların sayısı */
+                            rateCount: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getStaffPayRates: {
+        parameters: {
+            query?: {
+                /** @description Geçerli ücretin hesaplanacağı gün (YYYY-MM-DD); varsayılan bugün (Europe/Istanbul) */
+                date?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Personelin kurum üyeliği */
+                membershipId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            membershipId: string;
+                            name: string;
+                            role: string;
+                            active: boolean;
+                            /** @description Geçerli ücretin hesaplandığı gün */
+                            date: string;
+                            /** @description İptal edilmemiş bütün tanımlar (yuva ve başlangıca göre) */
+                            rates: {
+                                id: string;
+                                membershipId: string;
+                                /**
+                                 * @description `wage` ana ücret, `lesson` ek ders, `benefit` yan hak
+                                 * @enum {string}
+                                 */
+                                component: "wage" | "lesson" | "benefit";
+                                /**
+                                 * @description Bileşenin türü
+                                 * @enum {string}
+                                 */
+                                rateType: "monthly_gross" | "monthly_net" | "hourly" | "lesson_hour" | "extra" | "duty" | "meal" | "transport" | "child" | "service";
+                                /** @description Tutar, kuruş */
+                                amountCents: number;
+                                /** @enum {string} */
+                                currency: "TRY";
+                                /** @description Yan hakta nakdi ya da ayni */
+                                benefitForm: ("cash" | "in_kind") | null;
+                                /** @description Yan hak vergiye tabi mi */
+                                taxable: boolean | null;
+                                /** @description Yürürlük başlangıcı (YYYY-MM-DD) */
+                                startDate: string;
+                                /** @description Yürürlük bitişi (dahil); boşsa süresiz */
+                                endDate: string | null;
+                                note: string | null;
+                                /** @description Bitiş sonraki tanımla kendiliğinden çekildiyse `true` (K-304) */
+                                autoClosed: boolean;
+                                /**
+                                 * @description Bugüne göre: `scheduled` ileri tarihli, `active` yürürlükte, `ended` sona erdi
+                                 * @enum {string}
+                                 */
+                                state: "scheduled" | "active" | "ended";
+                                createdAt: string;
+                                /** @description `If-Match` için kayıt sürümü (bitiş ve iptal) */
+                                version: number;
+                            }[];
+                            /** @description `date` gününde yürürlükteki tanımlar */
+                            effective: {
+                                id: string;
+                                membershipId: string;
+                                /**
+                                 * @description `wage` ana ücret, `lesson` ek ders, `benefit` yan hak
+                                 * @enum {string}
+                                 */
+                                component: "wage" | "lesson" | "benefit";
+                                /**
+                                 * @description Bileşenin türü
+                                 * @enum {string}
+                                 */
+                                rateType: "monthly_gross" | "monthly_net" | "hourly" | "lesson_hour" | "extra" | "duty" | "meal" | "transport" | "child" | "service";
+                                /** @description Tutar, kuruş */
+                                amountCents: number;
+                                /** @enum {string} */
+                                currency: "TRY";
+                                /** @description Yan hakta nakdi ya da ayni */
+                                benefitForm: ("cash" | "in_kind") | null;
+                                /** @description Yan hak vergiye tabi mi */
+                                taxable: boolean | null;
+                                /** @description Yürürlük başlangıcı (YYYY-MM-DD) */
+                                startDate: string;
+                                /** @description Yürürlük bitişi (dahil); boşsa süresiz */
+                                endDate: string | null;
+                                note: string | null;
+                                /** @description Bitiş sonraki tanımla kendiliğinden çekildiyse `true` (K-304) */
+                                autoClosed: boolean;
+                                /**
+                                 * @description Bugüne göre: `scheduled` ileri tarihli, `active` yürürlükte, `ended` sona erdi
+                                 * @enum {string}
+                                 */
+                                state: "scheduled" | "active" | "ended";
+                                createdAt: string;
+                                /** @description `If-Match` için kayıt sürümü (bitiş ve iptal) */
+                                version: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createPayRate: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    component: "wage";
+                    /**
+                     * @description `monthly_gross` aylık brüt, `monthly_net` aylık net, `hourly` saatlik, `lesson_hour` ders saati
+                     * @enum {string}
+                     */
+                    rateType: "monthly_gross" | "monthly_net" | "hourly" | "lesson_hour";
+                    /** @description Tanımın yapıldığı personelin kurum üyeliği */
+                    membershipId: string;
+                    /** @description Tutar, kuruş: ana ücrette türün birimi (aylık, saat ya da ders saati başı), ek derste saat başı, yan hakta aylık */
+                    amountCents: number;
+                    /** @description Yürürlük başlangıcı (gün) */
+                    startDate: string;
+                    /**
+                     * @description İsteğe bağlı bitiş (gün, dahil)
+                     * @default null
+                     */
+                    endDate?: string | null;
+                    /** @description İsteğe bağlı not, en çok 200 karakter */
+                    note?: string | null;
+                } | {
+                    /** @enum {string} */
+                    component: "lesson";
+                    /**
+                     * @description `extra` ek ders (ders yükü üstü, yedek ders dahil), `duty` nöbet
+                     * @enum {string}
+                     */
+                    rateType: "extra" | "duty";
+                    /** @description Tanımın yapıldığı personelin kurum üyeliği */
+                    membershipId: string;
+                    /** @description Tutar, kuruş: ana ücrette türün birimi (aylık, saat ya da ders saati başı), ek derste saat başı, yan hakta aylık */
+                    amountCents: number;
+                    /** @description Yürürlük başlangıcı (gün) */
+                    startDate: string;
+                    /**
+                     * @description İsteğe bağlı bitiş (gün, dahil)
+                     * @default null
+                     */
+                    endDate?: string | null;
+                    /** @description İsteğe bağlı not, en çok 200 karakter */
+                    note?: string | null;
+                } | {
+                    /** @enum {string} */
+                    component: "benefit";
+                    /**
+                     * @description `meal` yemek, `transport` yol, `child` çocuk yardımı, `service` servis
+                     * @enum {string}
+                     */
+                    rateType: "meal" | "transport" | "child" | "service";
+                    /**
+                     * @description `cash` nakdi, `in_kind` ayni
+                     * @enum {string}
+                     */
+                    benefitForm: "cash" | "in_kind";
+                    /** @description Gelir vergisine tabi mi */
+                    taxable: boolean;
+                    /** @description Tanımın yapıldığı personelin kurum üyeliği */
+                    membershipId: string;
+                    /** @description Tutar, kuruş: ana ücrette türün birimi (aylık, saat ya da ders saati başı), ek derste saat başı, yan hakta aylık */
+                    amountCents: number;
+                    /** @description Yürürlük başlangıcı (gün) */
+                    startDate: string;
+                    /**
+                     * @description İsteğe bağlı bitiş (gün, dahil)
+                     * @default null
+                     */
+                    endDate?: string | null;
+                    /** @description İsteğe bağlı not, en çok 200 karakter */
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            rate: {
+                                id: string;
+                                membershipId: string;
+                                /**
+                                 * @description `wage` ana ücret, `lesson` ek ders, `benefit` yan hak
+                                 * @enum {string}
+                                 */
+                                component: "wage" | "lesson" | "benefit";
+                                /**
+                                 * @description Bileşenin türü
+                                 * @enum {string}
+                                 */
+                                rateType: "monthly_gross" | "monthly_net" | "hourly" | "lesson_hour" | "extra" | "duty" | "meal" | "transport" | "child" | "service";
+                                /** @description Tutar, kuruş */
+                                amountCents: number;
+                                /** @enum {string} */
+                                currency: "TRY";
+                                /** @description Yan hakta nakdi ya da ayni */
+                                benefitForm: ("cash" | "in_kind") | null;
+                                /** @description Yan hak vergiye tabi mi */
+                                taxable: boolean | null;
+                                /** @description Yürürlük başlangıcı (YYYY-MM-DD) */
+                                startDate: string;
+                                /** @description Yürürlük bitişi (dahil); boşsa süresiz */
+                                endDate: string | null;
+                                note: string | null;
+                                /** @description Bitiş sonraki tanımla kendiliğinden çekildiyse `true` (K-304) */
+                                autoClosed: boolean;
+                                /**
+                                 * @description Bugüne göre: `scheduled` ileri tarihli, `active` yürürlükte, `ended` sona erdi
+                                 * @enum {string}
+                                 */
+                                state: "scheduled" | "active" | "ended";
+                                createdAt: string;
+                                /** @description `If-Match` için kayıt sürümü (bitiş ve iptal) */
+                                version: number;
+                            };
+                            /** @description Kendiliğinden kapanan önceki tanım (K-304) */
+                            closedRate: {
+                                id: string;
+                                membershipId: string;
+                                /**
+                                 * @description `wage` ana ücret, `lesson` ek ders, `benefit` yan hak
+                                 * @enum {string}
+                                 */
+                                component: "wage" | "lesson" | "benefit";
+                                /**
+                                 * @description Bileşenin türü
+                                 * @enum {string}
+                                 */
+                                rateType: "monthly_gross" | "monthly_net" | "hourly" | "lesson_hour" | "extra" | "duty" | "meal" | "transport" | "child" | "service";
+                                /** @description Tutar, kuruş */
+                                amountCents: number;
+                                /** @enum {string} */
+                                currency: "TRY";
+                                /** @description Yan hakta nakdi ya da ayni */
+                                benefitForm: ("cash" | "in_kind") | null;
+                                /** @description Yan hak vergiye tabi mi */
+                                taxable: boolean | null;
+                                /** @description Yürürlük başlangıcı (YYYY-MM-DD) */
+                                startDate: string;
+                                /** @description Yürürlük bitişi (dahil); boşsa süresiz */
+                                endDate: string | null;
+                                note: string | null;
+                                /** @description Bitiş sonraki tanımla kendiliğinden çekildiyse `true` (K-304) */
+                                autoClosed: boolean;
+                                /**
+                                 * @description Bugüne göre: `scheduled` ileri tarihli, `active` yürürlükte, `ended` sona erdi
+                                 * @enum {string}
+                                 */
+                                state: "scheduled" | "active" | "ended";
+                                createdAt: string;
+                                /** @description `If-Match` için kayıt sürümü (bitiş ve iptal) */
+                                version: number;
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    endPayRate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                rateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Yeni bitiş günü (dahil); `null` süresiz yapar */
+                    endDate: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            membershipId: string;
+                            /**
+                             * @description `wage` ana ücret, `lesson` ek ders, `benefit` yan hak
+                             * @enum {string}
+                             */
+                            component: "wage" | "lesson" | "benefit";
+                            /**
+                             * @description Bileşenin türü
+                             * @enum {string}
+                             */
+                            rateType: "monthly_gross" | "monthly_net" | "hourly" | "lesson_hour" | "extra" | "duty" | "meal" | "transport" | "child" | "service";
+                            /** @description Tutar, kuruş */
+                            amountCents: number;
+                            /** @enum {string} */
+                            currency: "TRY";
+                            /** @description Yan hakta nakdi ya da ayni */
+                            benefitForm: ("cash" | "in_kind") | null;
+                            /** @description Yan hak vergiye tabi mi */
+                            taxable: boolean | null;
+                            /** @description Yürürlük başlangıcı (YYYY-MM-DD) */
+                            startDate: string;
+                            /** @description Yürürlük bitişi (dahil); boşsa süresiz */
+                            endDate: string | null;
+                            note: string | null;
+                            /** @description Bitiş sonraki tanımla kendiliğinden çekildiyse `true` (K-304) */
+                            autoClosed: boolean;
+                            /**
+                             * @description Bugüne göre: `scheduled` ileri tarihli, `active` yürürlükte, `ended` sona erdi
+                             * @enum {string}
+                             */
+                            state: "scheduled" | "active" | "ended";
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü (bitiş ve iptal) */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelPayRate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                rateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description İptal gerekçesi; denetim kaydına yazılmaz */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description İptal edilen tanımın kapattığı, eski bitişi geri yazılan tanım */
+                            reopenedRate: {
+                                id: string;
+                                membershipId: string;
+                                /**
+                                 * @description `wage` ana ücret, `lesson` ek ders, `benefit` yan hak
+                                 * @enum {string}
+                                 */
+                                component: "wage" | "lesson" | "benefit";
+                                /**
+                                 * @description Bileşenin türü
+                                 * @enum {string}
+                                 */
+                                rateType: "monthly_gross" | "monthly_net" | "hourly" | "lesson_hour" | "extra" | "duty" | "meal" | "transport" | "child" | "service";
+                                /** @description Tutar, kuruş */
+                                amountCents: number;
+                                /** @enum {string} */
+                                currency: "TRY";
+                                /** @description Yan hakta nakdi ya da ayni */
+                                benefitForm: ("cash" | "in_kind") | null;
+                                /** @description Yan hak vergiye tabi mi */
+                                taxable: boolean | null;
+                                /** @description Yürürlük başlangıcı (YYYY-MM-DD) */
+                                startDate: string;
+                                /** @description Yürürlük bitişi (dahil); boşsa süresiz */
+                                endDate: string | null;
+                                note: string | null;
+                                /** @description Bitiş sonraki tanımla kendiliğinden çekildiyse `true` (K-304) */
+                                autoClosed: boolean;
+                                /**
+                                 * @description Bugüne göre: `scheduled` ileri tarihli, `active` yürürlükte, `ended` sona erdi
+                                 * @enum {string}
+                                 */
+                                state: "scheduled" | "active" | "ended";
+                                createdAt: string;
+                                /** @description `If-Match` için kayıt sürümü (bitiş ve iptal) */
+                                version: number;
+                            } | null;
                         };
                     };
                 };

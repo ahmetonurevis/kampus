@@ -7372,6 +7372,246 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/staff-deductions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Avans ve kesinti personel listesi
+         * @description Kurumun yönetici, öğretmen ve ön büro üyelikleri ada göre; her satırda mahsubu süren avans, açık icra ve açık BES katılımı sayısı. Pasif (ayrılan) personel de listelenir; `holding=true` yalnız açık kaydı olanları verir. İcra sayısı dönen sayfa denetim kaydına yazılır (DOM-FIN-101). Rol: `yonetici` (muhasebe/İK rolü açılınca o da; K-315). Modül `finance`.
+         */
+        get: operations["listStaffDeductionStaff"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staff-deductions/{membershipId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Personelin avans, icra ve BES kayıtları
+         * @description Avanslar (taksit planı ve kalan tutarla; plan saklanmaz), icralar (kesinti sırasıyla) ve BES katılımları (bugünkü durumla). İcra dönerse okuma denetim kaydına alan adlarıyla yazılır (K-315). Olmayan ya da başka kurumun üyeliği 404. Rol: `yonetici` (muhasebe/İK rolü açılınca o da; K-315). Modül `finance`.
+         */
+        get: operations["getStaffDeductions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staff-deductions/{membershipId}/month-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ay için kesinti listesi
+         * @description Verilen ay ve isteğe bağlı net ücret ile BES matrahından personelin o ayki kesintilerini sırayla hesaplar (K-315): avans taksitleri, icralar (nafaka önce, nafaka dışından yalnız sıradaki; ötekiler `waiting`), BES. İcra net ücret × oran ve kalan alacakla, her satır net ücretin kalanıyla sınırlıdır (`capped`); net yoksa icra `needs_net`, matrah yoksa BES `needs_base`. Oranlı tutarlar kuruşa aşağı yuvarlanır. **Hiçbir şey yazmaz**; net ücret saklanmaz ve loglanmaz (`Idempotency-Key` gerekmez). İcra satırı dönerse okuma denetime yazılır. Başka kurumun üyeliği 404. Rol: `yonetici` (muhasebe/İK rolü açılınca o da; K-315). Modül `finance`.
+         */
+        post: operations["previewStaffMonthlyDeductions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staff-advances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Personele avans ver
+         * @description Personel, tutar (kuruş), veriliş günü, ödeme yöntemi (`cash`, `bank_transfer`), taksit sayısı (1–24) ve mahsubun ilk ayı (K-312). Taksit planı eşit kuruştur, yuvarlama farkı son taksite eklenir; plan saklanmaz. Gelecek gün 422 `staff_deduction_date_in_future`; ilk ay veriliş ayından önce 422 `staff_advance_first_month_before_given`, 12 aydan sonra 422 `staff_advance_first_month_too_late`; olmayan üyelik 422 `staff_deduction_staff_not_found`, öğrenci ya da veli 422 `staff_deduction_not_staff`, pasif personel 422 `staff_deduction_staff_inactive`. Taksit planı oluşturduğu için `Idempotency-Key` zorunlu. Rol: `yonetici` (muhasebe/İK rolü açılınca o da; K-315). Modül `finance`.
+         */
+        post: operations["createStaffAdvance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staff-advances/{advanceId}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Avansı erken kapat
+         * @description Kalanı personel öder: kapama günü, kesilmeyecek ilk taksit ayı ve geri ödeme yöntemi (K-312). Bu ay ve sonraki taksitler kesilmez; kalan plandan hesaplanır. Açık olmayan avans 422 `staff_advance_not_active`; gelecek gün 422 `staff_deduction_date_in_future`; veriliş gününden önce 422 `staff_advance_close_before_given`; kapama ayından önceki ay 422 `staff_advance_close_month_past`; plan dışı ay 422 `staff_advance_close_month_outside_plan`. Başka kurumun avansı 404. `If-Match` zorunlu (409 `version_conflict`). Rol: `yonetici` (muhasebe/İK rolü açılınca o da; K-315). Modül `finance`.
+         */
+        post: operations["closeStaffAdvance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staff-advances/{advanceId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Avansı iptal et
+         * @description Yanlış girilen avans silinmez, gerekçeyle (5–500 karakter) iptal edilir; hiçbir taksiti kesilmez (K-312). Gerekçe denetim kaydına yazılmaz. Açık olmayan avans 422 `staff_advance_not_active`. Başka kurumun avansı 404. `If-Match` zorunlu (409 `version_conflict`). Rol: `yonetici` (muhasebe/İK rolü açılınca o da; K-315). Modül `finance`.
+         */
+        post: operations["cancelStaffAdvance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staff-garnishments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * İcra kesintisi kaydet
+         * @description İcra dairesi, dosya no, alacak (kuruş), net ücretten oran (onbinde, varsayılan 2500 = dörtte bir; İİK md. 83), nafaka işareti ve tebliğ günü (K-313). Kalan alacak alacağa eşit başlar; kayıt sıra numarası verilir. Aynı personele aynı daire ve dosya 409 `staff_garnishment_duplicate`; gelecek tebliğ günü 422 `staff_deduction_date_in_future`; olmayan üyelik 422 `staff_deduction_staff_not_found`, öğrenci ya da veli 422 `staff_deduction_not_staff`, pasif personel 422 `staff_deduction_staff_inactive`. Hassas veri: değerler loglanmaz, denetime alan adı yazılır. Rol: `yonetici` (muhasebe/İK rolü açılınca o da; K-315). Modül `finance`.
+         */
+        post: operations["createStaffGarnishment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staff-garnishments/{garnishmentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * İcranın kalan alacağını güncelle
+         * @description İcra dairesinin bakiye yazısına göre kalan alacak (kuruş, K-313). Alacağı aşan 422 `staff_garnishment_remaining_exceeds_claim`; kapanmış icra 422 `staff_garnishment_closed`. Başka kurumun kaydı 404. `If-Match` zorunlu (409 `version_conflict`). Rol: `yonetici` (muhasebe/İK rolü açılınca o da; K-315). Modül `finance`.
+         */
+        patch: operations["updateStaffGarnishment"];
+        trace?: never;
+    };
+    "/api/v1/finance/staff-garnishments/{garnishmentId}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * İcrayı kapat
+         * @description Kapanış günü ve nedeni (`paid_off` borç ödendi, `lifted` haciz kaldırıldı, `other`; K-313). Kapanış ayından itibaren kesilmez, sıradaki icra başlar. Zaten kapalı 422 `staff_garnishment_closed`; tebliğden önce 422 `staff_garnishment_close_before_received`; gelecek gün 422 `staff_deduction_date_in_future`. Başka kurumun kaydı 404. `If-Match` zorunlu (409 `version_conflict`). Rol: `yonetici` (muhasebe/İK rolü açılınca o da; K-315). Modül `finance`.
+         */
+        post: operations["closeStaffGarnishment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staff-pension-enrollments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * BES otomatik katılımı kaydet
+         * @description Çalışan katkı oranı (onbinde, varsayılan ve en az 300 = %3) ve başlangıç günü (K-314). Yalnız kayıttır; katkı emeklilik şirketine aktarılmaz. Personelin açık katılımı varken 409 `staff_pension_already_enrolled`; olmayan üyelik 422 `staff_deduction_staff_not_found`, öğrenci ya da veli 422 `staff_deduction_not_staff`, pasif personel 422 `staff_deduction_staff_inactive`. Rol: `yonetici` (muhasebe/İK rolü açılınca o da; K-315). Modül `finance`.
+         */
+        post: operations["createStaffPensionEnrollment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staff-pension-enrollments/{enrollmentId}/pause": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * BES kesintisine ara ver
+         * @description İlk ve son ay (dahil), en çok 12 ay (K-314). Ayrılmış katılım 422 `staff_pension_opted_out`; katılım ayından önce 422 `staff_pension_pause_before_start`; önceki arayla çakışma 422 `staff_pension_pause_overlap`. Başka kurumun kaydı 404. `If-Match` zorunlu (409 `version_conflict`). Rol: `yonetici` (muhasebe/İK rolü açılınca o da; K-315). Modül `finance`.
+         */
+        post: operations["pauseStaffPensionEnrollment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staff-pension-enrollments/{enrollmentId}/opt-out": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * BES katılımından cay ya da ayrıl
+         * @description Gün (K-314); o günün ayından itibaren kesilmez. Katılımdan iki ay içindeyse `optOutKind: cooling_off` (katkı iade edilir), sonra `exit`. Zaten ayrılmış 422 `staff_pension_opted_out`; başlangıçtan önce 422 `staff_pension_opt_out_before_start`; gelecek gün 422 `staff_deduction_date_in_future`. Başka kurumun kaydı 404. `If-Match` zorunlu (409 `version_conflict`). Rol: `yonetici` (muhasebe/İK rolü açılınca o da; K-315). Modül `finance`.
+         */
+        post: operations["optOutStaffPensionEnrollment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -78369,6 +78609,1668 @@ export interface operations {
                                     afterCents: number | null;
                                 }[] | null;
                             }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listStaffDeductionStaff: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Personel adında arama, Türkçe harf duyarsız */
+                q?: string;
+                /** @description `active` etkin, `passive` pasifleştirilmiş (ayrılan) personel */
+                status?: "active" | "passive";
+                /** @description `true` yalnız açık avansı, icrası ya da BES katılımı olan personel */
+                holding?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            membershipId: string;
+                            name: string;
+                            /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                            role: string;
+                            /** @description Pasifleştirilmiş (ayrılan) personelde `false` */
+                            active: boolean;
+                            /** @description Mahsubu süren avans sayısı */
+                            activeAdvanceCount: number;
+                            /** @description Açık icra sayısı */
+                            activeGarnishmentCount: number;
+                            /** @description Ayrılmamış BES katılımı (0 ya da 1) */
+                            openPensionCount: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getStaffDeductions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                membershipId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            staff: {
+                                membershipId: string;
+                                name: string;
+                                /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                                role: string;
+                                /** @description Pasifleştirilmiş (ayrılan) personelde `false` */
+                                active: boolean;
+                            };
+                            advances: {
+                                id: string;
+                                membershipId: string;
+                                amountCents: number;
+                                givenDate: string;
+                                /** @enum {string} */
+                                paymentMethod: "cash" | "bank_transfer";
+                                installmentCount: number;
+                                firstMonth: string;
+                                /** @enum {string} */
+                                status: "active" | "closed" | "cancelled";
+                                closedDate: string | null;
+                                closedFromMonth: string | null;
+                                closeMethod: ("cash" | "bank_transfer") | null;
+                                cancelledAt: string | null;
+                                cancelReason: string | null;
+                                createdAt: string;
+                                /** @description Taksit planı (saklanmaz; eşit kuruş, fark son taksitte) */
+                                installments: {
+                                    month: string;
+                                    amountCents: number;
+                                    /**
+                                     * @description Bugünün ayına göre: `past` geçmiş ay, `current` bu ay, `upcoming` gelecek, `closed` erken kapamada personelin ödediği, `cancelled` iptal
+                                     * @enum {string}
+                                     */
+                                    state: "past" | "current" | "upcoming" | "closed" | "cancelled";
+                                }[];
+                                /** @description Bu ay dahil kesilecek kalan tutar */
+                                outstandingCents: number;
+                                /** @description Erken kapamada personelin ödediği kalan; kapanmamışsa boş */
+                                closedRemainderCents: number | null;
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                            }[];
+                            garnishments: {
+                                id: string;
+                                membershipId: string;
+                                office: string;
+                                fileNumber: string;
+                                claimCents: number;
+                                remainingCents: number;
+                                /** @description Net ücretten oran, onbinde */
+                                rateBasisPoints: number;
+                                isAlimony: boolean;
+                                receivedDate: string;
+                                /** @description Personelde kayıt sıra numarası */
+                                sequence: number;
+                                /** @description Açık icralar arasında kesinti sırası (nafaka önce, sonra tebliğ günü); kapanmışta boş */
+                                queuePosition: number | null;
+                                /** @enum {string} */
+                                status: "active" | "closed";
+                                closedDate: string | null;
+                                closeReason: ("paid_off" | "lifted" | "other") | null;
+                                createdAt: string;
+                                version: number;
+                            }[];
+                            pensions: {
+                                id: string;
+                                membershipId: string;
+                                rateBasisPoints: number;
+                                startDate: string;
+                                pauses: {
+                                    fromMonth: string;
+                                    toMonth: string;
+                                }[];
+                                optOutDate: string | null;
+                                /**
+                                 * @description Bugünün ayındaki durum
+                                 * @enum {string}
+                                 */
+                                state: "scheduled" | "active" | "paused" | "opted_out";
+                                /** @description `cooling_off` iki ay içinde cayma, `exit` sonra ayrılma */
+                                optOutKind: ("cooling_off" | "exit") | null;
+                                createdAt: string;
+                                version: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    previewStaffMonthlyDeductions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                membershipId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Kesinti ayı (YYYY-MM) */
+                    month: string;
+                    /**
+                     * @description O ayın net ücreti, kuruş; yoksa yalnız sabit tutarlı satırlar hesaplanır
+                     * @default null
+                     */
+                    netCents?: number | null;
+                    /**
+                     * @description BES katkı matrahı (SGK prime esas kazanç), kuruş; yoksa BES tutarı hesaplanmaz
+                     * @default null
+                     */
+                    pensionBaseCents?: number | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            month: string;
+                            netCents: number | null;
+                            lines: {
+                                order: number;
+                                /** @enum {string} */
+                                kind: "advance" | "garnishment" | "pension";
+                                /** @description Avans, icra ya da BES katılımının kimliği */
+                                sourceId: string;
+                                /** @description Kural tutarı (tavandan önce) */
+                                requestedCents: number | null;
+                                /** @description Kesilecek tutar; hesaplanamıyorsa boş */
+                                amountCents: number | null;
+                                /** @enum {string} */
+                                status: "applied" | "capped" | "waiting" | "settled" | "paused" | "needs_net" | "needs_base";
+                            }[];
+                            totalCents: number;
+                            remainingNetCents: number | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createStaffAdvance: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Avans alan personelin kurum üyeliği */
+                    membershipId: string;
+                    /** @description Avans tutarı, kuruş; en çok 1.000.000 ₺ */
+                    amountCents: number;
+                    /** @description Avansın verildiği gün; bugünden sonra olamaz */
+                    givenDate: string;
+                    /**
+                     * @description `cash` nakit, `bank_transfer` banka havalesi
+                     * @enum {string}
+                     */
+                    paymentMethod: "cash" | "bank_transfer";
+                    /** @description Kaç ayda mahsup edileceği (1–24) */
+                    installmentCount: number;
+                    /** @description Mahsubun başladığı ay (YYYY-MM); veriliş ayından önce, 12 aydan sonra olamaz */
+                    firstMonth: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            membershipId: string;
+                            amountCents: number;
+                            givenDate: string;
+                            /** @enum {string} */
+                            paymentMethod: "cash" | "bank_transfer";
+                            installmentCount: number;
+                            firstMonth: string;
+                            /** @enum {string} */
+                            status: "active" | "closed" | "cancelled";
+                            closedDate: string | null;
+                            closedFromMonth: string | null;
+                            closeMethod: ("cash" | "bank_transfer") | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            createdAt: string;
+                            /** @description Taksit planı (saklanmaz; eşit kuruş, fark son taksitte) */
+                            installments: {
+                                month: string;
+                                amountCents: number;
+                                /**
+                                 * @description Bugünün ayına göre: `past` geçmiş ay, `current` bu ay, `upcoming` gelecek, `closed` erken kapamada personelin ödediği, `cancelled` iptal
+                                 * @enum {string}
+                                 */
+                                state: "past" | "current" | "upcoming" | "closed" | "cancelled";
+                            }[];
+                            /** @description Bu ay dahil kesilecek kalan tutar */
+                            outstandingCents: number;
+                            /** @description Erken kapamada personelin ödediği kalan; kapanmamışsa boş */
+                            closedRemainderCents: number | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    closeStaffAdvance: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                advanceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Kalan tutarın geri alındığı gün; bugünden sonra olamaz */
+                    closedDate: string;
+                    /** @description Kesilmeyecek ilk taksit ayı (YYYY-MM); kapama ayından önce olamaz, plan içinde olmalı */
+                    fromMonth: string;
+                    /**
+                     * @description Kalan tutarın geri alındığı yöntem
+                     * @enum {string}
+                     */
+                    method: "cash" | "bank_transfer";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            membershipId: string;
+                            amountCents: number;
+                            givenDate: string;
+                            /** @enum {string} */
+                            paymentMethod: "cash" | "bank_transfer";
+                            installmentCount: number;
+                            firstMonth: string;
+                            /** @enum {string} */
+                            status: "active" | "closed" | "cancelled";
+                            closedDate: string | null;
+                            closedFromMonth: string | null;
+                            closeMethod: ("cash" | "bank_transfer") | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            createdAt: string;
+                            /** @description Taksit planı (saklanmaz; eşit kuruş, fark son taksitte) */
+                            installments: {
+                                month: string;
+                                amountCents: number;
+                                /**
+                                 * @description Bugünün ayına göre: `past` geçmiş ay, `current` bu ay, `upcoming` gelecek, `closed` erken kapamada personelin ödediği, `cancelled` iptal
+                                 * @enum {string}
+                                 */
+                                state: "past" | "current" | "upcoming" | "closed" | "cancelled";
+                            }[];
+                            /** @description Bu ay dahil kesilecek kalan tutar */
+                            outstandingCents: number;
+                            /** @description Erken kapamada personelin ödediği kalan; kapanmamışsa boş */
+                            closedRemainderCents: number | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelStaffAdvance: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                advanceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description İptal gerekçesi, 5–500 karakter; denetim kaydına yazılmaz */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            membershipId: string;
+                            amountCents: number;
+                            givenDate: string;
+                            /** @enum {string} */
+                            paymentMethod: "cash" | "bank_transfer";
+                            installmentCount: number;
+                            firstMonth: string;
+                            /** @enum {string} */
+                            status: "active" | "closed" | "cancelled";
+                            closedDate: string | null;
+                            closedFromMonth: string | null;
+                            closeMethod: ("cash" | "bank_transfer") | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            createdAt: string;
+                            /** @description Taksit planı (saklanmaz; eşit kuruş, fark son taksitte) */
+                            installments: {
+                                month: string;
+                                amountCents: number;
+                                /**
+                                 * @description Bugünün ayına göre: `past` geçmiş ay, `current` bu ay, `upcoming` gelecek, `closed` erken kapamada personelin ödediği, `cancelled` iptal
+                                 * @enum {string}
+                                 */
+                                state: "past" | "current" | "upcoming" | "closed" | "cancelled";
+                            }[];
+                            /** @description Bu ay dahil kesilecek kalan tutar */
+                            outstandingCents: number;
+                            /** @description Erken kapamada personelin ödediği kalan; kapanmamışsa boş */
+                            closedRemainderCents: number | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createStaffGarnishment: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Hakkında icra müzekkeresi gelen personelin üyeliği */
+                    membershipId: string;
+                    /** @description İcra dairesi */
+                    office: string;
+                    /** @description İcra dosya numarası (ör. 2026/1234) */
+                    fileNumber: string;
+                    /** @description Müzekkeredeki alacak tutarı, kuruş */
+                    claimCents: number;
+                    /**
+                     * @description Net ücretten kesilecek oran, onbinde (varsayılan 2500 = dörtte bir; İİK md. 83)
+                     * @default 2500
+                     */
+                    rateBasisPoints?: number;
+                    /**
+                     * @description Nafaka alacağı mı; nafaka hacizleri sıradan önce kesilir
+                     * @default false
+                     */
+                    isAlimony?: boolean;
+                    /** @description Müzekkerenin kuruma tebliğ günü; sıra bu güne göredir, bugünden sonra olamaz */
+                    receivedDate: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            membershipId: string;
+                            office: string;
+                            fileNumber: string;
+                            claimCents: number;
+                            remainingCents: number;
+                            /** @description Net ücretten oran, onbinde */
+                            rateBasisPoints: number;
+                            isAlimony: boolean;
+                            receivedDate: string;
+                            /** @description Personelde kayıt sıra numarası */
+                            sequence: number;
+                            /** @description Açık icralar arasında kesinti sırası (nafaka önce, sonra tebliğ günü); kapanmışta boş */
+                            queuePosition: number | null;
+                            /** @enum {string} */
+                            status: "active" | "closed";
+                            closedDate: string | null;
+                            closeReason: ("paid_off" | "lifted" | "other") | null;
+                            createdAt: string;
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateStaffGarnishment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                garnishmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Kalan alacak, kuruş; alacak tutarını aşamaz */
+                    remainingCents: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            membershipId: string;
+                            office: string;
+                            fileNumber: string;
+                            claimCents: number;
+                            remainingCents: number;
+                            /** @description Net ücretten oran, onbinde */
+                            rateBasisPoints: number;
+                            isAlimony: boolean;
+                            receivedDate: string;
+                            /** @description Personelde kayıt sıra numarası */
+                            sequence: number;
+                            /** @description Açık icralar arasında kesinti sırası (nafaka önce, sonra tebliğ günü); kapanmışta boş */
+                            queuePosition: number | null;
+                            /** @enum {string} */
+                            status: "active" | "closed";
+                            closedDate: string | null;
+                            closeReason: ("paid_off" | "lifted" | "other") | null;
+                            createdAt: string;
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    closeStaffGarnishment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                garnishmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Kapanış günü; tebliğden önce, bugünden sonra olamaz */
+                    closedDate: string;
+                    /**
+                     * @description `paid_off` borç ödendi, `lifted` haciz kaldırıldı, `other` diğer
+                     * @enum {string}
+                     */
+                    reason: "paid_off" | "lifted" | "other";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            membershipId: string;
+                            office: string;
+                            fileNumber: string;
+                            claimCents: number;
+                            remainingCents: number;
+                            /** @description Net ücretten oran, onbinde */
+                            rateBasisPoints: number;
+                            isAlimony: boolean;
+                            receivedDate: string;
+                            /** @description Personelde kayıt sıra numarası */
+                            sequence: number;
+                            /** @description Açık icralar arasında kesinti sırası (nafaka önce, sonra tebliğ günü); kapanmışta boş */
+                            queuePosition: number | null;
+                            /** @enum {string} */
+                            status: "active" | "closed";
+                            closedDate: string | null;
+                            closeReason: ("paid_off" | "lifted" | "other") | null;
+                            createdAt: string;
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createStaffPensionEnrollment: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Katılan personelin kurum üyeliği */
+                    membershipId: string;
+                    /**
+                     * @description Çalışan katkı oranı, onbinde (varsayılan ve en az 300 = %3)
+                     * @default 300
+                     */
+                    rateBasisPoints?: number;
+                    /** @description Sisteme dahil olma günü; kesinti bu günün ayından başlar */
+                    startDate: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            membershipId: string;
+                            rateBasisPoints: number;
+                            startDate: string;
+                            pauses: {
+                                fromMonth: string;
+                                toMonth: string;
+                            }[];
+                            optOutDate: string | null;
+                            /**
+                             * @description Bugünün ayındaki durum
+                             * @enum {string}
+                             */
+                            state: "scheduled" | "active" | "paused" | "opted_out";
+                            /** @description `cooling_off` iki ay içinde cayma, `exit` sonra ayrılma */
+                            optOutKind: ("cooling_off" | "exit") | null;
+                            createdAt: string;
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    pauseStaffPensionEnrollment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                enrollmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Kesintinin durduğu ilk ay (YYYY-MM) */
+                    fromMonth: string;
+                    /** @description Kesintinin durduğu son ay (YYYY-MM), dahil */
+                    toMonth: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            membershipId: string;
+                            rateBasisPoints: number;
+                            startDate: string;
+                            pauses: {
+                                fromMonth: string;
+                                toMonth: string;
+                            }[];
+                            optOutDate: string | null;
+                            /**
+                             * @description Bugünün ayındaki durum
+                             * @enum {string}
+                             */
+                            state: "scheduled" | "active" | "paused" | "opted_out";
+                            /** @description `cooling_off` iki ay içinde cayma, `exit` sonra ayrılma */
+                            optOutKind: ("cooling_off" | "exit") | null;
+                            createdAt: string;
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    optOutStaffPensionEnrollment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                enrollmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Cayma ya da ayrılma günü; başlangıçtan önce olamaz */
+                    optOutDate: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            membershipId: string;
+                            rateBasisPoints: number;
+                            startDate: string;
+                            pauses: {
+                                fromMonth: string;
+                                toMonth: string;
+                            }[];
+                            optOutDate: string | null;
+                            /**
+                             * @description Bugünün ayındaki durum
+                             * @enum {string}
+                             */
+                            state: "scheduled" | "active" | "paused" | "opted_out";
+                            /** @description `cooling_off` iki ay içinde cayma, `exit` sonra ayrılma */
+                            optOutKind: ("cooling_off" | "exit") | null;
+                            createdAt: string;
+                            version: number;
                         };
                     };
                 };

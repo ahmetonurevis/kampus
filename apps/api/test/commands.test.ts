@@ -104,6 +104,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/supply-requests',
   'POST /api/v1/finance/supply-requests/{requestId}/fulfill',
   'POST /api/v1/finance/supply-requests/{requestId}/convert',
+  // Personel avansı taksit planı oluşturur; çift tıklama ikinci avansı açmaz
+  // (routes/finance-staff-deductions.ts; DOM-FIN-101, ON-199).
+  'POST /api/v1/finance/staff-advances',
 ]
 // Onur: kayıt ve finans sonu
 

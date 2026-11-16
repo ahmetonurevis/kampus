@@ -6700,6 +6700,142 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/ticketed-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Biletli etkinlikleri listele
+         * @description Etkinlikler başlangıca göre yakın önce (`when=past` en yeni önce); kontenjan, etkin, boş, kullanılan, ödeme bekleyen bilet ve tahsil edilen tutar her okumada hesaplanır (DOM-FIN-103). `q` ad ve salonda arar. Roller: `yonetici`, `onburo` (K-324). Modül `finance`.
+         */
+        get: operations["listTicketedEvents"];
+        put?: never;
+        /**
+         * Biletli etkinlik aç
+         * @description Gösteri ya da tören için etkinlik açar (DOM-FIN-103, K-325): Ad (2–120), başlangıç anı (ISO 8601, gelecekte; 422 `event_starts_in_past`), salon (2–120), isteğe bağlı okul takvimi etkinliği (`schoolEventId`; kurumda yoksa 422 `event_school_event_not_found`), oturma düzeni: `seated` sıra sayısı (1–26, A–Z) × sıra başına koltuk (1–60) ve kapalı koltuklar (`A1` biçimi) ya da `general` kontenjan (1–5000); bilet türleri (1–5; `invitation` fiyat 0, `paid` fiyat > 0 kuruş, ad tekil) ve öğrenci başına üst sınır (1–20, boşsa sınırsız). Satış açık başlar. Rol: `yonetici` (K-324). Modül `finance`.
+         */
+        post: operations["createTicketedEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/ticketed-events/{eventId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Etkinlik ayrıntısı ve koltuk haritası
+         * @description Etkinlik, özet sayılar ve etkin bileti olan koltuklar (`takenSeats`); koltuk haritası salon düzeni, kapalı ve alınmış koltuklardan çizilir. Olmayan, arşivli ya da başka kurumun etkinliği 404. Roller: `yonetici`, `onburo` (K-324). Modül `finance`.
+         */
+        get: operations["getTicketedEvent"];
+        put?: never;
+        post?: never;
+        /**
+         * Etkinliği arşivle
+         * @description Etkin bileti olan etkinlik arşivlenmez (422 `event_has_tickets`; önce biletler iptal edilir). Olmayan ya da başka kurumun etkinliği 404; `If-Match` zorunlu. Rol: `yonetici` (K-324). Modül `finance`.
+         */
+        delete: operations["archiveTicketedEvent"];
+        options?: never;
+        head?: never;
+        /**
+         * Etkinliği düzelt, satışı aç ya da kapat
+         * @description Kısmi düzeltme (K-325): verilen alanlar mevcut kayıtla birleşip bütün olarak denetlenir; `salesOpen` satışı açar ya da kapatır. Etkin bilet varken oturma düzeni türü değişmez (422 `event_seating_locked`), biletli koltuk kapatılamaz ya da salondan çıkarılamaz (422 `event_seat_in_use`), kontenjan bilet sayısının altına inmez (422 `event_capacity_below_sold`), bileti olan tür kaldırılamaz (422 `event_ticket_type_in_use`); var olan türün anahtarı korunur, bilinmeyen anahtar 422 `event_ticket_type_unknown`. Değişiklik yoksa 422 `event_unchanged`. Satılmış bilet ayırma anındaki ad ve fiyatı taşır. `If-Match` zorunlu. Rol: `yonetici` (K-324). Modül `finance`.
+         */
+        patch: operations["updateTicketedEvent"];
+        trace?: never;
+    };
+    "/api/v1/finance/ticketed-events/{eventId}/tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Etkinliğin satış listesi
+         * @description Biletler ayırma sırasıyla; `state` (`valid`, `unpaid`, `used`, `cancelled`), `studentId` süzer, `q` bilet sahibi, öğrenci adı, koltuk ve kodda arar (DOM-FIN-103). Başka kurumun etkinliği 404. `Accept: text/csv` süzgeçle eşleşen bütün biletleri verir (`;` ayırıcı, UTF-8 BOM, formül kaçışı, zamanlar Europe/Istanbul); bilet kodu yazılmaz. Bilet sahibi ve öğrenci adı taşıdığı için taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.event_ticket_export` (K-327). Roller: `yonetici`, `onburo` (K-324). Modül `finance`.
+         */
+        get: operations["listEventTickets"];
+        put?: never;
+        /**
+         * Öğrenci ailesine bilet ayır
+         * @description Bir öğrencinin ailesine 1–10 bilet ayırır (K-325): bilet başına tür, bilet sahibinin adı (veli ya da misafir) ve numaralı salonda koltuk. Satış kapalıysa 422 `event_sales_closed`; öğrenci kurumda yoksa 422 `event_ticket_student_not_found` (başka kurumun öğrencisi de), etkin değilse `event_ticket_student_inactive`. Koltuk: eksik `event_seat_required`, salonda yok `event_seat_unknown`, kapalı `event_seat_blocked`, istekte iki kez `event_seat_duplicate`, başka bilette 409 `event_seat_taken` (eşzamanlı ayırma kurum kilidiyle sıraya girer; kısmi tekil indeks son güvencedir). Numarasızda koltuk 422 `event_seat_not_allowed`, kontenjan aşımı `event_sold_out`; öğrenci başına üst sınır `event_ticket_limit_exceeded` (iptal edilen bilet sayılmaz). Ücretli bilet ödenmemiş başlar. Her bilete tahmin edilemez kod verilir (K-326). `Idempotency-Key` zorunlu. Roller: `yonetici`, `onburo` (K-324). Modül `finance`.
+         */
+        post: operations["allocateEventTickets"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/ticketed-events/{eventId}/check-in": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Girişte bilet kodunu okut
+         * @description Kodu okunan bileti "kullanıldı" işaretler (K-326). Kod boşluk, tire ve küçük harf fark etmeden okunur (`O`→`0`, `I`/`L`→`1`). Kurumda olmayan kod 404; başka etkinliğin bileti 422 `event_ticket_wrong_event`, iptal edilmiş 422 `event_ticket_cancelled`, ödemesi alınmamış 422 `event_ticket_unpaid`, ikinci okutma 409 `event_ticket_already_used`. Roller: `yonetici`, `onburo` (K-324). Modül `finance`.
+         */
+        post: operations["checkInEventTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/event-tickets/{ticketId}/pay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bilet ödemesini işaretle
+         * @description Ücretli biletin ödemesini elle işaretler: `cash` nakit, `transfer` havale/EFT; çevrim içi ödeme yoktur (K-326). Ödeme gün sonuna ve muhasebe aktarımına girmez (M-49). Davetiye 422 `event_ticket_free`, iptal edilmiş 422 `event_ticket_cancelled`, ödenmiş 409 `event_ticket_already_paid`. Başka kurumun bileti 404. `Idempotency-Key` zorunlu; `If-Match` verilirse biletin sürümüdür. Roller: `yonetici`, `onburo` (K-324). Modül `finance`.
+         */
+        post: operations["payEventTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/event-tickets/{ticketId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bileti iptal et
+         * @description Bileti iptal eder; koltuk boşa çıkar ve yeniden ayrılabilir (K-326). Ödenmiş biletin bedeli iptalle elle iade edilmiş sayılır (`refundedAt`; kısmi iade yok), bu yüzden taze oturum ister (eskiyse 403 `reauthentication_required`). Kullanılmış bilet 422 `event_ticket_used`, iptal edilmiş 409 `event_ticket_already_cancelled`. İsteğe bağlı not (≤ 200) denetime yazılmaz. Başka kurumun bileti 404. `Idempotency-Key` zorunlu; `If-Match` verilirse biletin sürümüdür. Roller: `yonetici`, `onburo` (K-324). Modül `finance`.
+         */
+        post: operations["cancelEventTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/supply-requests": {
         parameters: {
             query?: never;
@@ -71226,6 +71362,1537 @@ export interface operations {
                             }[];
                         }[];
                         meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listTicketedEvents: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Ad ve salonda arama, Türkçe harf duyarsız */
+                q?: string;
+                /** @description `upcoming` başlamamış, `past` başlamış etkinlikler */
+                when?: "upcoming" | "past";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @description Başlangıç anı (ISO 8601 UTC) */
+                            startsAt: string;
+                            venue: string;
+                            /** @description Bağlı okul takvimi etkinliği */
+                            schoolEventId: string | null;
+                            /** @description Takvim etkinliğinin başlığı */
+                            schoolEventTitle: string | null;
+                            /**
+                             * @description `seated` numaralı, `general` numarasız
+                             * @enum {string}
+                             */
+                            seatingMode: "seated" | "general";
+                            rowCount: number | null;
+                            seatsPerRow: number | null;
+                            /** @description Satışa kapalı koltuklar */
+                            blockedSeats: string[];
+                            /** @description Numarasız etkinliğin kontenjanı */
+                            capacity: number | null;
+                            ticketTypes: {
+                                /** @description Bilet türü anahtarı (ayırmada `ticketTypeKey`) */
+                                key: string;
+                                name: string;
+                                /**
+                                 * @description `invitation` ücretsiz davetiye, `paid` ücretli
+                                 * @enum {string}
+                                 */
+                                kind: "invitation" | "paid";
+                                /** @description Fiyat, kuruş; davetiyede 0 */
+                                priceCents: number;
+                            }[];
+                            /** @description Öğrenci başına üst sınır; boşsa sınırsız */
+                            perStudentLimit: number | null;
+                            salesOpen: boolean;
+                            /** @description Satışa açık koltuk ya da kontenjan */
+                            totalCapacity: number;
+                            /** @description Etkin (iptal edilmemiş) bilet */
+                            activeCount: number;
+                            /** @description Boş yer */
+                            availableCount: number;
+                            /** @description Etkin davetiye */
+                            invitationCount: number;
+                            /** @description Girişte kullanılan bilet */
+                            usedCount: number;
+                            /** @description Ödemesi beklenen ücretli bilet */
+                            unpaidCount: number;
+                            /** @description Ödenmiş etkin biletlerin toplamı, kuruş (iade düşer) */
+                            collectedCents: number;
+                            /** @description Etkin bileti olan koltuklar (koltuk haritası) */
+                            takenSeats: string[];
+                            /** @description `If-Match` için etkinliğin sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createTicketedEvent: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    /**
+                     * Format: date-time
+                     * @description Başlangıç anı (ISO 8601); gösterim Europe/Istanbul
+                     */
+                    startsAt: string;
+                    venue: string;
+                    /**
+                     * @description İsteğe bağlı okul takvimi etkinliği (`schoolEvents` kaydı)
+                     * @default null
+                     */
+                    schoolEventId?: string | null;
+                    /** @enum {string} */
+                    seatingMode: "seated" | "general";
+                    /**
+                     * @description Numaralı salonda sıra sayısı (A’dan başlar)
+                     * @default null
+                     */
+                    rowCount?: number | null;
+                    /**
+                     * @description Numaralı salonda sıra başına koltuk
+                     * @default null
+                     */
+                    seatsPerRow?: number | null;
+                    /** @description Satışa kapalı koltuklar (ör. teknik masa, protokol) */
+                    blockedSeats?: string[];
+                    /**
+                     * @description Numarasız etkinlikte kişi kontenjanı
+                     * @default null
+                     */
+                    capacity?: number | null;
+                    ticketTypes: {
+                        /** @description Var olan türün anahtarı; yeni türde verilmez, sunucu üretir */
+                        key?: string;
+                        name: string;
+                        /** @enum {string} */
+                        kind: "invitation" | "paid";
+                        /** @description Kuruş; davetiyede 0, ücretlide 0’dan büyük */
+                        priceCents: number;
+                    }[];
+                    /**
+                     * @description Öğrenci (aile) başına etkin bilet üst sınırı; boşsa sınırsız
+                     * @default null
+                     */
+                    perStudentLimit?: number | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @description Başlangıç anı (ISO 8601 UTC) */
+                            startsAt: string;
+                            venue: string;
+                            /** @description Bağlı okul takvimi etkinliği */
+                            schoolEventId: string | null;
+                            /** @description Takvim etkinliğinin başlığı */
+                            schoolEventTitle: string | null;
+                            /**
+                             * @description `seated` numaralı, `general` numarasız
+                             * @enum {string}
+                             */
+                            seatingMode: "seated" | "general";
+                            rowCount: number | null;
+                            seatsPerRow: number | null;
+                            /** @description Satışa kapalı koltuklar */
+                            blockedSeats: string[];
+                            /** @description Numarasız etkinliğin kontenjanı */
+                            capacity: number | null;
+                            ticketTypes: {
+                                /** @description Bilet türü anahtarı (ayırmada `ticketTypeKey`) */
+                                key: string;
+                                name: string;
+                                /**
+                                 * @description `invitation` ücretsiz davetiye, `paid` ücretli
+                                 * @enum {string}
+                                 */
+                                kind: "invitation" | "paid";
+                                /** @description Fiyat, kuruş; davetiyede 0 */
+                                priceCents: number;
+                            }[];
+                            /** @description Öğrenci başına üst sınır; boşsa sınırsız */
+                            perStudentLimit: number | null;
+                            salesOpen: boolean;
+                            /** @description Satışa açık koltuk ya da kontenjan */
+                            totalCapacity: number;
+                            /** @description Etkin (iptal edilmemiş) bilet */
+                            activeCount: number;
+                            /** @description Boş yer */
+                            availableCount: number;
+                            /** @description Etkin davetiye */
+                            invitationCount: number;
+                            /** @description Girişte kullanılan bilet */
+                            usedCount: number;
+                            /** @description Ödemesi beklenen ücretli bilet */
+                            unpaidCount: number;
+                            /** @description Ödenmiş etkin biletlerin toplamı, kuruş (iade düşer) */
+                            collectedCents: number;
+                            /** @description Etkin bileti olan koltuklar (koltuk haritası) */
+                            takenSeats: string[];
+                            /** @description `If-Match` için etkinliğin sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getTicketedEvent: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @description Başlangıç anı (ISO 8601 UTC) */
+                            startsAt: string;
+                            venue: string;
+                            /** @description Bağlı okul takvimi etkinliği */
+                            schoolEventId: string | null;
+                            /** @description Takvim etkinliğinin başlığı */
+                            schoolEventTitle: string | null;
+                            /**
+                             * @description `seated` numaralı, `general` numarasız
+                             * @enum {string}
+                             */
+                            seatingMode: "seated" | "general";
+                            rowCount: number | null;
+                            seatsPerRow: number | null;
+                            /** @description Satışa kapalı koltuklar */
+                            blockedSeats: string[];
+                            /** @description Numarasız etkinliğin kontenjanı */
+                            capacity: number | null;
+                            ticketTypes: {
+                                /** @description Bilet türü anahtarı (ayırmada `ticketTypeKey`) */
+                                key: string;
+                                name: string;
+                                /**
+                                 * @description `invitation` ücretsiz davetiye, `paid` ücretli
+                                 * @enum {string}
+                                 */
+                                kind: "invitation" | "paid";
+                                /** @description Fiyat, kuruş; davetiyede 0 */
+                                priceCents: number;
+                            }[];
+                            /** @description Öğrenci başına üst sınır; boşsa sınırsız */
+                            perStudentLimit: number | null;
+                            salesOpen: boolean;
+                            /** @description Satışa açık koltuk ya da kontenjan */
+                            totalCapacity: number;
+                            /** @description Etkin (iptal edilmemiş) bilet */
+                            activeCount: number;
+                            /** @description Boş yer */
+                            availableCount: number;
+                            /** @description Etkin davetiye */
+                            invitationCount: number;
+                            /** @description Girişte kullanılan bilet */
+                            usedCount: number;
+                            /** @description Ödemesi beklenen ücretli bilet */
+                            unpaidCount: number;
+                            /** @description Ödenmiş etkin biletlerin toplamı, kuruş (iade düşer) */
+                            collectedCents: number;
+                            /** @description Etkin bileti olan koltuklar (koltuk haritası) */
+                            takenSeats: string[];
+                            /** @description `If-Match` için etkinliğin sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveTicketedEvent: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            archivedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateTicketedEvent: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    /**
+                     * Format: date-time
+                     * @description Başlangıç anı (ISO 8601); gösterim Europe/Istanbul
+                     */
+                    startsAt?: string;
+                    venue?: string;
+                    /** @description İsteğe bağlı okul takvimi etkinliği (`schoolEvents` kaydı) */
+                    schoolEventId?: string | null;
+                    /** @enum {string} */
+                    seatingMode?: "seated" | "general";
+                    /** @description Numaralı salonda sıra sayısı (A’dan başlar) */
+                    rowCount?: number | null;
+                    /** @description Numaralı salonda sıra başına koltuk */
+                    seatsPerRow?: number | null;
+                    /** @description Satışa kapalı koltuklar (ör. teknik masa, protokol) */
+                    blockedSeats?: string[];
+                    /** @description Numarasız etkinlikte kişi kontenjanı */
+                    capacity?: number | null;
+                    ticketTypes?: {
+                        /** @description Var olan türün anahtarı; yeni türde verilmez, sunucu üretir */
+                        key?: string;
+                        name: string;
+                        /** @enum {string} */
+                        kind: "invitation" | "paid";
+                        /** @description Kuruş; davetiyede 0, ücretlide 0’dan büyük */
+                        priceCents: number;
+                    }[];
+                    /** @description Öğrenci (aile) başına etkin bilet üst sınırı; boşsa sınırsız */
+                    perStudentLimit?: number | null;
+                    /** @description Bilet ayırma açık mı */
+                    salesOpen?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @description Başlangıç anı (ISO 8601 UTC) */
+                            startsAt: string;
+                            venue: string;
+                            /** @description Bağlı okul takvimi etkinliği */
+                            schoolEventId: string | null;
+                            /** @description Takvim etkinliğinin başlığı */
+                            schoolEventTitle: string | null;
+                            /**
+                             * @description `seated` numaralı, `general` numarasız
+                             * @enum {string}
+                             */
+                            seatingMode: "seated" | "general";
+                            rowCount: number | null;
+                            seatsPerRow: number | null;
+                            /** @description Satışa kapalı koltuklar */
+                            blockedSeats: string[];
+                            /** @description Numarasız etkinliğin kontenjanı */
+                            capacity: number | null;
+                            ticketTypes: {
+                                /** @description Bilet türü anahtarı (ayırmada `ticketTypeKey`) */
+                                key: string;
+                                name: string;
+                                /**
+                                 * @description `invitation` ücretsiz davetiye, `paid` ücretli
+                                 * @enum {string}
+                                 */
+                                kind: "invitation" | "paid";
+                                /** @description Fiyat, kuruş; davetiyede 0 */
+                                priceCents: number;
+                            }[];
+                            /** @description Öğrenci başına üst sınır; boşsa sınırsız */
+                            perStudentLimit: number | null;
+                            salesOpen: boolean;
+                            /** @description Satışa açık koltuk ya da kontenjan */
+                            totalCapacity: number;
+                            /** @description Etkin (iptal edilmemiş) bilet */
+                            activeCount: number;
+                            /** @description Boş yer */
+                            availableCount: number;
+                            /** @description Etkin davetiye */
+                            invitationCount: number;
+                            /** @description Girişte kullanılan bilet */
+                            usedCount: number;
+                            /** @description Ödemesi beklenen ücretli bilet */
+                            unpaidCount: number;
+                            /** @description Ödenmiş etkin biletlerin toplamı, kuruş (iade düşer) */
+                            collectedCents: number;
+                            /** @description Etkin bileti olan koltuklar (koltuk haritası) */
+                            takenSeats: string[];
+                            /** @description `If-Match` için etkinliğin sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listEventTickets: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Bilet sahibi, öğrenci adı, koltuk ve kodda arama */
+                q?: string;
+                /** @description Bilet durumu */
+                state?: "valid" | "unpaid" | "used" | "cancelled";
+                /** @description Öğrencinin biletleri */
+                studentId?: string;
+            };
+            header?: never;
+            path: {
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            eventId: string;
+                            /** @description Bilet kodu (`XXXX-XXXX-XXXX`); PDF ve girişte kullanılır */
+                            code: string;
+                            ticketTypeKey: string;
+                            /** @description Ayırma anındaki tür adı */
+                            ticketTypeName: string;
+                            /** @enum {string} */
+                            ticketKind: "invitation" | "paid";
+                            /** @description Ayırma anındaki fiyat, kuruş */
+                            priceCents: number;
+                            seat: string | null;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @description Bileti kullanacak veli ya da misafir */
+                            holderName: string;
+                            /** @enum {string} */
+                            status: "active" | "cancelled";
+                            /** @enum {string} */
+                            paymentStatus: "not_required" | "unpaid" | "paid";
+                            paymentMethod: ("cash" | "transfer") | null;
+                            paidAt: string | null;
+                            /** @description Ödenmiş biletin iptalinde bedelin iade edildiği an */
+                            refundedAt: string | null;
+                            usedAt: string | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /**
+                             * @description `valid` girişe hazır, `unpaid` ödeme bekliyor, `used` kullanıldı, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            state: "valid" | "unpaid" | "used" | "cancelled";
+                            createdAt: string;
+                            /** @description `If-Match` için biletin sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    allocateEventTickets: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Biletin ayrıldığı öğrenci (ailesi); üst sınır öğrenci başınadır */
+                    studentId: string;
+                    items: {
+                        ticketTypeKey: string;
+                        /** @description Numaralı salonda koltuk; numarasızda boş */
+                        seat?: string | null;
+                        /** @description Bileti kullanacak veli ya da misafirin adı */
+                        holderName: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            eventId: string;
+                            /** @description Bilet kodu (`XXXX-XXXX-XXXX`); PDF ve girişte kullanılır */
+                            code: string;
+                            ticketTypeKey: string;
+                            /** @description Ayırma anındaki tür adı */
+                            ticketTypeName: string;
+                            /** @enum {string} */
+                            ticketKind: "invitation" | "paid";
+                            /** @description Ayırma anındaki fiyat, kuruş */
+                            priceCents: number;
+                            seat: string | null;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @description Bileti kullanacak veli ya da misafir */
+                            holderName: string;
+                            /** @enum {string} */
+                            status: "active" | "cancelled";
+                            /** @enum {string} */
+                            paymentStatus: "not_required" | "unpaid" | "paid";
+                            paymentMethod: ("cash" | "transfer") | null;
+                            paidAt: string | null;
+                            /** @description Ödenmiş biletin iptalinde bedelin iade edildiği an */
+                            refundedAt: string | null;
+                            usedAt: string | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /**
+                             * @description `valid` girişe hazır, `unpaid` ödeme bekliyor, `used` kullanıldı, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            state: "valid" | "unpaid" | "used" | "cancelled";
+                            createdAt: string;
+                            /** @description `If-Match` için biletin sürümü */
+                            version: number;
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    checkInEventTicket: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Biletteki kod (`XXXX-XXXX-XXXX`); boşluk, tire ve küçük harf fark etmez */
+                    code: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            eventId: string;
+                            /** @description Bilet kodu (`XXXX-XXXX-XXXX`); PDF ve girişte kullanılır */
+                            code: string;
+                            ticketTypeKey: string;
+                            /** @description Ayırma anındaki tür adı */
+                            ticketTypeName: string;
+                            /** @enum {string} */
+                            ticketKind: "invitation" | "paid";
+                            /** @description Ayırma anındaki fiyat, kuruş */
+                            priceCents: number;
+                            seat: string | null;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @description Bileti kullanacak veli ya da misafir */
+                            holderName: string;
+                            /** @enum {string} */
+                            status: "active" | "cancelled";
+                            /** @enum {string} */
+                            paymentStatus: "not_required" | "unpaid" | "paid";
+                            paymentMethod: ("cash" | "transfer") | null;
+                            paidAt: string | null;
+                            /** @description Ödenmiş biletin iptalinde bedelin iade edildiği an */
+                            refundedAt: string | null;
+                            usedAt: string | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /**
+                             * @description `valid` girişe hazır, `unpaid` ödeme bekliyor, `used` kullanıldı, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            state: "valid" | "unpaid" | "used" | "cancelled";
+                            createdAt: string;
+                            /** @description `If-Match` için biletin sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    payEventTicket: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
+                "if-match"?: string;
+            };
+            path: {
+                ticketId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    method: "cash" | "transfer";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            eventId: string;
+                            /** @description Bilet kodu (`XXXX-XXXX-XXXX`); PDF ve girişte kullanılır */
+                            code: string;
+                            ticketTypeKey: string;
+                            /** @description Ayırma anındaki tür adı */
+                            ticketTypeName: string;
+                            /** @enum {string} */
+                            ticketKind: "invitation" | "paid";
+                            /** @description Ayırma anındaki fiyat, kuruş */
+                            priceCents: number;
+                            seat: string | null;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @description Bileti kullanacak veli ya da misafir */
+                            holderName: string;
+                            /** @enum {string} */
+                            status: "active" | "cancelled";
+                            /** @enum {string} */
+                            paymentStatus: "not_required" | "unpaid" | "paid";
+                            paymentMethod: ("cash" | "transfer") | null;
+                            paidAt: string | null;
+                            /** @description Ödenmiş biletin iptalinde bedelin iade edildiği an */
+                            refundedAt: string | null;
+                            usedAt: string | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /**
+                             * @description `valid` girişe hazır, `unpaid` ödeme bekliyor, `used` kullanıldı, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            state: "valid" | "unpaid" | "used" | "cancelled";
+                            createdAt: string;
+                            /** @description `If-Match` için biletin sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelEventTicket: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
+                "if-match"?: string;
+            };
+            path: {
+                ticketId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description İsteğe bağlı iptal notu
+                     * @default null
+                     */
+                    reason?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            eventId: string;
+                            /** @description Bilet kodu (`XXXX-XXXX-XXXX`); PDF ve girişte kullanılır */
+                            code: string;
+                            ticketTypeKey: string;
+                            /** @description Ayırma anındaki tür adı */
+                            ticketTypeName: string;
+                            /** @enum {string} */
+                            ticketKind: "invitation" | "paid";
+                            /** @description Ayırma anındaki fiyat, kuruş */
+                            priceCents: number;
+                            seat: string | null;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @description Bileti kullanacak veli ya da misafir */
+                            holderName: string;
+                            /** @enum {string} */
+                            status: "active" | "cancelled";
+                            /** @enum {string} */
+                            paymentStatus: "not_required" | "unpaid" | "paid";
+                            paymentMethod: ("cash" | "transfer") | null;
+                            paidAt: string | null;
+                            /** @description Ödenmiş biletin iptalinde bedelin iade edildiği an */
+                            refundedAt: string | null;
+                            usedAt: string | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /**
+                             * @description `valid` girişe hazır, `unpaid` ödeme bekliyor, `used` kullanıldı, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            state: "valid" | "unpaid" | "used" | "cancelled";
+                            createdAt: string;
+                            /** @description `If-Match` için biletin sürümü */
+                            version: number;
+                        };
                     };
                 };
             };

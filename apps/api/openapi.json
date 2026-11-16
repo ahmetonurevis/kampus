@@ -175321,6 +175321,4126 @@
         }
       }
     },
+    "/api/v1/prospects/alumni-document-requests": {
+      "get": {
+        "operationId": "listAlumniDocumentRequests",
+        "summary": "Mezun belge taleplerini listele",
+        "tags": [
+          "prospects"
+        ],
+        "description": "Yeni alınan önce; durum, belge türü ve öğrenciyle süzülür, `q` öğrencinin ya da talep edenin adında ve belge numarasında arar. Yanıtta talep edenin adı, teslim iletişimi ve kimlik notu vardır (kişisel veri; loglanmaz). Roller: `yonetici`, `onburo` (diğerleri 403). Modül `crm`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Öğrencinin ya da talep edenin adında, belge numarasında (`MB-2026-0001`) arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "received",
+                "preparing",
+                "ready",
+                "delivered",
+                "rejected"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "education_certificate",
+                "transcript",
+                "diploma_copy"
+              ]
+            },
+            "in": "query",
+            "name": "documentType",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "studentId",
+            "required": false,
+            "description": "Bu öğrencinin talepleri"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "documentNumber": {
+                            "description": "Yıl bazlı sıralı belge numarası (`MB-2026-0001`); hazır olunca verilir",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "studentId": {
+                            "type": "string"
+                          },
+                          "studentName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "documentType": {
+                            "type": "string",
+                            "enum": [
+                              "education_certificate",
+                              "transcript",
+                              "diploma_copy"
+                            ]
+                          },
+                          "copies": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "channel": {
+                            "type": "string",
+                            "enum": [
+                              "in_person",
+                              "phone",
+                              "email",
+                              "petition"
+                            ],
+                            "description": "Talebin geliş yolu"
+                          },
+                          "requesterKind": {
+                            "type": "string",
+                            "enum": [
+                              "self",
+                              "guardian",
+                              "proxy"
+                            ]
+                          },
+                          "requesterName": {
+                            "type": "string",
+                            "description": "Talep edenin adı (talep anının kopyası)"
+                          },
+                          "guardianParentId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "authorizationFileId": {
+                            "description": "Vekâletname ya da yazılı rıza dosyası; `GET /files/{fileId}/url` ile açılır",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "deliveryMethod": {
+                            "type": "string",
+                            "enum": [
+                              "in_person",
+                              "email",
+                              "cargo"
+                            ]
+                          },
+                          "deliveryEmail": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "deliveryAddress": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "feeCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Dondurulmuş ücret (belge başı ücret × adet, kuruş)"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "received",
+                              "preparing",
+                              "ready",
+                              "delivered",
+                              "rejected"
+                            ]
+                          },
+                          "receivedAt": {
+                            "type": "string"
+                          },
+                          "receivedByName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "preparingAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "preparingByName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "readyAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "readyByName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "manualNote": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "diplomaFileId": {
+                            "description": "Diploma örneğinin taranmış dosyası",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "deliveredAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "deliveredByName": {
+                            "description": "Teslim eden ve kimliği kontrol eden personel",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "identityCheckNote": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "paymentMethod": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "cash",
+                                  "card",
+                                  "transfer"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "paidAt": {
+                            "description": "Ödendi işaretinin anı (ücretli teslim)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "rejectedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "rejectedByName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "rejectionReason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "actions": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "start",
+                                "ready",
+                                "deliver",
+                                "reject"
+                              ]
+                            },
+                            "description": "Talebin bu durumda yapılabilecek işlemleri"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "documentNumber",
+                          "studentId",
+                          "studentName",
+                          "documentType",
+                          "copies",
+                          "channel",
+                          "requesterKind",
+                          "requesterName",
+                          "guardianParentId",
+                          "authorizationFileId",
+                          "deliveryMethod",
+                          "deliveryEmail",
+                          "deliveryAddress",
+                          "feeCents",
+                          "status",
+                          "receivedAt",
+                          "receivedByName",
+                          "preparingAt",
+                          "preparingByName",
+                          "readyAt",
+                          "readyByName",
+                          "manualNote",
+                          "diplomaFileId",
+                          "deliveredAt",
+                          "deliveredByName",
+                          "identityCheckNote",
+                          "paymentMethod",
+                          "paidAt",
+                          "rejectedAt",
+                          "rejectedByName",
+                          "rejectionReason",
+                          "actions",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createAlumniDocumentRequest",
+        "summary": "Mezun belge talebi kaydet",
+        "tags": [
+          "prospects"
+        ],
+        "description": "Telefon, e-posta, dilekçe ya da şahsen gelen talebi alındı durumunda kaydeder (DOM-KAY-044, K-328). Öğrenci kurumun mezun ya da ayrılmış öğrencisi olmalı: aktif öğrenci 422 `alumni_document_student_active` (öğrenci belgesi DOM-KAY-027), olmayan ya da başka kurumun öğrencisi 404. Diploma örneği yalnız okulda (422 `alumni_document_type_unavailable`) ve mezuna (422 `alumni_document_not_graduated`). Talep eden: kendisi (reşit değilse 422 `alumni_document_requester_minor`), velisi (öğrenciye bağlı veli kaydı; bağ yoksa 422 `alumni_document_guardian_unknown`, velayetsiz ya da iletişimi kısıtlıysa 422 `alumni_document_guardian_not_authorized`, öğrenci reşitse ya da yaşı bilinmiyorsa yazılı rıza dosyası yoksa 422 `alumni_document_consent_required`) ya da vekili (ad ve vekâletname zorunlu). Dosya (`authorizationFileId`, amaç `document`, aynı kullanıcının yüklediği bağsız dosya) talebe bağlanır. E-posta yolunda e-posta, kargo yolunda adres zorunlu. Ücret kurum ayarından belge başı × adet olarak dondurulur. `Idempotency-Key` zorunlu. Roller: `yonetici`, `onburo` (diğerleri 403). Modül `crm`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "studentId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "documentType": {
+                    "type": "string",
+                    "enum": [
+                      "education_certificate",
+                      "transcript",
+                      "diploma_copy"
+                    ]
+                  },
+                  "copies": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10
+                  },
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "in_person",
+                      "phone",
+                      "email",
+                      "petition"
+                    ]
+                  },
+                  "requesterKind": {
+                    "type": "string",
+                    "enum": [
+                      "self",
+                      "guardian",
+                      "proxy"
+                    ]
+                  },
+                  "guardianParentId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          ""
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "proxyName": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 2,
+                        "maxLength": 120
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          ""
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "authorizationFileId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          ""
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "deliveryMethod": {
+                    "type": "string",
+                    "enum": [
+                      "in_person",
+                      "email",
+                      "cargo"
+                    ]
+                  },
+                  "deliveryEmail": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 254,
+                        "format": "email",
+                        "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          ""
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "deliveryAddress": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 10,
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "string",
+                        "enum": [
+                          ""
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "studentId",
+                  "documentType",
+                  "copies",
+                  "channel",
+                  "requesterKind",
+                  "deliveryMethod"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "documentNumber": {
+                          "description": "Yıl bazlı sıralı belge numarası (`MB-2026-0001`); hazır olunca verilir",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "documentType": {
+                          "type": "string",
+                          "enum": [
+                            "education_certificate",
+                            "transcript",
+                            "diploma_copy"
+                          ]
+                        },
+                        "copies": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "channel": {
+                          "type": "string",
+                          "enum": [
+                            "in_person",
+                            "phone",
+                            "email",
+                            "petition"
+                          ],
+                          "description": "Talebin geliş yolu"
+                        },
+                        "requesterKind": {
+                          "type": "string",
+                          "enum": [
+                            "self",
+                            "guardian",
+                            "proxy"
+                          ]
+                        },
+                        "requesterName": {
+                          "type": "string",
+                          "description": "Talep edenin adı (talep anının kopyası)"
+                        },
+                        "guardianParentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "authorizationFileId": {
+                          "description": "Vekâletname ya da yazılı rıza dosyası; `GET /files/{fileId}/url` ile açılır",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "deliveryMethod": {
+                          "type": "string",
+                          "enum": [
+                            "in_person",
+                            "email",
+                            "cargo"
+                          ]
+                        },
+                        "deliveryEmail": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "deliveryAddress": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "feeCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Dondurulmuş ücret (belge başı ücret × adet, kuruş)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "received",
+                            "preparing",
+                            "ready",
+                            "delivered",
+                            "rejected"
+                          ]
+                        },
+                        "receivedAt": {
+                          "type": "string"
+                        },
+                        "receivedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "preparingAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "preparingByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "readyAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "readyByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "manualNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "diplomaFileId": {
+                          "description": "Diploma örneğinin taranmış dosyası",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "deliveredAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "deliveredByName": {
+                          "description": "Teslim eden ve kimliği kontrol eden personel",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "identityCheckNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "paymentMethod": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "cash",
+                                "card",
+                                "transfer"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "paidAt": {
+                          "description": "Ödendi işaretinin anı (ücretli teslim)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "actions": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "start",
+                              "ready",
+                              "deliver",
+                              "reject"
+                            ]
+                          },
+                          "description": "Talebin bu durumda yapılabilecek işlemleri"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "documentNumber",
+                        "studentId",
+                        "studentName",
+                        "documentType",
+                        "copies",
+                        "channel",
+                        "requesterKind",
+                        "requesterName",
+                        "guardianParentId",
+                        "authorizationFileId",
+                        "deliveryMethod",
+                        "deliveryEmail",
+                        "deliveryAddress",
+                        "feeCents",
+                        "status",
+                        "receivedAt",
+                        "receivedByName",
+                        "preparingAt",
+                        "preparingByName",
+                        "readyAt",
+                        "readyByName",
+                        "manualNote",
+                        "diplomaFileId",
+                        "deliveredAt",
+                        "deliveredByName",
+                        "identityCheckNote",
+                        "paymentMethod",
+                        "paidAt",
+                        "rejectedAt",
+                        "rejectedByName",
+                        "rejectionReason",
+                        "actions",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/prospects/alumni-document-students": {
+      "get": {
+        "operationId": "listAlumniDocumentStudents",
+        "summary": "Mezun belge talebi açılabilecek öğrenciler",
+        "tags": [
+          "prospects"
+        ],
+        "description": "Kaydı pasif (mezun ya da ayrılmış) öğrenciler, ada göre: kayıt durumu, mezuniyet ya da ayrılış günü, son sınıf, bugün reşit olup olmadığı (doğum tarihi bilinmiyorsa `null`) ve veli kaydına bağlı velileri (velayet, iletişim kısıtı). Kimlik numarası ve doğum tarihi dönmez. Roller: `yonetici`, `onburo` (diğerleri 403). Modül `crm`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Adda ya da okul numarasında arama"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "schoolNumber": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "graduated",
+                              "withdrawn"
+                            ]
+                          },
+                          "leftDate": {
+                            "description": "Mezuniyet ya da ayrılış günü",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "lastClassName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "adult": {
+                            "description": "Bugün reşit mi; doğum tarihi bilinmiyorsa `null` (reşit sayılır, K-328)",
+                            "type": [
+                              "boolean",
+                              "null"
+                            ]
+                          },
+                          "guardians": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "parentId": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "custody": {
+                                  "type": "string",
+                                  "enum": [
+                                    "full",
+                                    "joint",
+                                    "none"
+                                  ]
+                                },
+                                "contactRestricted": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "parentId",
+                                "name",
+                                "custody",
+                                "contactRestricted"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "schoolNumber",
+                          "status",
+                          "leftDate",
+                          "lastClassName",
+                          "adult",
+                          "guardians"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/prospects/alumni-document-fees": {
+      "get": {
+        "operationId": "getAlumniDocumentFees",
+        "summary": "Mezun belge ücretleri",
+        "tags": [
+          "prospects"
+        ],
+        "description": "Belge türü başına ücret (kuruş); ayarlanmamış tür ücretsizdir (K-329). Roller: `yonetici`, `onburo` (diğerleri 403). Modül `crm`.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "education_certificate": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "transcript": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "diploma_copy": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "updatedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "education_certificate",
+                        "transcript",
+                        "diploma_copy",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateAlumniDocumentFees",
+        "summary": "Mezun belge ücretlerini değiştir",
+        "tags": [
+          "prospects"
+        ],
+        "description": "Gönderilen belge türlerinin belge başı ücretini (0–1.000.000 kuruş) yazar; açılmış taleplerin dondurulmuş ücreti değişmez (K-329). Denetim `alumni_document_fees.update` (alan adları). Rol: `yonetici` (ön büro 403). Modül `crm`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "education_certificate": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000000
+                  },
+                  "transcript": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000000
+                  },
+                  "diploma_copy": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000000
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "education_certificate": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "transcript": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "diploma_copy": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "updatedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "education_certificate",
+                        "transcript",
+                        "diploma_copy",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/prospects/alumni-document-requests/{requestId}": {
+      "get": {
+        "operationId": "getAlumniDocumentRequest",
+        "summary": "Mezun belge talebi ayrıntısı",
+        "tags": [
+          "prospects"
+        ],
+        "description": "Talep, durum izi (kim, ne zaman), belge numarası, ödendi işareti ve yapılabilecek işlemler. Olmayan ya da başka kurumun talebi 404. Roller: `yonetici`, `onburo` (diğerleri 403). Modül `crm`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "requestId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "documentNumber": {
+                          "description": "Yıl bazlı sıralı belge numarası (`MB-2026-0001`); hazır olunca verilir",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "documentType": {
+                          "type": "string",
+                          "enum": [
+                            "education_certificate",
+                            "transcript",
+                            "diploma_copy"
+                          ]
+                        },
+                        "copies": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "channel": {
+                          "type": "string",
+                          "enum": [
+                            "in_person",
+                            "phone",
+                            "email",
+                            "petition"
+                          ],
+                          "description": "Talebin geliş yolu"
+                        },
+                        "requesterKind": {
+                          "type": "string",
+                          "enum": [
+                            "self",
+                            "guardian",
+                            "proxy"
+                          ]
+                        },
+                        "requesterName": {
+                          "type": "string",
+                          "description": "Talep edenin adı (talep anının kopyası)"
+                        },
+                        "guardianParentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "authorizationFileId": {
+                          "description": "Vekâletname ya da yazılı rıza dosyası; `GET /files/{fileId}/url` ile açılır",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "deliveryMethod": {
+                          "type": "string",
+                          "enum": [
+                            "in_person",
+                            "email",
+                            "cargo"
+                          ]
+                        },
+                        "deliveryEmail": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "deliveryAddress": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "feeCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Dondurulmuş ücret (belge başı ücret × adet, kuruş)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "received",
+                            "preparing",
+                            "ready",
+                            "delivered",
+                            "rejected"
+                          ]
+                        },
+                        "receivedAt": {
+                          "type": "string"
+                        },
+                        "receivedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "preparingAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "preparingByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "readyAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "readyByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "manualNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "diplomaFileId": {
+                          "description": "Diploma örneğinin taranmış dosyası",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "deliveredAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "deliveredByName": {
+                          "description": "Teslim eden ve kimliği kontrol eden personel",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "identityCheckNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "paymentMethod": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "cash",
+                                "card",
+                                "transfer"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "paidAt": {
+                          "description": "Ödendi işaretinin anı (ücretli teslim)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "actions": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "start",
+                              "ready",
+                              "deliver",
+                              "reject"
+                            ]
+                          },
+                          "description": "Talebin bu durumda yapılabilecek işlemleri"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "documentNumber",
+                        "studentId",
+                        "studentName",
+                        "documentType",
+                        "copies",
+                        "channel",
+                        "requesterKind",
+                        "requesterName",
+                        "guardianParentId",
+                        "authorizationFileId",
+                        "deliveryMethod",
+                        "deliveryEmail",
+                        "deliveryAddress",
+                        "feeCents",
+                        "status",
+                        "receivedAt",
+                        "receivedByName",
+                        "preparingAt",
+                        "preparingByName",
+                        "readyAt",
+                        "readyByName",
+                        "manualNote",
+                        "diplomaFileId",
+                        "deliveredAt",
+                        "deliveredByName",
+                        "identityCheckNote",
+                        "paymentMethod",
+                        "paidAt",
+                        "rejectedAt",
+                        "rejectedByName",
+                        "rejectionReason",
+                        "actions",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/prospects/alumni-document-requests/{requestId}/document": {
+      "get": {
+        "operationId": "getAlumniDocument",
+        "summary": "Mezun belgesinin PDF verisi",
+        "tags": [
+          "prospects"
+        ],
+        "description": "Hazır ya da teslim edilmiş öğrenim belgesi ve not dökümünün dondurulmuş içeriği, numarası ve hazırlayanın notu; PDF web'de üretilir. Kimlik numarası ve doğum tarihi yoktur. Her istek denetime `alumni_document.issue` olarak yazılır (yalnız alan adları). Diploma örneği 422 `alumni_document_no_pdf`, hazır olmayan ya da reddedilen talep 422 `alumni_document_not_ready`, olmayan ya da başka kurumun talebi 404. Roller: `yonetici`, `onburo` (diğerleri 403). Modül `crm`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "requestId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "documentNumber": {
+                          "type": "string"
+                        },
+                        "documentType": {
+                          "type": "string",
+                          "enum": [
+                            "education_certificate",
+                            "transcript",
+                            "diploma_copy"
+                          ]
+                        },
+                        "copies": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "issuedAt": {
+                          "type": "string",
+                          "description": "Belgenin hazır olduğu an (UTC); belgede Europe/Istanbul günü"
+                        },
+                        "manualNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "content": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "education_certificate"
+                                  ]
+                                },
+                                "institutionName": {
+                                  "type": "string"
+                                },
+                                "institutionType": {
+                                  "type": "string",
+                                  "enum": [
+                                    "school",
+                                    "language_school"
+                                  ]
+                                },
+                                "learnerName": {
+                                  "type": "string"
+                                },
+                                "schoolNumber": {
+                                  "description": "Okul numarası; kayıtta yoksa `null`",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "enrolledDate": {
+                                  "description": "Kayıt günü (`YYYY-MM-DD`); bilinmiyorsa `null`",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "leftDate": {
+                                  "description": "Mezuniyet ya da ayrılış günü; bilinmiyorsa `null`",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "outcome": {
+                                  "type": "string",
+                                  "enum": [
+                                    "graduated",
+                                    "withdrawn"
+                                  ],
+                                  "description": "Mezun ya da ayrıldı"
+                                },
+                                "lastClassName": {
+                                  "description": "Son sınıfı; okunamıyorsa `null`",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "institutionName",
+                                "institutionType",
+                                "learnerName",
+                                "schoolNumber",
+                                "enrolledDate",
+                                "leftDate",
+                                "outcome",
+                                "lastClassName"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "transcript"
+                                  ]
+                                },
+                                "institutionName": {
+                                  "type": "string"
+                                },
+                                "institutionType": {
+                                  "type": "string",
+                                  "enum": [
+                                    "school",
+                                    "language_school"
+                                  ]
+                                },
+                                "learnerName": {
+                                  "type": "string"
+                                },
+                                "schoolNumber": {
+                                  "description": "Okul numarası; kayıtta yoksa `null`",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "enrolledDate": {
+                                  "description": "Kayıt günü (`YYYY-MM-DD`); bilinmiyorsa `null`",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "leftDate": {
+                                  "description": "Mezuniyet ya da ayrılış günü; bilinmiyorsa `null`",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "outcome": {
+                                  "type": "string",
+                                  "enum": [
+                                    "graduated",
+                                    "withdrawn"
+                                  ],
+                                  "description": "Mezun ya da ayrıldı"
+                                },
+                                "lastClassName": {
+                                  "description": "Son sınıfı; okunamıyorsa `null`",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "terms": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "className": {
+                                        "type": "string"
+                                      },
+                                      "term": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "subjects": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "name": {
+                                              "type": "string"
+                                            },
+                                            "average": {
+                                              "type": "integer",
+                                              "minimum": -9007199254740991,
+                                              "maximum": 9007199254740991,
+                                              "description": "Dönem ortalaması (0–100, tam sayıya yuvarlanır)"
+                                            },
+                                            "count": {
+                                              "type": "integer",
+                                              "minimum": -9007199254740991,
+                                              "maximum": 9007199254740991,
+                                              "description": "Ortalamaya giren not sayısı"
+                                            }
+                                          },
+                                          "required": [
+                                            "name",
+                                            "average",
+                                            "count"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      }
+                                    },
+                                    "required": [
+                                      "className",
+                                      "term",
+                                      "subjects"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "description": "Okulda sınıf ve dönem başına ders ortalamaları; dil okulunda boş"
+                                },
+                                "courses": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "level": {
+                                        "type": "string"
+                                      },
+                                      "groupName": {
+                                        "type": "string"
+                                      },
+                                      "startDate": {
+                                        "type": "string"
+                                      },
+                                      "endDate": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "name",
+                                      "level",
+                                      "groupName",
+                                      "startDate",
+                                      "endDate"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "description": "Dil okulunda katıldığı kurlar, başlangıç sırasıyla; okulda boş"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "institutionName",
+                                "institutionType",
+                                "learnerName",
+                                "schoolNumber",
+                                "enrolledDate",
+                                "leftDate",
+                                "outcome",
+                                "lastClassName",
+                                "terms",
+                                "courses"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "requestId",
+                        "documentNumber",
+                        "documentType",
+                        "copies",
+                        "issuedAt",
+                        "manualNote",
+                        "content"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/prospects/alumni-document-requests/{requestId}/start": {
+      "post": {
+        "operationId": "startAlumniDocumentRequest",
+        "summary": "Mezun belge talebini hazırlamaya başla",
+        "tags": [
+          "prospects"
+        ],
+        "description": "Alınan talebi hazırlanıyor durumuna geçirir. Alındı durumunda değilse 422 `alumni_document_invalid_status`. Olmayan ya da başka kurumun talebi 404. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo` (diğerleri 403). Modül `crm`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "requestId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "documentNumber": {
+                          "description": "Yıl bazlı sıralı belge numarası (`MB-2026-0001`); hazır olunca verilir",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "documentType": {
+                          "type": "string",
+                          "enum": [
+                            "education_certificate",
+                            "transcript",
+                            "diploma_copy"
+                          ]
+                        },
+                        "copies": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "channel": {
+                          "type": "string",
+                          "enum": [
+                            "in_person",
+                            "phone",
+                            "email",
+                            "petition"
+                          ],
+                          "description": "Talebin geliş yolu"
+                        },
+                        "requesterKind": {
+                          "type": "string",
+                          "enum": [
+                            "self",
+                            "guardian",
+                            "proxy"
+                          ]
+                        },
+                        "requesterName": {
+                          "type": "string",
+                          "description": "Talep edenin adı (talep anının kopyası)"
+                        },
+                        "guardianParentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "authorizationFileId": {
+                          "description": "Vekâletname ya da yazılı rıza dosyası; `GET /files/{fileId}/url` ile açılır",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "deliveryMethod": {
+                          "type": "string",
+                          "enum": [
+                            "in_person",
+                            "email",
+                            "cargo"
+                          ]
+                        },
+                        "deliveryEmail": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "deliveryAddress": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "feeCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Dondurulmuş ücret (belge başı ücret × adet, kuruş)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "received",
+                            "preparing",
+                            "ready",
+                            "delivered",
+                            "rejected"
+                          ]
+                        },
+                        "receivedAt": {
+                          "type": "string"
+                        },
+                        "receivedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "preparingAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "preparingByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "readyAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "readyByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "manualNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "diplomaFileId": {
+                          "description": "Diploma örneğinin taranmış dosyası",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "deliveredAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "deliveredByName": {
+                          "description": "Teslim eden ve kimliği kontrol eden personel",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "identityCheckNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "paymentMethod": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "cash",
+                                "card",
+                                "transfer"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "paidAt": {
+                          "description": "Ödendi işaretinin anı (ücretli teslim)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "actions": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "start",
+                              "ready",
+                              "deliver",
+                              "reject"
+                            ]
+                          },
+                          "description": "Talebin bu durumda yapılabilecek işlemleri"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "documentNumber",
+                        "studentId",
+                        "studentName",
+                        "documentType",
+                        "copies",
+                        "channel",
+                        "requesterKind",
+                        "requesterName",
+                        "guardianParentId",
+                        "authorizationFileId",
+                        "deliveryMethod",
+                        "deliveryEmail",
+                        "deliveryAddress",
+                        "feeCents",
+                        "status",
+                        "receivedAt",
+                        "receivedByName",
+                        "preparingAt",
+                        "preparingByName",
+                        "readyAt",
+                        "readyByName",
+                        "manualNote",
+                        "diplomaFileId",
+                        "deliveredAt",
+                        "deliveredByName",
+                        "identityCheckNote",
+                        "paymentMethod",
+                        "paidAt",
+                        "rejectedAt",
+                        "rejectedByName",
+                        "rejectionReason",
+                        "actions",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/prospects/alumni-document-requests/{requestId}/ready": {
+      "post": {
+        "operationId": "markAlumniDocumentReady",
+        "summary": "Mezun belgesini hazır işaretle",
+        "tags": [
+          "prospects"
+        ],
+        "description": "Hazırlanan talebi hazır yapar ve yılın sıradaki belge numarasını (`MB-<yıl>-<sıra>`, Europe/Istanbul yılı) verir. Öğrenim belgesi ve not dökümünde içerik kayıtlardan üretilip dondurulur (kurum, ad, okul numarası, kayıt ve ayrılış günü, son sınıf; not dökümünde sınıf ve dönem başına ders ortalaması, dil okulunda kurlar); dosya verilirse 422 `alumni_document_file_not_allowed`, not dökümünde kayıt yoksa `manualNote` zorunlu (422 `alumni_document_transcript_empty`). Diploma örneğinde taranmış PDF (`fileId`, amaç `document`, aynı kullanıcının yüklediği bağsız dosya) zorunlu (422 `alumni_document_file_required`) ve talebe bağlanır; resmî sisteme gönderim yoktur (IST-143). Öğrencinin kaydı yeniden aktifse 422 `alumni_document_student_active`. Hazırlanıyor durumunda değilse 422 `alumni_document_invalid_status`. Olmayan ya da başka kurumun talebi 404. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo` (diğerleri 403). Modül `crm`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "manualNote": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 1000,
+                            "description": "Kayıtlarda olmayan bilgi (ör. eski yılların notlarının kaynağı); belgeye yazılır"
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              ""
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "fileId": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          {
+                            "type": "string",
+                            "enum": [
+                              ""
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "requestId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "documentNumber": {
+                          "description": "Yıl bazlı sıralı belge numarası (`MB-2026-0001`); hazır olunca verilir",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "documentType": {
+                          "type": "string",
+                          "enum": [
+                            "education_certificate",
+                            "transcript",
+                            "diploma_copy"
+                          ]
+                        },
+                        "copies": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "channel": {
+                          "type": "string",
+                          "enum": [
+                            "in_person",
+                            "phone",
+                            "email",
+                            "petition"
+                          ],
+                          "description": "Talebin geliş yolu"
+                        },
+                        "requesterKind": {
+                          "type": "string",
+                          "enum": [
+                            "self",
+                            "guardian",
+                            "proxy"
+                          ]
+                        },
+                        "requesterName": {
+                          "type": "string",
+                          "description": "Talep edenin adı (talep anının kopyası)"
+                        },
+                        "guardianParentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "authorizationFileId": {
+                          "description": "Vekâletname ya da yazılı rıza dosyası; `GET /files/{fileId}/url` ile açılır",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "deliveryMethod": {
+                          "type": "string",
+                          "enum": [
+                            "in_person",
+                            "email",
+                            "cargo"
+                          ]
+                        },
+                        "deliveryEmail": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "deliveryAddress": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "feeCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Dondurulmuş ücret (belge başı ücret × adet, kuruş)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "received",
+                            "preparing",
+                            "ready",
+                            "delivered",
+                            "rejected"
+                          ]
+                        },
+                        "receivedAt": {
+                          "type": "string"
+                        },
+                        "receivedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "preparingAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "preparingByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "readyAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "readyByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "manualNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "diplomaFileId": {
+                          "description": "Diploma örneğinin taranmış dosyası",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "deliveredAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "deliveredByName": {
+                          "description": "Teslim eden ve kimliği kontrol eden personel",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "identityCheckNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "paymentMethod": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "cash",
+                                "card",
+                                "transfer"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "paidAt": {
+                          "description": "Ödendi işaretinin anı (ücretli teslim)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "actions": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "start",
+                              "ready",
+                              "deliver",
+                              "reject"
+                            ]
+                          },
+                          "description": "Talebin bu durumda yapılabilecek işlemleri"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "documentNumber",
+                        "studentId",
+                        "studentName",
+                        "documentType",
+                        "copies",
+                        "channel",
+                        "requesterKind",
+                        "requesterName",
+                        "guardianParentId",
+                        "authorizationFileId",
+                        "deliveryMethod",
+                        "deliveryEmail",
+                        "deliveryAddress",
+                        "feeCents",
+                        "status",
+                        "receivedAt",
+                        "receivedByName",
+                        "preparingAt",
+                        "preparingByName",
+                        "readyAt",
+                        "readyByName",
+                        "manualNote",
+                        "diplomaFileId",
+                        "deliveredAt",
+                        "deliveredByName",
+                        "identityCheckNote",
+                        "paymentMethod",
+                        "paidAt",
+                        "rejectedAt",
+                        "rejectedByName",
+                        "rejectionReason",
+                        "actions",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/prospects/alumni-document-requests/{requestId}/deliver": {
+      "post": {
+        "operationId": "deliverAlumniDocument",
+        "summary": "Mezun belgesini teslim et",
+        "tags": [
+          "prospects"
+        ],
+        "description": "Hazır belgeyi teslim edildi yapar. Kimlik doğrulama notu (5–500 karakter) zorunludur; kimliği kontrol eden oturumdaki personeldir. Ücretli talepte ödeme yöntemi (`cash`, `card`, `transfer`) seçilmeden 422 `alumni_document_payment_required`; ödendi işareti teslimle düşer, tahsilat kaydı açılmaz (K-329). Hazır değilse 422 `alumni_document_invalid_status`. Olmayan ya da başka kurumun talebi 404. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo` (diğerleri 403). Modül `crm`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "identityCheckNote": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500
+                  },
+                  "paymentMethod": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "cash",
+                          "card",
+                          "transfer"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "identityCheckNote"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "requestId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "documentNumber": {
+                          "description": "Yıl bazlı sıralı belge numarası (`MB-2026-0001`); hazır olunca verilir",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "documentType": {
+                          "type": "string",
+                          "enum": [
+                            "education_certificate",
+                            "transcript",
+                            "diploma_copy"
+                          ]
+                        },
+                        "copies": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "channel": {
+                          "type": "string",
+                          "enum": [
+                            "in_person",
+                            "phone",
+                            "email",
+                            "petition"
+                          ],
+                          "description": "Talebin geliş yolu"
+                        },
+                        "requesterKind": {
+                          "type": "string",
+                          "enum": [
+                            "self",
+                            "guardian",
+                            "proxy"
+                          ]
+                        },
+                        "requesterName": {
+                          "type": "string",
+                          "description": "Talep edenin adı (talep anının kopyası)"
+                        },
+                        "guardianParentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "authorizationFileId": {
+                          "description": "Vekâletname ya da yazılı rıza dosyası; `GET /files/{fileId}/url` ile açılır",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "deliveryMethod": {
+                          "type": "string",
+                          "enum": [
+                            "in_person",
+                            "email",
+                            "cargo"
+                          ]
+                        },
+                        "deliveryEmail": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "deliveryAddress": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "feeCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Dondurulmuş ücret (belge başı ücret × adet, kuruş)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "received",
+                            "preparing",
+                            "ready",
+                            "delivered",
+                            "rejected"
+                          ]
+                        },
+                        "receivedAt": {
+                          "type": "string"
+                        },
+                        "receivedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "preparingAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "preparingByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "readyAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "readyByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "manualNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "diplomaFileId": {
+                          "description": "Diploma örneğinin taranmış dosyası",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "deliveredAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "deliveredByName": {
+                          "description": "Teslim eden ve kimliği kontrol eden personel",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "identityCheckNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "paymentMethod": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "cash",
+                                "card",
+                                "transfer"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "paidAt": {
+                          "description": "Ödendi işaretinin anı (ücretli teslim)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "actions": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "start",
+                              "ready",
+                              "deliver",
+                              "reject"
+                            ]
+                          },
+                          "description": "Talebin bu durumda yapılabilecek işlemleri"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "documentNumber",
+                        "studentId",
+                        "studentName",
+                        "documentType",
+                        "copies",
+                        "channel",
+                        "requesterKind",
+                        "requesterName",
+                        "guardianParentId",
+                        "authorizationFileId",
+                        "deliveryMethod",
+                        "deliveryEmail",
+                        "deliveryAddress",
+                        "feeCents",
+                        "status",
+                        "receivedAt",
+                        "receivedByName",
+                        "preparingAt",
+                        "preparingByName",
+                        "readyAt",
+                        "readyByName",
+                        "manualNote",
+                        "diplomaFileId",
+                        "deliveredAt",
+                        "deliveredByName",
+                        "identityCheckNote",
+                        "paymentMethod",
+                        "paidAt",
+                        "rejectedAt",
+                        "rejectedByName",
+                        "rejectionReason",
+                        "actions",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/prospects/alumni-document-requests/{requestId}/reject": {
+      "post": {
+        "operationId": "rejectAlumniDocumentRequest",
+        "summary": "Mezun belge talebini reddet",
+        "tags": [
+          "prospects"
+        ],
+        "description": "Teslim edilmemiş talebi gerekçeyle (5–500 karakter) reddeder (ör. talep edenin yetkisi doğrulanamadı). Teslim edilmiş ya da reddedilmiş talep 422 `alumni_document_invalid_status`. Olmayan ya da başka kurumun talebi 404. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo` (diğerleri 403). Modül `crm`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "requestId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "documentNumber": {
+                          "description": "Yıl bazlı sıralı belge numarası (`MB-2026-0001`); hazır olunca verilir",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "documentType": {
+                          "type": "string",
+                          "enum": [
+                            "education_certificate",
+                            "transcript",
+                            "diploma_copy"
+                          ]
+                        },
+                        "copies": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "channel": {
+                          "type": "string",
+                          "enum": [
+                            "in_person",
+                            "phone",
+                            "email",
+                            "petition"
+                          ],
+                          "description": "Talebin geliş yolu"
+                        },
+                        "requesterKind": {
+                          "type": "string",
+                          "enum": [
+                            "self",
+                            "guardian",
+                            "proxy"
+                          ]
+                        },
+                        "requesterName": {
+                          "type": "string",
+                          "description": "Talep edenin adı (talep anının kopyası)"
+                        },
+                        "guardianParentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "authorizationFileId": {
+                          "description": "Vekâletname ya da yazılı rıza dosyası; `GET /files/{fileId}/url` ile açılır",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "deliveryMethod": {
+                          "type": "string",
+                          "enum": [
+                            "in_person",
+                            "email",
+                            "cargo"
+                          ]
+                        },
+                        "deliveryEmail": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "deliveryAddress": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "feeCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Dondurulmuş ücret (belge başı ücret × adet, kuruş)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "received",
+                            "preparing",
+                            "ready",
+                            "delivered",
+                            "rejected"
+                          ]
+                        },
+                        "receivedAt": {
+                          "type": "string"
+                        },
+                        "receivedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "preparingAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "preparingByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "readyAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "readyByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "manualNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "diplomaFileId": {
+                          "description": "Diploma örneğinin taranmış dosyası",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "deliveredAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "deliveredByName": {
+                          "description": "Teslim eden ve kimliği kontrol eden personel",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "identityCheckNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "paymentMethod": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "cash",
+                                "card",
+                                "transfer"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "paidAt": {
+                          "description": "Ödendi işaretinin anı (ücretli teslim)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "actions": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "start",
+                              "ready",
+                              "deliver",
+                              "reject"
+                            ]
+                          },
+                          "description": "Talebin bu durumda yapılabilecek işlemleri"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "documentNumber",
+                        "studentId",
+                        "studentName",
+                        "documentType",
+                        "copies",
+                        "channel",
+                        "requesterKind",
+                        "requesterName",
+                        "guardianParentId",
+                        "authorizationFileId",
+                        "deliveryMethod",
+                        "deliveryEmail",
+                        "deliveryAddress",
+                        "feeCents",
+                        "status",
+                        "receivedAt",
+                        "receivedByName",
+                        "preparingAt",
+                        "preparingByName",
+                        "readyAt",
+                        "readyByName",
+                        "manualNote",
+                        "diplomaFileId",
+                        "deliveredAt",
+                        "deliveredByName",
+                        "identityCheckNote",
+                        "paymentMethod",
+                        "paidAt",
+                        "rejectedAt",
+                        "rejectedByName",
+                        "rejectionReason",
+                        "actions",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

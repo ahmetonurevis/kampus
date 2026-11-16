@@ -7372,6 +7372,194 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/prospects/alumni-document-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Mezun belge taleplerini listele
+         * @description Yeni alınan önce; durum, belge türü ve öğrenciyle süzülür, `q` öğrencinin ya da talep edenin adında ve belge numarasında arar. Yanıtta talep edenin adı, teslim iletişimi ve kimlik notu vardır (kişisel veri; loglanmaz). Roller: `yonetici`, `onburo` (diğerleri 403). Modül `crm`.
+         */
+        get: operations["listAlumniDocumentRequests"];
+        put?: never;
+        /**
+         * Mezun belge talebi kaydet
+         * @description Telefon, e-posta, dilekçe ya da şahsen gelen talebi alındı durumunda kaydeder (DOM-KAY-044, K-328). Öğrenci kurumun mezun ya da ayrılmış öğrencisi olmalı: aktif öğrenci 422 `alumni_document_student_active` (öğrenci belgesi DOM-KAY-027), olmayan ya da başka kurumun öğrencisi 404. Diploma örneği yalnız okulda (422 `alumni_document_type_unavailable`) ve mezuna (422 `alumni_document_not_graduated`). Talep eden: kendisi (reşit değilse 422 `alumni_document_requester_minor`), velisi (öğrenciye bağlı veli kaydı; bağ yoksa 422 `alumni_document_guardian_unknown`, velayetsiz ya da iletişimi kısıtlıysa 422 `alumni_document_guardian_not_authorized`, öğrenci reşitse ya da yaşı bilinmiyorsa yazılı rıza dosyası yoksa 422 `alumni_document_consent_required`) ya da vekili (ad ve vekâletname zorunlu). Dosya (`authorizationFileId`, amaç `document`, aynı kullanıcının yüklediği bağsız dosya) talebe bağlanır. E-posta yolunda e-posta, kargo yolunda adres zorunlu. Ücret kurum ayarından belge başı × adet olarak dondurulur. `Idempotency-Key` zorunlu. Roller: `yonetici`, `onburo` (diğerleri 403). Modül `crm`.
+         */
+        post: operations["createAlumniDocumentRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prospects/alumni-document-students": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Mezun belge talebi açılabilecek öğrenciler
+         * @description Kaydı pasif (mezun ya da ayrılmış) öğrenciler, ada göre: kayıt durumu, mezuniyet ya da ayrılış günü, son sınıf, bugün reşit olup olmadığı (doğum tarihi bilinmiyorsa `null`) ve veli kaydına bağlı velileri (velayet, iletişim kısıtı). Kimlik numarası ve doğum tarihi dönmez. Roller: `yonetici`, `onburo` (diğerleri 403). Modül `crm`.
+         */
+        get: operations["listAlumniDocumentStudents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prospects/alumni-document-fees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Mezun belge ücretleri
+         * @description Belge türü başına ücret (kuruş); ayarlanmamış tür ücretsizdir (K-329). Roller: `yonetici`, `onburo` (diğerleri 403). Modül `crm`.
+         */
+        get: operations["getAlumniDocumentFees"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Mezun belge ücretlerini değiştir
+         * @description Gönderilen belge türlerinin belge başı ücretini (0–1.000.000 kuruş) yazar; açılmış taleplerin dondurulmuş ücreti değişmez (K-329). Denetim `alumni_document_fees.update` (alan adları). Rol: `yonetici` (ön büro 403). Modül `crm`.
+         */
+        patch: operations["updateAlumniDocumentFees"];
+        trace?: never;
+    };
+    "/api/v1/prospects/alumni-document-requests/{requestId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Mezun belge talebi ayrıntısı
+         * @description Talep, durum izi (kim, ne zaman), belge numarası, ödendi işareti ve yapılabilecek işlemler. Olmayan ya da başka kurumun talebi 404. Roller: `yonetici`, `onburo` (diğerleri 403). Modül `crm`.
+         */
+        get: operations["getAlumniDocumentRequest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prospects/alumni-document-requests/{requestId}/document": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Mezun belgesinin PDF verisi
+         * @description Hazır ya da teslim edilmiş öğrenim belgesi ve not dökümünün dondurulmuş içeriği, numarası ve hazırlayanın notu; PDF web'de üretilir. Kimlik numarası ve doğum tarihi yoktur. Her istek denetime `alumni_document.issue` olarak yazılır (yalnız alan adları). Diploma örneği 422 `alumni_document_no_pdf`, hazır olmayan ya da reddedilen talep 422 `alumni_document_not_ready`, olmayan ya da başka kurumun talebi 404. Roller: `yonetici`, `onburo` (diğerleri 403). Modül `crm`.
+         */
+        get: operations["getAlumniDocument"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prospects/alumni-document-requests/{requestId}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mezun belge talebini hazırlamaya başla
+         * @description Alınan talebi hazırlanıyor durumuna geçirir. Alındı durumunda değilse 422 `alumni_document_invalid_status`. Olmayan ya da başka kurumun talebi 404. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo` (diğerleri 403). Modül `crm`.
+         */
+        post: operations["startAlumniDocumentRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prospects/alumni-document-requests/{requestId}/ready": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mezun belgesini hazır işaretle
+         * @description Hazırlanan talebi hazır yapar ve yılın sıradaki belge numarasını (`MB-<yıl>-<sıra>`, Europe/Istanbul yılı) verir. Öğrenim belgesi ve not dökümünde içerik kayıtlardan üretilip dondurulur (kurum, ad, okul numarası, kayıt ve ayrılış günü, son sınıf; not dökümünde sınıf ve dönem başına ders ortalaması, dil okulunda kurlar); dosya verilirse 422 `alumni_document_file_not_allowed`, not dökümünde kayıt yoksa `manualNote` zorunlu (422 `alumni_document_transcript_empty`). Diploma örneğinde taranmış PDF (`fileId`, amaç `document`, aynı kullanıcının yüklediği bağsız dosya) zorunlu (422 `alumni_document_file_required`) ve talebe bağlanır; resmî sisteme gönderim yoktur (IST-143). Öğrencinin kaydı yeniden aktifse 422 `alumni_document_student_active`. Hazırlanıyor durumunda değilse 422 `alumni_document_invalid_status`. Olmayan ya da başka kurumun talebi 404. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo` (diğerleri 403). Modül `crm`.
+         */
+        post: operations["markAlumniDocumentReady"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prospects/alumni-document-requests/{requestId}/deliver": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mezun belgesini teslim et
+         * @description Hazır belgeyi teslim edildi yapar. Kimlik doğrulama notu (5–500 karakter) zorunludur; kimliği kontrol eden oturumdaki personeldir. Ücretli talepte ödeme yöntemi (`cash`, `card`, `transfer`) seçilmeden 422 `alumni_document_payment_required`; ödendi işareti teslimle düşer, tahsilat kaydı açılmaz (K-329). Hazır değilse 422 `alumni_document_invalid_status`. Olmayan ya da başka kurumun talebi 404. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo` (diğerleri 403). Modül `crm`.
+         */
+        post: operations["deliverAlumniDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prospects/alumni-document-requests/{requestId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mezun belge talebini reddet
+         * @description Teslim edilmemiş talebi gerekçeyle (5–500 karakter) reddeder (ör. talep edenin yetkisi doğrulanamadı). Teslim edilmiş ya da reddedilmiş talep 422 `alumni_document_invalid_status`. Olmayan ya da başka kurumun talebi 404. `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Roller: `yonetici`, `onburo` (diğerleri 403). Modül `crm`.
+         */
+        post: operations["rejectAlumniDocumentRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -78369,6 +78557,1613 @@ export interface operations {
                                     afterCents: number | null;
                                 }[] | null;
                             }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listAlumniDocumentRequests: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Öğrencinin ya da talep edenin adında, belge numarasında (`MB-2026-0001`) arama */
+                q?: string;
+                status?: "received" | "preparing" | "ready" | "delivered" | "rejected";
+                documentType?: "education_certificate" | "transcript" | "diploma_copy";
+                /** @description Bu öğrencinin talepleri */
+                studentId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Yıl bazlı sıralı belge numarası (`MB-2026-0001`); hazır olunca verilir */
+                            documentNumber: string | null;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @enum {string} */
+                            documentType: "education_certificate" | "transcript" | "diploma_copy";
+                            copies: number;
+                            /**
+                             * @description Talebin geliş yolu
+                             * @enum {string}
+                             */
+                            channel: "in_person" | "phone" | "email" | "petition";
+                            /** @enum {string} */
+                            requesterKind: "self" | "guardian" | "proxy";
+                            /** @description Talep edenin adı (talep anının kopyası) */
+                            requesterName: string;
+                            guardianParentId: string | null;
+                            /** @description Vekâletname ya da yazılı rıza dosyası; `GET /files/{fileId}/url` ile açılır */
+                            authorizationFileId: string | null;
+                            /** @enum {string} */
+                            deliveryMethod: "in_person" | "email" | "cargo";
+                            deliveryEmail: string | null;
+                            deliveryAddress: string | null;
+                            /** @description Dondurulmuş ücret (belge başı ücret × adet, kuruş) */
+                            feeCents: number;
+                            /** @enum {string} */
+                            status: "received" | "preparing" | "ready" | "delivered" | "rejected";
+                            receivedAt: string;
+                            receivedByName: string | null;
+                            preparingAt: string | null;
+                            preparingByName: string | null;
+                            readyAt: string | null;
+                            readyByName: string | null;
+                            manualNote: string | null;
+                            /** @description Diploma örneğinin taranmış dosyası */
+                            diplomaFileId: string | null;
+                            deliveredAt: string | null;
+                            /** @description Teslim eden ve kimliği kontrol eden personel */
+                            deliveredByName: string | null;
+                            identityCheckNote: string | null;
+                            paymentMethod: ("cash" | "card" | "transfer") | null;
+                            /** @description Ödendi işaretinin anı (ücretli teslim) */
+                            paidAt: string | null;
+                            rejectedAt: string | null;
+                            rejectedByName: string | null;
+                            rejectionReason: string | null;
+                            /** @description Talebin bu durumda yapılabilecek işlemleri */
+                            actions: ("start" | "ready" | "deliver" | "reject")[];
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createAlumniDocumentRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    studentId: string;
+                    /** @enum {string} */
+                    documentType: "education_certificate" | "transcript" | "diploma_copy";
+                    copies: number;
+                    /** @enum {string} */
+                    channel: "in_person" | "phone" | "email" | "petition";
+                    /** @enum {string} */
+                    requesterKind: "self" | "guardian" | "proxy";
+                    guardianParentId?: string | "" | null;
+                    proxyName?: string | "" | null;
+                    authorizationFileId?: string | "" | null;
+                    /** @enum {string} */
+                    deliveryMethod: "in_person" | "email" | "cargo";
+                    deliveryEmail?: string | "" | null;
+                    deliveryAddress?: string | "" | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Yıl bazlı sıralı belge numarası (`MB-2026-0001`); hazır olunca verilir */
+                            documentNumber: string | null;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @enum {string} */
+                            documentType: "education_certificate" | "transcript" | "diploma_copy";
+                            copies: number;
+                            /**
+                             * @description Talebin geliş yolu
+                             * @enum {string}
+                             */
+                            channel: "in_person" | "phone" | "email" | "petition";
+                            /** @enum {string} */
+                            requesterKind: "self" | "guardian" | "proxy";
+                            /** @description Talep edenin adı (talep anının kopyası) */
+                            requesterName: string;
+                            guardianParentId: string | null;
+                            /** @description Vekâletname ya da yazılı rıza dosyası; `GET /files/{fileId}/url` ile açılır */
+                            authorizationFileId: string | null;
+                            /** @enum {string} */
+                            deliveryMethod: "in_person" | "email" | "cargo";
+                            deliveryEmail: string | null;
+                            deliveryAddress: string | null;
+                            /** @description Dondurulmuş ücret (belge başı ücret × adet, kuruş) */
+                            feeCents: number;
+                            /** @enum {string} */
+                            status: "received" | "preparing" | "ready" | "delivered" | "rejected";
+                            receivedAt: string;
+                            receivedByName: string | null;
+                            preparingAt: string | null;
+                            preparingByName: string | null;
+                            readyAt: string | null;
+                            readyByName: string | null;
+                            manualNote: string | null;
+                            /** @description Diploma örneğinin taranmış dosyası */
+                            diplomaFileId: string | null;
+                            deliveredAt: string | null;
+                            /** @description Teslim eden ve kimliği kontrol eden personel */
+                            deliveredByName: string | null;
+                            identityCheckNote: string | null;
+                            paymentMethod: ("cash" | "card" | "transfer") | null;
+                            /** @description Ödendi işaretinin anı (ücretli teslim) */
+                            paidAt: string | null;
+                            rejectedAt: string | null;
+                            rejectedByName: string | null;
+                            rejectionReason: string | null;
+                            /** @description Talebin bu durumda yapılabilecek işlemleri */
+                            actions: ("start" | "ready" | "deliver" | "reject")[];
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listAlumniDocumentStudents: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Adda ya da okul numarasında arama */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            schoolNumber: string | null;
+                            /** @enum {string} */
+                            status: "graduated" | "withdrawn";
+                            /** @description Mezuniyet ya da ayrılış günü */
+                            leftDate: string | null;
+                            lastClassName: string | null;
+                            /** @description Bugün reşit mi; doğum tarihi bilinmiyorsa `null` (reşit sayılır, K-328) */
+                            adult: boolean | null;
+                            guardians: {
+                                parentId: string;
+                                name: string | null;
+                                /** @enum {string} */
+                                custody: "full" | "joint" | "none";
+                                contactRestricted: boolean;
+                            }[];
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getAlumniDocumentFees: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            education_certificate: number;
+                            transcript: number;
+                            diploma_copy: number;
+                            updatedAt: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateAlumniDocumentFees: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    education_certificate?: number;
+                    transcript?: number;
+                    diploma_copy?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            education_certificate: number;
+                            transcript: number;
+                            diploma_copy: number;
+                            updatedAt: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getAlumniDocumentRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Yıl bazlı sıralı belge numarası (`MB-2026-0001`); hazır olunca verilir */
+                            documentNumber: string | null;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @enum {string} */
+                            documentType: "education_certificate" | "transcript" | "diploma_copy";
+                            copies: number;
+                            /**
+                             * @description Talebin geliş yolu
+                             * @enum {string}
+                             */
+                            channel: "in_person" | "phone" | "email" | "petition";
+                            /** @enum {string} */
+                            requesterKind: "self" | "guardian" | "proxy";
+                            /** @description Talep edenin adı (talep anının kopyası) */
+                            requesterName: string;
+                            guardianParentId: string | null;
+                            /** @description Vekâletname ya da yazılı rıza dosyası; `GET /files/{fileId}/url` ile açılır */
+                            authorizationFileId: string | null;
+                            /** @enum {string} */
+                            deliveryMethod: "in_person" | "email" | "cargo";
+                            deliveryEmail: string | null;
+                            deliveryAddress: string | null;
+                            /** @description Dondurulmuş ücret (belge başı ücret × adet, kuruş) */
+                            feeCents: number;
+                            /** @enum {string} */
+                            status: "received" | "preparing" | "ready" | "delivered" | "rejected";
+                            receivedAt: string;
+                            receivedByName: string | null;
+                            preparingAt: string | null;
+                            preparingByName: string | null;
+                            readyAt: string | null;
+                            readyByName: string | null;
+                            manualNote: string | null;
+                            /** @description Diploma örneğinin taranmış dosyası */
+                            diplomaFileId: string | null;
+                            deliveredAt: string | null;
+                            /** @description Teslim eden ve kimliği kontrol eden personel */
+                            deliveredByName: string | null;
+                            identityCheckNote: string | null;
+                            paymentMethod: ("cash" | "card" | "transfer") | null;
+                            /** @description Ödendi işaretinin anı (ücretli teslim) */
+                            paidAt: string | null;
+                            rejectedAt: string | null;
+                            rejectedByName: string | null;
+                            rejectionReason: string | null;
+                            /** @description Talebin bu durumda yapılabilecek işlemleri */
+                            actions: ("start" | "ready" | "deliver" | "reject")[];
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getAlumniDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            requestId: string;
+                            documentNumber: string;
+                            /** @enum {string} */
+                            documentType: "education_certificate" | "transcript" | "diploma_copy";
+                            copies: number;
+                            /** @description Belgenin hazır olduğu an (UTC); belgede Europe/Istanbul günü */
+                            issuedAt: string;
+                            manualNote: string | null;
+                            content: {
+                                /** @enum {string} */
+                                kind: "education_certificate";
+                                institutionName: string;
+                                /** @enum {string} */
+                                institutionType: "school" | "language_school";
+                                learnerName: string;
+                                /** @description Okul numarası; kayıtta yoksa `null` */
+                                schoolNumber: string | null;
+                                /** @description Kayıt günü (`YYYY-MM-DD`); bilinmiyorsa `null` */
+                                enrolledDate: string | null;
+                                /** @description Mezuniyet ya da ayrılış günü; bilinmiyorsa `null` */
+                                leftDate: string | null;
+                                /**
+                                 * @description Mezun ya da ayrıldı
+                                 * @enum {string}
+                                 */
+                                outcome: "graduated" | "withdrawn";
+                                /** @description Son sınıfı; okunamıyorsa `null` */
+                                lastClassName: string | null;
+                            } | {
+                                /** @enum {string} */
+                                kind: "transcript";
+                                institutionName: string;
+                                /** @enum {string} */
+                                institutionType: "school" | "language_school";
+                                learnerName: string;
+                                /** @description Okul numarası; kayıtta yoksa `null` */
+                                schoolNumber: string | null;
+                                /** @description Kayıt günü (`YYYY-MM-DD`); bilinmiyorsa `null` */
+                                enrolledDate: string | null;
+                                /** @description Mezuniyet ya da ayrılış günü; bilinmiyorsa `null` */
+                                leftDate: string | null;
+                                /**
+                                 * @description Mezun ya da ayrıldı
+                                 * @enum {string}
+                                 */
+                                outcome: "graduated" | "withdrawn";
+                                /** @description Son sınıfı; okunamıyorsa `null` */
+                                lastClassName: string | null;
+                                /** @description Okulda sınıf ve dönem başına ders ortalamaları; dil okulunda boş */
+                                terms: {
+                                    className: string;
+                                    term: number;
+                                    subjects: {
+                                        name: string;
+                                        /** @description Dönem ortalaması (0–100, tam sayıya yuvarlanır) */
+                                        average: number;
+                                        /** @description Ortalamaya giren not sayısı */
+                                        count: number;
+                                    }[];
+                                }[];
+                                /** @description Dil okulunda katıldığı kurlar, başlangıç sırasıyla; okulda boş */
+                                courses: {
+                                    name: string;
+                                    level: string;
+                                    groupName: string;
+                                    startDate: string;
+                                    endDate: string;
+                                }[];
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    startAlumniDocumentRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never> | null;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Yıl bazlı sıralı belge numarası (`MB-2026-0001`); hazır olunca verilir */
+                            documentNumber: string | null;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @enum {string} */
+                            documentType: "education_certificate" | "transcript" | "diploma_copy";
+                            copies: number;
+                            /**
+                             * @description Talebin geliş yolu
+                             * @enum {string}
+                             */
+                            channel: "in_person" | "phone" | "email" | "petition";
+                            /** @enum {string} */
+                            requesterKind: "self" | "guardian" | "proxy";
+                            /** @description Talep edenin adı (talep anının kopyası) */
+                            requesterName: string;
+                            guardianParentId: string | null;
+                            /** @description Vekâletname ya da yazılı rıza dosyası; `GET /files/{fileId}/url` ile açılır */
+                            authorizationFileId: string | null;
+                            /** @enum {string} */
+                            deliveryMethod: "in_person" | "email" | "cargo";
+                            deliveryEmail: string | null;
+                            deliveryAddress: string | null;
+                            /** @description Dondurulmuş ücret (belge başı ücret × adet, kuruş) */
+                            feeCents: number;
+                            /** @enum {string} */
+                            status: "received" | "preparing" | "ready" | "delivered" | "rejected";
+                            receivedAt: string;
+                            receivedByName: string | null;
+                            preparingAt: string | null;
+                            preparingByName: string | null;
+                            readyAt: string | null;
+                            readyByName: string | null;
+                            manualNote: string | null;
+                            /** @description Diploma örneğinin taranmış dosyası */
+                            diplomaFileId: string | null;
+                            deliveredAt: string | null;
+                            /** @description Teslim eden ve kimliği kontrol eden personel */
+                            deliveredByName: string | null;
+                            identityCheckNote: string | null;
+                            paymentMethod: ("cash" | "card" | "transfer") | null;
+                            /** @description Ödendi işaretinin anı (ücretli teslim) */
+                            paidAt: string | null;
+                            rejectedAt: string | null;
+                            rejectedByName: string | null;
+                            rejectionReason: string | null;
+                            /** @description Talebin bu durumda yapılabilecek işlemleri */
+                            actions: ("start" | "ready" | "deliver" | "reject")[];
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    markAlumniDocumentReady: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    manualNote?: string | "" | null;
+                    fileId?: string | "" | null;
+                } | null;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Yıl bazlı sıralı belge numarası (`MB-2026-0001`); hazır olunca verilir */
+                            documentNumber: string | null;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @enum {string} */
+                            documentType: "education_certificate" | "transcript" | "diploma_copy";
+                            copies: number;
+                            /**
+                             * @description Talebin geliş yolu
+                             * @enum {string}
+                             */
+                            channel: "in_person" | "phone" | "email" | "petition";
+                            /** @enum {string} */
+                            requesterKind: "self" | "guardian" | "proxy";
+                            /** @description Talep edenin adı (talep anının kopyası) */
+                            requesterName: string;
+                            guardianParentId: string | null;
+                            /** @description Vekâletname ya da yazılı rıza dosyası; `GET /files/{fileId}/url` ile açılır */
+                            authorizationFileId: string | null;
+                            /** @enum {string} */
+                            deliveryMethod: "in_person" | "email" | "cargo";
+                            deliveryEmail: string | null;
+                            deliveryAddress: string | null;
+                            /** @description Dondurulmuş ücret (belge başı ücret × adet, kuruş) */
+                            feeCents: number;
+                            /** @enum {string} */
+                            status: "received" | "preparing" | "ready" | "delivered" | "rejected";
+                            receivedAt: string;
+                            receivedByName: string | null;
+                            preparingAt: string | null;
+                            preparingByName: string | null;
+                            readyAt: string | null;
+                            readyByName: string | null;
+                            manualNote: string | null;
+                            /** @description Diploma örneğinin taranmış dosyası */
+                            diplomaFileId: string | null;
+                            deliveredAt: string | null;
+                            /** @description Teslim eden ve kimliği kontrol eden personel */
+                            deliveredByName: string | null;
+                            identityCheckNote: string | null;
+                            paymentMethod: ("cash" | "card" | "transfer") | null;
+                            /** @description Ödendi işaretinin anı (ücretli teslim) */
+                            paidAt: string | null;
+                            rejectedAt: string | null;
+                            rejectedByName: string | null;
+                            rejectionReason: string | null;
+                            /** @description Talebin bu durumda yapılabilecek işlemleri */
+                            actions: ("start" | "ready" | "deliver" | "reject")[];
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    deliverAlumniDocument: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    identityCheckNote: string;
+                    /** @default null */
+                    paymentMethod?: ("cash" | "card" | "transfer") | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Yıl bazlı sıralı belge numarası (`MB-2026-0001`); hazır olunca verilir */
+                            documentNumber: string | null;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @enum {string} */
+                            documentType: "education_certificate" | "transcript" | "diploma_copy";
+                            copies: number;
+                            /**
+                             * @description Talebin geliş yolu
+                             * @enum {string}
+                             */
+                            channel: "in_person" | "phone" | "email" | "petition";
+                            /** @enum {string} */
+                            requesterKind: "self" | "guardian" | "proxy";
+                            /** @description Talep edenin adı (talep anının kopyası) */
+                            requesterName: string;
+                            guardianParentId: string | null;
+                            /** @description Vekâletname ya da yazılı rıza dosyası; `GET /files/{fileId}/url` ile açılır */
+                            authorizationFileId: string | null;
+                            /** @enum {string} */
+                            deliveryMethod: "in_person" | "email" | "cargo";
+                            deliveryEmail: string | null;
+                            deliveryAddress: string | null;
+                            /** @description Dondurulmuş ücret (belge başı ücret × adet, kuruş) */
+                            feeCents: number;
+                            /** @enum {string} */
+                            status: "received" | "preparing" | "ready" | "delivered" | "rejected";
+                            receivedAt: string;
+                            receivedByName: string | null;
+                            preparingAt: string | null;
+                            preparingByName: string | null;
+                            readyAt: string | null;
+                            readyByName: string | null;
+                            manualNote: string | null;
+                            /** @description Diploma örneğinin taranmış dosyası */
+                            diplomaFileId: string | null;
+                            deliveredAt: string | null;
+                            /** @description Teslim eden ve kimliği kontrol eden personel */
+                            deliveredByName: string | null;
+                            identityCheckNote: string | null;
+                            paymentMethod: ("cash" | "card" | "transfer") | null;
+                            /** @description Ödendi işaretinin anı (ücretli teslim) */
+                            paidAt: string | null;
+                            rejectedAt: string | null;
+                            rejectedByName: string | null;
+                            rejectionReason: string | null;
+                            /** @description Talebin bu durumda yapılabilecek işlemleri */
+                            actions: ("start" | "ready" | "deliver" | "reject")[];
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rejectAlumniDocumentRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Yıl bazlı sıralı belge numarası (`MB-2026-0001`); hazır olunca verilir */
+                            documentNumber: string | null;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @enum {string} */
+                            documentType: "education_certificate" | "transcript" | "diploma_copy";
+                            copies: number;
+                            /**
+                             * @description Talebin geliş yolu
+                             * @enum {string}
+                             */
+                            channel: "in_person" | "phone" | "email" | "petition";
+                            /** @enum {string} */
+                            requesterKind: "self" | "guardian" | "proxy";
+                            /** @description Talep edenin adı (talep anının kopyası) */
+                            requesterName: string;
+                            guardianParentId: string | null;
+                            /** @description Vekâletname ya da yazılı rıza dosyası; `GET /files/{fileId}/url` ile açılır */
+                            authorizationFileId: string | null;
+                            /** @enum {string} */
+                            deliveryMethod: "in_person" | "email" | "cargo";
+                            deliveryEmail: string | null;
+                            deliveryAddress: string | null;
+                            /** @description Dondurulmuş ücret (belge başı ücret × adet, kuruş) */
+                            feeCents: number;
+                            /** @enum {string} */
+                            status: "received" | "preparing" | "ready" | "delivered" | "rejected";
+                            receivedAt: string;
+                            receivedByName: string | null;
+                            preparingAt: string | null;
+                            preparingByName: string | null;
+                            readyAt: string | null;
+                            readyByName: string | null;
+                            manualNote: string | null;
+                            /** @description Diploma örneğinin taranmış dosyası */
+                            diplomaFileId: string | null;
+                            deliveredAt: string | null;
+                            /** @description Teslim eden ve kimliği kontrol eden personel */
+                            deliveredByName: string | null;
+                            identityCheckNote: string | null;
+                            paymentMethod: ("cash" | "card" | "transfer") | null;
+                            /** @description Ödendi işaretinin anı (ücretli teslim) */
+                            paidAt: string | null;
+                            rejectedAt: string | null;
+                            rejectedByName: string | null;
+                            rejectionReason: string | null;
+                            /** @description Talebin bu durumda yapılabilecek işlemleri */
+                            actions: ("start" | "ready" | "deliver" | "reject")[];
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
                         };
                     };
                 };

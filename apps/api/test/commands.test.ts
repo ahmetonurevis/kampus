@@ -104,6 +104,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/supply-requests',
   'POST /api/v1/finance/supply-requests/{requestId}/fulfill',
   'POST /api/v1/finance/supply-requests/{requestId}/convert',
+  // Mezun belge talebi ücreti dondurur ve dosya bağlar; çift tıklama ikinci talep açmaz
+  // (routes/enrollment-alumni-documents.ts; DOM-KAY-044, ON-260).
+  'POST /api/v1/prospects/alumni-document-requests',
 ]
 // Onur: kayıt ve finans sonu
 

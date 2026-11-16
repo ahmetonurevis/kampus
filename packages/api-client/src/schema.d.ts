@@ -7019,9 +7019,29 @@ export interface paths {
         put?: never;
         /**
          * Kıdem ve ihbar tazminatını tahmin et
-         * @description Elle girilen işe giriş ve çıkış günü, aylık brüt ücret, düzenli yan ödemeler, çıkış nedeni ve ihbar bilgisinden kıdem ve ihbar tazminatının tahmini dökümünü döner (ON-205; DOM-FIN-094). **Hiçbir şey yazmaz**, hesap saklanmaz (K-273; `Idempotency-Key` gerekmez). Kıdem: bir tam yıl ve kıdem doğuran neden şartıyla esas aylık (giydirilmiş brüt ile çıkış günündeki tavanın küçüğü) × (tam yıl + artık gün / 365); gelir vergisinden istisna, damga vergisi binde 7,59. İhbar: yalnız işveren feshinde ve ihbar verilmediyse 4857 md. 17 süresi (2/4/6/8 hafta) × 7 × giydirilmiş aylık / 30; gelir vergisi `cumulativeTaxBaseCents` yoksa ilk dilim oranı, varsa dilimli (K-274); damga vergisi. Tutarlar kuruş. Tavan ve tarife tablosu dışındaki günde son bilinen değer kullanılır, `warnings` uyarır. Bilinmeyen alan 400. Rol: `yonetici` (diğerleri 403); `finance` modülü kapalıysa 403 `module_disabled`. Tahmindir; bordro ya da mali müşavir hesabı yerine geçmez.
+         * @description İşe giriş ve çıkış günü, aylık brüt ücret, düzenli yan ödemeler, çıkış nedeni ve ihbar bilgisinden kıdem ve ihbar tazminatının tahmini dökümünü döner (ON-205; DOM-FIN-094). Hesap **saklanmaz** (K-273; `Idempotency-Key` gerekmez). Kıdem tavanı, gelir vergisi dilimleri ve damga vergisi oranı kurumun **çıkış günündeki bordro parametre setinden** okunur (DOM-FIN-100; kurum kopyası platform setinin yerini alır); 2025 öncesi çıkışta set yoksa yedek tablo kullanılır, kaynak `parameters`ta döner (K-344). Kıdem: bir tam yıl ve kıdem doğuran neden şartıyla esas aylık (giydirilmiş brüt ile tavanın küçüğü) × (tam yıl + artık gün / 365); gelir vergisinden istisna, damga vergisi. İhbar: yalnız işveren feshinde ve ihbar verilmediyse 4857 md. 17 süresi (2/4/6/8 hafta) × 7 × giydirilmiş aylık / 30; gelir vergisi `cumulativeTaxBaseCents` yoksa ilk dilim oranı, varsa dilimli (K-274); damga vergisi. İsteğe bağlı `membershipId`: personelin çıkış günündeki ücret önerisi sunucuda yeniden okunur ve kaynağı (`paySource`: tanım kimlikleri, başlangıç günü, önerilen tutarlar, girilen ücretin öneriden farkı) döner (K-345, K-346); okuma `finance.pay_rate.read` denetimine düşer, personel olmayan ya da başka kurumun üyeliği 404 (K-347). Tutarlar kuruş. Son bilinen tavan ya da tarife kullanıldıysa `warnings` uyarır. Bilinmeyen alan 400. Rol: `yonetici` (diğerleri 403); `finance` modülü kapalıysa 403 `module_disabled`. Tahmindir; bordro ya da mali müşavir hesabı yerine geçmez.
          */
         post: operations["estimateFinanceSeverance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/severance-pay-suggestion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kıdem hesabı için personelin ücret önerisi
+         * @description Personelin `date` (çıkış) gününde yürürlükteki ücret tanımından kıdem hesaplayıcısına öneri (K-345): aylık brüt ana ücret ve kıdeme esas yan hakların aylık toplamı (nakdi yan haklar girer; ayni yan haklar ve saat başı ek ders/nöbet ücretleri girmez). Ana ücret net, saatlik ya da ders saati üzerindense ya da günde ana ücret yoksa öneri yapılmaz: tutarlar `null`, `status` nedeni verir. Tutar içerdiği için her okuma denetim kaydına `finance.pay_rate.read` olarak düşer (yalnız alan adı; K-307, K-347). Olmayan, başka kurumun ya da personel olmayan üyelik 404. Rol: yalnız `yonetici` (ücret okuyan rol, K-306); modül `finance`.
+         */
+        get: operations["getFinanceSeverancePaySuggestion"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -75310,6 +75330,8 @@ export interface operations {
                     noticeGiven?: boolean;
                     /** @default null */
                     cumulativeTaxBaseCents?: number | null;
+                    /** @default null */
+                    membershipId?: string | null;
                 };
             };
         };
@@ -75395,8 +75417,49 @@ export interface operations {
                                 stampTaxCents: number;
                                 netCents: number;
                             };
-                            /** @description Uyarı kodları: `ceiling_stale` (tavan tabloda yok, son bilinen kullanıldı), `tax_table_stale` (tarife yılı yok), `resignation_notice_owed` (bildirimsiz istifada ihbarı çalışan öder) */
-                            warnings: ("ceiling_stale" | "tax_table_stale" | "resignation_notice_owed")[];
+                            /** @description Tavan, dilim ve damga oranının kaynağı */
+                            parameters: {
+                                /**
+                                 * @description `payroll_parameters` kurumun çıkış günündeki bordro parametre seti, `fallback_table` 2025 öncesi yedek tablo (K-344)
+                                 * @enum {string}
+                                 */
+                                source: "payroll_parameters" | "fallback_table";
+                                /** @description Parametre seti (`platform-…` ya da kurum kopyası) */
+                                setId: string | null;
+                                origin: ("platform" | "institution") | null;
+                                /** @description Kurum kopyasının sürümü */
+                                version: number | null;
+                                /** @description Setin ya da yedek tavan satırının yürürlük başlangıcı */
+                                effectiveFrom: string;
+                                /** @description Damga vergisi oranı, yüz binde bir (759 = binde 7,59) */
+                                stampTaxRatePer100k: number;
+                            };
+                            /** @description Personel seçildiyse ücret girdisinin kaynağı (K-346); seçilmediyse `null` */
+                            paySource: {
+                                membershipId: string;
+                                /** @description Önerinin okunduğu gün (çıkış günü) */
+                                date: string;
+                                /**
+                                 * @description `suggested` aylık brüt ana ücretten öneri yapıldı; `net_wage` ana ücret net, `non_monthly_wage` saatlik ya da ders saati, `no_wage` günde ana ücret yok: öneri yapılmaz (K-345)
+                                 * @enum {string}
+                                 */
+                                status: "suggested" | "net_wage" | "non_monthly_wage" | "no_wage";
+                                /** @description Günde yürürlükteki ana ücret tanımı */
+                                wageRateId: string | null;
+                                wageRateType: ("monthly_gross" | "monthly_net" | "hourly" | "lesson_hour") | null;
+                                wageStartDate: string | null;
+                                /** @description Öneriye giren nakdi yan hak tanımları */
+                                benefitRateIds: string[];
+                                /** @description Öneriye girmeyen ayni yan hak sayısı */
+                                excludedBenefitCount: number;
+                                suggestedGrossWageCents: number | null;
+                                suggestedBenefitsCents: number | null;
+                                /** @description Girilen brüt öneriden farklı ya da öneri yok */
+                                grossWageChanged: boolean;
+                                benefitsChanged: boolean;
+                            } | null;
+                            /** @description Uyarı kodları: `ceiling_stale` (çıkış yarıyılı için tavan yok, son bilinen kullanıldı), `tax_table_stale` (çıkış yılı dilimleri yok), `resignation_notice_owed` (bildirimsiz istifada ihbarı çalışan öder), `pay_suggestion_unavailable` (personel seçildi, ücret tanımından öneri yapılamadı) */
+                            warnings: ("ceiling_stale" | "tax_table_stale" | "resignation_notice_owed" | "pay_suggestion_unavailable")[];
                         };
                     };
                 };
@@ -75421,6 +75484,226 @@ export interface operations {
             };
             /** @description Default Response */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getFinanceSeverancePaySuggestion: {
+        parameters: {
+            query: {
+                /** @description Personelin kurum üyeliği */
+                membershipId: string;
+                /** @description Çıkış günü (YYYY-MM-DD); varsayılan bugün (Europe/Istanbul) */
+                date?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            membershipId: string;
+                            name: string;
+                            /** @description Pasifleştirilmiş (ayrılan) personelde `false` */
+                            active: boolean;
+                            /** @description Önerinin hesaplandığı gün */
+                            date: string;
+                            /**
+                             * @description `suggested` aylık brüt ana ücretten öneri yapıldı; `net_wage` ana ücret net, `non_monthly_wage` saatlik ya da ders saati, `no_wage` günde ana ücret yok: öneri yapılmaz (K-345)
+                             * @enum {string}
+                             */
+                            status: "suggested" | "net_wage" | "non_monthly_wage" | "no_wage";
+                            /** @description Önerilen aylık brüt; öneri yoksa `null` */
+                            grossWageCents: number | null;
+                            /** @description Önerilen düzenli yan ödeme (nakdi yan hakların toplamı); öneri yoksa `null` */
+                            regularBenefitsCents: number | null;
+                            /** @description Günde yürürlükteki ana ücret tanımı */
+                            wage: {
+                                id: string;
+                                membershipId: string;
+                                /**
+                                 * @description `wage` ana ücret, `lesson` ek ders, `benefit` yan hak
+                                 * @enum {string}
+                                 */
+                                component: "wage" | "lesson" | "benefit";
+                                /**
+                                 * @description Bileşenin türü
+                                 * @enum {string}
+                                 */
+                                rateType: "monthly_gross" | "monthly_net" | "hourly" | "lesson_hour" | "extra" | "duty" | "meal" | "transport" | "child" | "service";
+                                /** @description Tutar, kuruş */
+                                amountCents: number;
+                                /** @enum {string} */
+                                currency: "TRY";
+                                /** @description Yan hakta nakdi ya da ayni */
+                                benefitForm: ("cash" | "in_kind") | null;
+                                /** @description Yan hak vergiye tabi mi */
+                                taxable: boolean | null;
+                                /** @description Yürürlük başlangıcı (YYYY-MM-DD) */
+                                startDate: string;
+                                /** @description Yürürlük bitişi (dahil); boşsa süresiz */
+                                endDate: string | null;
+                                note: string | null;
+                                /** @description Bitiş sonraki tanımla kendiliğinden çekildiyse `true` (K-304) */
+                                autoClosed: boolean;
+                                /**
+                                 * @description Bugüne göre: `scheduled` ileri tarihli, `active` yürürlükte, `ended` sona erdi
+                                 * @enum {string}
+                                 */
+                                state: "scheduled" | "active" | "ended";
+                                createdAt: string;
+                                /** @description `If-Match` için kayıt sürümü (bitiş ve iptal) */
+                                version: number;
+                            } | null;
+                            /** @description Günde yürürlükteki yan haklar */
+                            benefits: {
+                                id: string;
+                                membershipId: string;
+                                /**
+                                 * @description `wage` ana ücret, `lesson` ek ders, `benefit` yan hak
+                                 * @enum {string}
+                                 */
+                                component: "wage" | "lesson" | "benefit";
+                                /**
+                                 * @description Bileşenin türü
+                                 * @enum {string}
+                                 */
+                                rateType: "monthly_gross" | "monthly_net" | "hourly" | "lesson_hour" | "extra" | "duty" | "meal" | "transport" | "child" | "service";
+                                /** @description Tutar, kuruş */
+                                amountCents: number;
+                                /** @enum {string} */
+                                currency: "TRY";
+                                /** @description Yan hakta nakdi ya da ayni */
+                                benefitForm: ("cash" | "in_kind") | null;
+                                /** @description Yan hak vergiye tabi mi */
+                                taxable: boolean | null;
+                                /** @description Yürürlük başlangıcı (YYYY-MM-DD) */
+                                startDate: string;
+                                /** @description Yürürlük bitişi (dahil); boşsa süresiz */
+                                endDate: string | null;
+                                note: string | null;
+                                /** @description Bitiş sonraki tanımla kendiliğinden çekildiyse `true` (K-304) */
+                                autoClosed: boolean;
+                                /**
+                                 * @description Bugüne göre: `scheduled` ileri tarihli, `active` yürürlükte, `ended` sona erdi
+                                 * @enum {string}
+                                 */
+                                state: "scheduled" | "active" | "ended";
+                                createdAt: string;
+                                /** @description `If-Match` için kayıt sürümü (bitiş ve iptal) */
+                                version: number;
+                                /** @description Kıdeme esas mı: nakdi `true`, ayni `false` (K-345) */
+                                included: boolean;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

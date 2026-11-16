@@ -81,6 +81,9 @@ const FinanceMaterialSetsSection = lazy(async () => ({
 const FinanceSeveranceSection = lazy(async () => ({
   default: (await import('./FinanceSeveranceSection.tsx')).FinanceSeveranceSection,
 }))
+const FinancePaidActivitiesSection = lazy(async () => ({
+  default: (await import('./FinancePaidActivitiesSection.tsx')).FinancePaidActivitiesSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -113,6 +116,7 @@ const VIEWS = {
   supplierLedger: { label: 'Tedarikçi carisi', param: 'tedarikci-cari' },
   inventory: { label: 'Stok', param: 'stok' },
   materialSets: { label: 'Materyal setleri', param: 'materyal-seti' },
+  paidActivities: { label: 'Gezi ve etkinlik ücretleri', param: 'gezi-etkinlik' },
   supplyRequests: { label: 'Sarf talepleri', param: 'sarf' },
   fixedAssets: { label: 'Demirbaşlar', param: 'demirbas' },
   maintenance: { label: 'Arıza ve bakım', param: 'ariza' },
@@ -148,6 +152,8 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Bütçe taslakları (DOM-FIN-093) ikisine açıktır; ön büro yalnız sorumlusu olduğu birimi görür,
  * onay yöneticide (K-256, K-257).
  * Ücretsiz okutma (DOM-FIN-026) yalnız yöneticidedir; gerekçe ve belge hassastır (K-269).
+ * Gezi ve etkinlik ücretleri (DOM-FIN-098) ikisine açıktır; ön büro katılım yazar ve iptal eder,
+ * etkinliği ve iadeyi yönetici yönetir (K-300).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -315,6 +321,7 @@ export function FinancePage({ page }: { page: NavPage }) {
       tab === 'supplierLedger' ||
       tab === 'inventory' ||
       tab === 'materialSets' ||
+      tab === 'paidActivities' ||
       tab === 'supplyRequests' ||
       tab === 'fixedAssets' ||
       tab === 'maintenance' ||
@@ -335,6 +342,7 @@ export function FinancePage({ page }: { page: NavPage }) {
               academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
             />
           ) : null}
+          {tab === 'paidActivities' ? <FinancePaidActivitiesSection isManager={isManager} /> : null}
           {tab === 'supplyRequests' ? (
             <FinanceSupplyRequestsSection role={session?.role ?? ''} />
           ) : null}

@@ -81,6 +81,9 @@ const FinanceMaterialSetsSection = lazy(async () => ({
 const FinanceSeveranceSection = lazy(async () => ({
   default: (await import('./FinanceSeveranceSection.tsx')).FinanceSeveranceSection,
 }))
+const FinancePayRatesSection = lazy(async () => ({
+  default: (await import('./FinancePayRatesSection.tsx')).FinancePayRatesSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -121,6 +124,7 @@ const VIEWS = {
   forecast: { label: 'Tahmin', param: 'tahmin' },
   boardReport: { label: 'Yönetim kurulu raporu', param: BOARD_REPORT_VIEW },
   severance: { label: 'Kıdem/ihbar hesaplayıcı', param: 'kidem-ihbar' },
+  payRates: { label: 'Ücret tanımları', param: 'ucret-tanimi' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -143,6 +147,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Demirbaşlar (DOM-FIN-085) yalnız yöneticidedir; ön büro görmez (K-189).
  * Arıza ve bakım (DOM-FIN-089) ikisine açıktır; ön büro bildirir, iş emrini yönetici yürütür (K-237).
  * Kıdem/ihbar hesaplayıcı (DOM-FIN-094) yalnız yöneticidedir (K-272).
+ * Ücret tanımları (DOM-FIN-099) yalnız yöneticidedir; ücret kişisel veridir (K-306).
  * Periyodik bakım (DOM-FIN-092) ikisine açıktır; ön büro okur, planı ve denetimi yönetici yazar
  * (K-255). Sekme rozeti geciken, 30 gün içinde yaklaşan ve hiç denetlenmemiş plan sayısıdır (K-253).
  * Bütçe taslakları (DOM-FIN-093) ikisine açıktır; ön büro yalnız sorumlusu olduğu birimi görür,
@@ -161,6 +166,7 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'supplierLedger' ||
       value === 'fixedAssets' ||
       value === 'severance' ||
+      value === 'payRates' ||
       value === 'freeTuition'
     )
       return isManager
@@ -319,6 +325,7 @@ export function FinancePage({ page }: { page: NavPage }) {
       tab === 'fixedAssets' ||
       tab === 'maintenance' ||
       tab === 'severance' ||
+      tab === 'payRates' ||
       tab === 'maintenancePlans' ||
       tab === 'budgetDrafts' ? (
         <Suspense fallback={<SummaryLoading />}>
@@ -341,6 +348,7 @@ export function FinancePage({ page }: { page: NavPage }) {
           {tab === 'fixedAssets' ? <FinanceFixedAssetsSection /> : null}
           {tab === 'maintenance' ? <FinanceMaintenanceSection /> : null}
           {tab === 'severance' ? <FinanceSeveranceSection /> : null}
+          {tab === 'payRates' ? <FinancePayRatesSection /> : null}
           {tab === 'maintenancePlans' ? (
             <FinanceMaintenancePlansSection role={session?.role ?? ''} />
           ) : null}

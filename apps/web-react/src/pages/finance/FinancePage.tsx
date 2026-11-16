@@ -81,6 +81,9 @@ const FinanceMaterialSetsSection = lazy(async () => ({
 const FinanceSeveranceSection = lazy(async () => ({
   default: (await import('./FinanceSeveranceSection.tsx')).FinanceSeveranceSection,
 }))
+const FinancePayrollParametersSection = lazy(async () => ({
+  default: (await import('./FinancePayrollParametersSection.tsx')).FinancePayrollParametersSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -121,6 +124,7 @@ const VIEWS = {
   forecast: { label: 'Tahmin', param: 'tahmin' },
   boardReport: { label: 'Yönetim kurulu raporu', param: BOARD_REPORT_VIEW },
   severance: { label: 'Kıdem/ihbar hesaplayıcı', param: 'kidem-ihbar' },
+  payrollParameters: { label: 'Bordro parametreleri', param: 'bordro-parametreleri' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -148,6 +152,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Bütçe taslakları (DOM-FIN-093) ikisine açıktır; ön büro yalnız sorumlusu olduğu birimi görür,
  * onay yöneticide (K-256, K-257).
  * Ücretsiz okutma (DOM-FIN-026) yalnız yöneticidedir; gerekçe ve belge hassastır (K-269).
+ * Bordro parametreleri (DOM-FIN-100) ikisine açıktır; kurum kopyasını yönetici yazar (K-309).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -320,7 +325,8 @@ export function FinancePage({ page }: { page: NavPage }) {
       tab === 'maintenance' ||
       tab === 'severance' ||
       tab === 'maintenancePlans' ||
-      tab === 'budgetDrafts' ? (
+      tab === 'budgetDrafts' ||
+      tab === 'payrollParameters' ? (
         <Suspense fallback={<SummaryLoading />}>
           {tab === 'suppliers' ? <FinanceSuppliersSection canManage={isManager} /> : null}
           {tab === 'purchaseRequests' ? <FinancePurchaseRequestsSection /> : null}
@@ -345,6 +351,9 @@ export function FinancePage({ page }: { page: NavPage }) {
             <FinanceMaintenancePlansSection role={session?.role ?? ''} />
           ) : null}
           {tab === 'budgetDrafts' ? <FinanceBudgetDraftsSection isManager={isManager} /> : null}
+          {tab === 'payrollParameters' ? (
+            <FinancePayrollParametersSection canManage={isManager} />
+          ) : null}
         </Suspense>
       ) : null}
       {tab === 'boardReport' ? (

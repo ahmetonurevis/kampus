@@ -84,6 +84,9 @@ const FinanceSeveranceSection = lazy(async () => ({
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
+const DonationsSection = lazy(async () => ({
+  default: (await import('./DonationsSection.tsx')).DonationsSection,
+}))
 
 const VIEW_PARAM = 'gorunum'
 const VIEWS = {
@@ -100,6 +103,7 @@ const VIEWS = {
   scholarships: { label: 'Burslar', param: 'burs' },
   scholarshipFunds: { label: 'Burs fonları', param: 'burs-fonu' },
   freeTuition: { label: 'Ücretsiz okutma', param: 'ucretsiz' },
+  donations: { label: 'Bağışlar', param: 'bagis' },
   referrals: { label: 'Referans hakları', param: 'referans' },
   withdrawals: { label: 'Ayrılış ve iade', param: 'ayrilis' },
   exports: { label: 'Muhasebe aktarımı', param: 'aktarim' },
@@ -148,6 +152,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Bütçe taslakları (DOM-FIN-093) ikisine açıktır; ön büro yalnız sorumlusu olduğu birimi görür,
  * onay yöneticide (K-256, K-257).
  * Ücretsiz okutma (DOM-FIN-026) yalnız yöneticidedir; gerekçe ve belge hassastır (K-269).
+ * Bağışlar (DOM-FIN-097) yalnız yöneticidedir; bağışçı verisi kişiseldir (K-299).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -161,7 +166,8 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'supplierLedger' ||
       value === 'fixedAssets' ||
       value === 'severance' ||
-      value === 'freeTuition'
+      value === 'freeTuition' ||
+      value === 'donations'
     )
       return isManager
     if (value === 'packages' || value === 'courseOffers' || value === 'corporate')
@@ -284,6 +290,11 @@ export function FinancePage({ page }: { page: NavPage }) {
           <FreeTuitionSection
             academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
           />
+        </Suspense>
+      ) : null}
+      {tab === 'donations' ? (
+        <Suspense fallback={<SummaryLoading />}>
+          <DonationsSection />
         </Suspense>
       ) : null}
       {tab === 'corporate' ? <CorporateCustomersSection canCancel={isManager} /> : null}

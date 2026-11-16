@@ -729,6 +729,13 @@
       "when": 1794786536121,
       "tag": "0103_stock_followups",
       "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "7",
+      "when": 1794825797552,
+      "tag": "0104_create_payroll_parameters",
+      "breakpoints": true
     }
   ]
 }

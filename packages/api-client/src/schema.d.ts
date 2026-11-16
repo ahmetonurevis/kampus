@@ -7372,6 +7372,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/payroll-parameters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bordro parametrelerinin yıllık tablosu
+         * @description Yılın dönemleri (DOM-FIN-100): yıl içinde başlayan setler ve 1 Ocak'ta önceki yıldan süren set (`carriedOver`). Her dönem platform varsayılanı (`origin: platform`, değerler doğrulanmalı, M-40) ya da kurumun kopyasıdır (`institution`); aynı başlangıçta kurum kopyası platformun yerini alır (K-309). Net asgari ücret ve SGK taban/tavan tutarı `derived` içinde hesaplanır, saklanmaz (K-310). Tablo kısa ve yıl başına sınırlı olduğundan sayfalanmaz. Roller: `yonetici`, `onburo` (K-309). Modül `finance`.
+         */
+        get: operations["getPayrollParameterYear"];
+        put?: never;
+        /**
+         * Kurum bordro parametre setini ekle
+         * @description Kurumun kendi setini yazar (platform setinin kopyası ya da yeni dönem, ör. yıl ortası asgari ücret artışı). Bütün alanlar zorunludur (K-310). Yürürlük başlangıcı ayın ilk günü, 2020–2099 (K-311); dilimler 0'dan başlar, alt sınırlar ve oranlar kesin artan, oran 0–10.000 (400). İşveren indirimi işveren payını, taban çarpanı tavanı aşamaz (400). Aynı başlangıçta kurumun etkin seti varsa 409 `payroll_parameters_exist`. `Idempotency-Key` alabilir. Rol: `yonetici` (K-309). Modül `finance`.
+         */
+        post: operations["createPayrollParameterSet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/payroll-parameters/effective": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Günde geçerli bordro parametreleri
+         * @description Yürürlük başlangıcı güne eşit ya da önce olan en geç set (DOM-FIN-100). Günün yılı için set yoksa son bilinen set döner ve `stale: true` olur. Tablonun ilk setinden önceki gün 422 `payroll_parameters_missing`. Roller: `yonetici`, `onburo` (K-309). Modül `finance`.
+         */
+        get: operations["getEffectivePayrollParameters"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/payroll-parameters/{setId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Kurum bordro parametre setini arşivle
+         * @description Arşivli set çözüme girmez; aynı başlangıçlı platform seti varsa yeniden geçerli olur (K-309). Olmayan ya da başka kurumun seti 404; `If-Match` zorunlu, sürüm tutmazsa 409. Rol: `yonetici` (K-309). Modül `finance`.
+         */
+        delete: operations["archivePayrollParameterSet"];
+        options?: never;
+        head?: never;
+        /**
+         * Kurum bordro parametre setini düzelt
+         * @description Kısmi düzeltme; dilimler bütün olarak yazılır, birleşik set yeniden doğrulanır (400). Başka setin başlangıcı 409 `payroll_parameters_exist`; olmayan, arşivli ya da başka kurumun seti 404; `If-Match` zorunlu, sürüm tutmazsa 409 `version_conflict`. Platform seti düzeltilmez: aynı başlangıçla kurum kopyası eklenir. Rol: `yonetici` (K-309). Modül `finance`.
+         */
+        patch: operations["updatePayrollParameterSet"];
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -78369,6 +78437,773 @@ export interface operations {
                                     afterCents: number | null;
                                 }[] | null;
                             }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPayrollParameterYear: {
+        parameters: {
+            query: {
+                /** @description Tablo yılı */
+                year: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            year: number;
+                            /** @description Set bulunan yıllar, artan */
+                            availableYears: number[];
+                            periods: {
+                                /** @description Kurum setinde kayıt kimliği; platform setinde `platform-<başlangıç>` */
+                                id: string;
+                                /**
+                                 * @description `platform` varsayılan, `institution` kurumun kopyası
+                                 * @enum {string}
+                                 */
+                                origin: "platform" | "institution";
+                                /** @description Kurum kopyası aynı başlangıçlı platform setinin yerini aldı mı */
+                                overridesPlatform: boolean;
+                                /** @description Kurum setinde `If-Match` sürümü; platformda boş */
+                                version: number | null;
+                                /** @description Yürürlük başlangıcı (ayın ilk günü, `YYYY-MM-DD`) */
+                                effectiveFrom: string;
+                                /** @description Aylık brüt asgari ücret, kuruş */
+                                minimumWageGrossCents: number;
+                                /** @description Ücret gelir vergisi dilimleri, alt sınıra göre artan; son dilim sınırsız */
+                                incomeTaxBrackets: {
+                                    /** @description Dilim alt sınırı: yıllık kümülatif matrah, kuruş */
+                                    lowerBoundCents: number;
+                                    /** @description Dilim oranı, on binde bir */
+                                    rateBasisPoints: number;
+                                }[];
+                                /** @description SGK işçi payı, on binde bir */
+                                sgkEmployeeRateBasisPoints: number;
+                                /** @description SGK işveren payı (indirimsiz), on binde bir */
+                                sgkEmployerRateBasisPoints: number;
+                                /** @description İşveren prim indirimi (5510 md. 81/ı), on binde bir */
+                                sgkEmployerIncentiveBasisPoints: number;
+                                /** @description İşsizlik sigortası işçi payı, on binde bir */
+                                unemploymentEmployeeRateBasisPoints: number;
+                                /** @description İşsizlik sigortası işveren payı, on binde bir */
+                                unemploymentEmployerRateBasisPoints: number;
+                                /** @description SGK taban çarpanı, on binde bir (10.000 = 1 kat) */
+                                sgkFloorMultiplierBasisPoints: number;
+                                /** @description SGK tavan çarpanı, on binde bir (90.000 = 9 kat) */
+                                sgkCeilingMultiplierBasisPoints: number;
+                                /** @description Damga vergisi oranı, yüz binde bir (759 = binde 7,59) */
+                                stampTaxRatePer100k: number;
+                                /** @description Asgari ücret gelir vergisi istisnası */
+                                minimumWageIncomeTaxExempt: boolean;
+                                /** @description Asgari ücret damga vergisi istisnası */
+                                minimumWageStampTaxExempt: boolean;
+                                /** @description Aylık kıdem tazminatı tavanı, kuruş */
+                                severanceCeilingCents: number;
+                                /** @description Değerlerin kaynağı */
+                                source: string;
+                                /** @description Platform setinde ayrıca doğrulanması gereken alanlar (M-40) */
+                                unverifiedFields: ("effectiveFrom" | "minimumWageGrossCents" | "incomeTaxBrackets" | "sgkEmployeeRateBasisPoints" | "sgkEmployerRateBasisPoints" | "sgkEmployerIncentiveBasisPoints" | "unemploymentEmployeeRateBasisPoints" | "unemploymentEmployerRateBasisPoints" | "sgkFloorMultiplierBasisPoints" | "sgkCeilingMultiplierBasisPoints" | "stampTaxRatePer100k" | "minimumWageIncomeTaxExempt" | "minimumWageStampTaxExempt" | "severanceCeilingCents" | "source")[];
+                                /** @description Setten hesaplanan değerler; saklanmaz */
+                                derived: {
+                                    minimumWageEmployeeSgkCents: number;
+                                    minimumWageEmployeeUnemploymentCents: number;
+                                    /** @description İstisna açıksa 0 */
+                                    minimumWageIncomeTaxCents: number;
+                                    /** @description İstisna açıksa 0 */
+                                    minimumWageStampTaxCents: number;
+                                    /** @description Net asgari ücret (saklanmaz, K-310) */
+                                    minimumWageNetCents: number;
+                                    /** @description Prime esas kazanç tabanı, kuruş */
+                                    sgkFloorCents: number;
+                                    /** @description Prime esas kazanç tavanı, kuruş */
+                                    sgkCeilingCents: number;
+                                    /** @description İndirimli işveren payı */
+                                    sgkEmployerNetRateBasisPoints: number;
+                                };
+                                /** @description Dönemin yıl içindeki ilk günü */
+                                periodStart: string;
+                                /** @description Dönemin yıl içindeki son günü */
+                                periodEnd: string;
+                                /** @description Set önceki yıldan sürüyor (yılın başında yeni set yok) */
+                                carriedOver: boolean;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createPayrollParameterSet: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    effectiveFrom: string;
+                    minimumWageGrossCents: number;
+                    incomeTaxBrackets: {
+                        lowerBoundCents: number;
+                        rateBasisPoints: number;
+                    }[];
+                    sgkEmployeeRateBasisPoints: number;
+                    sgkEmployerRateBasisPoints: number;
+                    sgkEmployerIncentiveBasisPoints: number;
+                    unemploymentEmployeeRateBasisPoints: number;
+                    unemploymentEmployerRateBasisPoints: number;
+                    sgkFloorMultiplierBasisPoints: number;
+                    sgkCeilingMultiplierBasisPoints: number;
+                    stampTaxRatePer100k: number;
+                    minimumWageIncomeTaxExempt: boolean;
+                    minimumWageStampTaxExempt: boolean;
+                    severanceCeilingCents: number;
+                    source: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            id: string;
+                            version: number;
+                            /** @description Yürürlük başlangıcı (ayın ilk günü, `YYYY-MM-DD`) */
+                            effectiveFrom: string;
+                            /** @description Aylık brüt asgari ücret, kuruş */
+                            minimumWageGrossCents: number;
+                            /** @description Ücret gelir vergisi dilimleri, alt sınıra göre artan; son dilim sınırsız */
+                            incomeTaxBrackets: {
+                                /** @description Dilim alt sınırı: yıllık kümülatif matrah, kuruş */
+                                lowerBoundCents: number;
+                                /** @description Dilim oranı, on binde bir */
+                                rateBasisPoints: number;
+                            }[];
+                            /** @description SGK işçi payı, on binde bir */
+                            sgkEmployeeRateBasisPoints: number;
+                            /** @description SGK işveren payı (indirimsiz), on binde bir */
+                            sgkEmployerRateBasisPoints: number;
+                            /** @description İşveren prim indirimi (5510 md. 81/ı), on binde bir */
+                            sgkEmployerIncentiveBasisPoints: number;
+                            /** @description İşsizlik sigortası işçi payı, on binde bir */
+                            unemploymentEmployeeRateBasisPoints: number;
+                            /** @description İşsizlik sigortası işveren payı, on binde bir */
+                            unemploymentEmployerRateBasisPoints: number;
+                            /** @description SGK taban çarpanı, on binde bir (10.000 = 1 kat) */
+                            sgkFloorMultiplierBasisPoints: number;
+                            /** @description SGK tavan çarpanı, on binde bir (90.000 = 9 kat) */
+                            sgkCeilingMultiplierBasisPoints: number;
+                            /** @description Damga vergisi oranı, yüz binde bir (759 = binde 7,59) */
+                            stampTaxRatePer100k: number;
+                            /** @description Asgari ücret gelir vergisi istisnası */
+                            minimumWageIncomeTaxExempt: boolean;
+                            /** @description Asgari ücret damga vergisi istisnası */
+                            minimumWageStampTaxExempt: boolean;
+                            /** @description Aylık kıdem tazminatı tavanı, kuruş */
+                            severanceCeilingCents: number;
+                            /** @description Değerlerin kaynağı */
+                            source: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getEffectivePayrollParameters: {
+        parameters: {
+            query: {
+                /** @description Geçerli setin sorulduğu gün (`YYYY-MM-DD`) */
+                date: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            date: string;
+                            /** @description Günün yılı için set yok; son bilinen set kullanıldı, güncelliğini doğrulayın */
+                            stale: boolean;
+                            /** @description Kurum setinde kayıt kimliği; platform setinde `platform-<başlangıç>` */
+                            id: string;
+                            /**
+                             * @description `platform` varsayılan, `institution` kurumun kopyası
+                             * @enum {string}
+                             */
+                            origin: "platform" | "institution";
+                            /** @description Kurum kopyası aynı başlangıçlı platform setinin yerini aldı mı */
+                            overridesPlatform: boolean;
+                            /** @description Kurum setinde `If-Match` sürümü; platformda boş */
+                            version: number | null;
+                            /** @description Yürürlük başlangıcı (ayın ilk günü, `YYYY-MM-DD`) */
+                            effectiveFrom: string;
+                            /** @description Aylık brüt asgari ücret, kuruş */
+                            minimumWageGrossCents: number;
+                            /** @description Ücret gelir vergisi dilimleri, alt sınıra göre artan; son dilim sınırsız */
+                            incomeTaxBrackets: {
+                                /** @description Dilim alt sınırı: yıllık kümülatif matrah, kuruş */
+                                lowerBoundCents: number;
+                                /** @description Dilim oranı, on binde bir */
+                                rateBasisPoints: number;
+                            }[];
+                            /** @description SGK işçi payı, on binde bir */
+                            sgkEmployeeRateBasisPoints: number;
+                            /** @description SGK işveren payı (indirimsiz), on binde bir */
+                            sgkEmployerRateBasisPoints: number;
+                            /** @description İşveren prim indirimi (5510 md. 81/ı), on binde bir */
+                            sgkEmployerIncentiveBasisPoints: number;
+                            /** @description İşsizlik sigortası işçi payı, on binde bir */
+                            unemploymentEmployeeRateBasisPoints: number;
+                            /** @description İşsizlik sigortası işveren payı, on binde bir */
+                            unemploymentEmployerRateBasisPoints: number;
+                            /** @description SGK taban çarpanı, on binde bir (10.000 = 1 kat) */
+                            sgkFloorMultiplierBasisPoints: number;
+                            /** @description SGK tavan çarpanı, on binde bir (90.000 = 9 kat) */
+                            sgkCeilingMultiplierBasisPoints: number;
+                            /** @description Damga vergisi oranı, yüz binde bir (759 = binde 7,59) */
+                            stampTaxRatePer100k: number;
+                            /** @description Asgari ücret gelir vergisi istisnası */
+                            minimumWageIncomeTaxExempt: boolean;
+                            /** @description Asgari ücret damga vergisi istisnası */
+                            minimumWageStampTaxExempt: boolean;
+                            /** @description Aylık kıdem tazminatı tavanı, kuruş */
+                            severanceCeilingCents: number;
+                            /** @description Değerlerin kaynağı */
+                            source: string;
+                            /** @description Platform setinde ayrıca doğrulanması gereken alanlar (M-40) */
+                            unverifiedFields: ("effectiveFrom" | "minimumWageGrossCents" | "incomeTaxBrackets" | "sgkEmployeeRateBasisPoints" | "sgkEmployerRateBasisPoints" | "sgkEmployerIncentiveBasisPoints" | "unemploymentEmployeeRateBasisPoints" | "unemploymentEmployerRateBasisPoints" | "sgkFloorMultiplierBasisPoints" | "sgkCeilingMultiplierBasisPoints" | "stampTaxRatePer100k" | "minimumWageIncomeTaxExempt" | "minimumWageStampTaxExempt" | "severanceCeilingCents" | "source")[];
+                            /** @description Setten hesaplanan değerler; saklanmaz */
+                            derived: {
+                                minimumWageEmployeeSgkCents: number;
+                                minimumWageEmployeeUnemploymentCents: number;
+                                /** @description İstisna açıksa 0 */
+                                minimumWageIncomeTaxCents: number;
+                                /** @description İstisna açıksa 0 */
+                                minimumWageStampTaxCents: number;
+                                /** @description Net asgari ücret (saklanmaz, K-310) */
+                                minimumWageNetCents: number;
+                                /** @description Prime esas kazanç tabanı, kuruş */
+                                sgkFloorCents: number;
+                                /** @description Prime esas kazanç tavanı, kuruş */
+                                sgkCeilingCents: number;
+                                /** @description İndirimli işveren payı */
+                                sgkEmployerNetRateBasisPoints: number;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archivePayrollParameterSet: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                setId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            id: string;
+                            archivedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updatePayrollParameterSet: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                setId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    effectiveFrom?: string;
+                    minimumWageGrossCents?: number;
+                    incomeTaxBrackets?: {
+                        lowerBoundCents: number;
+                        rateBasisPoints: number;
+                    }[];
+                    sgkEmployeeRateBasisPoints?: number;
+                    sgkEmployerRateBasisPoints?: number;
+                    sgkEmployerIncentiveBasisPoints?: number;
+                    unemploymentEmployeeRateBasisPoints?: number;
+                    unemploymentEmployerRateBasisPoints?: number;
+                    sgkFloorMultiplierBasisPoints?: number;
+                    sgkCeilingMultiplierBasisPoints?: number;
+                    stampTaxRatePer100k?: number;
+                    minimumWageIncomeTaxExempt?: boolean;
+                    minimumWageStampTaxExempt?: boolean;
+                    severanceCeilingCents?: number;
+                    source?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            id: string;
+                            version: number;
+                            /** @description Yürürlük başlangıcı (ayın ilk günü, `YYYY-MM-DD`) */
+                            effectiveFrom: string;
+                            /** @description Aylık brüt asgari ücret, kuruş */
+                            minimumWageGrossCents: number;
+                            /** @description Ücret gelir vergisi dilimleri, alt sınıra göre artan; son dilim sınırsız */
+                            incomeTaxBrackets: {
+                                /** @description Dilim alt sınırı: yıllık kümülatif matrah, kuruş */
+                                lowerBoundCents: number;
+                                /** @description Dilim oranı, on binde bir */
+                                rateBasisPoints: number;
+                            }[];
+                            /** @description SGK işçi payı, on binde bir */
+                            sgkEmployeeRateBasisPoints: number;
+                            /** @description SGK işveren payı (indirimsiz), on binde bir */
+                            sgkEmployerRateBasisPoints: number;
+                            /** @description İşveren prim indirimi (5510 md. 81/ı), on binde bir */
+                            sgkEmployerIncentiveBasisPoints: number;
+                            /** @description İşsizlik sigortası işçi payı, on binde bir */
+                            unemploymentEmployeeRateBasisPoints: number;
+                            /** @description İşsizlik sigortası işveren payı, on binde bir */
+                            unemploymentEmployerRateBasisPoints: number;
+                            /** @description SGK taban çarpanı, on binde bir (10.000 = 1 kat) */
+                            sgkFloorMultiplierBasisPoints: number;
+                            /** @description SGK tavan çarpanı, on binde bir (90.000 = 9 kat) */
+                            sgkCeilingMultiplierBasisPoints: number;
+                            /** @description Damga vergisi oranı, yüz binde bir (759 = binde 7,59) */
+                            stampTaxRatePer100k: number;
+                            /** @description Asgari ücret gelir vergisi istisnası */
+                            minimumWageIncomeTaxExempt: boolean;
+                            /** @description Asgari ücret damga vergisi istisnası */
+                            minimumWageStampTaxExempt: boolean;
+                            /** @description Aylık kıdem tazminatı tavanı, kuruş */
+                            severanceCeilingCents: number;
+                            /** @description Değerlerin kaynağı */
+                            source: string;
                         };
                     };
                 };

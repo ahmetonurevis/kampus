@@ -111,6 +111,10 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // kesmez (routes/finance-donations.ts; DOM-FIN-097).
   'POST /api/v1/finance/donation-campaigns/{campaignId}/donations',
   'POST /api/v1/finance/donations/{donationId}/cancel',
+  // Paydaş ve sponsorluk anlaşması açılışı; çift tıklama ikinci kayıt açmaz
+  // (routes/finance-stakeholders.ts; DOM-FIN-102).
+  'POST /api/v1/finance/stakeholders',
+  'POST /api/v1/finance/stakeholders/{stakeholderId}/agreements',
 ]
 // Onur: kayıt ve finans sonu
 

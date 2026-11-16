@@ -2162,6 +2162,59 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'finance-donations.test.ts',
     'başka kurumun kampanyası, bağışı ve bağışçısı 404',
   ),
+  // Onur: paydaş ve sponsor kaydı (ON-262; DOM-FIN-102).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/stakeholders', 'listOf(a.admin, STAKEHOLDERS)'],
+        ['gövde', 'POST /api/v1/finance/stakeholders', 'institutionId: b.id'],
+        ['kayıt', 'GET /api/v1/finance/stakeholders/:stakeholderId', 'get(bUrl, a.admin)'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/stakeholders/:stakeholderId',
+          "call('PATCH', bUrl, a.admin",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/stakeholders/:stakeholderId/agreements',
+          'open(a.admin, bStakeholder)',
+        ],
+        ['liste', 'GET /api/v1/finance/stakeholder-agreements', 'listOf(a.admin, AGREEMENTS)'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/stakeholder-agreements/:agreementId',
+          'get(bAgreementUrl, a.admin)',
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/stakeholder-agreements/:agreementId',
+          "call('PATCH', bAgreementUrl, a.admin",
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/stakeholder-agreements/:agreementId',
+          "call('DELETE', bAgreementUrl, a.admin",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/stakeholder-agreements/:agreementId/activate',
+          'activate(a.admin, bAgreement)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/stakeholder-agreements/:agreementId/terminate',
+          'terminate(a.admin, bAgreement',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-stakeholders.test.ts',
+        'başka kurumun paydaşı ve anlaşması 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

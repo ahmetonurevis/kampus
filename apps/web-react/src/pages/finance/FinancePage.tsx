@@ -131,6 +131,9 @@ const FinancePayrollParametersSection = lazy(async () => ({
 const DonationsSection = lazy(async () => ({
   default: (await import('./DonationsSection.tsx')).DonationsSection,
 }))
+const FinanceStakeholdersSection = lazy(async () => ({
+  default: (await import('./FinanceStakeholdersSection.tsx')).FinanceStakeholdersSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -174,6 +177,7 @@ const VIEWS = {
   severance: { label: 'Kıdem/ihbar hesaplayıcı', param: 'kidem-ihbar' },
   payrollParameters: { label: 'Bordro parametreleri', param: 'bordro-parametreleri' },
   donations: { label: 'Bağışlar', param: 'bagis' },
+  stakeholders: { label: 'Paydaşlar ve sponsorlar', param: 'paydas' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -204,6 +208,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * İade belgeleri (DOM-FIN-096) yalnız yöneticidedir; faturayı muhasebe düzeltir (K-295).
  * Bordro parametreleri (DOM-FIN-100) ikisine açıktır; kurum kopyasını yönetici yazar (K-309).
  * Bağışlar (DOM-FIN-097) yalnız yöneticidedir; bağışçı verisi kişiseldir (K-299).
+ * Paydaşlar ve sponsorlar (DOM-FIN-102) yalnız yöneticidedir (K-317).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -218,6 +223,7 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'fixedAssets' ||
       value === 'severance' ||
       value === 'freeTuition' ||
+      value === 'stakeholders' ||
       value === 'donations' ||
       value === 'refundInvoices'
     )
@@ -404,11 +410,8 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'payrollParameters' ? (
           <FinancePayrollParametersSection canManage={isManager} />
         ) : null}
-        {tab === 'donations' ? (
-          <Suspense fallback={<SummaryLoading />}>
-            <DonationsSection />
-          </Suspense>
-        ) : null}
+        {tab === 'donations' ? <DonationsSection /> : null}
+        {tab === 'stakeholders' ? <FinanceStakeholdersSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

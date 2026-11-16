@@ -183749,6 +183749,3665 @@
         }
       }
     },
+    "/api/v1/finance/stakeholders": {
+      "get": {
+        "operationId": "listStakeholders",
+        "summary": "Paydaşları ve sponsorları listele",
+        "tags": [
+          "finance-stakeholders"
+        ],
+        "description": "Etkinler önce, ada göre; pasifler dahil (DOM-FIN-102). `q` ad, VKN ve iletişim kişisinin adında arar; `type`, `status`, `tag` ve `renewalDue=true` (yenileme uyarısında anlaşması olan) süzer. Satırda yürürlükteki ve yenileme uyarısındaki anlaşma sayıları vardır (K-319). İletişim e-postası ve telefonu maskelidir (K-317). `Accept: text/csv` süzgeçle eşleşen bütün paydaşları iletişim bilgisi olmadan verir (`;`, UTF-8 BOM, formül kaçışı); kullanıcı başına 10/dk, denetim `finance.stakeholder_export`. Rol: `yonetici` (muhasebe rolü açılınca o da; K-317). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Ad, VKN ve iletişim kişisinin adında arama, Türkçe harf duyarsız"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "sponsor",
+                "partner",
+                "corporate",
+                "university",
+                "municipality_ngo",
+                "parent_association"
+              ]
+            },
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "description": "Paydaş türü"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "inactive"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "`active` etkin, `inactive` pasif"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 40
+            },
+            "in": "query",
+            "name": "tag",
+            "required": false,
+            "description": "Etiket (tam eşleşme, küçük harf)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true"
+              ]
+            },
+            "in": "query",
+            "name": "renewalDue",
+            "required": false,
+            "description": "`true`: yenileme uyarısında anlaşması olan paydaşlar"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "sponsor",
+                              "partner",
+                              "corporate",
+                              "university",
+                              "municipality_ngo",
+                              "parent_association"
+                            ]
+                          },
+                          "taxNumber": {
+                            "description": "VKN (tüzel kişi; kişisel veri değildir)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "contactName": {
+                            "description": "İletişim kişisinin adı",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "contactEmail": {
+                            "description": "Maskeli e-posta (`a***@alan.com`, K-317)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "contactPhone": {
+                            "description": "Maskeli telefon (`0532 *** ** 12`, K-317)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "tags": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "isActive": {
+                            "type": "boolean"
+                          },
+                          "activeAgreementCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Yürürlükte ve bitmemiş anlaşma sayısı"
+                          },
+                          "renewalDueCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Yenileme uyarısındaki anlaşma sayısı (bitişe kalan gün ≤ bildirim günü, K-319)"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "type",
+                          "taxNumber",
+                          "contactName",
+                          "contactEmail",
+                          "contactPhone",
+                          "tags",
+                          "isActive",
+                          "activeAgreementCount",
+                          "renewalDueCount",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createStakeholder",
+        "summary": "Paydaş ekle",
+        "tags": [
+          "finance-stakeholders"
+        ],
+        "description": "Kurum adı, tür (`sponsor`, `partner`, `corporate`, `university`, `municipality_ngo`, `parent_association`), isteğe bağlı VKN (10 hane, kontrol hanesi denetlenir), iletişim kişisi (ad, e-posta, telefon) ve etiketler (en çok 10; küçük harfe çevrilir). VKN kurumda tekil: 409 `stakeholder_tax_number_exists` (K-316). Gövdedeki `institutionId` 400. `Idempotency-Key` zorunlu. Rol: `yonetici` (muhasebe rolü açılınca o da; K-317). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 200
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "sponsor",
+                      "partner",
+                      "corporate",
+                      "university",
+                      "municipality_ngo",
+                      "parent_association"
+                    ],
+                    "description": "`sponsor` sponsor, `partner` iş birliği kurumu, `corporate` kurumsal paydaş (tedarikçi dışı), `university` üniversite, `municipality_ngo` belediye ya da STK, `parent_association` veli derneği"
+                  },
+                  "taxNumber": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{10}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "İsteğe bağlı 10 haneli VKN; verilmişse kurumda tekil"
+                  },
+                  "contactName": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 2,
+                        "maxLength": 120
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "contactEmail": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 254,
+                        "format": "email",
+                        "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "contactPhone": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^0\\d{10}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "tags": {
+                    "description": "Serbest etiketler (en çok 10, Türkçe küçük harfe çevrilir, yinelenen tek sayılır)",
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "required": [
+                  "name",
+                  "type"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "sponsor",
+                            "partner",
+                            "corporate",
+                            "university",
+                            "municipality_ngo",
+                            "parent_association"
+                          ]
+                        },
+                        "taxNumber": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "contactName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "contactEmail": {
+                          "description": "Tam e-posta (yalnız yönetici)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "contactPhone": {
+                          "description": "Tam telefon (yalnız yönetici)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "tags": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "isActive": {
+                          "type": "boolean"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "type",
+                        "taxNumber",
+                        "contactName",
+                        "contactEmail",
+                        "contactPhone",
+                        "tags",
+                        "isActive",
+                        "createdAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/stakeholders/{stakeholderId}": {
+      "get": {
+        "operationId": "getStakeholder",
+        "summary": "Paydaş ayrıntısı",
+        "tags": [
+          "finance-stakeholders"
+        ],
+        "description": "Tam iletişim bilgisi (K-317). Anlaşmalar `GET /finance/stakeholder-agreements?stakeholderId=` ile okunur. Olmayan ya da başka kurumun paydaşı 404. Rol: `yonetici` (muhasebe rolü açılınca o da; K-317). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "stakeholderId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "sponsor",
+                            "partner",
+                            "corporate",
+                            "university",
+                            "municipality_ngo",
+                            "parent_association"
+                          ]
+                        },
+                        "taxNumber": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "contactName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "contactEmail": {
+                          "description": "Tam e-posta (yalnız yönetici)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "contactPhone": {
+                          "description": "Tam telefon (yalnız yönetici)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "tags": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "isActive": {
+                          "type": "boolean"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "type",
+                        "taxNumber",
+                        "contactName",
+                        "contactEmail",
+                        "contactPhone",
+                        "tags",
+                        "isActive",
+                        "createdAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateStakeholder",
+        "summary": "Paydaşı düzelt ya da pasifleştir",
+        "tags": [
+          "finance-stakeholders"
+        ],
+        "description": "Verilen alanlar değişir; etiket listesi bütün olarak yazılır. `isActive: false` pasifleştirir (pasif paydaşla anlaşma açılmaz, taslak yürürlüğe alınmaz; yürürlükteki anlaşmalar sürer), `true` yeniden etkinleştirir; paydaş silinmez (K-316). Değişiklik yoksa 422 `stakeholder_unchanged`, başka paydaşın VKN'si 409 `stakeholder_tax_number_exists`, sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Rol: `yonetici` (muhasebe rolü açılınca o da; K-317). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 200
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "sponsor",
+                      "partner",
+                      "corporate",
+                      "university",
+                      "municipality_ngo",
+                      "parent_association"
+                    ],
+                    "description": "`sponsor` sponsor, `partner` iş birliği kurumu, `corporate` kurumsal paydaş (tedarikçi dışı), `university` üniversite, `municipality_ngo` belediye ya da STK, `parent_association` veli derneği"
+                  },
+                  "taxNumber": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{10}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "İsteğe bağlı 10 haneli VKN; verilmişse kurumda tekil"
+                  },
+                  "contactName": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 2,
+                        "maxLength": 120
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "contactEmail": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 254,
+                        "format": "email",
+                        "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "contactPhone": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^0\\d{10}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "tags": {
+                    "description": "Serbest etiketler (en çok 10, Türkçe küçük harfe çevrilir, yinelenen tek sayılır)",
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "stakeholderId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "sponsor",
+                            "partner",
+                            "corporate",
+                            "university",
+                            "municipality_ngo",
+                            "parent_association"
+                          ]
+                        },
+                        "taxNumber": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "contactName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "contactEmail": {
+                          "description": "Tam e-posta (yalnız yönetici)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "contactPhone": {
+                          "description": "Tam telefon (yalnız yönetici)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "tags": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "isActive": {
+                          "type": "boolean"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "type",
+                        "taxNumber",
+                        "contactName",
+                        "contactEmail",
+                        "contactPhone",
+                        "tags",
+                        "isActive",
+                        "createdAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/stakeholders/{stakeholderId}/agreements": {
+      "post": {
+        "operationId": "createStakeholderAgreement",
+        "summary": "İş birliği ya da sponsorluk anlaşması aç",
+        "tags": [
+          "finance-stakeholders"
+        ],
+        "description": "Anlaşma taslak olarak açılır (K-318): konu, başlangıç–bitiş (bitiş başlangıçtan önce 422 `stakeholder_agreement_dates_invalid`), yenileme bildirim günü (0–365, varsayılan 30), katkı türü (`cash` nakdide tutar zorunlu: 422 `stakeholder_agreement_amount_required`; `in_kind` ve `service` için açıklama zorunlu: 422 `stakeholder_agreement_description_required`, tutar tahmini değerdir), karşılıklar ve sözleşme dosyası (`POST /files`, `purpose: document`, PDF; yükleyen yönetici bağlar: başkasının ya da başka kurumun dosyası 422 `file_unavailable`, başka kayda bağlı 409 `file_already_attached`). Pasif paydaş 422 `stakeholder_inactive`; olmayan ya da başka kurumun paydaşı 404. Sponsor katkısı bağış ya da tahsilat kaydı açmaz. `Idempotency-Key` zorunlu. Rol: `yonetici` (muhasebe rolü açılınca o da; K-317). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "subject": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 200
+                  },
+                  "startDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Başlangıç günü"
+                  },
+                  "endDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Bitiş günü; başlangıçtan önce olamaz"
+                  },
+                  "renewalNoticeDays": {
+                    "default": 30,
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 365,
+                    "description": "Bitişten kaç gün önce uyarı verileceği (0–365)"
+                  },
+                  "contributionType": {
+                    "type": "string",
+                    "enum": [
+                      "cash",
+                      "in_kind",
+                      "service"
+                    ],
+                    "description": "`cash` nakdi, `in_kind` ayni, `service` hizmet"
+                  },
+                  "contributionAmountCents": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 100000000000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Kuruş. Nakdi katkıda tutar; ayni ve hizmette isteğe bağlı tahmini değer"
+                  },
+                  "contributionDescription": {
+                    "description": "Ayni ve hizmet katkısında zorunlu açıklama (ör. 40 tablet, yaz okulu eğitmenliği)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "benefits": {
+                    "description": "`logo` logo kullanımı, `event_naming` etkinlik adı, `announcement` duyuru ve teşekkür, `other` diğer",
+                    "maxItems": 4,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "logo",
+                        "event_naming",
+                        "announcement",
+                        "other"
+                      ]
+                    }
+                  },
+                  "benefitNote": {
+                    "description": "Karşılığın ayrıntısı (ör. etkinlik adı, logo yeri)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 300
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "contractFileId": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "`POST /files` (`purpose: document`) ile yüklenmiş PDF; yükleyen yönetici bağlar"
+                  }
+                },
+                "required": [
+                  "subject",
+                  "startDate",
+                  "endDate",
+                  "contributionType"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "stakeholderId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "stakeholder": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "sponsor",
+                                "partner",
+                                "corporate",
+                                "university",
+                                "municipality_ngo",
+                                "parent_association"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "type"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "subject": {
+                          "type": "string"
+                        },
+                        "startDate": {
+                          "type": "string"
+                        },
+                        "endDate": {
+                          "type": "string",
+                          "description": "Bitiş günü (dahil)"
+                        },
+                        "renewalNoticeDays": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "contributionType": {
+                          "type": "string",
+                          "enum": [
+                            "cash",
+                            "in_kind",
+                            "service"
+                          ]
+                        },
+                        "contributionAmountCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Kuruş; nakdide tutar, ayni ve hizmette tahmini değer"
+                        },
+                        "contributionDescription": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "benefits": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "logo",
+                              "event_naming",
+                              "announcement",
+                              "other"
+                            ]
+                          }
+                        },
+                        "benefitNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "contractFileId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "active",
+                            "ended",
+                            "terminated"
+                          ],
+                          "description": "`draft`, `active`, `ended` (bitiş günü geçmiş yürürlükteki, hesaplanır), `terminated`"
+                        },
+                        "daysLeft": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Bitişe kalan gün; yalnız yürürlükteki anlaşmada"
+                        },
+                        "noticeDate": {
+                          "description": "Yenileme bildirimi günü (bitiş − bildirim günü); yalnız yürürlükteki anlaşmada",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "renewalDue": {
+                          "type": "boolean",
+                          "description": "Yenileme uyarısında mı (K-319)"
+                        },
+                        "terminationDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "contractFile": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "byteSize": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name",
+                                "byteSize"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Sözleşme dosyası; bağlantısı `GET /files/{fileId}/url` ile alınır"
+                        },
+                        "activatedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "terminationReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "terminatedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "stakeholder",
+                        "subject",
+                        "startDate",
+                        "endDate",
+                        "renewalNoticeDays",
+                        "contributionType",
+                        "contributionAmountCents",
+                        "contributionDescription",
+                        "benefits",
+                        "benefitNote",
+                        "contractFileId",
+                        "status",
+                        "daysLeft",
+                        "noticeDate",
+                        "renewalDue",
+                        "terminationDate",
+                        "version",
+                        "contractFile",
+                        "activatedAt",
+                        "terminationReason",
+                        "terminatedAt",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/stakeholder-agreements": {
+      "get": {
+        "operationId": "listStakeholderAgreements",
+        "summary": "Paydaş anlaşmalarını listele",
+        "tags": [
+          "finance-stakeholders"
+        ],
+        "description": "Yeni başlangıç önce; `expiringWithinDays` ya da `renewalDue=true` verilince bitişi en yakın önce. Durum her okumada hesaplanır: yürürlükteki anlaşmanın bitiş günü bugünden (Europe/Istanbul) önceyse `ended` (K-318). `expiringWithinDays=N` bitişi bugün dahil N gün içindeki yürürlükteki anlaşmaları, `renewalDue=true` bitişe kalan günü bildirim gününe eşit ya da az olanları verir (K-319; rozet sayısı `meta.total`). `stakeholderId`, `status`, `q` (konu ve paydaş adı) süzer. Arka plan bildirimi gönderilmez. `Accept: text/csv` süzgeçle eşleşen bütün anlaşmaları verir; kullanıcı başına 10/dk, denetim `finance.stakeholder_agreement_export`. Rol: `yonetici` (muhasebe rolü açılınca o da; K-317). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Konu ve paydaş adında arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "stakeholderId",
+            "required": false,
+            "description": "Paydaşın anlaşmaları"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "active",
+                "ended",
+                "terminated"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Gösterilen durum"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 365
+            },
+            "in": "query",
+            "name": "expiringWithinDays",
+            "required": false,
+            "description": "Bitişi bugün dahil N gün içinde olan yürürlükteki anlaşmalar (1–365)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true"
+              ]
+            },
+            "in": "query",
+            "name": "renewalDue",
+            "required": false,
+            "description": "`true`: yenileme uyarısındaki anlaşmalar (K-319)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "stakeholder": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "sponsor",
+                                  "partner",
+                                  "corporate",
+                                  "university",
+                                  "municipality_ngo",
+                                  "parent_association"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "type"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "subject": {
+                            "type": "string"
+                          },
+                          "startDate": {
+                            "type": "string"
+                          },
+                          "endDate": {
+                            "type": "string",
+                            "description": "Bitiş günü (dahil)"
+                          },
+                          "renewalNoticeDays": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "contributionType": {
+                            "type": "string",
+                            "enum": [
+                              "cash",
+                              "in_kind",
+                              "service"
+                            ]
+                          },
+                          "contributionAmountCents": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Kuruş; nakdide tutar, ayni ve hizmette tahmini değer"
+                          },
+                          "contributionDescription": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "benefits": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "logo",
+                                "event_naming",
+                                "announcement",
+                                "other"
+                              ]
+                            }
+                          },
+                          "benefitNote": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "contractFileId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "draft",
+                              "active",
+                              "ended",
+                              "terminated"
+                            ],
+                            "description": "`draft`, `active`, `ended` (bitiş günü geçmiş yürürlükteki, hesaplanır), `terminated`"
+                          },
+                          "daysLeft": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Bitişe kalan gün; yalnız yürürlükteki anlaşmada"
+                          },
+                          "noticeDate": {
+                            "description": "Yenileme bildirimi günü (bitiş − bildirim günü); yalnız yürürlükteki anlaşmada",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "renewalDue": {
+                            "type": "boolean",
+                            "description": "Yenileme uyarısında mı (K-319)"
+                          },
+                          "terminationDate": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "stakeholder",
+                          "subject",
+                          "startDate",
+                          "endDate",
+                          "renewalNoticeDays",
+                          "contributionType",
+                          "contributionAmountCents",
+                          "contributionDescription",
+                          "benefits",
+                          "benefitNote",
+                          "contractFileId",
+                          "status",
+                          "daysLeft",
+                          "noticeDate",
+                          "renewalDue",
+                          "terminationDate",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/stakeholder-agreements/{agreementId}": {
+      "get": {
+        "operationId": "getStakeholderAgreement",
+        "summary": "Anlaşma ayrıntısı",
+        "tags": [
+          "finance-stakeholders"
+        ],
+        "description": "Anlaşma, hesaplanan durum ve yenileme günü, sözleşme dosyasının adı ve fesih gerekçesi. Olmayan, silinmiş ya da başka kurumun anlaşması 404. Rol: `yonetici` (muhasebe rolü açılınca o da; K-317). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "agreementId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "stakeholder": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "sponsor",
+                                "partner",
+                                "corporate",
+                                "university",
+                                "municipality_ngo",
+                                "parent_association"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "type"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "subject": {
+                          "type": "string"
+                        },
+                        "startDate": {
+                          "type": "string"
+                        },
+                        "endDate": {
+                          "type": "string",
+                          "description": "Bitiş günü (dahil)"
+                        },
+                        "renewalNoticeDays": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "contributionType": {
+                          "type": "string",
+                          "enum": [
+                            "cash",
+                            "in_kind",
+                            "service"
+                          ]
+                        },
+                        "contributionAmountCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Kuruş; nakdide tutar, ayni ve hizmette tahmini değer"
+                        },
+                        "contributionDescription": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "benefits": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "logo",
+                              "event_naming",
+                              "announcement",
+                              "other"
+                            ]
+                          }
+                        },
+                        "benefitNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "contractFileId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "active",
+                            "ended",
+                            "terminated"
+                          ],
+                          "description": "`draft`, `active`, `ended` (bitiş günü geçmiş yürürlükteki, hesaplanır), `terminated`"
+                        },
+                        "daysLeft": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Bitişe kalan gün; yalnız yürürlükteki anlaşmada"
+                        },
+                        "noticeDate": {
+                          "description": "Yenileme bildirimi günü (bitiş − bildirim günü); yalnız yürürlükteki anlaşmada",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "renewalDue": {
+                          "type": "boolean",
+                          "description": "Yenileme uyarısında mı (K-319)"
+                        },
+                        "terminationDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "contractFile": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "byteSize": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name",
+                                "byteSize"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Sözleşme dosyası; bağlantısı `GET /files/{fileId}/url` ile alınır"
+                        },
+                        "activatedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "terminationReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "terminatedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "stakeholder",
+                        "subject",
+                        "startDate",
+                        "endDate",
+                        "renewalNoticeDays",
+                        "contributionType",
+                        "contributionAmountCents",
+                        "contributionDescription",
+                        "benefits",
+                        "benefitNote",
+                        "contractFileId",
+                        "status",
+                        "daysLeft",
+                        "noticeDate",
+                        "renewalDue",
+                        "terminationDate",
+                        "version",
+                        "contractFile",
+                        "activatedAt",
+                        "terminationReason",
+                        "terminatedAt",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateStakeholderAgreement",
+        "summary": "Anlaşmayı düzelt",
+        "tags": [
+          "finance-stakeholders"
+        ],
+        "description": "Verilen alanlar değişir; birleşik değer açılıştaki kurallardan geçer. Taslak, yürürlükteki ve süresi bitmiş anlaşma düzeltilir (ör. bitiş uzatma); feshedilmiş anlaşma 422 `stakeholder_agreement_terminated` (K-318). Değişiklik yoksa 422 `stakeholder_agreement_unchanged`. `contractFileId` değişince eski dosyanın bağı kalkar, yenisi bağlanır; `null` eki kaldırır. `If-Match` zorunlu, sürüm tutmazsa 409. Rol: `yonetici` (muhasebe rolü açılınca o da; K-317). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "subject": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 200
+                  },
+                  "startDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "endDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "renewalNoticeDays": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 365,
+                    "description": "Bitişten kaç gün önce uyarı verileceği (0–365)"
+                  },
+                  "contributionType": {
+                    "type": "string",
+                    "enum": [
+                      "cash",
+                      "in_kind",
+                      "service"
+                    ],
+                    "description": "`cash` nakdi, `in_kind` ayni, `service` hizmet"
+                  },
+                  "contributionAmountCents": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 100000000000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Kuruş. Nakdi katkıda tutar; ayni ve hizmette isteğe bağlı tahmini değer"
+                  },
+                  "contributionDescription": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "benefits": {
+                    "description": "`logo` logo kullanımı, `event_naming` etkinlik adı, `announcement` duyuru ve teşekkür, `other` diğer",
+                    "maxItems": 4,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "logo",
+                        "event_naming",
+                        "announcement",
+                        "other"
+                      ]
+                    }
+                  },
+                  "benefitNote": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 300
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "contractFileId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "`POST /files` (`purpose: document`) ile yüklenmiş PDF; yükleyen yönetici bağlar"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "agreementId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "stakeholder": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "sponsor",
+                                "partner",
+                                "corporate",
+                                "university",
+                                "municipality_ngo",
+                                "parent_association"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "type"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "subject": {
+                          "type": "string"
+                        },
+                        "startDate": {
+                          "type": "string"
+                        },
+                        "endDate": {
+                          "type": "string",
+                          "description": "Bitiş günü (dahil)"
+                        },
+                        "renewalNoticeDays": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "contributionType": {
+                          "type": "string",
+                          "enum": [
+                            "cash",
+                            "in_kind",
+                            "service"
+                          ]
+                        },
+                        "contributionAmountCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Kuruş; nakdide tutar, ayni ve hizmette tahmini değer"
+                        },
+                        "contributionDescription": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "benefits": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "logo",
+                              "event_naming",
+                              "announcement",
+                              "other"
+                            ]
+                          }
+                        },
+                        "benefitNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "contractFileId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "active",
+                            "ended",
+                            "terminated"
+                          ],
+                          "description": "`draft`, `active`, `ended` (bitiş günü geçmiş yürürlükteki, hesaplanır), `terminated`"
+                        },
+                        "daysLeft": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Bitişe kalan gün; yalnız yürürlükteki anlaşmada"
+                        },
+                        "noticeDate": {
+                          "description": "Yenileme bildirimi günü (bitiş − bildirim günü); yalnız yürürlükteki anlaşmada",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "renewalDue": {
+                          "type": "boolean",
+                          "description": "Yenileme uyarısında mı (K-319)"
+                        },
+                        "terminationDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "contractFile": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "byteSize": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name",
+                                "byteSize"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Sözleşme dosyası; bağlantısı `GET /files/{fileId}/url` ile alınır"
+                        },
+                        "activatedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "terminationReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "terminatedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "stakeholder",
+                        "subject",
+                        "startDate",
+                        "endDate",
+                        "renewalNoticeDays",
+                        "contributionType",
+                        "contributionAmountCents",
+                        "contributionDescription",
+                        "benefits",
+                        "benefitNote",
+                        "contractFileId",
+                        "status",
+                        "daysLeft",
+                        "noticeDate",
+                        "renewalDue",
+                        "terminationDate",
+                        "version",
+                        "contractFile",
+                        "activatedAt",
+                        "terminationReason",
+                        "terminatedAt",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "archiveStakeholderAgreement",
+        "summary": "Taslak anlaşmayı sil",
+        "tags": [
+          "finance-stakeholders"
+        ],
+        "description": "Yalnız taslak silinir (arşivlenir; 422 `stakeholder_agreement_not_draft`), bağlı sözleşme dosyasının bağı kalkar (K-318). `If-Match` zorunlu. Rol: `yonetici` (muhasebe rolü açılınca o da; K-317). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "agreementId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "archivedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "archivedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/stakeholder-agreements/{agreementId}/activate": {
+      "post": {
+        "operationId": "activateStakeholderAgreement",
+        "summary": "Anlaşmayı yürürlüğe al",
+        "tags": [
+          "finance-stakeholders"
+        ],
+        "description": "Yalnız taslak (422 `stakeholder_agreement_not_draft`) ve etkin paydaşla (422 `stakeholder_inactive`) (K-318). `If-Match` zorunlu. Rol: `yonetici` (muhasebe rolü açılınca o da; K-317). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "agreementId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "stakeholder": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "sponsor",
+                                "partner",
+                                "corporate",
+                                "university",
+                                "municipality_ngo",
+                                "parent_association"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "type"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "subject": {
+                          "type": "string"
+                        },
+                        "startDate": {
+                          "type": "string"
+                        },
+                        "endDate": {
+                          "type": "string",
+                          "description": "Bitiş günü (dahil)"
+                        },
+                        "renewalNoticeDays": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "contributionType": {
+                          "type": "string",
+                          "enum": [
+                            "cash",
+                            "in_kind",
+                            "service"
+                          ]
+                        },
+                        "contributionAmountCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Kuruş; nakdide tutar, ayni ve hizmette tahmini değer"
+                        },
+                        "contributionDescription": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "benefits": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "logo",
+                              "event_naming",
+                              "announcement",
+                              "other"
+                            ]
+                          }
+                        },
+                        "benefitNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "contractFileId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "active",
+                            "ended",
+                            "terminated"
+                          ],
+                          "description": "`draft`, `active`, `ended` (bitiş günü geçmiş yürürlükteki, hesaplanır), `terminated`"
+                        },
+                        "daysLeft": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Bitişe kalan gün; yalnız yürürlükteki anlaşmada"
+                        },
+                        "noticeDate": {
+                          "description": "Yenileme bildirimi günü (bitiş − bildirim günü); yalnız yürürlükteki anlaşmada",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "renewalDue": {
+                          "type": "boolean",
+                          "description": "Yenileme uyarısında mı (K-319)"
+                        },
+                        "terminationDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "contractFile": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "byteSize": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name",
+                                "byteSize"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Sözleşme dosyası; bağlantısı `GET /files/{fileId}/url` ile alınır"
+                        },
+                        "activatedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "terminationReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "terminatedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "stakeholder",
+                        "subject",
+                        "startDate",
+                        "endDate",
+                        "renewalNoticeDays",
+                        "contributionType",
+                        "contributionAmountCents",
+                        "contributionDescription",
+                        "benefits",
+                        "benefitNote",
+                        "contractFileId",
+                        "status",
+                        "daysLeft",
+                        "noticeDate",
+                        "renewalDue",
+                        "terminationDate",
+                        "version",
+                        "contractFile",
+                        "activatedAt",
+                        "terminationReason",
+                        "terminatedAt",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/stakeholder-agreements/{agreementId}/terminate": {
+      "post": {
+        "operationId": "terminateStakeholderAgreement",
+        "summary": "Anlaşmayı feshet",
+        "tags": [
+          "finance-stakeholders"
+        ],
+        "description": "Fesih günü (başlangıç ile bitiş arasında; değilse 422 `stakeholder_agreement_termination_date_invalid`) ve gerekçe (5–500; denetim kaydına yalnız alan adı düşer). Yalnız yürürlükteki ve bitiş günü geçmemiş anlaşma: taslak 422 `stakeholder_agreement_not_active`, süresi biten 422 `stakeholder_agreement_ended`, feshedilmiş 422 `stakeholder_agreement_terminated` (K-318). `If-Match` zorunlu. Rol: `yonetici` (muhasebe rolü açılınca o da; K-317). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "terminationDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Fesih günü; başlangıç ile bitiş arasında"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "terminationDate",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "agreementId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "stakeholder": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "sponsor",
+                                "partner",
+                                "corporate",
+                                "university",
+                                "municipality_ngo",
+                                "parent_association"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "type"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "subject": {
+                          "type": "string"
+                        },
+                        "startDate": {
+                          "type": "string"
+                        },
+                        "endDate": {
+                          "type": "string",
+                          "description": "Bitiş günü (dahil)"
+                        },
+                        "renewalNoticeDays": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "contributionType": {
+                          "type": "string",
+                          "enum": [
+                            "cash",
+                            "in_kind",
+                            "service"
+                          ]
+                        },
+                        "contributionAmountCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Kuruş; nakdide tutar, ayni ve hizmette tahmini değer"
+                        },
+                        "contributionDescription": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "benefits": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "logo",
+                              "event_naming",
+                              "announcement",
+                              "other"
+                            ]
+                          }
+                        },
+                        "benefitNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "contractFileId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "active",
+                            "ended",
+                            "terminated"
+                          ],
+                          "description": "`draft`, `active`, `ended` (bitiş günü geçmiş yürürlükteki, hesaplanır), `terminated`"
+                        },
+                        "daysLeft": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Bitişe kalan gün; yalnız yürürlükteki anlaşmada"
+                        },
+                        "noticeDate": {
+                          "description": "Yenileme bildirimi günü (bitiş − bildirim günü); yalnız yürürlükteki anlaşmada",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "renewalDue": {
+                          "type": "boolean",
+                          "description": "Yenileme uyarısında mı (K-319)"
+                        },
+                        "terminationDate": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "contractFile": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "byteSize": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name",
+                                "byteSize"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Sözleşme dosyası; bağlantısı `GET /files/{fileId}/url` ile alınır"
+                        },
+                        "activatedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "terminationReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "terminatedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "stakeholder",
+                        "subject",
+                        "startDate",
+                        "endDate",
+                        "renewalNoticeDays",
+                        "contributionType",
+                        "contributionAmountCents",
+                        "contributionDescription",
+                        "benefits",
+                        "benefitNote",
+                        "contractFileId",
+                        "status",
+                        "daysLeft",
+                        "noticeDate",
+                        "renewalDue",
+                        "terminationDate",
+                        "version",
+                        "contractFile",
+                        "activatedAt",
+                        "terminationReason",
+                        "terminatedAt",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

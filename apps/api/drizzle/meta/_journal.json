@@ -750,6 +750,13 @@
       "when": 1794832760835,
       "tag": "0106_create_donations",
       "breakpoints": true
+    },
+    {
+      "idx": 107,
+      "version": "7",
+      "when": 1794834102861,
+      "tag": "0107_create_stakeholders",
+      "breakpoints": true
     }
   ]
 }

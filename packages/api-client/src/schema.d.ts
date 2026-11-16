@@ -7764,6 +7764,162 @@ export interface paths {
         patch: operations["setDonationSettings"];
         trace?: never;
     };
+    "/api/v1/finance/stakeholders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Paydaşları ve sponsorları listele
+         * @description Etkinler önce, ada göre; pasifler dahil (DOM-FIN-102). `q` ad, VKN ve iletişim kişisinin adında arar; `type`, `status`, `tag` ve `renewalDue=true` (yenileme uyarısında anlaşması olan) süzer. Satırda yürürlükteki ve yenileme uyarısındaki anlaşma sayıları vardır (K-319). İletişim e-postası ve telefonu maskelidir (K-317). `Accept: text/csv` süzgeçle eşleşen bütün paydaşları iletişim bilgisi olmadan verir (`;`, UTF-8 BOM, formül kaçışı); kullanıcı başına 10/dk, denetim `finance.stakeholder_export`. Rol: `yonetici` (muhasebe rolü açılınca o da; K-317). Modül `finance`.
+         */
+        get: operations["listStakeholders"];
+        put?: never;
+        /**
+         * Paydaş ekle
+         * @description Kurum adı, tür (`sponsor`, `partner`, `corporate`, `university`, `municipality_ngo`, `parent_association`), isteğe bağlı VKN (10 hane, kontrol hanesi denetlenir), iletişim kişisi (ad, e-posta, telefon) ve etiketler (en çok 10; küçük harfe çevrilir). VKN kurumda tekil: 409 `stakeholder_tax_number_exists` (K-316). Gövdedeki `institutionId` 400. `Idempotency-Key` zorunlu. Rol: `yonetici` (muhasebe rolü açılınca o da; K-317). Modül `finance`.
+         */
+        post: operations["createStakeholder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/stakeholders/{stakeholderId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Paydaş ayrıntısı
+         * @description Tam iletişim bilgisi (K-317). Anlaşmalar `GET /finance/stakeholder-agreements?stakeholderId=` ile okunur. Olmayan ya da başka kurumun paydaşı 404. Rol: `yonetici` (muhasebe rolü açılınca o da; K-317). Modül `finance`.
+         */
+        get: operations["getStakeholder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Paydaşı düzelt ya da pasifleştir
+         * @description Verilen alanlar değişir; etiket listesi bütün olarak yazılır. `isActive: false` pasifleştirir (pasif paydaşla anlaşma açılmaz, taslak yürürlüğe alınmaz; yürürlükteki anlaşmalar sürer), `true` yeniden etkinleştirir; paydaş silinmez (K-316). Değişiklik yoksa 422 `stakeholder_unchanged`, başka paydaşın VKN'si 409 `stakeholder_tax_number_exists`, sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Rol: `yonetici` (muhasebe rolü açılınca o da; K-317). Modül `finance`.
+         */
+        patch: operations["updateStakeholder"];
+        trace?: never;
+    };
+    "/api/v1/finance/stakeholders/{stakeholderId}/agreements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * İş birliği ya da sponsorluk anlaşması aç
+         * @description Anlaşma taslak olarak açılır (K-318): konu, başlangıç–bitiş (bitiş başlangıçtan önce 422 `stakeholder_agreement_dates_invalid`), yenileme bildirim günü (0–365, varsayılan 30), katkı türü (`cash` nakdide tutar zorunlu: 422 `stakeholder_agreement_amount_required`; `in_kind` ve `service` için açıklama zorunlu: 422 `stakeholder_agreement_description_required`, tutar tahmini değerdir), karşılıklar ve sözleşme dosyası (`POST /files`, `purpose: document`, PDF; yükleyen yönetici bağlar: başkasının ya da başka kurumun dosyası 422 `file_unavailable`, başka kayda bağlı 409 `file_already_attached`). Pasif paydaş 422 `stakeholder_inactive`; olmayan ya da başka kurumun paydaşı 404. Sponsor katkısı bağış ya da tahsilat kaydı açmaz. `Idempotency-Key` zorunlu. Rol: `yonetici` (muhasebe rolü açılınca o da; K-317). Modül `finance`.
+         */
+        post: operations["createStakeholderAgreement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/stakeholder-agreements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Paydaş anlaşmalarını listele
+         * @description Yeni başlangıç önce; `expiringWithinDays` ya da `renewalDue=true` verilince bitişi en yakın önce. Durum her okumada hesaplanır: yürürlükteki anlaşmanın bitiş günü bugünden (Europe/Istanbul) önceyse `ended` (K-318). `expiringWithinDays=N` bitişi bugün dahil N gün içindeki yürürlükteki anlaşmaları, `renewalDue=true` bitişe kalan günü bildirim gününe eşit ya da az olanları verir (K-319; rozet sayısı `meta.total`). `stakeholderId`, `status`, `q` (konu ve paydaş adı) süzer. Arka plan bildirimi gönderilmez. `Accept: text/csv` süzgeçle eşleşen bütün anlaşmaları verir; kullanıcı başına 10/dk, denetim `finance.stakeholder_agreement_export`. Rol: `yonetici` (muhasebe rolü açılınca o da; K-317). Modül `finance`.
+         */
+        get: operations["listStakeholderAgreements"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/stakeholder-agreements/{agreementId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Anlaşma ayrıntısı
+         * @description Anlaşma, hesaplanan durum ve yenileme günü, sözleşme dosyasının adı ve fesih gerekçesi. Olmayan, silinmiş ya da başka kurumun anlaşması 404. Rol: `yonetici` (muhasebe rolü açılınca o da; K-317). Modül `finance`.
+         */
+        get: operations["getStakeholderAgreement"];
+        put?: never;
+        post?: never;
+        /**
+         * Taslak anlaşmayı sil
+         * @description Yalnız taslak silinir (arşivlenir; 422 `stakeholder_agreement_not_draft`), bağlı sözleşme dosyasının bağı kalkar (K-318). `If-Match` zorunlu. Rol: `yonetici` (muhasebe rolü açılınca o da; K-317). Modül `finance`.
+         */
+        delete: operations["archiveStakeholderAgreement"];
+        options?: never;
+        head?: never;
+        /**
+         * Anlaşmayı düzelt
+         * @description Verilen alanlar değişir; birleşik değer açılıştaki kurallardan geçer. Taslak, yürürlükteki ve süresi bitmiş anlaşma düzeltilir (ör. bitiş uzatma); feshedilmiş anlaşma 422 `stakeholder_agreement_terminated` (K-318). Değişiklik yoksa 422 `stakeholder_agreement_unchanged`. `contractFileId` değişince eski dosyanın bağı kalkar, yenisi bağlanır; `null` eki kaldırır. `If-Match` zorunlu, sürüm tutmazsa 409. Rol: `yonetici` (muhasebe rolü açılınca o da; K-317). Modül `finance`.
+         */
+        patch: operations["updateStakeholderAgreement"];
+        trace?: never;
+    };
+    "/api/v1/finance/stakeholder-agreements/{agreementId}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Anlaşmayı yürürlüğe al
+         * @description Yalnız taslak (422 `stakeholder_agreement_not_draft`) ve etkin paydaşla (422 `stakeholder_inactive`) (K-318). `If-Match` zorunlu. Rol: `yonetici` (muhasebe rolü açılınca o da; K-317). Modül `finance`.
+         */
+        post: operations["activateStakeholderAgreement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/stakeholder-agreements/{agreementId}/terminate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Anlaşmayı feshet
+         * @description Fesih günü (başlangıç ile bitiş arasında; değilse 422 `stakeholder_agreement_termination_date_invalid`) ve gerekçe (5–500; denetim kaydına yalnız alan adı düşer). Yalnız yürürlükteki ve bitiş günü geçmemiş anlaşma: taslak 422 `stakeholder_agreement_not_active`, süresi biten 422 `stakeholder_agreement_ended`, feshedilmiş 422 `stakeholder_agreement_terminated` (K-318). `If-Match` zorunlu. Rol: `yonetici` (muhasebe rolü açılınca o da; K-317). Modül `finance`.
+         */
+        post: operations["terminateStakeholderAgreement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -82524,6 +82680,1561 @@ export interface operations {
                             taxNoticeText: string | null;
                             /** @description `If-Match` için ayar sürümü; ayar hiç değişmediyse 1 */
                             version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listStakeholders: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Ad, VKN ve iletişim kişisinin adında arama, Türkçe harf duyarsız */
+                q?: string;
+                /** @description Paydaş türü */
+                type?: "sponsor" | "partner" | "corporate" | "university" | "municipality_ngo" | "parent_association";
+                /** @description `active` etkin, `inactive` pasif */
+                status?: "active" | "inactive";
+                /** @description Etiket (tam eşleşme, küçük harf) */
+                tag?: string;
+                /** @description `true`: yenileme uyarısında anlaşması olan paydaşlar */
+                renewalDue?: "true";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            type: "sponsor" | "partner" | "corporate" | "university" | "municipality_ngo" | "parent_association";
+                            /** @description VKN (tüzel kişi; kişisel veri değildir) */
+                            taxNumber: string | null;
+                            /** @description İletişim kişisinin adı */
+                            contactName: string | null;
+                            /** @description Maskeli e-posta (`a***@alan.com`, K-317) */
+                            contactEmail: string | null;
+                            /** @description Maskeli telefon (`0532 *** ** 12`, K-317) */
+                            contactPhone: string | null;
+                            tags: string[];
+                            isActive: boolean;
+                            /** @description Yürürlükte ve bitmemiş anlaşma sayısı */
+                            activeAgreementCount: number;
+                            /** @description Yenileme uyarısındaki anlaşma sayısı (bitişe kalan gün ≤ bildirim günü, K-319) */
+                            renewalDueCount: number;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createStakeholder: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    /**
+                     * @description `sponsor` sponsor, `partner` iş birliği kurumu, `corporate` kurumsal paydaş (tedarikçi dışı), `university` üniversite, `municipality_ngo` belediye ya da STK, `parent_association` veli derneği
+                     * @enum {string}
+                     */
+                    type: "sponsor" | "partner" | "corporate" | "university" | "municipality_ngo" | "parent_association";
+                    /**
+                     * @description İsteğe bağlı 10 haneli VKN; verilmişse kurumda tekil
+                     * @default null
+                     */
+                    taxNumber?: string | null;
+                    /** @default null */
+                    contactName?: string | null;
+                    /** @default null */
+                    contactEmail?: string | null;
+                    /** @default null */
+                    contactPhone?: string | null;
+                    /** @description Serbest etiketler (en çok 10, Türkçe küçük harfe çevrilir, yinelenen tek sayılır) */
+                    tags?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            type: "sponsor" | "partner" | "corporate" | "university" | "municipality_ngo" | "parent_association";
+                            taxNumber: string | null;
+                            contactName: string | null;
+                            /** @description Tam e-posta (yalnız yönetici) */
+                            contactEmail: string | null;
+                            /** @description Tam telefon (yalnız yönetici) */
+                            contactPhone: string | null;
+                            tags: string[];
+                            isActive: boolean;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getStakeholder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                stakeholderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            type: "sponsor" | "partner" | "corporate" | "university" | "municipality_ngo" | "parent_association";
+                            taxNumber: string | null;
+                            contactName: string | null;
+                            /** @description Tam e-posta (yalnız yönetici) */
+                            contactEmail: string | null;
+                            /** @description Tam telefon (yalnız yönetici) */
+                            contactPhone: string | null;
+                            tags: string[];
+                            isActive: boolean;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateStakeholder: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                stakeholderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    /**
+                     * @description `sponsor` sponsor, `partner` iş birliği kurumu, `corporate` kurumsal paydaş (tedarikçi dışı), `university` üniversite, `municipality_ngo` belediye ya da STK, `parent_association` veli derneği
+                     * @enum {string}
+                     */
+                    type?: "sponsor" | "partner" | "corporate" | "university" | "municipality_ngo" | "parent_association";
+                    /** @description İsteğe bağlı 10 haneli VKN; verilmişse kurumda tekil */
+                    taxNumber?: string | null;
+                    contactName?: string | null;
+                    contactEmail?: string | null;
+                    contactPhone?: string | null;
+                    /** @description Serbest etiketler (en çok 10, Türkçe küçük harfe çevrilir, yinelenen tek sayılır) */
+                    tags?: string[];
+                    isActive?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            type: "sponsor" | "partner" | "corporate" | "university" | "municipality_ngo" | "parent_association";
+                            taxNumber: string | null;
+                            contactName: string | null;
+                            /** @description Tam e-posta (yalnız yönetici) */
+                            contactEmail: string | null;
+                            /** @description Tam telefon (yalnız yönetici) */
+                            contactPhone: string | null;
+                            tags: string[];
+                            isActive: boolean;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createStakeholderAgreement: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                stakeholderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    subject: string;
+                    /** @description Başlangıç günü */
+                    startDate: string;
+                    /** @description Bitiş günü; başlangıçtan önce olamaz */
+                    endDate: string;
+                    /**
+                     * @description Bitişten kaç gün önce uyarı verileceği (0–365)
+                     * @default 30
+                     */
+                    renewalNoticeDays?: number;
+                    /**
+                     * @description `cash` nakdi, `in_kind` ayni, `service` hizmet
+                     * @enum {string}
+                     */
+                    contributionType: "cash" | "in_kind" | "service";
+                    /**
+                     * @description Kuruş. Nakdi katkıda tutar; ayni ve hizmette isteğe bağlı tahmini değer
+                     * @default null
+                     */
+                    contributionAmountCents?: number | null;
+                    /** @description Ayni ve hizmet katkısında zorunlu açıklama (ör. 40 tablet, yaz okulu eğitmenliği) */
+                    contributionDescription?: string | null;
+                    /** @description `logo` logo kullanımı, `event_naming` etkinlik adı, `announcement` duyuru ve teşekkür, `other` diğer */
+                    benefits?: ("logo" | "event_naming" | "announcement" | "other")[];
+                    /** @description Karşılığın ayrıntısı (ör. etkinlik adı, logo yeri) */
+                    benefitNote?: string | null;
+                    /**
+                     * @description `POST /files` (`purpose: document`) ile yüklenmiş PDF; yükleyen yönetici bağlar
+                     * @default null
+                     */
+                    contractFileId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            stakeholder: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                type: "sponsor" | "partner" | "corporate" | "university" | "municipality_ngo" | "parent_association";
+                            };
+                            subject: string;
+                            startDate: string;
+                            /** @description Bitiş günü (dahil) */
+                            endDate: string;
+                            renewalNoticeDays: number;
+                            /** @enum {string} */
+                            contributionType: "cash" | "in_kind" | "service";
+                            /** @description Kuruş; nakdide tutar, ayni ve hizmette tahmini değer */
+                            contributionAmountCents: number | null;
+                            contributionDescription: string | null;
+                            benefits: ("logo" | "event_naming" | "announcement" | "other")[];
+                            benefitNote: string | null;
+                            contractFileId: string | null;
+                            /**
+                             * @description `draft`, `active`, `ended` (bitiş günü geçmiş yürürlükteki, hesaplanır), `terminated`
+                             * @enum {string}
+                             */
+                            status: "draft" | "active" | "ended" | "terminated";
+                            /** @description Bitişe kalan gün; yalnız yürürlükteki anlaşmada */
+                            daysLeft: number | null;
+                            /** @description Yenileme bildirimi günü (bitiş − bildirim günü); yalnız yürürlükteki anlaşmada */
+                            noticeDate: string | null;
+                            /** @description Yenileme uyarısında mı (K-319) */
+                            renewalDue: boolean;
+                            terminationDate: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Sözleşme dosyası; bağlantısı `GET /files/{fileId}/url` ile alınır */
+                            contractFile: {
+                                id: string;
+                                name: string;
+                                byteSize: number;
+                            } | null;
+                            activatedAt: string | null;
+                            terminationReason: string | null;
+                            terminatedAt: string | null;
+                            createdAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listStakeholderAgreements: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Konu ve paydaş adında arama */
+                q?: string;
+                /** @description Paydaşın anlaşmaları */
+                stakeholderId?: string;
+                /** @description Gösterilen durum */
+                status?: "draft" | "active" | "ended" | "terminated";
+                /** @description Bitişi bugün dahil N gün içinde olan yürürlükteki anlaşmalar (1–365) */
+                expiringWithinDays?: number;
+                /** @description `true`: yenileme uyarısındaki anlaşmalar (K-319) */
+                renewalDue?: "true";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            stakeholder: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                type: "sponsor" | "partner" | "corporate" | "university" | "municipality_ngo" | "parent_association";
+                            };
+                            subject: string;
+                            startDate: string;
+                            /** @description Bitiş günü (dahil) */
+                            endDate: string;
+                            renewalNoticeDays: number;
+                            /** @enum {string} */
+                            contributionType: "cash" | "in_kind" | "service";
+                            /** @description Kuruş; nakdide tutar, ayni ve hizmette tahmini değer */
+                            contributionAmountCents: number | null;
+                            contributionDescription: string | null;
+                            benefits: ("logo" | "event_naming" | "announcement" | "other")[];
+                            benefitNote: string | null;
+                            contractFileId: string | null;
+                            /**
+                             * @description `draft`, `active`, `ended` (bitiş günü geçmiş yürürlükteki, hesaplanır), `terminated`
+                             * @enum {string}
+                             */
+                            status: "draft" | "active" | "ended" | "terminated";
+                            /** @description Bitişe kalan gün; yalnız yürürlükteki anlaşmada */
+                            daysLeft: number | null;
+                            /** @description Yenileme bildirimi günü (bitiş − bildirim günü); yalnız yürürlükteki anlaşmada */
+                            noticeDate: string | null;
+                            /** @description Yenileme uyarısında mı (K-319) */
+                            renewalDue: boolean;
+                            terminationDate: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getStakeholderAgreement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agreementId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            stakeholder: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                type: "sponsor" | "partner" | "corporate" | "university" | "municipality_ngo" | "parent_association";
+                            };
+                            subject: string;
+                            startDate: string;
+                            /** @description Bitiş günü (dahil) */
+                            endDate: string;
+                            renewalNoticeDays: number;
+                            /** @enum {string} */
+                            contributionType: "cash" | "in_kind" | "service";
+                            /** @description Kuruş; nakdide tutar, ayni ve hizmette tahmini değer */
+                            contributionAmountCents: number | null;
+                            contributionDescription: string | null;
+                            benefits: ("logo" | "event_naming" | "announcement" | "other")[];
+                            benefitNote: string | null;
+                            contractFileId: string | null;
+                            /**
+                             * @description `draft`, `active`, `ended` (bitiş günü geçmiş yürürlükteki, hesaplanır), `terminated`
+                             * @enum {string}
+                             */
+                            status: "draft" | "active" | "ended" | "terminated";
+                            /** @description Bitişe kalan gün; yalnız yürürlükteki anlaşmada */
+                            daysLeft: number | null;
+                            /** @description Yenileme bildirimi günü (bitiş − bildirim günü); yalnız yürürlükteki anlaşmada */
+                            noticeDate: string | null;
+                            /** @description Yenileme uyarısında mı (K-319) */
+                            renewalDue: boolean;
+                            terminationDate: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Sözleşme dosyası; bağlantısı `GET /files/{fileId}/url` ile alınır */
+                            contractFile: {
+                                id: string;
+                                name: string;
+                                byteSize: number;
+                            } | null;
+                            activatedAt: string | null;
+                            terminationReason: string | null;
+                            terminatedAt: string | null;
+                            createdAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveStakeholderAgreement: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                agreementId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            archivedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateStakeholderAgreement: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                agreementId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    subject?: string;
+                    startDate?: string;
+                    endDate?: string;
+                    /** @description Bitişten kaç gün önce uyarı verileceği (0–365) */
+                    renewalNoticeDays?: number;
+                    /**
+                     * @description `cash` nakdi, `in_kind` ayni, `service` hizmet
+                     * @enum {string}
+                     */
+                    contributionType?: "cash" | "in_kind" | "service";
+                    /** @description Kuruş. Nakdi katkıda tutar; ayni ve hizmette isteğe bağlı tahmini değer */
+                    contributionAmountCents?: number | null;
+                    contributionDescription?: string | null;
+                    /** @description `logo` logo kullanımı, `event_naming` etkinlik adı, `announcement` duyuru ve teşekkür, `other` diğer */
+                    benefits?: ("logo" | "event_naming" | "announcement" | "other")[];
+                    benefitNote?: string | null;
+                    /** @description `POST /files` (`purpose: document`) ile yüklenmiş PDF; yükleyen yönetici bağlar */
+                    contractFileId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            stakeholder: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                type: "sponsor" | "partner" | "corporate" | "university" | "municipality_ngo" | "parent_association";
+                            };
+                            subject: string;
+                            startDate: string;
+                            /** @description Bitiş günü (dahil) */
+                            endDate: string;
+                            renewalNoticeDays: number;
+                            /** @enum {string} */
+                            contributionType: "cash" | "in_kind" | "service";
+                            /** @description Kuruş; nakdide tutar, ayni ve hizmette tahmini değer */
+                            contributionAmountCents: number | null;
+                            contributionDescription: string | null;
+                            benefits: ("logo" | "event_naming" | "announcement" | "other")[];
+                            benefitNote: string | null;
+                            contractFileId: string | null;
+                            /**
+                             * @description `draft`, `active`, `ended` (bitiş günü geçmiş yürürlükteki, hesaplanır), `terminated`
+                             * @enum {string}
+                             */
+                            status: "draft" | "active" | "ended" | "terminated";
+                            /** @description Bitişe kalan gün; yalnız yürürlükteki anlaşmada */
+                            daysLeft: number | null;
+                            /** @description Yenileme bildirimi günü (bitiş − bildirim günü); yalnız yürürlükteki anlaşmada */
+                            noticeDate: string | null;
+                            /** @description Yenileme uyarısında mı (K-319) */
+                            renewalDue: boolean;
+                            terminationDate: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Sözleşme dosyası; bağlantısı `GET /files/{fileId}/url` ile alınır */
+                            contractFile: {
+                                id: string;
+                                name: string;
+                                byteSize: number;
+                            } | null;
+                            activatedAt: string | null;
+                            terminationReason: string | null;
+                            terminatedAt: string | null;
+                            createdAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    activateStakeholderAgreement: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                agreementId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            stakeholder: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                type: "sponsor" | "partner" | "corporate" | "university" | "municipality_ngo" | "parent_association";
+                            };
+                            subject: string;
+                            startDate: string;
+                            /** @description Bitiş günü (dahil) */
+                            endDate: string;
+                            renewalNoticeDays: number;
+                            /** @enum {string} */
+                            contributionType: "cash" | "in_kind" | "service";
+                            /** @description Kuruş; nakdide tutar, ayni ve hizmette tahmini değer */
+                            contributionAmountCents: number | null;
+                            contributionDescription: string | null;
+                            benefits: ("logo" | "event_naming" | "announcement" | "other")[];
+                            benefitNote: string | null;
+                            contractFileId: string | null;
+                            /**
+                             * @description `draft`, `active`, `ended` (bitiş günü geçmiş yürürlükteki, hesaplanır), `terminated`
+                             * @enum {string}
+                             */
+                            status: "draft" | "active" | "ended" | "terminated";
+                            /** @description Bitişe kalan gün; yalnız yürürlükteki anlaşmada */
+                            daysLeft: number | null;
+                            /** @description Yenileme bildirimi günü (bitiş − bildirim günü); yalnız yürürlükteki anlaşmada */
+                            noticeDate: string | null;
+                            /** @description Yenileme uyarısında mı (K-319) */
+                            renewalDue: boolean;
+                            terminationDate: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Sözleşme dosyası; bağlantısı `GET /files/{fileId}/url` ile alınır */
+                            contractFile: {
+                                id: string;
+                                name: string;
+                                byteSize: number;
+                            } | null;
+                            activatedAt: string | null;
+                            terminationReason: string | null;
+                            terminatedAt: string | null;
+                            createdAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    terminateStakeholderAgreement: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                agreementId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Fesih günü; başlangıç ile bitiş arasında */
+                    terminationDate: string;
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            stakeholder: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                type: "sponsor" | "partner" | "corporate" | "university" | "municipality_ngo" | "parent_association";
+                            };
+                            subject: string;
+                            startDate: string;
+                            /** @description Bitiş günü (dahil) */
+                            endDate: string;
+                            renewalNoticeDays: number;
+                            /** @enum {string} */
+                            contributionType: "cash" | "in_kind" | "service";
+                            /** @description Kuruş; nakdide tutar, ayni ve hizmette tahmini değer */
+                            contributionAmountCents: number | null;
+                            contributionDescription: string | null;
+                            benefits: ("logo" | "event_naming" | "announcement" | "other")[];
+                            benefitNote: string | null;
+                            contractFileId: string | null;
+                            /**
+                             * @description `draft`, `active`, `ended` (bitiş günü geçmiş yürürlükteki, hesaplanır), `terminated`
+                             * @enum {string}
+                             */
+                            status: "draft" | "active" | "ended" | "terminated";
+                            /** @description Bitişe kalan gün; yalnız yürürlükteki anlaşmada */
+                            daysLeft: number | null;
+                            /** @description Yenileme bildirimi günü (bitiş − bildirim günü); yalnız yürürlükteki anlaşmada */
+                            noticeDate: string | null;
+                            /** @description Yenileme uyarısında mı (K-319) */
+                            renewalDue: boolean;
+                            terminationDate: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Sözleşme dosyası; bağlantısı `GET /files/{fileId}/url` ile alınır */
+                            contractFile: {
+                                id: string;
+                                name: string;
+                                byteSize: number;
+                            } | null;
+                            activatedAt: string | null;
+                            terminationReason: string | null;
+                            terminatedAt: string | null;
+                            createdAt: string;
                         };
                     };
                 };

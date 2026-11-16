@@ -140,6 +140,9 @@ const FinancePayRatesSection = lazy(async () => ({
 const FinancePaidActivitiesSection = lazy(async () => ({
   default: (await import('./FinancePaidActivitiesSection.tsx')).FinancePaidActivitiesSection,
 }))
+const FinancePayrollExportSection = lazy(async () => ({
+  default: (await import('./FinancePayrollExportSection.tsx')).FinancePayrollExportSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -186,6 +189,7 @@ const VIEWS = {
   stakeholders: { label: 'Paydaşlar ve sponsorlar', param: 'paydas' },
   payRates: { label: 'Ücret tanımları', param: 'ucret-tanimi' },
   paidActivities: { label: 'Gezi ve etkinlik ücretleri', param: 'gezi-etkinlik' },
+  payrollExport: { label: 'Bordro aktarımı', param: 'bordro-aktarim' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -235,6 +239,7 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'severance' ||
       value === 'freeTuition' ||
       value === 'payRates' ||
+      value === 'payrollExport' ||
       value === 'stakeholders' ||
       value === 'donations' ||
       value === 'refundInvoices'
@@ -426,6 +431,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'stakeholders' ? <FinanceStakeholdersSection /> : null}
         {tab === 'payRates' ? <FinancePayRatesSection /> : null}
         {tab === 'paidActivities' ? <FinancePaidActivitiesSection isManager={isManager} /> : null}
+        {tab === 'payrollExport' ? <FinancePayrollExportSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

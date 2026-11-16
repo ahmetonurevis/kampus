@@ -84,6 +84,9 @@ const FinanceSeveranceSection = lazy(async () => ({
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
+const FinanceStakeholdersSection = lazy(async () => ({
+  default: (await import('./FinanceStakeholdersSection.tsx')).FinanceStakeholdersSection,
+}))
 
 const VIEW_PARAM = 'gorunum'
 const VIEWS = {
@@ -121,6 +124,7 @@ const VIEWS = {
   forecast: { label: 'Tahmin', param: 'tahmin' },
   boardReport: { label: 'Yönetim kurulu raporu', param: BOARD_REPORT_VIEW },
   severance: { label: 'Kıdem/ihbar hesaplayıcı', param: 'kidem-ihbar' },
+  stakeholders: { label: 'Paydaşlar ve sponsorlar', param: 'paydas' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -148,6 +152,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Bütçe taslakları (DOM-FIN-093) ikisine açıktır; ön büro yalnız sorumlusu olduğu birimi görür,
  * onay yöneticide (K-256, K-257).
  * Ücretsiz okutma (DOM-FIN-026) yalnız yöneticidedir; gerekçe ve belge hassastır (K-269).
+ * Paydaşlar ve sponsorlar (DOM-FIN-102) yalnız yöneticidedir (K-317).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -161,7 +166,8 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'supplierLedger' ||
       value === 'fixedAssets' ||
       value === 'severance' ||
-      value === 'freeTuition'
+      value === 'freeTuition' ||
+      value === 'stakeholders'
     )
       return isManager
     if (value === 'packages' || value === 'courseOffers' || value === 'corporate')
@@ -279,6 +285,11 @@ export function FinancePage({ page }: { page: NavPage }) {
         />
       ) : null}
       {tab === 'scholarshipFunds' ? <ScholarshipFundsSection canManage={isManager} /> : null}
+      {tab === 'stakeholders' ? (
+        <Suspense fallback={<SummaryLoading />}>
+          <FinanceStakeholdersSection />
+        </Suspense>
+      ) : null}
       {tab === 'freeTuition' ? (
         <Suspense fallback={<SummaryLoading />}>
           <FreeTuitionSection

@@ -104,6 +104,10 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/supply-requests',
   'POST /api/v1/finance/supply-requests/{requestId}/fulfill',
   'POST /api/v1/finance/supply-requests/{requestId}/convert',
+  // Paydaş ve sponsorluk anlaşması açılışı; çift tıklama ikinci kayıt açmaz
+  // (routes/finance-stakeholders.ts; DOM-FIN-102).
+  'POST /api/v1/finance/stakeholders',
+  'POST /api/v1/finance/stakeholders/{stakeholderId}/agreements',
 ]
 // Onur: kayıt ve finans sonu
 

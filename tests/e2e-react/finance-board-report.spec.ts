@@ -11,16 +11,23 @@ import { expectNoHorizontalOverflow } from './support/ui.ts'
 // kayıt olayları) birim ve API testlerindedir (`tests/finance-board-report.test.ts`,
 // `apps/api/test/finance-board-report.test.ts`).
 
-const YEAR = createSeed(new Date()).academicYear
+const SEED = createSeed(new Date())
+const YEAR = SEED.academicYear
 const AMOUNT = 1_234_500
+const SEED_STUDENT = SEED.students.find((student) => student.id === 's1')
+if (!SEED_STUDENT) throw new Error('Seed öğrencisi s1 bulunamadı')
 
-/** Dönemde vadesi geçmiş tek taksit: tahakkuk ve gecikmiş alacak. */
+/**
+ * Dönemde vadesi geçmiş tek taksit: tahakkuk ve gecikmiş alacak. Öğrenci seed'deki s1'in
+ * kopyasıdır: s1'in seed taksitleri bugünün tarihine göre döneme düşer ve toplamı değiştirir.
+ */
 const records = (prefix: string) => [
+  { collection: 'students' as const, data: { ...SEED_STUDENT, id: `${prefix}-s1` } },
   {
     collection: 'invoices' as const,
     data: {
       id: `${prefix}-inv-1`,
-      studentId: 's1',
+      studentId: `${prefix}-s1`,
       installment: 1,
       amount: AMOUNT,
       dueDate: `${istanbulDay(-3)}T09:00:00.000Z`,
@@ -36,7 +43,7 @@ test('DOM-FIN-064: yönetici dönem özetini görür ve kişi adı olmayan yöne
   loginAs,
   tenant,
 }) => {
-  const school = await tenant({ roles: [], students: ['s1'], records: records('e2e-br') })
+  const school = await tenant({ roles: [], records: records('e2e-br') })
   const page = await loginAs(school.user('yonetici'))
   await page.goto('/yonetici/finans?gorunum=kurul-raporu')
   const section = page.getByRole('region', { name: 'Yönetim kurulu raporu' })
@@ -82,7 +89,7 @@ test('DOM-FIN-064: yönetici bütçe dönemini seçer, bütçe ve tahmin bölüm
   loginAs,
   tenant,
 }) => {
-  const school = await tenant({ roles: [], students: ['s1'], records: records('e2e-brb') })
+  const school = await tenant({ roles: [], records: records('e2e-brb') })
   const api = await createApiClient({ email: school.user('yonetici').email }, { fresh: true })
   try {
     expect((await switchInstitutionApi(api, school.institutionId)).ok).toBe(true)

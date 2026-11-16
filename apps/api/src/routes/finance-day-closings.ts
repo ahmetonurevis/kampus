@@ -125,6 +125,10 @@ const refundLineSchema = z.object({
     .string()
     .nullable()
     .describe('Ücretsiz okutma iadesinde hak kaydı (DOM-FIN-026); değilse boş'),
+  paidActivityParticipantId: z
+    .string()
+    .nullable()
+    .describe('Gezi ve etkinlik katılımı iadesinde katılım kaydı (DOM-FIN-098); değilse boş'),
   studentName: z.string().nullable(),
   amountCents: z.number().int().describe('Ödenen iade (kuruş)'),
   paidDate: z.string().describe('İadenin ödeme günü (`YYYY-MM-DD`)'),

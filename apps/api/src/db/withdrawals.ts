@@ -47,6 +47,8 @@ export interface StoredDayRefund extends FinanceDayRefund {
   withdrawalId: string | null
   /** Ücretsiz okutma iadesinde hak kaydı (DOM-FIN-026, K-270); ayrılış iadesinde boş. */
   freeTuitionAwardId: string | null
+  /** Gezi ve etkinlik katılımı iadesinde katılım kaydı (DOM-FIN-098, K-303); değilse boş. */
+  paidActivityParticipantId: string | null
   studentName: string | null
   bankAccountLabel: string | null
 }
@@ -394,6 +396,7 @@ export async function refundsPaidOnDay(
   return rows.map(({ bankName, bankIban, paidDate, ...row }) => ({
     ...row,
     freeTuitionAwardId: null,
+    paidActivityParticipantId: null,
     // Süzgeç ödeme gününü eşitler; boş olamaz.
     paidDate: paidDate ?? day,
     bankAccountLabel: labelOf(bankName, bankIban),

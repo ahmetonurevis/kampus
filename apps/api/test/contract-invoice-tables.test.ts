@@ -4,7 +4,7 @@ import { after, before, describe, test } from 'node:test'
 
 import { and, eq, sql } from 'drizzle-orm'
 
-import { FEE_ITEM_KINDS } from '@kampus/school-core/lib/fee-tariffs.ts'
+import { INVOICE_FEE_KINDS } from '@kampus/school-core/lib/fee-tariffs.ts'
 
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
@@ -479,7 +479,7 @@ describe('0061: taksit ve sözleşme tabloları', () => {
     assert.deepEqual(await db.select().from(invoices).where(eq(invoices.institutionId, id)), [])
   })
 
-  test('ON-316, DOM-FIN-004: kalem türü core FEE_ITEM_KINDS anahtarıdır ya da boştur; etiket 23514', async () => {
+  test('ON-316, DOM-FIN-004, DOM-FIN-098: kalem türü core INVOICE_FEE_KINDS anahtarıdır ya da boştur; etiket 23514', async () => {
     const [constraint] = await rows<{
       definition: string
       comment: string | null
@@ -490,18 +490,18 @@ describe('0061: taksit ve sözleşme tabloları', () => {
             from pg_constraint where conname = 'invoices_fee_kind_check'`,
     )
     assert.ok(constraint, 'invoices_fee_kind_check yok')
-    // ON-318: 0072 `not valid` ekler, 0073 doğrular.
+    // ON-318: 0072 `not valid` ekler, 0073 doğrular; ON-142: 0104 genişletir, 0105 doğrular.
     assert.equal(constraint.validated, true)
     const listed = [...constraint.definition.matchAll(/'([^']+)'/g)].map((match) => match[1])
-    assert.deepEqual(listed.toSorted(), [...FEE_ITEM_KINDS].toSorted())
-    assert.match(constraint.comment ?? '', /FEE_ITEM_KINDS/)
+    assert.deepEqual(listed.toSorted(), [...INVOICE_FEE_KINDS].toSorted())
+    assert.match(constraint.comment ?? '', /INVOICE_FEE_KINDS/)
 
     const { id } = await createInstitution(app)
     await db.insert(contracts).values(contract(id, 'c1'))
     await db
       .insert(invoices)
       .values([
-        ...FEE_ITEM_KINDS.map((feeKind, index) =>
+        ...INVOICE_FEE_KINDS.map((feeKind, index) =>
           invoice(id, `i-${feeKind}`, 'c1', { feeKind, installment: index + 1 }),
         ),
         invoice(id, 'i-eski', null, { feeKind: null }),
@@ -525,7 +525,7 @@ describe('0061: taksit ve sözleşme tabloları', () => {
       .select({ feeKind: invoices.feeKind })
       .from(invoices)
       .where(eq(invoices.institutionId, id))
-    assert.equal(stored.length, FEE_ITEM_KINDS.length + 1)
+    assert.equal(stored.length, INVOICE_FEE_KINDS.length + 1)
   })
 
   test('silme ve boşaltma reddedilir; imha istisnası yalnız silmeyi, yabancı anahtar sırasıyla açar', async () => {

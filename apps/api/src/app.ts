@@ -79,6 +79,7 @@ import { registerPaymentRoutes } from './routes/payments.ts'
 import { registerWithdrawalRoutes } from './routes/withdrawals.ts'
 import { registerProspectRoutes } from './routes/prospects.ts'
 import { registerProspectCampaignRoutes } from './routes/prospect-campaigns.ts'
+import { registerProspectDocumentRoutes } from './routes/prospect-documents.ts'
 import { registerProspectSeasonWatchRoutes } from './routes/prospect-season-watch.ts'
 // Onur: kayıt ve finans sonu
 import { createFfmpegTranscoder, type AudioTranscoder } from './services/audio-transcoder.ts'
@@ -498,6 +499,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerEnrollmentFunnelRoutes(app)
   registerProspectSeasonWatchRoutes(app)
   registerProspectCampaignRoutes(app)
+  registerProspectDocumentRoutes(app, storage)
   registerEnrollmentCertificateRoutes(app)
   registerFinancePayerChildrenRoutes(app)
   registerFinanceCorporateRoutes(app)

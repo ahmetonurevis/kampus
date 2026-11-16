@@ -4236,6 +4236,178 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/prospects/document-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Aday belge türlerini listele
+         * @description Kurumun arşivlenmemiş belge türleri, sırayla (K-320). Kurumun hiç türü yoksa ilk okumada varsayılan liste yazılır: kimlik, karne, fotoğraf ve sağlık raporu kesin kayıt aşamasında; okulda kimlik, karne ve fotoğraf, kursta yalnız kimlik zorunlu; sağlık raporu zorunlu değil ve özel nitelikli; "Diğer belge" ön başvuruda, zorunlu değil. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`. Olmayan ya da başka kurumun adayı 404.
+         */
+        get: operations["listProspectDocumentTypes"];
+        put?: never;
+        /**
+         * Aday belge türü ekle
+         * @description Tür (`identity`, `report_card`, `health_report`, `photo`, `other`), ad (2–80), zorunlu mu, aşama (`application` ön başvuru, `enrollment` kesin kayıt) ve özel nitelikli işareti. Sağlık raporunda işaret kendiliğinden açıktır; `false` 422 `document_type_special_required`. Ad arşivlenmemiş türler arasında tekil: 409 `document_type_exists`; en çok 30 tür: 422 `document_type_limit`. Rol: `yonetici` (ön büro okur, yazamaz; diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.
+         */
+        post: operations["createProspectDocumentType"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prospects/document-types/{typeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Aday belge türünü arşivle
+         * @description Arşivli tür listede ve eksik belge hesabında yoktur, yeni belge alınmaz; var olan belgeler adıyla kalır. Olmayan ya da başka kurumun türü 404, sürüm tutmazsa 409; `If-Match` zorunlu. Rol: `yonetici` (ön büro okur, yazamaz; diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.
+         */
+        delete: operations["archiveProspectDocumentType"];
+        options?: never;
+        head?: never;
+        /**
+         * Aday belge türünü düzelt
+         * @description Kısmi düzeltme: ad, zorunluluk, aşama, özel nitelikli işareti; tür (`kind`) değişmez (gövdede 400). Değişiklik eksik belge hesabına hemen yansır; var olan belgenin erişim kuralı yükleme anındaki işarettir. Olmayan, arşivlenmiş ya da başka kurumun türü 404; sürüm tutmazsa 409 `version_conflict`; `If-Match` zorunlu. Rol: `yonetici` (ön büro okur, yazamaz; diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.
+         */
+        patch: operations["updateProspectDocumentType"];
+        trace?: never;
+    };
+    "/api/v1/prospects/document-gaps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Eksik belgesi olan adaylar
+         * @description Aşaması gelmiş zorunlu belgesi eksik olan açık adaylar, ad sırasıyla (DOM-KAY-043, K-321): ön başvuru belgesi aday açıkken, kesin kayıt belgesi `Teklif verildi` aşamasında istenir; reddedilen ya da dosyası imha edilen belge eksiktir, incelemesi bekleyen belge eksik değildir (`awaitingReview`). Vazgeçen ve kayda dönmüş aday listede yoktur (kayda dönmüş adayın eksikleri aday belgelerindedir). `prospectId` (en çok 100) verilirse yalnız o adaylar. Satır telefon ve e-posta taşımaz. Platform ileti göndermez (K-323). Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`. Olmayan ya da başka kurumun adayı 404.
+         */
+        get: operations["listProspectDocumentGaps"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prospects/{prospectId}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Adayın belgeleri
+         * @description Belge türleri (arşivliler dahil), belgeler (yerine yenisi yüklenenler dahil, en yeni önce), eksik zorunlu türler ve özel nitelikli belge rızası (DOM-KAY-043). Özel nitelikli belgeyi açamayan (ön büro) dosya adını ve ret gerekçesini `null` görür. Kayda dönmüş adayda iki aşamanın eksikleri de döner; vazgeçen adayda eksik yoktur. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`. Olmayan ya da başka kurumun adayı 404.
+         */
+        get: operations["getProspectDocuments"];
+        put?: never;
+        /**
+         * Adaya belge ekle
+         * @description Önceden `POST /api/v1/files` (amaç `document`) ile aynı kullanıcının yüklediği, taramadan geçmiş (`ready`) dosyayı belge türüne bağlar (DOM-KAY-043). Aynı türün güncel belgesi `superseded` olur ve dosyası 30 gün sonra imhaya işaretlenir (K-323). Dosya yoksa, başkasınınsa ya da imhaya işaretliyse 422 `file_unavailable`; henüz hazır değilse 422 `file_not_ready`; başka kayda bağlıysa 409 `file_already_attached`; amacı `document` değilse 422 `file_purpose_mismatch`. Bilinmeyen tür 422 `document_type_unknown`, arşivli tür 422 `document_type_archived`; özel nitelikli türde etkin rıza yoksa 422 `document_consent_required` (K-322); adayda 50 belge sınırı 422 `prospect_document_limit`. Vazgeçen aday 409 `prospect_closed`. Başarıda 201 ve adayın belge görünümü. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`. Olmayan ya da başka kurumun adayı 404.
+         */
+        post: operations["addProspectDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prospects/{prospectId}/documents/{documentId}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Aday belgesini kabul et ya da reddet
+         * @description `{ decision: 'accept' }` ya da `{ decision: 'reject', reason }` (gerekçe 2–300 karakter; özel nitelikli bilgi yazılmaz, denetime yalnız alan adı düşer). Yalnız incelemesi bekleyen güncel belge: kararlı belge 409 `prospect_document_reviewed`, yerine yenisi yüklenen 409 `prospect_document_superseded`, dosyası imha edilen 422 `prospect_document_file_missing`. Özel nitelikli belgeyi yalnız yönetici inceler: ön büro 403 `special_document_forbidden` (K-322). Vazgeçen aday 409 `prospect_closed`. `If-Match` belgenin sürümü. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`. Olmayan ya da başka kurumun adayı 404.
+         */
+        post: operations["reviewProspectDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prospects/{prospectId}/documents/{documentId}/url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Aday belgesinin imzalı bağlantısı
+         * @description 5 dakikalık imzalı indirme bağlantısı (ADR 0003 karar 6). Her üretim denetim kaydına `prospect_document.read` olarak yazılır (DOM-YTK-052). Aday belgesinin dosyası genel dosya uçlarından (`GET /api/v1/files/{fileId}`, `/url`) açılmaz (404). Özel nitelikli belgeyi yalnız yönetici açar: ön büro 403 `special_document_forbidden` (K-322). Dosyası imha edilmiş belge 422 `prospect_document_file_missing`; başka adayın ya da kurumun belgesi 404. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`. Olmayan ya da başka kurumun adayı 404.
+         */
+        get: operations["getProspectDocumentUrl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prospects/{prospectId}/document-consent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Özel nitelikli belge için açık rızayı kaydet
+         * @description Ön büro ya da yönetici, sağlık raporu gibi özel nitelikli belge için ıslak imzalı açık rıza formunu aldığını kaydeder (`method: 'wet_signature'`; K-322, H-50). Rızayı veren adaydan türetilir: okul adayında ve 18 yaş altında veli (`guardian`), yetişkin kursiyer adayında kendisi (`self`). Etkin rıza varken 409 `document_consent_exists`; vazgeçen aday 409 `prospect_closed`. 201 ve adayın belge görünümü. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`. Olmayan ya da başka kurumun adayı 404.
+         */
+        post: operations["recordProspectDocumentConsent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prospects/{prospectId}/document-consent/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Özel nitelikli belge rızasını geri çek
+         * @description Tek işlem, anında etkili (DOM-YTK-059 deseni): rıza satırına geri çekme anı yazılır, adayın özel nitelikli belgeleri arşivlenir ve dosyaları hemen imhaya işaretlenir; yeni özel nitelikli belge yüklenmez. Aşamadan bağımsızdır. Etkin rıza yoksa 409 `document_consent_missing`; `If-Match` rızanın sürümü. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`. Olmayan ya da başka kurumun adayı 404.
+         */
+        post: operations["withdrawProspectDocumentConsent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/prospects/students/{studentId}/enrollment-certificate": {
         parameters: {
             query?: never;
@@ -14797,6 +14969,112 @@ export interface components {
             uncoded: components["schemas"]["CampaignFunnelCountsInput"];
             rows: components["schemas"]["CampaignFunnelRowInput"][];
         };
+        ProspectDocumentTypeInput: {
+            /** @description Tür kimliği: varsayılan türde türün kendisi, eklenen türde UUID */
+            id: string;
+            /** @enum {string} */
+            kind: "identity" | "report_card" | "health_report" | "photo" | "other";
+            label: string;
+            required: boolean;
+            /**
+             * @description `application` ön başvuru, `enrollment` kesin kayıt (K-321)
+             * @enum {string}
+             */
+            stage: "application" | "enrollment";
+            /** @description Özel nitelikli kişisel veri (sağlık raporunda her zaman `true`; K-322) */
+            specialCategory: boolean;
+            /** @description Arşivlenmiş tür; yalnız belge geçmişinde görünür */
+            archived: boolean;
+            /** @description `If-Match` için kayıt sürümü */
+            version: number;
+        };
+        ProspectDocumentInput: {
+            /** Format: uuid */
+            id: string;
+            documentTypeId: string;
+            /**
+             * @description `uploaded` inceleme bekliyor, `accepted`, `rejected`, `superseded` yerine yenisi yüklendi
+             * @enum {string}
+             */
+            status: "uploaded" | "accepted" | "rejected" | "superseded";
+            specialCategory: boolean;
+            /** @description Oturumdaki kişi dosyayı açabilir mi (özel nitelikli belgede yalnız yönetici) */
+            canOpen: boolean;
+            file: {
+                /** @enum {string} */
+                status: "pending" | "processing" | "ready" | "rejected" | "deleted";
+                /** @description Dosya imha edilmemiş mi */
+                available: boolean;
+                /** @description Özgün dosya adı; özel nitelikli belgeyi açamayana `null` */
+                name: string | null;
+                contentType: string;
+                byteSize: number;
+                /** @description Dosyanın imhaya işaretlendiği an (K-323) */
+                purgeAt: string | null;
+            };
+            /** @description Ret gerekçesi; özel nitelikli belgeyi açamayana `null` */
+            rejectionReason: string | null;
+            /** Format: date-time */
+            uploadedAt: string;
+            reviewedAt: string | null;
+            supersededAt: string | null;
+            /** @description `If-Match` için belge sürümü */
+            version: number;
+        };
+        ProspectDocumentConsentInput: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            grantor: "guardian" | "self";
+            /** @enum {string} */
+            method: "wet_signature";
+            /** Format: date-time */
+            grantedAt: string;
+            withdrawnAt: string | null;
+            /** @description Geri çekmede `If-Match` sürümü */
+            version: number;
+        };
+        ProspectDocumentsInput: {
+            prospectId: string;
+            /** @description Belge eklenir ve incelenir mi (açık ya da kayda dönmüş aday) */
+            accepting: boolean;
+            /** @description Arşivliler dahil türler, sırayla */
+            types: components["schemas"]["ProspectDocumentTypeInput"][];
+            /** @description Belgeler, en yeni önce (geçmiş dahil) */
+            documents: components["schemas"]["ProspectDocumentInput"][];
+            gaps: {
+                /** @description Aşaması gelmiş eksik zorunlu türler */
+                missing: {
+                    id: string;
+                    label: string;
+                    /** @enum {string} */
+                    stage: "application" | "enrollment";
+                }[];
+                awaitingReview: number;
+            };
+            consent: {
+                /**
+                 * @description Rızayı verecek kişi: `guardian` veli, `self` aday
+                 * @enum {string}
+                 */
+                grantor: "guardian" | "self";
+                active: components["schemas"]["ProspectDocumentConsentInput"] | null;
+                history: components["schemas"]["ProspectDocumentConsentInput"][];
+            };
+        };
+        ProspectDocumentGapInput: {
+            prospectId: string;
+            name: string;
+            stage: string;
+            branchId: string | null;
+            missing: {
+                id: string;
+                label: string;
+                /** @enum {string} */
+                stage: "application" | "enrollment";
+            }[];
+            awaitingReview: number;
+        };
         SeasonWatchMeetingInput: {
             prospectId: string;
             /** @description Aday adı */
@@ -19570,6 +19848,112 @@ export interface components {
             /** @description Kampanya koduyla açılmamış adaylar */
             uncoded: components["schemas"]["CampaignFunnelCounts"];
             rows: components["schemas"]["CampaignFunnelRow"][];
+        };
+        ProspectDocumentType: {
+            /** @description Tür kimliği: varsayılan türde türün kendisi, eklenen türde UUID */
+            id: string;
+            /** @enum {string} */
+            kind: "identity" | "report_card" | "health_report" | "photo" | "other";
+            label: string;
+            required: boolean;
+            /**
+             * @description `application` ön başvuru, `enrollment` kesin kayıt (K-321)
+             * @enum {string}
+             */
+            stage: "application" | "enrollment";
+            /** @description Özel nitelikli kişisel veri (sağlık raporunda her zaman `true`; K-322) */
+            specialCategory: boolean;
+            /** @description Arşivlenmiş tür; yalnız belge geçmişinde görünür */
+            archived: boolean;
+            /** @description `If-Match` için kayıt sürümü */
+            version: number;
+        };
+        ProspectDocument: {
+            /** Format: uuid */
+            id: string;
+            documentTypeId: string;
+            /**
+             * @description `uploaded` inceleme bekliyor, `accepted`, `rejected`, `superseded` yerine yenisi yüklendi
+             * @enum {string}
+             */
+            status: "uploaded" | "accepted" | "rejected" | "superseded";
+            specialCategory: boolean;
+            /** @description Oturumdaki kişi dosyayı açabilir mi (özel nitelikli belgede yalnız yönetici) */
+            canOpen: boolean;
+            file: {
+                /** @enum {string} */
+                status: "pending" | "processing" | "ready" | "rejected" | "deleted";
+                /** @description Dosya imha edilmemiş mi */
+                available: boolean;
+                /** @description Özgün dosya adı; özel nitelikli belgeyi açamayana `null` */
+                name: string | null;
+                contentType: string;
+                byteSize: number;
+                /** @description Dosyanın imhaya işaretlendiği an (K-323) */
+                purgeAt: string | null;
+            };
+            /** @description Ret gerekçesi; özel nitelikli belgeyi açamayana `null` */
+            rejectionReason: string | null;
+            /** Format: date-time */
+            uploadedAt: string;
+            reviewedAt: string | null;
+            supersededAt: string | null;
+            /** @description `If-Match` için belge sürümü */
+            version: number;
+        };
+        ProspectDocumentConsent: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            grantor: "guardian" | "self";
+            /** @enum {string} */
+            method: "wet_signature";
+            /** Format: date-time */
+            grantedAt: string;
+            withdrawnAt: string | null;
+            /** @description Geri çekmede `If-Match` sürümü */
+            version: number;
+        };
+        ProspectDocuments: {
+            prospectId: string;
+            /** @description Belge eklenir ve incelenir mi (açık ya da kayda dönmüş aday) */
+            accepting: boolean;
+            /** @description Arşivliler dahil türler, sırayla */
+            types: components["schemas"]["ProspectDocumentType"][];
+            /** @description Belgeler, en yeni önce (geçmiş dahil) */
+            documents: components["schemas"]["ProspectDocument"][];
+            gaps: {
+                /** @description Aşaması gelmiş eksik zorunlu türler */
+                missing: {
+                    id: string;
+                    label: string;
+                    /** @enum {string} */
+                    stage: "application" | "enrollment";
+                }[];
+                awaitingReview: number;
+            };
+            consent: {
+                /**
+                 * @description Rızayı verecek kişi: `guardian` veli, `self` aday
+                 * @enum {string}
+                 */
+                grantor: "guardian" | "self";
+                active: components["schemas"]["ProspectDocumentConsent"] | null;
+                history: components["schemas"]["ProspectDocumentConsent"][];
+            };
+        };
+        ProspectDocumentGap: {
+            prospectId: string;
+            name: string;
+            stage: string;
+            branchId: string | null;
+            missing: {
+                id: string;
+                label: string;
+                /** @enum {string} */
+                stage: "application" | "enrollment";
+            }[];
+            awaitingReview: number;
         };
         SeasonWatchMeeting: {
             prospectId: string;
@@ -48341,6 +48725,1161 @@ export interface operations {
             };
             /** @description Default Response */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listProspectDocumentTypes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ProspectDocumentType"][];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createProspectDocumentType: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    kind: "identity" | "report_card" | "health_report" | "photo" | "other";
+                    label: string;
+                    required: boolean;
+                    /** @enum {string} */
+                    stage: "application" | "enrollment";
+                    specialCategory?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ProspectDocumentType"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveProspectDocumentType: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Belge türü kimliği */
+                typeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateProspectDocumentType: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Belge türü kimliği */
+                typeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    label?: string;
+                    required?: boolean;
+                    /** @enum {string} */
+                    stage?: "application" | "enrollment";
+                    specialCategory?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ProspectDocumentType"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listProspectDocumentGaps: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Yalnız bu adaylar (en çok 100; parametre tekrarıyla); aday listesinin rozeti */
+                prospectId?: string | string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ProspectDocumentGap"][];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getProspectDocuments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Aday kimliği */
+                prospectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ProspectDocuments"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    addProspectDocument: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                /** @description Aday kimliği */
+                prospectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    documentTypeId: string;
+                    /** Format: uuid */
+                    fileId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ProspectDocuments"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reviewProspectDocument: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Aday kimliği */
+                prospectId: string;
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    decision: "accept";
+                } | {
+                    /** @enum {string} */
+                    decision: "reject";
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ProspectDocuments"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getProspectDocumentUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Aday kimliği */
+                prospectId: string;
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /**
+                             * Format: uri
+                             * @description Kısa ömürlü imzalı GET bağlantısı
+                             */
+                            url: string;
+                            /** Format: date-time */
+                            expiresAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    recordProspectDocumentConsent: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                /** @description Aday kimliği */
+                prospectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    method: "wet_signature";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ProspectDocuments"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    withdrawProspectDocumentConsent: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Aday kimliği */
+                prospectId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ProspectDocuments"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

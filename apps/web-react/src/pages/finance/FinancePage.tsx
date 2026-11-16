@@ -81,6 +81,9 @@ const FinanceMaterialSetsSection = lazy(async () => ({
 const FinanceSeveranceSection = lazy(async () => ({
   default: (await import('./FinanceSeveranceSection.tsx')).FinanceSeveranceSection,
 }))
+const FinanceStaffDeductionsSection = lazy(async () => ({
+  default: (await import('./FinanceStaffDeductionsSection.tsx')).FinanceStaffDeductionsSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -121,6 +124,7 @@ const VIEWS = {
   forecast: { label: 'Tahmin', param: 'tahmin' },
   boardReport: { label: 'Yönetim kurulu raporu', param: BOARD_REPORT_VIEW },
   severance: { label: 'Kıdem/ihbar hesaplayıcı', param: 'kidem-ihbar' },
+  staffDeductions: { label: 'Avans ve kesintiler', param: 'avans-kesinti' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -148,6 +152,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Bütçe taslakları (DOM-FIN-093) ikisine açıktır; ön büro yalnız sorumlusu olduğu birimi görür,
  * onay yöneticide (K-256, K-257).
  * Ücretsiz okutma (DOM-FIN-026) yalnız yöneticidedir; gerekçe ve belge hassastır (K-269).
+ * Avans ve kesintiler (DOM-FIN-101) yalnız yöneticidedir; icra bilgisi hassastır (K-315).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -161,7 +166,8 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'supplierLedger' ||
       value === 'fixedAssets' ||
       value === 'severance' ||
-      value === 'freeTuition'
+      value === 'freeTuition' ||
+      value === 'staffDeductions'
     )
       return isManager
     if (value === 'packages' || value === 'courseOffers' || value === 'corporate')
@@ -319,6 +325,7 @@ export function FinancePage({ page }: { page: NavPage }) {
       tab === 'fixedAssets' ||
       tab === 'maintenance' ||
       tab === 'severance' ||
+      tab === 'staffDeductions' ||
       tab === 'maintenancePlans' ||
       tab === 'budgetDrafts' ? (
         <Suspense fallback={<SummaryLoading />}>
@@ -341,6 +348,7 @@ export function FinancePage({ page }: { page: NavPage }) {
           {tab === 'fixedAssets' ? <FinanceFixedAssetsSection /> : null}
           {tab === 'maintenance' ? <FinanceMaintenanceSection /> : null}
           {tab === 'severance' ? <FinanceSeveranceSection /> : null}
+          {tab === 'staffDeductions' ? <FinanceStaffDeductionsSection /> : null}
           {tab === 'maintenancePlans' ? (
             <FinanceMaintenancePlansSection role={session?.role ?? ''} />
           ) : null}

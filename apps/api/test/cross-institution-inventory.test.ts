@@ -2289,6 +2289,47 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: mezun belge talebi (ON-260; DOM-KAY-044). Kanıt `enrollment-alumni-documents.test.ts`.
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/prospects/alumni-document-requests', 'get(BASE, a.admin)'],
+        ['liste', 'GET /api/v1/prospects/alumni-document-students', '`${STUDENTS}?q=B Öğrenci`'],
+        ['liste', 'GET /api/v1/prospects/alumni-document-fees', 'get(FEES, b.admin)'],
+        ['liste', 'PATCH /api/v1/prospects/alumni-document-fees', "call('PATCH', FEES, a.admin"],
+        ['gövde', 'POST /api/v1/prospects/alumni-document-requests', 'institutionId: b.id'],
+        [
+          'kayıt',
+          'GET /api/v1/prospects/alumni-document-requests/:requestId',
+          'get(bUrl, a.admin)',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/prospects/alumni-document-requests/:requestId/document',
+          '`${bUrl}/document`',
+        ],
+        ['kayıt', 'POST /api/v1/prospects/alumni-document-requests/:requestId/start', 'start: {}'],
+        ['kayıt', 'POST /api/v1/prospects/alumni-document-requests/:requestId/ready', 'ready: {}'],
+        [
+          'kayıt',
+          'POST /api/v1/prospects/alumni-document-requests/:requestId/deliver',
+          "deliver: { identityCheckNote: 'Kimlik görüldü' }",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/prospects/alumni-document-requests/:requestId/reject',
+          "reject: { reason: 'Başka kurum talebi' }",
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'enrollment-alumni-documents.test.ts',
+        'başka kurumun talebi ve öğrencisi 404, listede yok, B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

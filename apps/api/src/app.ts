@@ -58,6 +58,7 @@ import { registerFinancePayRateRoutes } from './routes/finance-pay-rates.ts'
 import { registerFinanceSeveranceRoutes } from './routes/finance-severance.ts'
 import { registerFinancePayrollParameterRoutes } from './routes/finance-payroll-parameters.ts'
 import { registerFinanceBudgetDraftRoutes } from './routes/finance-budget-drafts.ts'
+import { registerEnrollmentAlumniDocumentRoutes } from './routes/enrollment-alumni-documents.ts'
 import { registerFinanceMaterialSetRoutes } from './routes/finance-material-sets.ts'
 import { registerFinancePaidActivityRoutes } from './routes/finance-paid-activities.ts'
 import { registerFinanceStockCountRoutes } from './routes/finance-stock-counts.ts'
@@ -197,6 +198,20 @@ export const REDACTED_PATHS = [
   '*.address',
   'justification',
   '*.justification',
+  // kvkk: K — mezun belge talebinde talep edenin ve vekilin adı, teslim e-postası ve adresi,
+  // hazırlayanın notu ve teslimde kimlik doğrulama notu (DOM-KAY-044); ret gerekçesi `reason`.
+  'requesterName',
+  '*.requesterName',
+  'proxyName',
+  '*.proxyName',
+  'deliveryEmail',
+  '*.deliveryEmail',
+  'deliveryAddress',
+  '*.deliveryAddress',
+  'manualNote',
+  '*.manualNote',
+  'identityCheckNote',
+  '*.identityCheckNote',
   // kvkk: K — sözleşmenin imza yetkilisi ve ödeyici adı; ek protokol gerekçesi serbest metindir.
   'signatory',
   '*.signatory',
@@ -546,6 +561,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceStakeholderRoutes(app)
   registerFinancePayRateRoutes(app)
   registerFinancePaidActivityRoutes(app)
+  registerEnrollmentAlumniDocumentRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

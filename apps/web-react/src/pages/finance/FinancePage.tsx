@@ -11,37 +11,78 @@ import { Button } from '@/components/ui/button'
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import type { NavPage } from '@/lib/navigation.ts'
-import { CorporateCustomersSection } from './CorporateCustomersSection.tsx'
-import { FinanceBoardReportSection } from './FinanceBoardReportSection.tsx'
 import { BOARD_REPORT_VIEW } from './finance-board-report.ts'
-import { CourseOffersSection } from './CourseOffersSection.tsx'
-import { EOzelSection } from './EOzelSection.tsx'
-import { FinanceBankMatchingSection } from './FinanceBankMatchingSection.tsx'
-import { FinanceBudgetSection } from './FinanceBudgetSection.tsx'
-import { FinanceCostReportsSection } from './FinanceCostReportsSection.tsx'
-import { FeeTariffsSection } from './FeeTariffsSection.tsx'
-import { ReferralRewardsSection } from './ReferralRewardsSection.tsx'
-import { FinanceDayClosingSection } from './FinanceDayClosingSection.tsx'
-import { FinanceOpeningWatchSection } from './FinanceOpeningWatchSection.tsx'
 import { OPENING_WATCH_VIEW } from './finance-opening-watch.ts'
-import { ScholarshipFundsSection } from './ScholarshipFundsSection.tsx'
-import { ScholarshipsSection } from './ScholarshipsSection.tsx'
-import { FinanceExportSection } from './FinanceExportSection.tsx'
-import { FinanceForecastSection } from './FinanceForecastSection.tsx'
+import { REFUND_INVOICES_VIEW } from './finance-refund-invoices.ts'
 import { InstallmentImportSection } from './InstallmentImportSection.tsx'
-import { FinanceReconciliationSection } from './FinanceReconciliationSection.tsx'
 import { InvoiceRemindButton } from './InvoiceRemindButton.tsx'
 import { InvoicesSection } from './InvoicesSection.tsx'
 import { InvoiceSummaryPanel } from './InvoiceSummaryPanel.tsx'
 import { PaymentPanel } from './PaymentPanel.tsx'
-import { PackagesSection } from './PackagesSection.tsx'
-import { PaymentsSection } from './PaymentsSection.tsx'
-import { ContractsSection } from './ContractsSection.tsx'
-import { WithdrawalsSection } from './WithdrawalsSection.tsx'
 import { LookupError, StatGrid } from '../academic/AcademicParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 
-// Satın alma sekmeleri ayrı parçadır: Finans rota parçası 100 KB bütçesinin altında kalır.
+// Taksitler dışındaki her sekme ayrı parçadır: Finans rota parçası 100 KB bütçesinin altında kalır.
+const CorporateCustomersSection = lazy(async () => ({
+  default: (await import('./CorporateCustomersSection.tsx')).CorporateCustomersSection,
+}))
+const FinanceBoardReportSection = lazy(async () => ({
+  default: (await import('./FinanceBoardReportSection.tsx')).FinanceBoardReportSection,
+}))
+const CourseOffersSection = lazy(async () => ({
+  default: (await import('./CourseOffersSection.tsx')).CourseOffersSection,
+}))
+const EOzelSection = lazy(async () => ({
+  default: (await import('./EOzelSection.tsx')).EOzelSection,
+}))
+const FinanceBankMatchingSection = lazy(async () => ({
+  default: (await import('./FinanceBankMatchingSection.tsx')).FinanceBankMatchingSection,
+}))
+const FinanceBudgetSection = lazy(async () => ({
+  default: (await import('./FinanceBudgetSection.tsx')).FinanceBudgetSection,
+}))
+const FinanceCostReportsSection = lazy(async () => ({
+  default: (await import('./FinanceCostReportsSection.tsx')).FinanceCostReportsSection,
+}))
+const FeeTariffsSection = lazy(async () => ({
+  default: (await import('./FeeTariffsSection.tsx')).FeeTariffsSection,
+}))
+const ReferralRewardsSection = lazy(async () => ({
+  default: (await import('./ReferralRewardsSection.tsx')).ReferralRewardsSection,
+}))
+const FinanceDayClosingSection = lazy(async () => ({
+  default: (await import('./FinanceDayClosingSection.tsx')).FinanceDayClosingSection,
+}))
+const FinanceOpeningWatchSection = lazy(async () => ({
+  default: (await import('./FinanceOpeningWatchSection.tsx')).FinanceOpeningWatchSection,
+}))
+const ScholarshipFundsSection = lazy(async () => ({
+  default: (await import('./ScholarshipFundsSection.tsx')).ScholarshipFundsSection,
+}))
+const ScholarshipsSection = lazy(async () => ({
+  default: (await import('./ScholarshipsSection.tsx')).ScholarshipsSection,
+}))
+const FinanceExportSection = lazy(async () => ({
+  default: (await import('./FinanceExportSection.tsx')).FinanceExportSection,
+}))
+const FinanceForecastSection = lazy(async () => ({
+  default: (await import('./FinanceForecastSection.tsx')).FinanceForecastSection,
+}))
+const FinanceReconciliationSection = lazy(async () => ({
+  default: (await import('./FinanceReconciliationSection.tsx')).FinanceReconciliationSection,
+}))
+const PackagesSection = lazy(async () => ({
+  default: (await import('./PackagesSection.tsx')).PackagesSection,
+}))
+const PaymentsSection = lazy(async () => ({
+  default: (await import('./PaymentsSection.tsx')).PaymentsSection,
+}))
+const ContractsSection = lazy(async () => ({
+  default: (await import('./ContractsSection.tsx')).ContractsSection,
+}))
+const WithdrawalsSection = lazy(async () => ({
+  default: (await import('./WithdrawalsSection.tsx')).WithdrawalsSection,
+}))
 const FinanceSuppliersSection = lazy(async () => ({
   default: (await import('./FinanceSuppliersSection.tsx')).FinanceSuppliersSection,
 }))
@@ -81,6 +122,21 @@ const FinanceMaterialSetsSection = lazy(async () => ({
 const FinanceSeveranceSection = lazy(async () => ({
   default: (await import('./FinanceSeveranceSection.tsx')).FinanceSeveranceSection,
 }))
+const FinanceRefundInvoicesSection = lazy(async () => ({
+  default: (await import('./FinanceRefundInvoicesSection.tsx')).FinanceRefundInvoicesSection,
+}))
+const FinancePayrollParametersSection = lazy(async () => ({
+  default: (await import('./FinancePayrollParametersSection.tsx')).FinancePayrollParametersSection,
+}))
+const DonationsSection = lazy(async () => ({
+  default: (await import('./DonationsSection.tsx')).DonationsSection,
+}))
+const FinanceStakeholdersSection = lazy(async () => ({
+  default: (await import('./FinanceStakeholdersSection.tsx')).FinanceStakeholdersSection,
+}))
+const FinancePayRatesSection = lazy(async () => ({
+  default: (await import('./FinancePayRatesSection.tsx')).FinancePayRatesSection,
+}))
 const FinancePaidActivitiesSection = lazy(async () => ({
   default: (await import('./FinancePaidActivitiesSection.tsx')).FinancePaidActivitiesSection,
 }))
@@ -105,6 +161,7 @@ const VIEWS = {
   freeTuition: { label: 'Ücretsiz okutma', param: 'ucretsiz' },
   referrals: { label: 'Referans hakları', param: 'referans' },
   withdrawals: { label: 'Ayrılış ve iade', param: 'ayrilis' },
+  refundInvoices: { label: 'İade belgeleri', param: REFUND_INVOICES_VIEW },
   exports: { label: 'Muhasebe aktarımı', param: 'aktarim' },
   budget: { label: 'Bütçe', param: 'butce' },
   budgetDrafts: { label: 'Bütçe taslakları', param: 'butce-taslak' },
@@ -116,7 +173,6 @@ const VIEWS = {
   supplierLedger: { label: 'Tedarikçi carisi', param: 'tedarikci-cari' },
   inventory: { label: 'Stok', param: 'stok' },
   materialSets: { label: 'Materyal setleri', param: 'materyal-seti' },
-  paidActivities: { label: 'Gezi ve etkinlik ücretleri', param: 'gezi-etkinlik' },
   supplyRequests: { label: 'Sarf talepleri', param: 'sarf' },
   fixedAssets: { label: 'Demirbaşlar', param: 'demirbas' },
   maintenance: { label: 'Arıza ve bakım', param: 'ariza' },
@@ -125,6 +181,11 @@ const VIEWS = {
   forecast: { label: 'Tahmin', param: 'tahmin' },
   boardReport: { label: 'Yönetim kurulu raporu', param: BOARD_REPORT_VIEW },
   severance: { label: 'Kıdem/ihbar hesaplayıcı', param: 'kidem-ihbar' },
+  payrollParameters: { label: 'Bordro parametreleri', param: 'bordro-parametreleri' },
+  donations: { label: 'Bağışlar', param: 'bagis' },
+  stakeholders: { label: 'Paydaşlar ve sponsorlar', param: 'paydas' },
+  payRates: { label: 'Ücret tanımları', param: 'ucret-tanimi' },
+  paidActivities: { label: 'Gezi ve etkinlik ücretleri', param: 'gezi-etkinlik' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -152,6 +213,11 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Bütçe taslakları (DOM-FIN-093) ikisine açıktır; ön büro yalnız sorumlusu olduğu birimi görür,
  * onay yöneticide (K-256, K-257).
  * Ücretsiz okutma (DOM-FIN-026) yalnız yöneticidedir; gerekçe ve belge hassastır (K-269).
+ * İade belgeleri (DOM-FIN-096) yalnız yöneticidedir; faturayı muhasebe düzeltir (K-295).
+ * Bordro parametreleri (DOM-FIN-100) ikisine açıktır; kurum kopyasını yönetici yazar (K-309).
+ * Bağışlar (DOM-FIN-097) yalnız yöneticidedir; bağışçı verisi kişiseldir (K-299).
+ * Paydaşlar ve sponsorlar (DOM-FIN-102) yalnız yöneticidedir (K-317).
+ * Ücret tanımları (DOM-FIN-099) yalnız yöneticidedir; ücret kişisel veridir (K-306).
  * Gezi ve etkinlik ücretleri (DOM-FIN-098) ikisine açıktır; ön büro katılım yazar ve iptal eder,
  * etkinliği ve iadeyi yönetici yönetir (K-300).
  */
@@ -167,7 +233,11 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'supplierLedger' ||
       value === 'fixedAssets' ||
       value === 'severance' ||
-      value === 'freeTuition'
+      value === 'freeTuition' ||
+      value === 'payRates' ||
+      value === 'stakeholders' ||
+      value === 'donations' ||
+      value === 'refundInvoices'
     )
       return isManager
     if (value === 'packages' || value === 'courseOffers' || value === 'corporate')
@@ -255,118 +325,108 @@ export function FinancePage({ page }: { page: NavPage }) {
           )
         }
       />
-      {tab === 'openingWatch' ? <FinanceOpeningWatchSection onOpenInvoice={openInvoice} /> : null}
-      {tab === 'payments' ? <PaymentsSection canReverse={isManager} /> : null}
-      {tab === 'dayClosing' ? <FinanceDayClosingSection canReopen={isManager} /> : null}
-      {tab === 'bankMatching' ? <FinanceBankMatchingSection /> : null}
-      {tab === 'contracts' ? <ContractsSection /> : null}
-      {tab === 'tariffs' ? (
-        <FeeTariffsSection
-          canManage={isManager}
-          academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
-        />
-      ) : null}
-      {tab === 'packages' ? (
-        <PackagesSection
-          canManage={isManager}
-          academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
-        />
-      ) : null}
-      {tab === 'courseOffers' ? (
-        <CourseOffersSection
-          canApproveCapException={isManager}
-          academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
-        />
-      ) : null}
-      {tab === 'scholarships' ? (
-        <ScholarshipsSection
-          canManage={isManager}
-          academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
-        />
-      ) : null}
-      {tab === 'scholarshipFunds' ? <ScholarshipFundsSection canManage={isManager} /> : null}
-      {tab === 'freeTuition' ? (
-        <Suspense fallback={<SummaryLoading />}>
+      <Suspense fallback={<SummaryLoading />}>
+        {tab === 'openingWatch' ? <FinanceOpeningWatchSection onOpenInvoice={openInvoice} /> : null}
+        {tab === 'payments' ? <PaymentsSection canReverse={isManager} /> : null}
+        {tab === 'dayClosing' ? <FinanceDayClosingSection canReopen={isManager} /> : null}
+        {tab === 'bankMatching' ? <FinanceBankMatchingSection /> : null}
+        {tab === 'contracts' ? <ContractsSection /> : null}
+        {tab === 'tariffs' ? (
+          <FeeTariffsSection
+            canManage={isManager}
+            academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
+          />
+        ) : null}
+        {tab === 'packages' ? (
+          <PackagesSection
+            canManage={isManager}
+            academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
+          />
+        ) : null}
+        {tab === 'courseOffers' ? (
+          <CourseOffersSection
+            canApproveCapException={isManager}
+            academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
+          />
+        ) : null}
+        {tab === 'scholarships' ? (
+          <ScholarshipsSection
+            canManage={isManager}
+            academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
+          />
+        ) : null}
+        {tab === 'scholarshipFunds' ? <ScholarshipFundsSection canManage={isManager} /> : null}
+        {tab === 'freeTuition' ? (
           <FreeTuitionSection
             academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
           />
-        </Suspense>
-      ) : null}
-      {tab === 'corporate' ? <CorporateCustomersSection canCancel={isManager} /> : null}
-      {tab === 'referrals' ? <ReferralRewardsSection /> : null}
-      {tab === 'withdrawals' ? <WithdrawalsSection canManage={isManager} /> : null}
-      {tab === 'exports' ? <FinanceExportSection canDownload={isManager} /> : null}
-      {tab === 'exports' && isManager ? (
-        <FinanceReconciliationSection
-          academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
-        />
-      ) : null}
-      {tab === 'forecast' && session?.institution ? (
-        <FinanceForecastSection
-          enrollmentYear={session.institution.academicYear ?? Number(today.slice(0, 4))}
-          institutionType={session.institution.type}
-        />
-      ) : null}
-      {tab === 'budget' ? (
-        <FinanceBudgetSection
-          academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
-          institutionType={session?.institution?.type ?? 'school'}
-        />
-      ) : null}
-      {tab === 'costs' ? <FinanceCostReportsSection /> : null}
-      {tab === 'suppliers' ||
-      tab === 'purchaseRequests' ||
-      tab === 'purchaseOrders' ||
-      tab === 'purchaseReport' ||
-      tab === 'supplierLedger' ||
-      tab === 'inventory' ||
-      tab === 'materialSets' ||
-      tab === 'paidActivities' ||
-      tab === 'supplyRequests' ||
-      tab === 'fixedAssets' ||
-      tab === 'maintenance' ||
-      tab === 'severance' ||
-      tab === 'maintenancePlans' ||
-      tab === 'budgetDrafts' ? (
-        <Suspense fallback={<SummaryLoading />}>
-          {tab === 'suppliers' ? <FinanceSuppliersSection canManage={isManager} /> : null}
-          {tab === 'purchaseRequests' ? <FinancePurchaseRequestsSection /> : null}
-          {tab === 'purchaseOrders' ? <FinancePurchaseOrdersSection /> : null}
-          {tab === 'purchaseReport' ? <FinancePurchaseReportSection /> : null}
-          {tab === 'supplierLedger' ? <FinanceSupplierLedgerSection /> : null}
-          {tab === 'inventory' ? <FinanceInventorySection role={session?.role ?? ''} /> : null}
-          {tab === 'materialSets' ? (
-            <FinanceMaterialSetsSection
-              role={session?.role ?? ''}
-              institutionType={session?.institution?.type ?? 'school'}
-              academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
-            />
-          ) : null}
-          {tab === 'paidActivities' ? <FinancePaidActivitiesSection isManager={isManager} /> : null}
-          {tab === 'supplyRequests' ? (
-            <FinanceSupplyRequestsSection role={session?.role ?? ''} />
-          ) : null}
-          {tab === 'fixedAssets' ? <FinanceFixedAssetsSection /> : null}
-          {tab === 'maintenance' ? <FinanceMaintenanceSection /> : null}
-          {tab === 'severance' ? <FinanceSeveranceSection /> : null}
-          {tab === 'maintenancePlans' ? (
-            <FinanceMaintenancePlansSection role={session?.role ?? ''} />
-          ) : null}
-          {tab === 'budgetDrafts' ? <FinanceBudgetDraftsSection isManager={isManager} /> : null}
-        </Suspense>
-      ) : null}
-      {tab === 'boardReport' ? (
-        <FinanceBoardReportSection
-          academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
-        />
-      ) : null}
-      {tab === 'eOzel' ? (
-        <EOzelSection academicEnabled={session?.modules.academic === true} />
-      ) : null}
-      {tab === 'invoices' ? (
-        <InvoicesSection onOpenInvoice={openInvoice} onOpenPayment={openPayment} />
-      ) : null}
-      {tab === 'invoices' && isManager ? <InstallmentImportSection /> : null}
+        ) : null}
+        {tab === 'corporate' ? <CorporateCustomersSection canCancel={isManager} /> : null}
+        {tab === 'referrals' ? <ReferralRewardsSection /> : null}
+        {tab === 'withdrawals' ? <WithdrawalsSection canManage={isManager} /> : null}
+        {tab === 'refundInvoices' ? <FinanceRefundInvoicesSection /> : null}
+        {tab === 'exports' ? <FinanceExportSection canDownload={isManager} /> : null}
+        {tab === 'exports' && isManager ? (
+          <FinanceReconciliationSection
+            academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
+          />
+        ) : null}
+        {tab === 'forecast' && session?.institution ? (
+          <FinanceForecastSection
+            enrollmentYear={session.institution.academicYear ?? Number(today.slice(0, 4))}
+            institutionType={session.institution.type}
+          />
+        ) : null}
+        {tab === 'budget' ? (
+          <FinanceBudgetSection
+            academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
+            institutionType={session?.institution?.type ?? 'school'}
+          />
+        ) : null}
+        {tab === 'costs' ? <FinanceCostReportsSection /> : null}
+        {tab === 'suppliers' ? <FinanceSuppliersSection canManage={isManager} /> : null}
+        {tab === 'purchaseRequests' ? <FinancePurchaseRequestsSection /> : null}
+        {tab === 'purchaseOrders' ? <FinancePurchaseOrdersSection /> : null}
+        {tab === 'purchaseReport' ? <FinancePurchaseReportSection /> : null}
+        {tab === 'supplierLedger' ? <FinanceSupplierLedgerSection /> : null}
+        {tab === 'inventory' ? <FinanceInventorySection role={session?.role ?? ''} /> : null}
+        {tab === 'materialSets' ? (
+          <FinanceMaterialSetsSection
+            role={session?.role ?? ''}
+            institutionType={session?.institution?.type ?? 'school'}
+            academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
+          />
+        ) : null}
+        {tab === 'supplyRequests' ? (
+          <FinanceSupplyRequestsSection role={session?.role ?? ''} />
+        ) : null}
+        {tab === 'fixedAssets' ? <FinanceFixedAssetsSection /> : null}
+        {tab === 'maintenance' ? <FinanceMaintenanceSection /> : null}
+        {tab === 'severance' ? <FinanceSeveranceSection /> : null}
+        {tab === 'maintenancePlans' ? (
+          <FinanceMaintenancePlansSection role={session?.role ?? ''} />
+        ) : null}
+        {tab === 'budgetDrafts' ? <FinanceBudgetDraftsSection isManager={isManager} /> : null}
+        {tab === 'boardReport' ? (
+          <FinanceBoardReportSection
+            academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
+          />
+        ) : null}
+        {tab === 'eOzel' ? (
+          <EOzelSection academicEnabled={session?.modules.academic === true} />
+        ) : null}
+        {tab === 'invoices' ? (
+          <InvoicesSection onOpenInvoice={openInvoice} onOpenPayment={openPayment} />
+        ) : null}
+        {tab === 'invoices' && isManager ? <InstallmentImportSection /> : null}
+        {tab === 'payrollParameters' ? (
+          <FinancePayrollParametersSection canManage={isManager} />
+        ) : null}
+        {tab === 'donations' ? <DonationsSection /> : null}
+        {tab === 'stakeholders' ? <FinanceStakeholdersSection /> : null}
+        {tab === 'payRates' ? <FinancePayRatesSection /> : null}
+        {tab === 'paidActivities' ? <FinancePaidActivitiesSection isManager={isManager} /> : null}
+      </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}
         onClose={panel.close}

@@ -3,7 +3,7 @@
 -- Elle düzenlendi: `invoices_fee_kind_check` `activity` türüyle genişler (K-301). `invoices` büyüyen
 -- tablodur (ON-318): eski kısıt düşer, yenisi `not valid` eklenir, eski satırları taramaz, kilidi
 -- kısa sürer; yeni kısıt eskisinden geniştir, var olan satırların hepsi ona uyar. Doğrulama ayrı
--- migration'dadır (0105, `validate constraint`). Drizzle şeması `not valid`'i ifade etmez; snapshot
+-- migration'dadır (0110, `validate constraint`). Drizzle şeması `not valid`'i ifade etmez; snapshot
 -- kısıtı tam tutar, `db:generate` fark üretmez.
 CREATE TABLE "paid_activities" (
 	"institution_id" text NOT NULL,

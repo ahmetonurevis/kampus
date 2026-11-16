@@ -1,5 +1,5 @@
 {
-  "id": "834a0e8c-1a86-4b30-a2f7-ef05e84280e4",
+  "id": "5cee05ff-9255-464b-a3df-e4370d3cd07f",
   "prevId": "4f1e7ab1-36ce-4a09-bc98-c837962b3531",
   "version": "7",
   "dialect": "postgresql",
@@ -15181,612 +15181,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.paid_activities": {
-      "name": "paid_activities",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "activity_date": {
-          "name": "activity_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "fee_cents": {
-          "name": "fee_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "currency": {
-          "name": "currency",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'TRY'"
-        },
-        "join_deadline": {
-          "name": "join_deadline",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "cancel_deadline": {
-          "name": "cancel_deadline",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "capacity": {
-          "name": "capacity",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "late_refund_rule": {
-          "name": "late_refund_rule",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "late_refund_percent": {
-          "name": "late_refund_percent",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "late_cost_cents": {
-          "name": "late_cost_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "external_ref": {
-          "name": "external_ref",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'open'"
-        },
-        "cancelled_at": {
-          "name": "cancelled_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancel_reason": {
-          "name": "cancel_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancelled_by_user_id": {
-          "name": "cancelled_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "paid_activities_date_idx": {
-          "name": "paid_activities_date_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "activity_date",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "paid_activities_institution_id_institutions_id_fk": {
-          "name": "paid_activities_institution_id_institutions_id_fk",
-          "tableFrom": "paid_activities",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "paid_activities_pkey": {
-          "name": "paid_activities_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "paid_activities_kind_check": {
-          "name": "paid_activities_kind_check",
-          "value": "\"paid_activities\".\"kind\" in ('trip', 'event')"
-        },
-        "paid_activities_status_check": {
-          "name": "paid_activities_status_check",
-          "value": "\"paid_activities\".\"status\" in ('open', 'cancelled')"
-        },
-        "paid_activities_rule_check": {
-          "name": "paid_activities_rule_check",
-          "value": "\"paid_activities\".\"late_refund_rule\" in ('percent', 'cost')"
-        },
-        "paid_activities_currency_check": {
-          "name": "paid_activities_currency_check",
-          "value": "\"paid_activities\".\"currency\" = 'TRY'"
-        },
-        "paid_activities_amounts_check": {
-          "name": "paid_activities_amounts_check",
-          "value": "\"paid_activities\".\"fee_cents\" > 0 and \"paid_activities\".\"capacity\" > 0\n        and (\"paid_activities\".\"late_cost_cents\" is null or \"paid_activities\".\"late_cost_cents\" between 0 and \"paid_activities\".\"fee_cents\")\n        and (\"paid_activities\".\"late_refund_percent\" is null or \"paid_activities\".\"late_refund_percent\" between 0 and 100)"
-        },
-        "paid_activities_rule_terms_check": {
-          "name": "paid_activities_rule_terms_check",
-          "value": "(\"paid_activities\".\"late_refund_rule\" = 'percent') = (\"paid_activities\".\"late_refund_percent\" is not null)\n        and (\"paid_activities\".\"late_refund_rule\" = 'cost') = (\"paid_activities\".\"late_cost_cents\" is not null)"
-        },
-        "paid_activities_dates_check": {
-          "name": "paid_activities_dates_check",
-          "value": "\"paid_activities\".\"join_deadline\" <= \"paid_activities\".\"activity_date\" and \"paid_activities\".\"cancel_deadline\" <= \"paid_activities\".\"activity_date\""
-        },
-        "paid_activities_cancel_check": {
-          "name": "paid_activities_cancel_check",
-          "value": "(\"paid_activities\".\"status\" = 'cancelled') = (\"paid_activities\".\"cancelled_at\" is not null)\n        and (\"paid_activities\".\"cancelled_at\" is null) = (\"paid_activities\".\"cancel_reason\" is null)\n        and (\"paid_activities\".\"cancelled_at\" is null) = (\"paid_activities\".\"cancelled_by_user_id\" is null)"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.paid_activity_participants": {
-      "name": "paid_activity_participants",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "activity_id": {
-          "name": "activity_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "student_id": {
-          "name": "student_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "invoice_id": {
-          "name": "invoice_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "fee_cents": {
-          "name": "fee_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "currency": {
-          "name": "currency",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'TRY'"
-        },
-        "joined_date": {
-          "name": "joined_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'active'"
-        },
-        "cancel_kind": {
-          "name": "cancel_kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancelled_date": {
-          "name": "cancelled_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "paid_cents": {
-          "name": "paid_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "retained_cents": {
-          "name": "retained_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "refund_cents": {
-          "name": "refund_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "closed_invoice_id": {
-          "name": "closed_invoice_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "debt_invoice_id": {
-          "name": "debt_invoice_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "refund_paid_date": {
-          "name": "refund_paid_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "refund_iban": {
-          "name": "refund_iban",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "refund_account_holder": {
-          "name": "refund_account_holder",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "refund_paid_by_user_id": {
-          "name": "refund_paid_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "refund_bank_account_id": {
-          "name": "refund_bank_account_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "cancelled_by_user_id": {
-          "name": "cancelled_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "paid_activity_participants_student_key": {
-          "name": "paid_activity_participants_student_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "activity_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "student_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"paid_activity_participants\".\"status\" = 'active' and \"paid_activity_participants\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "paid_activity_participants_activity_idx": {
-          "name": "paid_activity_participants_activity_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "activity_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "paid_activity_participants_student_idx": {
-          "name": "paid_activity_participants_student_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "student_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "paid_activity_participants_refund_bank_account_idx": {
-          "name": "paid_activity_participants_refund_bank_account_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "refund_bank_account_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"paid_activity_participants\".\"refund_bank_account_id\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "paid_activity_participants_refund_paid_idx": {
-          "name": "paid_activity_participants_refund_paid_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "refund_paid_date",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"paid_activity_participants\".\"refund_paid_date\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "paid_activity_participants_institution_id_institutions_id_fk": {
-          "name": "paid_activity_participants_institution_id_institutions_id_fk",
-          "tableFrom": "paid_activity_participants",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "paid_activity_participants_activity_fkey": {
-          "name": "paid_activity_participants_activity_fkey",
-          "tableFrom": "paid_activity_participants",
-          "tableTo": "paid_activities",
-          "columnsFrom": [
-            "institution_id",
-            "activity_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "paid_activity_participants_refund_bank_account_fkey": {
-          "name": "paid_activity_participants_refund_bank_account_fkey",
-          "tableFrom": "paid_activity_participants",
-          "tableTo": "bank_accounts",
-          "columnsFrom": [
-            "institution_id",
-            "refund_bank_account_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "paid_activity_participants_pkey": {
-          "name": "paid_activity_participants_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "paid_activity_participants_status_check": {
-          "name": "paid_activity_participants_status_check",
-          "value": "\"paid_activity_participants\".\"status\" in ('active', 'cancelled')"
-        },
-        "paid_activity_participants_cancel_kind_check": {
-          "name": "paid_activity_participants_cancel_kind_check",
-          "value": "\"paid_activity_participants\".\"cancel_kind\" in ('participant', 'activity')"
-        },
-        "paid_activity_participants_currency_check": {
-          "name": "paid_activity_participants_currency_check",
-          "value": "\"paid_activity_participants\".\"currency\" = 'TRY'"
-        },
-        "paid_activity_participants_cancel_check": {
-          "name": "paid_activity_participants_cancel_check",
-          "value": "(\"paid_activity_participants\".\"status\" = 'cancelled') = (\"paid_activity_participants\".\"cancelled_date\" is not null)\n        and (\"paid_activity_participants\".\"cancelled_date\" is null) = (\"paid_activity_participants\".\"cancel_kind\" is null)\n        and (\"paid_activity_participants\".\"cancelled_date\" is null) = (\"paid_activity_participants\".\"paid_cents\" is null)\n        and (\"paid_activity_participants\".\"cancelled_date\" is null) = (\"paid_activity_participants\".\"retained_cents\" is null)\n        and (\"paid_activity_participants\".\"cancelled_date\" is null) = (\"paid_activity_participants\".\"cancelled_by_user_id\" is null)\n        and (\"paid_activity_participants\".\"cancelled_date\" is not null or \"paid_activity_participants\".\"refund_cents\" = 0)"
-        },
-        "paid_activity_participants_amounts_check": {
-          "name": "paid_activity_participants_amounts_check",
-          "value": "\"paid_activity_participants\".\"fee_cents\" > 0 and \"paid_activity_participants\".\"refund_cents\" >= 0\n        and (\"paid_activity_participants\".\"paid_cents\" is null or \"paid_activity_participants\".\"paid_cents\" >= 0)\n        and (\"paid_activity_participants\".\"retained_cents\" is null or \"paid_activity_participants\".\"retained_cents\" between 0 and \"paid_activity_participants\".\"fee_cents\")"
-        },
-        "paid_activity_participants_refund_paid_check": {
-          "name": "paid_activity_participants_refund_paid_check",
-          "value": "(\"paid_activity_participants\".\"refund_paid_date\" is null) = (\"paid_activity_participants\".\"refund_iban\" is null)\n        and (\"paid_activity_participants\".\"refund_paid_date\" is null) = (\"paid_activity_participants\".\"refund_account_holder\" is null)\n        and (\"paid_activity_participants\".\"refund_paid_date\" is null) = (\"paid_activity_participants\".\"refund_paid_by_user_id\" is null)\n        and (\"paid_activity_participants\".\"refund_paid_date\" is null) = (\"paid_activity_participants\".\"refund_bank_account_id\" is null)\n        and (\"paid_activity_participants\".\"refund_paid_date\" is null or \"paid_activity_participants\".\"refund_cents\" > 0)"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.purchase_approval_settings": {
       "name": "purchase_approval_settings",
       "schema": "",
@@ -18760,6 +18154,357 @@
         "referral_rewards_cancelled_check": {
           "name": "referral_rewards_cancelled_check",
           "value": "(\"referral_rewards\".\"status\" = 'cancelled') = (\"referral_rewards\".\"cancel_reason\" is not null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.refund_invoices": {
+      "name": "refund_invoices",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "withdrawal_id": {
+          "name": "withdrawal_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "original_invoice_number": {
+          "name": "original_invoice_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "original_invoice_date": {
+          "name": "original_invoice_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "original_invoice_type": {
+          "name": "original_invoice_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "original_total_cents": {
+          "name": "original_total_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vat_rate_basis_points": {
+          "name": "vat_rate_basis_points",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount_cents": {
+          "name": "amount_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "net_cents": {
+          "name": "net_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vat_cents": {
+          "name": "vat_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'TRY'"
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "document_number": {
+          "name": "document_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completed_date": {
+          "name": "completed_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ready_at": {
+          "name": "ready_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ready_by_user_id": {
+          "name": "ready_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completed_by_user_id": {
+          "name": "completed_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discard_reason": {
+          "name": "discard_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discarded_by_user_id": {
+          "name": "discarded_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "refund_invoices_withdrawal_key": {
+          "name": "refund_invoices_withdrawal_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "withdrawal_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"refund_invoices\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "refund_invoices_document_number_key": {
+          "name": "refund_invoices_document_number_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "document_number",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"refund_invoices\".\"document_number\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "refund_invoices_withdrawal_idx": {
+          "name": "refund_invoices_withdrawal_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "withdrawal_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "refund_invoices_status_idx": {
+          "name": "refund_invoices_status_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "refund_invoices_institution_id_institutions_id_fk": {
+          "name": "refund_invoices_institution_id_institutions_id_fk",
+          "tableFrom": "refund_invoices",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "refund_invoices_withdrawal_fkey": {
+          "name": "refund_invoices_withdrawal_fkey",
+          "tableFrom": "refund_invoices",
+          "tableTo": "student_withdrawals",
+          "columnsFrom": [
+            "institution_id",
+            "withdrawal_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "refund_invoices_pkey": {
+          "name": "refund_invoices_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "refund_invoices_kind_check": {
+          "name": "refund_invoices_kind_check",
+          "value": "\"refund_invoices\".\"kind\" in ('cancellation', 'return_invoice')"
+        },
+        "refund_invoices_status_check": {
+          "name": "refund_invoices_status_check",
+          "value": "\"refund_invoices\".\"status\" in ('draft', 'ready', 'sent', 'cancelled')"
+        },
+        "refund_invoices_original_type_check": {
+          "name": "refund_invoices_original_type_check",
+          "value": "\"refund_invoices\".\"original_invoice_type\" in ('e_archive', 'e_invoice')"
+        },
+        "refund_invoices_vat_rate_check": {
+          "name": "refund_invoices_vat_rate_check",
+          "value": "\"refund_invoices\".\"vat_rate_basis_points\" in (0, 100, 1000, 2000)"
+        },
+        "refund_invoices_currency_check": {
+          "name": "refund_invoices_currency_check",
+          "value": "\"refund_invoices\".\"currency\" = 'TRY'"
+        },
+        "refund_invoices_amounts_check": {
+          "name": "refund_invoices_amounts_check",
+          "value": "\"refund_invoices\".\"original_total_cents\" > 0 and \"refund_invoices\".\"amount_cents\" > 0 and \"refund_invoices\".\"amount_cents\" <= \"refund_invoices\".\"original_total_cents\" and \"refund_invoices\".\"net_cents\" >= 0 and \"refund_invoices\".\"vat_cents\" >= 0 and \"refund_invoices\".\"net_cents\" + \"refund_invoices\".\"vat_cents\" = \"refund_invoices\".\"amount_cents\""
+        },
+        "refund_invoices_kind_status_check": {
+          "name": "refund_invoices_kind_status_check",
+          "value": "(\"refund_invoices\".\"kind\" = 'return_invoice' and \"refund_invoices\".\"status\" <> 'cancelled') or (\"refund_invoices\".\"kind\" = 'cancellation' and \"refund_invoices\".\"status\" <> 'sent')"
+        },
+        "refund_invoices_completed_check": {
+          "name": "refund_invoices_completed_check",
+          "value": "(\"refund_invoices\".\"status\" in ('sent', 'cancelled')) = (\"refund_invoices\".\"completed_date\" is not null)"
+        },
+        "refund_invoices_document_number_check": {
+          "name": "refund_invoices_document_number_check",
+          "value": "(\"refund_invoices\".\"document_number\" is not null) = (\"refund_invoices\".\"status\" = 'sent')"
+        },
+        "refund_invoices_discard_check": {
+          "name": "refund_invoices_discard_check",
+          "value": "(\"refund_invoices\".\"discard_reason\" is null) = (\"refund_invoices\".\"archived_at\" is null) and (\"refund_invoices\".\"archived_at\" is null or \"refund_invoices\".\"status\" in ('draft', 'ready'))"
         }
       },
       "isRLSEnabled": false
@@ -23280,7 +23025,7 @@
         },
         "invoices_fee_kind_check": {
           "name": "invoices_fee_kind_check",
-          "value": "\"invoices\".\"fee_kind\" in ('tuition', 'breakfast', 'meal', 'transport', 'dormitory', 'stationery', 'uniform', 'tutoring', 'activity')"
+          "value": "\"invoices\".\"fee_kind\" in ('tuition', 'breakfast', 'meal', 'transport', 'dormitory', 'stationery', 'uniform', 'tutoring')"
         },
         "invoices_paid_check": {
           "name": "invoices_paid_check",

@@ -104,6 +104,12 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/supply-requests',
   'POST /api/v1/finance/supply-requests/{requestId}/fulfill',
   'POST /api/v1/finance/supply-requests/{requestId}/convert',
+  // Gezi ve etkinlik katılımı taksit açar, iptaller taksit kapatıp iade kaydı yazar, iade ödemesi
+  // para çıkışıdır (routes/finance-paid-activities.ts; DOM-FIN-098).
+  'POST /api/v1/finance/paid-activities/{activityId}/cancel',
+  'POST /api/v1/finance/paid-activities/{activityId}/participants',
+  'POST /api/v1/finance/paid-activity-participants/{participantId}/cancel',
+  'POST /api/v1/finance/paid-activity-participants/{participantId}/pay-refund',
 ]
 // Onur: kayıt ve finans sonu
 

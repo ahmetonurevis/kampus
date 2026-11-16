@@ -743,6 +743,13 @@
       "when": 1794831455951,
       "tag": "0105_create_payroll_parameters",
       "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "7",
+      "when": 1794832760835,
+      "tag": "0106_create_donations",
+      "breakpoints": true
     }
   ]
 }

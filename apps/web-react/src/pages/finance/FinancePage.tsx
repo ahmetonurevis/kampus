@@ -128,6 +128,9 @@ const FinanceRefundInvoicesSection = lazy(async () => ({
 const FinancePayrollParametersSection = lazy(async () => ({
   default: (await import('./FinancePayrollParametersSection.tsx')).FinancePayrollParametersSection,
 }))
+const DonationsSection = lazy(async () => ({
+  default: (await import('./DonationsSection.tsx')).DonationsSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -170,6 +173,7 @@ const VIEWS = {
   boardReport: { label: 'Yönetim kurulu raporu', param: BOARD_REPORT_VIEW },
   severance: { label: 'Kıdem/ihbar hesaplayıcı', param: 'kidem-ihbar' },
   payrollParameters: { label: 'Bordro parametreleri', param: 'bordro-parametreleri' },
+  donations: { label: 'Bağışlar', param: 'bagis' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -199,6 +203,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Ücretsiz okutma (DOM-FIN-026) yalnız yöneticidedir; gerekçe ve belge hassastır (K-269).
  * İade belgeleri (DOM-FIN-096) yalnız yöneticidedir; faturayı muhasebe düzeltir (K-295).
  * Bordro parametreleri (DOM-FIN-100) ikisine açıktır; kurum kopyasını yönetici yazar (K-309).
+ * Bağışlar (DOM-FIN-097) yalnız yöneticidedir; bağışçı verisi kişiseldir (K-299).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -213,6 +218,7 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'fixedAssets' ||
       value === 'severance' ||
       value === 'freeTuition' ||
+      value === 'donations' ||
       value === 'refundInvoices'
     )
       return isManager
@@ -397,6 +403,11 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'invoices' && isManager ? <InstallmentImportSection /> : null}
         {tab === 'payrollParameters' ? (
           <FinancePayrollParametersSection canManage={isManager} />
+        ) : null}
+        {tab === 'donations' ? (
+          <Suspense fallback={<SummaryLoading />}>
+            <DonationsSection />
+          </Suspense>
         ) : null}
       </Suspense>
       <InvoiceSummaryPanel

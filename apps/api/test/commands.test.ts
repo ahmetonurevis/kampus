@@ -107,6 +107,10 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // İade faturası ve iptal isteği taslağı; çift tıklama aynı iadeye iki belge açmaz
   // (routes/finance-refund-invoices.ts; DOM-FIN-096).
   'POST /api/v1/finance/refund-invoices',
+  // Bağış kaydı makbuz numarası açar, iptali makbuzu geçersiz kılar; çift gönderim ikinci makbuzu
+  // kesmez (routes/finance-donations.ts; DOM-FIN-097).
+  'POST /api/v1/finance/donation-campaigns/{campaignId}/donations',
+  'POST /api/v1/finance/donations/{donationId}/cancel',
 ]
 // Onur: kayıt ve finans sonu
 

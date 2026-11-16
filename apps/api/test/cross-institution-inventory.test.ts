@@ -2106,6 +2106,62 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: bağış kampanyası, bağışçı ve makbuz (ON-258; DOM-FIN-097).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/donation-campaigns', 'get(CAMPAIGNS, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/donation-campaigns', 'bankAccountId: b.bankAccountId'],
+        ['kayıt', 'GET /api/v1/finance/donation-campaigns/:campaignId', 'get(bUrl, a.admin)'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/donation-campaigns/:campaignId',
+          "call('PATCH', bUrl, a.admin",
+        ],
+        ['kayıt', 'POST /api/v1/finance/donation-campaigns/:campaignId/open', '`${bUrl}/open`'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/donation-campaigns/:campaignId/close',
+          "transition(a.admin, bCampaign, 'close')",
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/donation-campaigns/:campaignId/donations',
+          '`${bUrl}/donations`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/donation-campaigns/:campaignId/donations',
+          'donate(a.admin, bCampaign.id)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/donations/:donationId/cancel',
+          'cancel(a.admin, bDonation)',
+        ],
+        ['kayıt', 'GET /api/v1/finance/donations/:donationId/receipt', '/receipt`, a.admin)'],
+        ['liste', 'GET /api/v1/finance/donors', 'get(DONORS, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/donors', "call('POST', DONORS, a.admin"],
+        ['kayıt', 'PATCH /api/v1/finance/donors/:donorId', '`${DONORS}/${String(bDonor.id)}`'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-donations.test.ts',
+        'başka kurumun kampanyası, bağışı ve bağışçısı 404',
+        marker,
+      ),
+    ]),
+  ),
+  'GET /api/v1/finance/donation-settings': liste(
+    'finance-donations.test.ts',
+    'başka kurumun kampanyası, bağışı ve bağışçısı 404',
+    'get(SETTINGS, a.admin)',
+  ),
+  'PATCH /api/v1/finance/donation-settings': govde(
+    'finance-donations.test.ts',
+    'başka kurumun kampanyası, bağışı ve bağışçısı 404',
+  ),
 }
 
 /**

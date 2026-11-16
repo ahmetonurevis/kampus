@@ -179357,6 +179357,4398 @@
         }
       }
     },
+    "/api/v1/finance/donation-campaigns": {
+      "get": {
+        "operationId": "listDonationCampaigns",
+        "summary": "Bağış kampanyalarını listele",
+        "tags": [
+          "finance-donations"
+        ],
+        "description": "Açık kampanyalar önce, sonra taslak ve kapananlar; toplanan nakdi bağış, ayni bağış değeri ve hedefe göre ilerlemeyle (DOM-FIN-097). `q` adda arar, `status` süzer. Rol: `yonetici`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Kampanya adında arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "open",
+                "closed"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Durum süzgeci"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "purpose": {
+                            "type": "string"
+                          },
+                          "targetCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Hedef tutar"
+                          },
+                          "startsOn": {
+                            "type": "string",
+                            "description": "Başlangıç günü (YYYY-MM-DD)"
+                          },
+                          "endsOn": {
+                            "type": "string",
+                            "description": "Bitiş günü (YYYY-MM-DD)"
+                          },
+                          "bankAccountId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "bankAccountLabel": {
+                            "description": "Banka adı ve IBAN son dört hanesi",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "draft",
+                              "open",
+                              "closed"
+                            ],
+                            "description": "`draft`, `open`, `closed` (K-296)"
+                          },
+                          "openedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "closedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "collectedCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Geçerli nakdi bağışların toplamı (ilerleme tabanı)"
+                          },
+                          "inKindDeclaredCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Geçerli ayni bağışların beyan edilen değer toplamı; hedefe sayılmaz"
+                          },
+                          "donationCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Geçerli bağış sayısı (nakdi ve ayni)"
+                          },
+                          "inKindCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Geçerli ayni bağış sayısı"
+                          },
+                          "percent": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Toplanan / hedef, yüzde (aşağı yuvarlanır; 100’ü geçebilir)"
+                          },
+                          "remainingCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Hedefe kalan; aşılınca 0"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "purpose",
+                          "targetCents",
+                          "startsOn",
+                          "endsOn",
+                          "bankAccountId",
+                          "bankAccountLabel",
+                          "status",
+                          "openedAt",
+                          "closedAt",
+                          "createdAt",
+                          "collectedCents",
+                          "inKindDeclaredCents",
+                          "donationCount",
+                          "inKindCount",
+                          "percent",
+                          "remainingCents",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createDonationCampaign",
+        "summary": "Bağış kampanyası aç (taslak)",
+        "tags": [
+          "finance-donations"
+        ],
+        "description": "Ad, amaç, hedef (kuruş), başlangıç ve bitiş günü, isteğe bağlı banka hesabı. Kampanya taslak açılır; bağış açıldıktan sonra yazılır (K-296). Aynı ad 409 `donation_campaign_exists`; olmayan ya da başka kurumun hesabı 404. Rol: `yonetici`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  },
+                  "purpose": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 1000
+                  },
+                  "targetCents": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10000000000
+                  },
+                  "startsOn": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "endsOn": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "bankAccountId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "name",
+                  "purpose",
+                  "targetCents",
+                  "startsOn",
+                  "endsOn"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "purpose": {
+                          "type": "string"
+                        },
+                        "targetCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Hedef tutar"
+                        },
+                        "startsOn": {
+                          "type": "string",
+                          "description": "Başlangıç günü (YYYY-MM-DD)"
+                        },
+                        "endsOn": {
+                          "type": "string",
+                          "description": "Bitiş günü (YYYY-MM-DD)"
+                        },
+                        "bankAccountId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "bankAccountLabel": {
+                          "description": "Banka adı ve IBAN son dört hanesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "open",
+                            "closed"
+                          ],
+                          "description": "`draft`, `open`, `closed` (K-296)"
+                        },
+                        "openedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "closedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "collectedCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geçerli nakdi bağışların toplamı (ilerleme tabanı)"
+                        },
+                        "inKindDeclaredCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geçerli ayni bağışların beyan edilen değer toplamı; hedefe sayılmaz"
+                        },
+                        "donationCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geçerli bağış sayısı (nakdi ve ayni)"
+                        },
+                        "inKindCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geçerli ayni bağış sayısı"
+                        },
+                        "percent": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Toplanan / hedef, yüzde (aşağı yuvarlanır; 100’ü geçebilir)"
+                        },
+                        "remainingCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Hedefe kalan; aşılınca 0"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "purpose",
+                        "targetCents",
+                        "startsOn",
+                        "endsOn",
+                        "bankAccountId",
+                        "bankAccountLabel",
+                        "status",
+                        "openedAt",
+                        "closedAt",
+                        "createdAt",
+                        "collectedCents",
+                        "inKindDeclaredCents",
+                        "donationCount",
+                        "inKindCount",
+                        "percent",
+                        "remainingCents",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/donation-campaigns/{campaignId}": {
+      "get": {
+        "operationId": "getDonationCampaign",
+        "summary": "Bağış kampanyası",
+        "tags": [
+          "finance-donations"
+        ],
+        "description": "Kampanya, toplamlar ve ilerleme. Olmayan ya da başka kurumun kampanyası 404. Rol: `yonetici`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "campaignId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "purpose": {
+                          "type": "string"
+                        },
+                        "targetCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Hedef tutar"
+                        },
+                        "startsOn": {
+                          "type": "string",
+                          "description": "Başlangıç günü (YYYY-MM-DD)"
+                        },
+                        "endsOn": {
+                          "type": "string",
+                          "description": "Bitiş günü (YYYY-MM-DD)"
+                        },
+                        "bankAccountId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "bankAccountLabel": {
+                          "description": "Banka adı ve IBAN son dört hanesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "open",
+                            "closed"
+                          ],
+                          "description": "`draft`, `open`, `closed` (K-296)"
+                        },
+                        "openedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "closedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "collectedCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geçerli nakdi bağışların toplamı (ilerleme tabanı)"
+                        },
+                        "inKindDeclaredCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geçerli ayni bağışların beyan edilen değer toplamı; hedefe sayılmaz"
+                        },
+                        "donationCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geçerli bağış sayısı (nakdi ve ayni)"
+                        },
+                        "inKindCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geçerli ayni bağış sayısı"
+                        },
+                        "percent": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Toplanan / hedef, yüzde (aşağı yuvarlanır; 100’ü geçebilir)"
+                        },
+                        "remainingCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Hedefe kalan; aşılınca 0"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "purpose",
+                        "targetCents",
+                        "startsOn",
+                        "endsOn",
+                        "bankAccountId",
+                        "bankAccountLabel",
+                        "status",
+                        "openedAt",
+                        "closedAt",
+                        "createdAt",
+                        "collectedCents",
+                        "inKindDeclaredCents",
+                        "donationCount",
+                        "inKindCount",
+                        "percent",
+                        "remainingCents",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateDonationCampaign",
+        "summary": "Bağış kampanyasını düzelt",
+        "tags": [
+          "finance-donations"
+        ],
+        "description": "Taslakta ve açıkken; kapanmış kampanya 422 `donation_campaign_closed`. Günler geçerli bağışların günlerini kapsamalıdır (422 `donation_campaign_dates_conflict`). `If-Match` zorunlu; sürüm tutmazsa 409 `version_conflict`. Rol: `yonetici`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  },
+                  "purpose": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 1000
+                  },
+                  "targetCents": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10000000000
+                  },
+                  "startsOn": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "endsOn": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "bankAccountId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "campaignId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "purpose": {
+                          "type": "string"
+                        },
+                        "targetCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Hedef tutar"
+                        },
+                        "startsOn": {
+                          "type": "string",
+                          "description": "Başlangıç günü (YYYY-MM-DD)"
+                        },
+                        "endsOn": {
+                          "type": "string",
+                          "description": "Bitiş günü (YYYY-MM-DD)"
+                        },
+                        "bankAccountId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "bankAccountLabel": {
+                          "description": "Banka adı ve IBAN son dört hanesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "open",
+                            "closed"
+                          ],
+                          "description": "`draft`, `open`, `closed` (K-296)"
+                        },
+                        "openedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "closedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "collectedCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geçerli nakdi bağışların toplamı (ilerleme tabanı)"
+                        },
+                        "inKindDeclaredCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geçerli ayni bağışların beyan edilen değer toplamı; hedefe sayılmaz"
+                        },
+                        "donationCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geçerli bağış sayısı (nakdi ve ayni)"
+                        },
+                        "inKindCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geçerli ayni bağış sayısı"
+                        },
+                        "percent": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Toplanan / hedef, yüzde (aşağı yuvarlanır; 100’ü geçebilir)"
+                        },
+                        "remainingCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Hedefe kalan; aşılınca 0"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "purpose",
+                        "targetCents",
+                        "startsOn",
+                        "endsOn",
+                        "bankAccountId",
+                        "bankAccountLabel",
+                        "status",
+                        "openedAt",
+                        "closedAt",
+                        "createdAt",
+                        "collectedCents",
+                        "inKindDeclaredCents",
+                        "donationCount",
+                        "inKindCount",
+                        "percent",
+                        "remainingCents",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/donation-campaigns/{campaignId}/open": {
+      "post": {
+        "operationId": "openDonationCampaign",
+        "summary": "Bağış kampanyasını aç",
+        "tags": [
+          "finance-donations"
+        ],
+        "description": "Taslak açılır ve bağış almaya başlar; taslak olmayan 409 `donation_campaign_not_draft`, bitiş günü geçmişse 422 `donation_campaign_ended`. `If-Match` zorunlu (K-296). Rol: `yonetici`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "campaignId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "purpose": {
+                          "type": "string"
+                        },
+                        "targetCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Hedef tutar"
+                        },
+                        "startsOn": {
+                          "type": "string",
+                          "description": "Başlangıç günü (YYYY-MM-DD)"
+                        },
+                        "endsOn": {
+                          "type": "string",
+                          "description": "Bitiş günü (YYYY-MM-DD)"
+                        },
+                        "bankAccountId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "bankAccountLabel": {
+                          "description": "Banka adı ve IBAN son dört hanesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "open",
+                            "closed"
+                          ],
+                          "description": "`draft`, `open`, `closed` (K-296)"
+                        },
+                        "openedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "closedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "collectedCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geçerli nakdi bağışların toplamı (ilerleme tabanı)"
+                        },
+                        "inKindDeclaredCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geçerli ayni bağışların beyan edilen değer toplamı; hedefe sayılmaz"
+                        },
+                        "donationCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geçerli bağış sayısı (nakdi ve ayni)"
+                        },
+                        "inKindCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geçerli ayni bağış sayısı"
+                        },
+                        "percent": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Toplanan / hedef, yüzde (aşağı yuvarlanır; 100’ü geçebilir)"
+                        },
+                        "remainingCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Hedefe kalan; aşılınca 0"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "purpose",
+                        "targetCents",
+                        "startsOn",
+                        "endsOn",
+                        "bankAccountId",
+                        "bankAccountLabel",
+                        "status",
+                        "openedAt",
+                        "closedAt",
+                        "createdAt",
+                        "collectedCents",
+                        "inKindDeclaredCents",
+                        "donationCount",
+                        "inKindCount",
+                        "percent",
+                        "remainingCents",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/donation-campaigns/{campaignId}/close": {
+      "post": {
+        "operationId": "closeDonationCampaign",
+        "summary": "Bağış kampanyasını kapat",
+        "tags": [
+          "finance-donations"
+        ],
+        "description": "Açık kampanya kapanır; kapanana bağış yazılmaz, geri açılmaz. Açık olmayan 409 `donation_campaign_not_open`. Bağış iptali kapandıktan sonra da yapılır. `If-Match` zorunlu (K-296). Rol: `yonetici`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "campaignId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "purpose": {
+                          "type": "string"
+                        },
+                        "targetCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Hedef tutar"
+                        },
+                        "startsOn": {
+                          "type": "string",
+                          "description": "Başlangıç günü (YYYY-MM-DD)"
+                        },
+                        "endsOn": {
+                          "type": "string",
+                          "description": "Bitiş günü (YYYY-MM-DD)"
+                        },
+                        "bankAccountId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "bankAccountLabel": {
+                          "description": "Banka adı ve IBAN son dört hanesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "open",
+                            "closed"
+                          ],
+                          "description": "`draft`, `open`, `closed` (K-296)"
+                        },
+                        "openedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "closedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "collectedCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geçerli nakdi bağışların toplamı (ilerleme tabanı)"
+                        },
+                        "inKindDeclaredCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geçerli ayni bağışların beyan edilen değer toplamı; hedefe sayılmaz"
+                        },
+                        "donationCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geçerli bağış sayısı (nakdi ve ayni)"
+                        },
+                        "inKindCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geçerli ayni bağış sayısı"
+                        },
+                        "percent": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Toplanan / hedef, yüzde (aşağı yuvarlanır; 100’ü geçebilir)"
+                        },
+                        "remainingCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Hedefe kalan; aşılınca 0"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "purpose",
+                        "targetCents",
+                        "startsOn",
+                        "endsOn",
+                        "bankAccountId",
+                        "bankAccountLabel",
+                        "status",
+                        "openedAt",
+                        "closedAt",
+                        "createdAt",
+                        "collectedCents",
+                        "inKindDeclaredCents",
+                        "donationCount",
+                        "inKindCount",
+                        "percent",
+                        "remainingCents",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/donation-campaigns/{campaignId}/donations": {
+      "get": {
+        "operationId": "listCampaignDonations",
+        "summary": "Kampanyanın bağışları",
+        "tags": [
+          "finance-donations"
+        ],
+        "description": "Makbuz numarasına göre en yeni önce, iptal edilenler dahil; kimlik numarası maskeli (K-298). `Accept: text/csv` ile bütün döküm iner (sayfalama yok): `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı, son satır geçerli nakdi toplam; taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.donation_export`. Rol: `yonetici`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "campaignId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "campaignId": {
+                            "type": "string"
+                          },
+                          "donorId": {
+                            "description": "Anonim bağışta boş",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "donorKind": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "person",
+                                  "organization"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "donorName": {
+                            "description": "Makbuz anındaki bağışçı adı; anonimde boş",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "maskedIdentityNumber": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "cash",
+                              "in_kind"
+                            ],
+                            "description": "`cash` nakdi, `in_kind` ayni (K-297)"
+                          },
+                          "amountCents": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Nakdi tutar"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "method": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "cash",
+                                  "bank_transfer",
+                                  "card_slip"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "bankAccountId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "bankAccountLabel": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "reference": {
+                            "description": "Dekont ya da slip numarası",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "description": {
+                            "description": "Ayni bağış açıklaması",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "declaredValueCents": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ayni bağışta beyan edilen değer"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "donatedOn": {
+                            "type": "string",
+                            "description": "Bağış günü (YYYY-MM-DD)"
+                          },
+                          "note": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "receiptYear": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "receiptNumber": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Kurum ve yıl içinde ardışık makbuz numarası"
+                          },
+                          "hasTaxNotice": {
+                            "type": "boolean",
+                            "description": "Makbuzda vergi indirimi ibaresi var mı"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "description": "Kayıt (makbuz düzenleme) anı"
+                          },
+                          "cancelledAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "cancelReason": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü (iptal)"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "campaignId",
+                          "donorId",
+                          "donorKind",
+                          "donorName",
+                          "maskedIdentityNumber",
+                          "kind",
+                          "amountCents",
+                          "method",
+                          "bankAccountId",
+                          "bankAccountLabel",
+                          "reference",
+                          "description",
+                          "declaredValueCents",
+                          "donatedOn",
+                          "note",
+                          "receiptYear",
+                          "receiptNumber",
+                          "hasTaxNotice",
+                          "createdAt",
+                          "cancelledAt",
+                          "cancelReason",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "recordDonation",
+        "summary": "Bağış kaydet ve makbuz kes",
+        "tags": [
+          "finance-donations"
+        ],
+        "description": "Elle girilen bağış: `donorId` (anonimde `null`), tür (`cash` nakdi: tutar ve yöntem `cash`/`bank_transfer`/`card_slip`; `in_kind` ayni: açıklama, isteğe bağlı beyan edilen değer), gün. Havalede banka hesabı verilmezse kampanyanınki; ikisi de yoksa 422 `donation_bank_account_required`. Taslak ya da kapanmış kampanya 422 `donation_campaign_not_open`, gelecek gün 422 `donation_date_future`, kampanya günleri dışı 422 `donation_date_outside_campaign`; olmayan ya da başka kurumun bağışçısı, hesabı 404. Makbuz numarası yılın sıradaki numarasıdır (K-297); vergi ibaresi ayar açıksa ve bağış anonim değilse kopyalanır (K-299). `Idempotency-Key` zorunlu. Rol: `yonetici`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "donorId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "cash",
+                      "in_kind"
+                    ]
+                  },
+                  "donatedOn": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "amountCents": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10000000000
+                  },
+                  "method": {
+                    "type": "string",
+                    "enum": [
+                      "cash",
+                      "bank_transfer",
+                      "card_slip"
+                    ]
+                  },
+                  "bankAccountId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "reference": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 100
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "description": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "declaredValueCents": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10000000000
+                  },
+                  "note": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "donorId",
+                  "kind",
+                  "donatedOn"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "campaignId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "campaignId": {
+                          "type": "string"
+                        },
+                        "donorId": {
+                          "description": "Anonim bağışta boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "donorKind": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "person",
+                                "organization"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "donorName": {
+                          "description": "Makbuz anındaki bağışçı adı; anonimde boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "maskedIdentityNumber": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "cash",
+                            "in_kind"
+                          ],
+                          "description": "`cash` nakdi, `in_kind` ayni (K-297)"
+                        },
+                        "amountCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Nakdi tutar"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "method": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "cash",
+                                "bank_transfer",
+                                "card_slip"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "bankAccountId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "bankAccountLabel": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reference": {
+                          "description": "Dekont ya da slip numarası",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "description": {
+                          "description": "Ayni bağış açıklaması",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "declaredValueCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ayni bağışta beyan edilen değer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "donatedOn": {
+                          "type": "string",
+                          "description": "Bağış günü (YYYY-MM-DD)"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receiptYear": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "receiptNumber": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kurum ve yıl içinde ardışık makbuz numarası"
+                        },
+                        "hasTaxNotice": {
+                          "type": "boolean",
+                          "description": "Makbuzda vergi indirimi ibaresi var mı"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "description": "Kayıt (makbuz düzenleme) anı"
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü (iptal)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "campaignId",
+                        "donorId",
+                        "donorKind",
+                        "donorName",
+                        "maskedIdentityNumber",
+                        "kind",
+                        "amountCents",
+                        "method",
+                        "bankAccountId",
+                        "bankAccountLabel",
+                        "reference",
+                        "description",
+                        "declaredValueCents",
+                        "donatedOn",
+                        "note",
+                        "receiptYear",
+                        "receiptNumber",
+                        "hasTaxNotice",
+                        "createdAt",
+                        "cancelledAt",
+                        "cancelReason",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/donations/{donationId}/cancel": {
+      "post": {
+        "operationId": "cancelDonation",
+        "summary": "Bağışı ve makbuzunu iptal et",
+        "tags": [
+          "finance-donations"
+        ],
+        "description": "Gerekçeyle (5–500 karakter); silinmez, makbuz numarası yeniden kullanılmaz, makbuz \"İptal edildi\" ibaresiyle kalır (K-297). İptal edilmiş bağış 409 `donation_cancelled`, sürüm tutmazsa 409 `version_conflict`. `If-Match` ve `Idempotency-Key` zorunlu. Rol: `yonetici`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "donationId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "campaignId": {
+                          "type": "string"
+                        },
+                        "donorId": {
+                          "description": "Anonim bağışta boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "donorKind": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "person",
+                                "organization"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "donorName": {
+                          "description": "Makbuz anındaki bağışçı adı; anonimde boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "maskedIdentityNumber": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "cash",
+                            "in_kind"
+                          ],
+                          "description": "`cash` nakdi, `in_kind` ayni (K-297)"
+                        },
+                        "amountCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Nakdi tutar"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "method": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "cash",
+                                "bank_transfer",
+                                "card_slip"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "bankAccountId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "bankAccountLabel": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reference": {
+                          "description": "Dekont ya da slip numarası",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "description": {
+                          "description": "Ayni bağış açıklaması",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "declaredValueCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ayni bağışta beyan edilen değer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "donatedOn": {
+                          "type": "string",
+                          "description": "Bağış günü (YYYY-MM-DD)"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receiptYear": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "receiptNumber": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kurum ve yıl içinde ardışık makbuz numarası"
+                        },
+                        "hasTaxNotice": {
+                          "type": "boolean",
+                          "description": "Makbuzda vergi indirimi ibaresi var mı"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "description": "Kayıt (makbuz düzenleme) anı"
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü (iptal)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "campaignId",
+                        "donorId",
+                        "donorKind",
+                        "donorName",
+                        "maskedIdentityNumber",
+                        "kind",
+                        "amountCents",
+                        "method",
+                        "bankAccountId",
+                        "bankAccountLabel",
+                        "reference",
+                        "description",
+                        "declaredValueCents",
+                        "donatedOn",
+                        "note",
+                        "receiptYear",
+                        "receiptNumber",
+                        "hasTaxNotice",
+                        "createdAt",
+                        "cancelledAt",
+                        "cancelReason",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/donations/{donationId}/receipt": {
+      "get": {
+        "operationId": "getDonationReceipt",
+        "summary": "Bağış makbuzu verisi",
+        "tags": [
+          "finance-donations"
+        ],
+        "description": "Makbuz PDF'inin verisi: bağışçının tam kimlik numarası, kampanya ve kopyalanmış vergi ibaresi. Okuma denetime yazılır (`finance.donation_receipt`, K-298). Olmayan ya da başka kurumun bağışı 404. Rol: `yonetici`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "donationId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "campaignId": {
+                          "type": "string"
+                        },
+                        "donorId": {
+                          "description": "Anonim bağışta boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "donorKind": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "person",
+                                "organization"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "donorName": {
+                          "description": "Makbuz anındaki bağışçı adı; anonimde boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "maskedIdentityNumber": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "cash",
+                            "in_kind"
+                          ],
+                          "description": "`cash` nakdi, `in_kind` ayni (K-297)"
+                        },
+                        "amountCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Nakdi tutar"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "method": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "cash",
+                                "bank_transfer",
+                                "card_slip"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "bankAccountId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "bankAccountLabel": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reference": {
+                          "description": "Dekont ya da slip numarası",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "description": {
+                          "description": "Ayni bağış açıklaması",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "declaredValueCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ayni bağışta beyan edilen değer"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "donatedOn": {
+                          "type": "string",
+                          "description": "Bağış günü (YYYY-MM-DD)"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "receiptYear": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "receiptNumber": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kurum ve yıl içinde ardışık makbuz numarası"
+                        },
+                        "hasTaxNotice": {
+                          "type": "boolean",
+                          "description": "Makbuzda vergi indirimi ibaresi var mı"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "description": "Kayıt (makbuz düzenleme) anı"
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü (iptal)"
+                        },
+                        "identityNumber": {
+                          "description": "Makbuz anındaki bağışçının tam TCKN/VKN; okuma denetime yazılır",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "taxNotice": {
+                          "description": "Makbuza kopyalanmış vergi indirimi ibaresi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "campaign": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "purpose": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "purpose"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "campaignId",
+                        "donorId",
+                        "donorKind",
+                        "donorName",
+                        "maskedIdentityNumber",
+                        "kind",
+                        "amountCents",
+                        "method",
+                        "bankAccountId",
+                        "bankAccountLabel",
+                        "reference",
+                        "description",
+                        "declaredValueCents",
+                        "donatedOn",
+                        "note",
+                        "receiptYear",
+                        "receiptNumber",
+                        "hasTaxNotice",
+                        "createdAt",
+                        "cancelledAt",
+                        "cancelReason",
+                        "version",
+                        "identityNumber",
+                        "taxNotice",
+                        "campaign"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/donors": {
+      "get": {
+        "operationId": "listDonors",
+        "summary": "Bağışçıları listele",
+        "tags": [
+          "finance-donations"
+        ],
+        "description": "Ada göre; kimlik numarası maskeli (K-298). Rol: `yonetici`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Adda arama; dört hane kimlik numarasının son haneleriyle, tam numara tam eşleşir"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "person",
+                              "organization"
+                            ]
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "maskedIdentityNumber": {
+                            "description": "Son dört hane dışında maskeli TCKN/VKN; tam değer yalnız makbuz ucunda (K-298)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "phone": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "email": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "address": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "link": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "studentId": {
+                                    "type": "string"
+                                  },
+                                  "relation": {
+                                    "type": "string",
+                                    "enum": [
+                                      "parent",
+                                      "alumnus"
+                                    ]
+                                  },
+                                  "studentName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "studentId",
+                                  "relation",
+                                  "studentName"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Veli ya da mezun bağı (isteğe bağlı)"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "kind",
+                          "name",
+                          "maskedIdentityNumber",
+                          "phone",
+                          "email",
+                          "address",
+                          "link",
+                          "createdAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createDonor",
+        "summary": "Bağışçı kaydet",
+        "tags": [
+          "finance-donations"
+        ],
+        "description": "Kişi ya da kurum; ad zorunlu, kimlik numarası (kişide TCKN, kurumda VKN), telefon, e-posta, adres ve veli/mezun bağı isteğe bağlı (K-298). Kimlik numarası kurumda tekil (409 `donor_identity_exists`); olmayan ya da başka kurumun öğrencisi 404. Rol: `yonetici`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "person",
+                      "organization"
+                    ]
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 200
+                  },
+                  "identityNumber": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{10,11}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "phone": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^0\\d{10}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "email": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 254,
+                        "format": "email",
+                        "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "address": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "link": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "studentId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "relation": {
+                            "type": "string",
+                            "enum": [
+                              "parent",
+                              "alumnus"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "studentId",
+                          "relation"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "kind",
+                  "name"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "person",
+                            "organization"
+                          ]
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "maskedIdentityNumber": {
+                          "description": "Son dört hane dışında maskeli TCKN/VKN; tam değer yalnız makbuz ucunda (K-298)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "phone": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "email": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "address": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "link": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "studentId": {
+                                  "type": "string"
+                                },
+                                "relation": {
+                                  "type": "string",
+                                  "enum": [
+                                    "parent",
+                                    "alumnus"
+                                  ]
+                                },
+                                "studentName": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "studentId",
+                                "relation",
+                                "studentName"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Veli ya da mezun bağı (isteğe bağlı)"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "kind",
+                        "name",
+                        "maskedIdentityNumber",
+                        "phone",
+                        "email",
+                        "address",
+                        "link",
+                        "createdAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/donors/{donorId}": {
+      "patch": {
+        "operationId": "updateDonor",
+        "summary": "Bağışçıyı düzelt",
+        "tags": [
+          "finance-donations"
+        ],
+        "description": "Tür değişmez; `null` isteğe bağlı alanı temizler. Kesilmiş makbuzlar değişmez (bağışçı bilgisi makbuza kopyalanmıştır). Kimlik numarası türe uymazsa 422 `donor_identity_invalid`. `If-Match` zorunlu. Rol: `yonetici`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 200
+                  },
+                  "identityNumber": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{10,11}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "phone": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^0\\d{10}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "email": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 254,
+                        "format": "email",
+                        "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "address": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 10,
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "link": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "studentId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "relation": {
+                            "type": "string",
+                            "enum": [
+                              "parent",
+                              "alumnus"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "studentId",
+                          "relation"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "donorId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "person",
+                            "organization"
+                          ]
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "maskedIdentityNumber": {
+                          "description": "Son dört hane dışında maskeli TCKN/VKN; tam değer yalnız makbuz ucunda (K-298)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "phone": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "email": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "address": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "link": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "studentId": {
+                                  "type": "string"
+                                },
+                                "relation": {
+                                  "type": "string",
+                                  "enum": [
+                                    "parent",
+                                    "alumnus"
+                                  ]
+                                },
+                                "studentName": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "studentId",
+                                "relation",
+                                "studentName"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Veli ya da mezun bağı (isteğe bağlı)"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "kind",
+                        "name",
+                        "maskedIdentityNumber",
+                        "phone",
+                        "email",
+                        "address",
+                        "link",
+                        "createdAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/donation-settings": {
+      "get": {
+        "operationId": "getDonationSettings",
+        "summary": "Bağış ayarı",
+        "tags": [
+          "finance-donations"
+        ],
+        "description": "Makbuza vergi indirimi ibaresi yazılıp yazılmayacağı ve metni; varsayılan kapalı (K-299). Rol: `yonetici`.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "taxNoticeEnabled": {
+                          "type": "boolean"
+                        },
+                        "taxNoticeText": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için ayar sürümü; ayar hiç değişmediyse 1"
+                        }
+                      },
+                      "required": [
+                        "taxNoticeEnabled",
+                        "taxNoticeText",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "setDonationSettings",
+        "summary": "Vergi indirimi ibaresini ayarla",
+        "tags": [
+          "finance-donations"
+        ],
+        "description": "İbare açıkken metin (20–600 karakter) zorunlu. Yalnız bundan sonra kesilen makbuzları etkiler. GVK md. 89 / KVK md. 10 kapsamı kurumun mali müşavirince doğrulanmalıdır (H-37). `If-Match` (ayar hiç değişmediyse 1) zorunlu. Rol: `yonetici`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "taxNoticeEnabled": {
+                    "type": "boolean"
+                  },
+                  "taxNoticeText": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 600
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "taxNoticeEnabled",
+                  "taxNoticeText"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "taxNoticeEnabled": {
+                          "type": "boolean"
+                        },
+                        "taxNoticeText": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için ayar sürümü; ayar hiç değişmediyse 1"
+                        }
+                      },
+                      "required": [
+                        "taxNoticeEnabled",
+                        "taxNoticeText",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

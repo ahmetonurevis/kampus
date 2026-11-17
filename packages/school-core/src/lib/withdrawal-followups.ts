@@ -13,7 +13,9 @@ import {
   withdrawStudentSchema,
   type WithdrawalActivityLine,
   type WithdrawalBreakdown,
+  type WithdrawalClawbackLine,
   type WithdrawalContext,
+  type WithdrawalContractLine,
 } from './withdrawals.ts'
 
 /**
@@ -225,9 +227,11 @@ function activityValue(line: WithdrawalActivityLine): string {
  * Dökümün burs ve etkinlik bölümleri; ekran ve iade belgesi aynı sözleri kullanır (IST-110).
  * Eski kayıtta alanlar olmadığından boş döner, döküm değişmez.
  */
-export function withdrawalFollowupSections(
-  breakdown: Pick<WithdrawalBreakdown, 'contracts' | 'scholarshipClawbacks' | 'activities'>,
-): WithdrawalFollowupSection[] {
+export function withdrawalFollowupSections(breakdown: {
+  contracts?: readonly WithdrawalContractLine[] | undefined
+  scholarshipClawbacks?: readonly WithdrawalClawbackLine[] | undefined
+  activities?: readonly WithdrawalActivityLine[] | undefined
+}): WithdrawalFollowupSection[] {
   const sections: WithdrawalFollowupSection[] = []
   const contracts = breakdown.contracts ?? []
   const clawbacks = breakdown.scholarshipClawbacks ?? []

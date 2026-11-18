@@ -2378,6 +2378,68 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: avans ve kesintiler (ON-199; DOM-FIN-101).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/staff-deductions', 'staffOf(a.admin)'],
+        ['kayıt', 'GET /api/v1/finance/staff-deductions/:membershipId', 'detail(a.admin, bStaff)'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-deductions/:membershipId/month-preview',
+          'preview(a.admin, bStaff',
+        ],
+        ['gövde', 'POST /api/v1/finance/staff-advances', 'giveAdvance(a.admin, advance(bStaff))'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-advances/:advanceId/close',
+          '`${ADVANCES}/${String(bAdvance.id)}/close`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-advances/:advanceId/cancel',
+          '`${ADVANCES}/${String(bAdvance.id)}/cancel`',
+        ],
+        [
+          'gövde',
+          'POST /api/v1/finance/staff-garnishments',
+          'addGarnishment(a.admin, garnishment(bStaff))',
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/staff-garnishments/:garnishmentId',
+          '`${GARNISHMENTS}/${String(bIcra.id)}`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-garnishments/:garnishmentId/close',
+          '`${GARNISHMENTS}/${String(bIcra.id)}/close`',
+        ],
+        [
+          'gövde',
+          'POST /api/v1/finance/staff-pension-enrollments',
+          'enroll(a.admin, pension(bStaff))',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-pension-enrollments/:enrollmentId/pause',
+          '`${PENSIONS}/${String(bBes.id)}/pause`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-pension-enrollments/:enrollmentId/opt-out',
+          '`${PENSIONS}/${String(bBes.id)}/opt-out`',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-staff-deductions.test.ts',
+        'başka kurumun personeli ve kayıtları 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

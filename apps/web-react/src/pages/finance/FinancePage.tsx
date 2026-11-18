@@ -140,6 +140,9 @@ const FinancePayRatesSection = lazy(async () => ({
 const FinancePaidActivitiesSection = lazy(async () => ({
   default: (await import('./FinancePaidActivitiesSection.tsx')).FinancePaidActivitiesSection,
 }))
+const FinanceStaffDocumentsSection = lazy(async () => ({
+  default: (await import('./FinanceStaffDocumentsSection.tsx')).FinanceStaffDocumentsSection,
+}))
 const FinanceEventTicketsSection = lazy(async () => ({
   default: (await import('./FinanceEventTicketsSection.tsx')).FinanceEventTicketsSection,
 }))
@@ -190,6 +193,7 @@ const VIEWS = {
   payRates: { label: 'Ücret tanımları', param: 'ucret-tanimi' },
   paidActivities: { label: 'Gezi ve etkinlik ücretleri', param: 'gezi-etkinlik' },
   eventTickets: { label: 'Etkinlik biletleri', param: 'etkinlik-bileti' },
+  staffDocuments: { label: 'Özlük belgeleri', param: 'ozluk-belgeleri' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -225,6 +229,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Gezi ve etkinlik ücretleri (DOM-FIN-098) ikisine açıktır; ön büro katılım yazar ve iptal eder,
  * etkinliği ve iadeyi yönetici yönetir (K-300).
  * Etkinlik biletleri (DOM-FIN-103) ikisine açıktır; etkinliği yönetici açar (K-324).
+ * Özlük belgeleri (DOM-FIN-113) ikisine açıktır; tür ayarı ve özel nitelikli belge yöneticide (K-374).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -432,6 +437,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'payRates' ? <FinancePayRatesSection /> : null}
         {tab === 'paidActivities' ? <FinancePaidActivitiesSection isManager={isManager} /> : null}
         {tab === 'eventTickets' ? <FinanceEventTicketsSection role={session?.role ?? ''} /> : null}
+        {tab === 'staffDocuments' ? <FinanceStaffDocumentsSection isManager={isManager} /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

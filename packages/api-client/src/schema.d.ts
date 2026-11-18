@@ -10300,6 +10300,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/hr-reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * İK raporları: devir oranı, kıdem dağılımı, izin kullanımı
+         * @description `from`–`to` ayları (en çok 12; varsayılan bu ay, Europe/Istanbul) için kişi adı taşımayan İK özeti (DOM-FIN-117). Personel yönetici, öğretmen ve ön büro üyelikleridir (pasif dahil). Giriş günü izin profilindeki kıdem başlangıcı (ON-181), yoksa üyeliğin açıldığı gün; çıkış günü pasifleştirme günü (K-400). `turnover` dönem başı, giriş, çıkış, dönem sonu ve devir oranıdır: çıkış ÷ ((dönem başı + dönem sonu) ÷ 2), on binde bir; kırılım rol (`teacher`, `administrative`) ve personelin dönemdeki son ayının maliyet merkezi ataması (DOM-FIN-104; paylı kişi her merkezinde, ataması olmayan "Atanmamış"). `seniority` dönem sonundaki personelin tam hizmet yılı bantları (0–1, 1–3, 3–5, 5–10, 10+; kıdem başlangıcı yoksa `unknown`). `leave` dönemde başlayan kullanılmış izinlerin türe göre iş günü, kullanan personel ve ortalama personel başına gün; dönem sonundaki personelin kalan yıllık izin bakiyesi toplamı (DOM-FIN-109); rapor günleri yalnız kurum toplamı (DOM-FIN-110, K-402). Süren dönem bugünde biter (`endDay`). 1–4 kişilik kırılımın sayıları `null`, `suppressed: true`; tek gizli hücre toplamdan geri hesaplanmasın diye en küçük görünür hücre de gizlenir (K-77, K-401). Her okuma denetime düşer: ekran `finance.hr_report.read`, `purpose=pdf` ve `Accept: text/csv` `finance.hr_report.export` (yalnız bölüm adları). CSV: `;`, UTF-8 BOM, ondalık virgül, formül kaçışı. PDF verisi ve CSV taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk. Başlangıç ayı bu aydan sonraysa 422 `hr_report_period_not_started`; `to` `from`'dan önce ya da dönem 12 aydan uzunsa 400. Hiçbir şey yazmaz (denetim dışında). Rol: yalnız `yonetici` (K-401). Modül `finance`; kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getFinanceHrReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -108030,6 +108050,238 @@ export interface operations {
                             url: string;
                             /** @description Bağlantının geçerlilik sonu */
                             expiresAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getFinanceHrReport: {
+        parameters: {
+            query?: {
+                /** @description Başlangıç ayı (YYYY-MM); varsayılan `to` ya da bu ay (Europe/Istanbul) */
+                from?: string;
+                /** @description Bitiş ayı (YYYY-MM, dahil); varsayılan `from` */
+                to?: string;
+                /** @description `view` ekran (denetim `finance.hr_report.read`), `pdf` PDF üretimi (denetim `finance.hr_report.export`, taze oturum) */
+                purpose?: "view" | "pdf";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            from: string;
+                            to: string;
+                            /** @description Dönemin ilk günü (YYYY-MM-DD) */
+                            firstDay: string;
+                            /** @description Dönemin son günü */
+                            lastDay: string;
+                            /** @description Hesabın bittiği gün: son gün ya da süren dönemde bugün */
+                            endDay: string;
+                            /** @description Sayıların gösterildiği en küçük kişi sayısı */
+                            minGroupSize: number;
+                            turnover: {
+                                /** @description Kurum toplamı; kurum 1–4 kişiyse gizli */
+                                totals: {
+                                    /** @description Dönem başı personel (ilk günden önce girip ilk gün çalışan); küçük grupta boş */
+                                    opening: number | null;
+                                    /** @description Dönemde giren; küçük grupta boş */
+                                    hires: number | null;
+                                    /** @description Dönemde çıkan (pasifleştirilen); küçük grupta boş */
+                                    exits: number | null;
+                                    /** @description Dönem sonu personel (son gün ya da bugün çıkmamış); küçük grupta boş */
+                                    closing: number | null;
+                                    /** @description (dönem başı + dönem sonu) ÷ 2; buçuklu olabilir; küçük grupta boş */
+                                    averageHeadcount: number | null;
+                                    /** @description Devir oranı, on binde bir (1250 = %12,5); ortalama 0 ise de boş; küçük grupta boş */
+                                    turnoverBasisPoints: number | null;
+                                    /** @description Küçük grup: 1–4 kişi ya da ikincil bastırma (K-401) */
+                                    suppressed: boolean;
+                                };
+                                byRole: {
+                                    /**
+                                     * @description `teacher` öğretmen, `administrative` yönetici ve ön büro
+                                     * @enum {string}
+                                     */
+                                    group: "teacher" | "administrative";
+                                    /** @description Dönem başı personel (ilk günden önce girip ilk gün çalışan); küçük grupta boş */
+                                    opening: number | null;
+                                    /** @description Dönemde giren; küçük grupta boş */
+                                    hires: number | null;
+                                    /** @description Dönemde çıkan (pasifleştirilen); küçük grupta boş */
+                                    exits: number | null;
+                                    /** @description Dönem sonu personel (son gün ya da bugün çıkmamış); küçük grupta boş */
+                                    closing: number | null;
+                                    /** @description (dönem başı + dönem sonu) ÷ 2; buçuklu olabilir; küçük grupta boş */
+                                    averageHeadcount: number | null;
+                                    /** @description Devir oranı, on binde bir (1250 = %12,5); ortalama 0 ise de boş; küçük grupta boş */
+                                    turnoverBasisPoints: number | null;
+                                    /** @description Küçük grup: 1–4 kişi ya da ikincil bastırma (K-401) */
+                                    suppressed: boolean;
+                                }[];
+                                byCenter: {
+                                    /** @description Atanmamış satırında boş */
+                                    id: string | null;
+                                    code: string | null;
+                                    name: string;
+                                    /** @description Kökten merkeze kod yolu */
+                                    path: string | null;
+                                    isActive: boolean;
+                                    /** @description Dönem başı personel (ilk günden önce girip ilk gün çalışan); küçük grupta boş */
+                                    opening: number | null;
+                                    /** @description Dönemde giren; küçük grupta boş */
+                                    hires: number | null;
+                                    /** @description Dönemde çıkan (pasifleştirilen); küçük grupta boş */
+                                    exits: number | null;
+                                    /** @description Dönem sonu personel (son gün ya da bugün çıkmamış); küçük grupta boş */
+                                    closing: number | null;
+                                    /** @description (dönem başı + dönem sonu) ÷ 2; buçuklu olabilir; küçük grupta boş */
+                                    averageHeadcount: number | null;
+                                    /** @description Devir oranı, on binde bir (1250 = %12,5); ortalama 0 ise de boş; küçük grupta boş */
+                                    turnoverBasisPoints: number | null;
+                                    /** @description Küçük grup: 1–4 kişi ya da ikincil bastırma (K-401) */
+                                    suppressed: boolean;
+                                }[];
+                            };
+                            seniority: {
+                                /** @description Kıdemin hesaplandığı gün (dönem sonu) */
+                                asOf: string;
+                                /** @description Dönem sonundaki personel; küçük grupta boş */
+                                total: number | null;
+                                totalSuppressed: boolean;
+                                bands: {
+                                    /** @enum {string} */
+                                    key: "under_1" | "from_1_to_3" | "from_3_to_5" | "from_5_to_10" | "over_10" | "unknown";
+                                    /** @description Banttaki personel; küçük grupta boş */
+                                    count: number | null;
+                                    suppressed: boolean;
+                                }[];
+                            };
+                            leave: {
+                                types: {
+                                    code: string;
+                                    label: string;
+                                    /** @enum {string} */
+                                    kind: "annual" | "excuse" | "unpaid" | "sick" | "other";
+                                    /** @description Dönemde başlayan kayıtların iş günü toplamı; küçük grupta boş */
+                                    usedDays: number | null;
+                                    /** @description Bu türden izin kullanan personel; küçük grupta boş */
+                                    staffCount: number | null;
+                                    /** @description Kullanılan gün ÷ ortalama personel (bir ondalık); küçük grupta boş */
+                                    perStaffDays: number | null;
+                                    suppressed: boolean;
+                                }[];
+                                totals: {
+                                    /** @description Toplam kullanılan gün; küçük grupta boş */
+                                    usedDays: number | null;
+                                    /** @description İzin kullanan personel; küçük grupta boş */
+                                    staffCount: number | null;
+                                    perStaffDays: number | null;
+                                    suppressed: boolean;
+                                };
+                                balance: {
+                                    /** @description Dönem sonunda kıdem başlangıcı girilmiş personel; küçük grupta boş */
+                                    staffCount: number | null;
+                                    /** @description Kalan yıllık izin bakiyesi toplamı (gün; eksi avans izindir); küçük grupta boş */
+                                    balanceDays: number | null;
+                                    perStaffDays: number | null;
+                                    suppressed: boolean;
+                                    /** @description Dönem sonunda kıdem başlangıcı girilmemiş personel (bakiyeye girmez) */
+                                    missingProfileCount: number;
+                                };
+                                /** @description Yalnız kurum toplamı; raporlu personel 1–4 ise gizli (K-402) */
+                                medical: {
+                                    /** @description Rapor günleri toplamı (takvim günü); küçük grupta boş */
+                                    totalDays: number | null;
+                                    suppressed: boolean;
+                                };
+                            };
+                            warnings: {
+                                /** @description Dönemdeki personelden kıdem başlangıcı girilmemiş olanlar */
+                                missingSeniorityCount: number;
+                            };
                         };
                     };
                 };

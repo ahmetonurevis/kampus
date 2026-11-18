@@ -237880,6 +237880,821 @@
         }
       }
     },
+    "/api/v1/finance/hr-reports": {
+      "get": {
+        "operationId": "getFinanceHrReport",
+        "summary": "İK raporları: devir oranı, kıdem dağılımı, izin kullanımı",
+        "tags": [
+          "finance-hr-reports"
+        ],
+        "description": "`from`–`to` ayları (en çok 12; varsayılan bu ay, Europe/Istanbul) için kişi adı taşımayan İK özeti (DOM-FIN-117). Personel yönetici, öğretmen ve ön büro üyelikleridir (pasif dahil). Giriş günü izin profilindeki kıdem başlangıcı (ON-181), yoksa üyeliğin açıldığı gün; çıkış günü pasifleştirme günü (K-400). `turnover` dönem başı, giriş, çıkış, dönem sonu ve devir oranıdır: çıkış ÷ ((dönem başı + dönem sonu) ÷ 2), on binde bir; kırılım rol (`teacher`, `administrative`) ve personelin dönemdeki son ayının maliyet merkezi ataması (DOM-FIN-104; paylı kişi her merkezinde, ataması olmayan \"Atanmamış\"). `seniority` dönem sonundaki personelin tam hizmet yılı bantları (0–1, 1–3, 3–5, 5–10, 10+; kıdem başlangıcı yoksa `unknown`). `leave` dönemde başlayan kullanılmış izinlerin türe göre iş günü, kullanan personel ve ortalama personel başına gün; dönem sonundaki personelin kalan yıllık izin bakiyesi toplamı (DOM-FIN-109); rapor günleri yalnız kurum toplamı (DOM-FIN-110, K-402). Süren dönem bugünde biter (`endDay`). 1–4 kişilik kırılımın sayıları `null`, `suppressed: true`; tek gizli hücre toplamdan geri hesaplanmasın diye en küçük görünür hücre de gizlenir (K-77, K-401). Her okuma denetime düşer: ekran `finance.hr_report.read`, `purpose=pdf` ve `Accept: text/csv` `finance.hr_report.export` (yalnız bölüm adları). CSV: `;`, UTF-8 BOM, ondalık virgül, formül kaçışı. PDF verisi ve CSV taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk. Başlangıç ayı bu aydan sonraysa 422 `hr_report_period_not_started`; `to` `from`'dan önce ya da dönem 12 aydan uzunsa 400. Hiçbir şey yazmaz (denetim dışında). Rol: yalnız `yonetici` (K-401). Modül `finance`; kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(\\d{4})-(0[1-9]|1[0-2])$"
+            },
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "description": "Başlangıç ayı (YYYY-MM); varsayılan `to` ya da bu ay (Europe/Istanbul)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(\\d{4})-(0[1-9]|1[0-2])$"
+            },
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "description": "Bitiş ayı (YYYY-MM, dahil); varsayılan `from`"
+          },
+          {
+            "schema": {
+              "default": "view",
+              "type": "string",
+              "enum": [
+                "view",
+                "pdf"
+              ]
+            },
+            "in": "query",
+            "name": "purpose",
+            "required": false,
+            "description": "`view` ekran (denetim `finance.hr_report.read`), `pdf` PDF üretimi (denetim `finance.hr_report.export`, taze oturum)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "from": {
+                          "type": "string"
+                        },
+                        "to": {
+                          "type": "string"
+                        },
+                        "firstDay": {
+                          "type": "string",
+                          "description": "Dönemin ilk günü (YYYY-MM-DD)"
+                        },
+                        "lastDay": {
+                          "type": "string",
+                          "description": "Dönemin son günü"
+                        },
+                        "endDay": {
+                          "type": "string",
+                          "description": "Hesabın bittiği gün: son gün ya da süren dönemde bugün"
+                        },
+                        "minGroupSize": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Sayıların gösterildiği en küçük kişi sayısı"
+                        },
+                        "turnover": {
+                          "type": "object",
+                          "properties": {
+                            "totals": {
+                              "type": "object",
+                              "properties": {
+                                "opening": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Dönem başı personel (ilk günden önce girip ilk gün çalışan); küçük grupta boş"
+                                },
+                                "hires": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Dönemde giren; küçük grupta boş"
+                                },
+                                "exits": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Dönemde çıkan (pasifleştirilen); küçük grupta boş"
+                                },
+                                "closing": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Dönem sonu personel (son gün ya da bugün çıkmamış); küçük grupta boş"
+                                },
+                                "averageHeadcount": {
+                                  "description": "(dönem başı + dönem sonu) ÷ 2; buçuklu olabilir; küçük grupta boş",
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                },
+                                "turnoverBasisPoints": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Devir oranı, on binde bir (1250 = %12,5); ortalama 0 ise de boş; küçük grupta boş"
+                                },
+                                "suppressed": {
+                                  "type": "boolean",
+                                  "description": "Küçük grup: 1–4 kişi ya da ikincil bastırma (K-401)"
+                                }
+                              },
+                              "required": [
+                                "opening",
+                                "hires",
+                                "exits",
+                                "closing",
+                                "averageHeadcount",
+                                "turnoverBasisPoints",
+                                "suppressed"
+                              ],
+                              "additionalProperties": false,
+                              "description": "Kurum toplamı; kurum 1–4 kişiyse gizli"
+                            },
+                            "byRole": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "group": {
+                                    "type": "string",
+                                    "enum": [
+                                      "teacher",
+                                      "administrative"
+                                    ],
+                                    "description": "`teacher` öğretmen, `administrative` yönetici ve ön büro"
+                                  },
+                                  "opening": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Dönem başı personel (ilk günden önce girip ilk gün çalışan); küçük grupta boş"
+                                  },
+                                  "hires": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Dönemde giren; küçük grupta boş"
+                                  },
+                                  "exits": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Dönemde çıkan (pasifleştirilen); küçük grupta boş"
+                                  },
+                                  "closing": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Dönem sonu personel (son gün ya da bugün çıkmamış); küçük grupta boş"
+                                  },
+                                  "averageHeadcount": {
+                                    "description": "(dönem başı + dönem sonu) ÷ 2; buçuklu olabilir; küçük grupta boş",
+                                    "type": [
+                                      "number",
+                                      "null"
+                                    ]
+                                  },
+                                  "turnoverBasisPoints": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Devir oranı, on binde bir (1250 = %12,5); ortalama 0 ise de boş; küçük grupta boş"
+                                  },
+                                  "suppressed": {
+                                    "type": "boolean",
+                                    "description": "Küçük grup: 1–4 kişi ya da ikincil bastırma (K-401)"
+                                  }
+                                },
+                                "required": [
+                                  "group",
+                                  "opening",
+                                  "hires",
+                                  "exits",
+                                  "closing",
+                                  "averageHeadcount",
+                                  "turnoverBasisPoints",
+                                  "suppressed"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "byCenter": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "description": "Atanmamış satırında boş",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "code": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "path": {
+                                    "description": "Kökten merkeze kod yolu",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "isActive": {
+                                    "type": "boolean"
+                                  },
+                                  "opening": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Dönem başı personel (ilk günden önce girip ilk gün çalışan); küçük grupta boş"
+                                  },
+                                  "hires": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Dönemde giren; küçük grupta boş"
+                                  },
+                                  "exits": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Dönemde çıkan (pasifleştirilen); küçük grupta boş"
+                                  },
+                                  "closing": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Dönem sonu personel (son gün ya da bugün çıkmamış); küçük grupta boş"
+                                  },
+                                  "averageHeadcount": {
+                                    "description": "(dönem başı + dönem sonu) ÷ 2; buçuklu olabilir; küçük grupta boş",
+                                    "type": [
+                                      "number",
+                                      "null"
+                                    ]
+                                  },
+                                  "turnoverBasisPoints": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Devir oranı, on binde bir (1250 = %12,5); ortalama 0 ise de boş; küçük grupta boş"
+                                  },
+                                  "suppressed": {
+                                    "type": "boolean",
+                                    "description": "Küçük grup: 1–4 kişi ya da ikincil bastırma (K-401)"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "code",
+                                  "name",
+                                  "path",
+                                  "isActive",
+                                  "opening",
+                                  "hires",
+                                  "exits",
+                                  "closing",
+                                  "averageHeadcount",
+                                  "turnoverBasisPoints",
+                                  "suppressed"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "totals",
+                            "byRole",
+                            "byCenter"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "seniority": {
+                          "type": "object",
+                          "properties": {
+                            "asOf": {
+                              "type": "string",
+                              "description": "Kıdemin hesaplandığı gün (dönem sonu)"
+                            },
+                            "total": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Dönem sonundaki personel; küçük grupta boş"
+                            },
+                            "totalSuppressed": {
+                              "type": "boolean"
+                            },
+                            "bands": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "enum": [
+                                      "under_1",
+                                      "from_1_to_3",
+                                      "from_3_to_5",
+                                      "from_5_to_10",
+                                      "over_10",
+                                      "unknown"
+                                    ]
+                                  },
+                                  "count": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Banttaki personel; küçük grupta boş"
+                                  },
+                                  "suppressed": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "count",
+                                  "suppressed"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "asOf",
+                            "total",
+                            "totalSuppressed",
+                            "bands"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "leave": {
+                          "type": "object",
+                          "properties": {
+                            "types": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string"
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "annual",
+                                      "excuse",
+                                      "unpaid",
+                                      "sick",
+                                      "other"
+                                    ]
+                                  },
+                                  "usedDays": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Dönemde başlayan kayıtların iş günü toplamı; küçük grupta boş"
+                                  },
+                                  "staffCount": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Bu türden izin kullanan personel; küçük grupta boş"
+                                  },
+                                  "perStaffDays": {
+                                    "description": "Kullanılan gün ÷ ortalama personel (bir ondalık); küçük grupta boş",
+                                    "type": [
+                                      "number",
+                                      "null"
+                                    ]
+                                  },
+                                  "suppressed": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "code",
+                                  "label",
+                                  "kind",
+                                  "usedDays",
+                                  "staffCount",
+                                  "perStaffDays",
+                                  "suppressed"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "totals": {
+                              "type": "object",
+                              "properties": {
+                                "usedDays": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Toplam kullanılan gün; küçük grupta boş"
+                                },
+                                "staffCount": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "İzin kullanan personel; küçük grupta boş"
+                                },
+                                "perStaffDays": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                },
+                                "suppressed": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "usedDays",
+                                "staffCount",
+                                "perStaffDays",
+                                "suppressed"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "balance": {
+                              "type": "object",
+                              "properties": {
+                                "staffCount": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Dönem sonunda kıdem başlangıcı girilmiş personel; küçük grupta boş"
+                                },
+                                "balanceDays": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Kalan yıllık izin bakiyesi toplamı (gün; eksi avans izindir); küçük grupta boş"
+                                },
+                                "perStaffDays": {
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                },
+                                "suppressed": {
+                                  "type": "boolean"
+                                },
+                                "missingProfileCount": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Dönem sonunda kıdem başlangıcı girilmemiş personel (bakiyeye girmez)"
+                                }
+                              },
+                              "required": [
+                                "staffCount",
+                                "balanceDays",
+                                "perStaffDays",
+                                "suppressed",
+                                "missingProfileCount"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "medical": {
+                              "type": "object",
+                              "properties": {
+                                "totalDays": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Rapor günleri toplamı (takvim günü); küçük grupta boş"
+                                },
+                                "suppressed": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "totalDays",
+                                "suppressed"
+                              ],
+                              "additionalProperties": false,
+                              "description": "Yalnız kurum toplamı; raporlu personel 1–4 ise gizli (K-402)"
+                            }
+                          },
+                          "required": [
+                            "types",
+                            "totals",
+                            "balance",
+                            "medical"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "warnings": {
+                          "type": "object",
+                          "properties": {
+                            "missingSeniorityCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Dönemdeki personelden kıdem başlangıcı girilmemiş olanlar"
+                            }
+                          },
+                          "required": [
+                            "missingSeniorityCount"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "from",
+                        "to",
+                        "firstDay",
+                        "lastDay",
+                        "endDay",
+                        "minGroupSize",
+                        "turnover",
+                        "seniority",
+                        "leave",
+                        "warnings"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

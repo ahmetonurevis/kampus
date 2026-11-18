@@ -429,22 +429,38 @@ export function sgkBaseDays(range: SgkMonthRange, from: string, to: string): num
   return Math.min(SGK_FULL_MONTH_DAYS, daysBetween(from, to))
 }
 
-const prorate = (monthlyCents: number, days: number) =>
+/** Aylık tutarın prim günü oranı (K-354): tutar × gün / 30, kuruşa yuvarlanır. */
+export const sgkProrate = (monthlyCents: number, days: number) =>
   Math.round((monthlyCents * days) / SGK_FULL_MONTH_DAYS)
 
-interface RowInput {
-  member: SgkMember
-  rates: readonly SgkPayRate[]
-  missing: readonly SgkMissingDayEntry[]
-  dates: SgkEmploymentDatesEntry | null
+/** Ayın çalışılan aralığı ve prim günü (K-352, K-353); bordro hesabı (DOM-FIN-115) da kullanır. */
+export interface SgkWorkDays {
+  entryDate: string | null
+  entrySource: 'pay_rate' | 'manual' | null
+  exitDate: string | null
+  exitSource: 'pay_rate' | 'manual' | null
+  /** Çalışılan aralığın ilk ve son günü (giriş/çıkış yoksa ayın ilk ve son günü). */
+  from: string
+  to: string
+  baseDays: number
+  missingDays: number
+  primDays: number
+  reasonCode: SgkReasonCode | null
+  /** Aralık ve gün uyarıları (`no_wage`, `pay_rate_gap`, giriş/çıkış, eksik gün). */
+  warnings: Set<SgkWarning>
 }
 
-function buildRow(
+/**
+ * Ayın çalışılan aralığı ve prim günü (K-352, K-353): giriş ve çıkış ana ücret tanımlarının
+ * kesintisiz zincirinden, elle girilen gün önceliklidir; prim günü taban günden eksik gün düşülerek
+ * bulunur, 0'ın altına inmez. SGK hazırlık listesi ve bordro hesabı aynı fonksiyonu kullanır.
+ */
+export function sgkWorkDays(
   range: SgkMonthRange,
-  parameters: SgkParameters,
-  input: RowInput,
-): SgkPreparationRow {
-  const { member, rates, missing, dates } = input
+  rates: readonly SgkPayRate[],
+  missing: readonly Pick<SgkMissingDayEntry, 'days' | 'reasonCode'>[],
+  dates: Pick<SgkEmploymentDatesEntry, 'entryDate' | 'exitDate'> | null,
+): SgkWorkDays {
   const warnings = new Set<SgkWarning>()
   const spans = wageSpans(rates).filter((span) =>
     overlaps({ startDate: span.from, endDate: span.to }, range.firstDay, range.lastDay),
@@ -476,7 +492,37 @@ function buildRow(
   const missingDays = missing.reduce((total, entry) => total + entry.days, 0)
   if (missingDays > baseDays) warnings.add('missing_days_exceed')
   if (missing.some((entry) => entry.reasonCode === null)) warnings.add('missing_reason')
-  const primDays = Math.max(0, baseDays - missingDays)
+  return {
+    entryDate,
+    entrySource: entryDate === null ? null : dates?.entryDate ? 'manual' : 'pay_rate',
+    exitDate,
+    exitSource: exitDate === null ? null : dates?.exitDate ? 'manual' : 'pay_rate',
+    from,
+    to,
+    baseDays,
+    missingDays,
+    primDays: Math.max(0, baseDays - missingDays),
+    reasonCode: sgkReasonCodeFor(missing.map((entry) => entry.reasonCode)),
+    warnings,
+  }
+}
+
+interface RowInput {
+  member: SgkMember
+  rates: readonly SgkPayRate[]
+  missing: readonly SgkMissingDayEntry[]
+  dates: SgkEmploymentDatesEntry | null
+}
+
+function buildRow(
+  range: SgkMonthRange,
+  parameters: SgkParameters,
+  input: RowInput,
+): SgkPreparationRow {
+  const { member, rates, missing, dates } = input
+  const work = sgkWorkDays(range, rates, missing, dates)
+  const { from, to, baseDays, missingDays, primDays } = work
+  const warnings = work.warnings
 
   // Son çalışılan günün ücreti; o gün tanım yoksa aralıktaki en geç ana ücret ve onun son günü.
   const inRange = rates.filter((rate) => overlaps(rate, from, to))
@@ -497,13 +543,13 @@ function buildRow(
     .reduce((total, rate) => total + rate.amountCents, 0)
   if (inRange.some((rate) => rate.component === 'lesson')) warnings.add('lesson_pay_excluded')
 
-  const floorCents = prorate(parameters.floorCents, primDays)
-  const ceilingCents = prorate(parameters.ceilingCents, primDays)
+  const floorCents = sgkProrate(parameters.floorCents, primDays)
+  const ceilingCents = sgkProrate(parameters.ceilingCents, primDays)
   let sgkBaseCents: number | null = null
   if (wageRate !== null && wageRate.rateType !== 'monthly_gross')
     warnings.add('wage_not_monthly_gross')
   else if (wageRate !== null) {
-    const raw = prorate(wageRate.amountCents + cashBenefitsCents, primDays)
+    const raw = sgkProrate(wageRate.amountCents + cashBenefitsCents, primDays)
     if (primDays > 0 && raw < floorCents) warnings.add('below_floor')
     if (primDays > 0 && raw > ceilingCents) warnings.add('above_ceiling')
     sgkBaseCents = Math.min(Math.max(raw, floorCents), ceilingCents)
@@ -514,14 +560,14 @@ function buildRow(
     name: member.name,
     role: member.role,
     active: member.active,
-    entryDate,
-    entrySource: entryDate === null ? null : dates?.entryDate ? 'manual' : 'pay_rate',
-    exitDate,
-    exitSource: exitDate === null ? null : dates?.exitDate ? 'manual' : 'pay_rate',
+    entryDate: work.entryDate,
+    entrySource: work.entrySource,
+    exitDate: work.exitDate,
+    exitSource: work.exitSource,
     baseDays,
     missingDays,
     primDays,
-    reasonCode: sgkReasonCodeFor(missing.map((entry) => entry.reasonCode)),
+    reasonCode: work.reasonCode,
     wage:
       wageRate === null
         ? null

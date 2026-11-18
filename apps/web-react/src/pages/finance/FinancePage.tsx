@@ -161,6 +161,9 @@ const FinanceMedicalReportsSection = lazy(async () => ({
 const FinancePayrollPeriodsSection = lazy(async () => ({
   default: (await import('./FinancePayrollPeriodsSection.tsx')).FinancePayrollPeriodsSection,
 }))
+const FinanceStaffLeaveSection = lazy(async () => ({
+  default: (await import('./FinanceStaffLeaveSection.tsx')).FinanceStaffLeaveSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -214,6 +217,7 @@ const VIEWS = {
   payrollExport: { label: 'Bordro aktarımı', param: 'bordro-aktarim' },
   medicalReports: { label: 'Sağlık raporları', param: 'saglik-raporu' },
   payrollPeriods: { label: 'Bordro dönemleri', param: 'bordro-donemleri' },
+  staffLeave: { label: 'Personel izinleri', param: 'personel-izin' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -254,6 +258,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Personel belgeleri (DOM-FIN-106) yalnız yöneticidedir; belge ücret ve kimlik no içerir (K-342).
  * Sağlık raporları (DOM-FIN-110) yalnız yöneticidedir; sağlık verisi özel niteliklidir (K-363).
  * Bordro dönemleri (DOM-FIN-108) yalnız yöneticidedir; ücret verisiyle aynı (K-359).
+ * Personel izinleri (DOM-FIN-109) yalnız yöneticidedir; personel kişisel verisidir.
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -268,6 +273,7 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'fixedAssets' ||
       value === 'severance' ||
       value === 'freeTuition' ||
+      value === 'staffLeave' ||
       value === 'payrollPeriods' ||
       value === 'medicalReports' ||
       value === 'payrollExport' ||
@@ -473,6 +479,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'payrollExport' ? <FinancePayrollExportSection /> : null}
         {tab === 'medicalReports' ? <FinanceMedicalReportsSection /> : null}
         {tab === 'payrollPeriods' ? <FinancePayrollPeriodsSection /> : null}
+        {tab === 'staffLeave' ? <FinanceStaffLeaveSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

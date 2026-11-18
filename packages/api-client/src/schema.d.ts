@@ -8428,6 +8428,170 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/leave-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * İzin türleri
+         * @description Kurumda geçerli izin türleri: platform varsayılanları (yıllık, 4857 Ek md. 2 mazeret izinleri, ücretsiz, rapor, diğer) kurum ayarı uygulanmış olarak, sonra kurumun ek türleri. `locked` kurumun değiştiremeyeceği alanları, `statutoryMinDays` yasal en az günü verir (K-361). Rol: yalnız `yonetici` (personel kişisel verisi). Modül `finance`.
+         */
+        get: operations["listLeaveTypes"];
+        put?: never;
+        /**
+         * Ek izin türü aç
+         * @description Kurumun ek türü: mazeret, ücretsiz ya da diğer biçimde; ad, ücretli mi, yıllık izinden düşer mi, isteğe bağlı varsayılan gün. Ad kurumda tekil (422 `leave_type_label_exists`), ücretsiz izin ücretli olamaz (422 `leave_type_locked`), en çok 30 ek tür (422 `leave_type_limit`). `Idempotency-Key` isteğe bağlı. Rol: yalnız `yonetici` (personel kişisel verisi). Modül `finance`.
+         */
+        post: operations["createLeaveType"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/leave-types/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * İzin türünü ayarla
+         * @description Ad, ücretli mi, yıllık izinden düşer mi, varsayılan gün ve etkinlik (kısmi). Kilitli alan (yıllık izin ücretli ve yıllıktan düşer, kapatılamaz; mazeret izni ücretli ve yıllıktan düşmez; ücretsiz izin ücretsiz; rapor yıllıktan düşmez ve kapatılamaz) 422 `leave_type_locked`; yasal mazerette varsayılan gün yasal en azın altına inmez (422 `leave_type_days_below_statutory`); değişiklik yoksa 422 `leave_type_unchanged`. Ayar geçmiş kayıtları değiştirmez (kayıt tür kopyasını taşır). `If-Match` zorunlu: ayarı hiç yazılmamış varsayılan türde `"1"`. Olmayan tür 404. Rol: yalnız `yonetici` (personel kişisel verisi). Modül `finance`.
+         */
+        patch: operations["updateLeaveType"];
+        trace?: never;
+    };
+    "/api/v1/finance/leave-staff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Personel ve yıllık izin özeti
+         * @description Kurumun yönetici, öğretmen ve ön büro üyelikleri ada göre; her satırda kıdem başlangıcı ve `date` günündeki (varsayılan bugün) hizmet yılı, son ve sonraki hak ediş, hak edilen, kullanılan, devreden ve kalan yıllık izin (DOM-FIN-109, K-360). Kıdem başlangıcı girilmemiş personelde özet boştur. Pasif (ayrılan) personel de listelenir; hizmeti pasifleştirilme gününde biter. Rol: yalnız `yonetici` (personel kişisel verisi). Modül `finance`.
+         */
+        get: operations["listLeaveStaff"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/leave-staff/{membershipId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Personelin izin bilgisi ve hak edişi
+         * @description İzin profili (kıdem başlangıcı, doğum günü, açılış devri), `date` gününe göre yıl yıl hak ediş dökümü ve bakiye (devreden, bu yılın hakkı, kullanılan, planlanan, kalan), iptal edilmemiş kullanılmış izin kayıtları. Olmayan, başka kurumun ya da personel olmayan (öğrenci, veli) üyelik 404. Rol: yalnız `yonetici` (personel kişisel verisi). Modül `finance`.
+         */
+        get: operations["getLeaveStaff"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/leave-profiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * İzin profili aç
+         * @description Personelin kıdem başlangıcı (işe giriş günü; personel kaydında olmadığı için elle), isteğe bağlı doğum günü (18 yaş altı ve 50 yaş ve üstü kuralı) ve açılış devri (sistem öncesi hak ediş ve kullanımın tek satırı). Kıdem başlangıcı 1960'tan önce ya da bugünden sonra olamaz (422 `staff_leave_seniority_too_early`, `staff_leave_seniority_future`); doğum günü işe başlarken 14 yaşını doldurmayı sağlamalı (422 `staff_leave_birth_date_invalid`); açılış günü kıdem başlangıcı ile bugün arasında (422 `staff_leave_opening_date_invalid`). Profil zaten varsa 422 `staff_leave_profile_exists`; olmayan üyelik 422 `staff_leave_staff_not_found`, öğrenci ya da veli 422 `staff_leave_not_staff`, pasif personel 422 `staff_leave_staff_inactive`. Denetim kaydına alan adları yazılır. `Idempotency-Key` isteğe bağlı. Rol: yalnız `yonetici` (personel kişisel verisi). Modül `finance`.
+         */
+        post: operations["createLeaveProfile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/leave-profiles/{membershipId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * İzin profilini düzelt
+         * @description Kıdem başlangıcı, doğum günü ya da açılış devri (kısmi; `null` temizler). Birleşik profil açılıştaki denetimlerden geçer; yıllık izinden düşen bir kayıt yeni kıdem başlangıcından önce kalırsa 422 `staff_leave_before_seniority`; değişiklik yoksa 422 `staff_leave_profile_unchanged`. `If-Match` zorunlu. Profili olmayan ya da başka kurumun personeli 404. Rol: yalnız `yonetici` (personel kişisel verisi). Modül `finance`.
+         */
+        patch: operations["updateLeaveProfile"];
+        trace?: never;
+    };
+    "/api/v1/finance/leave-records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Kullanılmış izin kaydı yaz
+         * @description Talep ve onay akışı (ON-182) gelene kadar kullanılan izin elle yazılır: tür, ilk ve son gün (dahil), kullanılan iş günü (elle; aralığın takvim gününü aşamaz, 422 `staff_leave_days_exceed_range`), not (K-362). Kayıt türün ücretli ve yıllıktan düşer ayarını kopyalar. Aynı personelde çakışan kayıt 422 `staff_leave_overlap`; olmayan ya da kapalı tür 422 `staff_leave_type_not_found`, `staff_leave_type_inactive`; rapor elle yazılmaz (422 `staff_leave_sick_not_manual`; sağlık raporu kaydından okunur). Yıllık izinden düşen kayıt kıdem başlangıcı ister (422 `staff_leave_profile_required`) ve ondan önce başlayamaz (422 `staff_leave_before_seniority`). Bakiye eksiye düşebilir (avans izin). `Idempotency-Key` zorunlu: çift gönderim izni iki kez düşmez. Rol: yalnız `yonetici` (personel kişisel verisi). Modül `finance`.
+         */
+        post: operations["createLeaveRecord"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/leave-records/{recordId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Kullanılmış izin kaydını iptal et
+         * @description Yanlış kayıt gerekçeyle (5–500 karakter) iptal edilir; kayıt düzeltilmez ve iptal edilen kayıt bakiyeye sayılmaz. Gerekçe denetim kaydına yazılmaz. `If-Match` zorunlu. Başka kurumun ya da iptal edilmiş kayıt 404. Rol: yalnız `yonetici` (personel kişisel verisi). Modül `finance`.
+         */
+        post: operations["cancelLeaveRecord"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/paid-activities": {
         parameters: {
             query?: never;
@@ -90800,6 +90964,1245 @@ export interface operations {
                                 /** @description `If-Match` için kayıt sürümü (bitiş ve iptal) */
                                 version: number;
                             } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listLeaveTypes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Tür kodu */
+                            code: string;
+                            /**
+                             * @description `annual` yıllık, `excuse` mazeret, `unpaid` ücretsiz, `sick` rapor, `other` diğer
+                             * @enum {string}
+                             */
+                            kind: "annual" | "excuse" | "unpaid" | "sick" | "other";
+                            label: string;
+                            /** @description İzin günleri ücretli mi */
+                            paid: boolean;
+                            /** @description Yıllık izin bakiyesinden düşer mi */
+                            deductsFromAnnual: boolean;
+                            /** @description Varsayılan gün (bilgi) */
+                            defaultDays: number | null;
+                            /** @description Yasal en az gün (4857 Ek md. 2); varsayılan gün bunun altına inmez */
+                            statutoryMinDays: number | null;
+                            isActive: boolean;
+                            /** @description Kurumun ek türü mü */
+                            isCustom: boolean;
+                            /** @description Kurum ayarıyla değişmeyen alanlar (K-361) */
+                            locked: ("paid" | "deductsFromAnnual" | "isActive")[];
+                            /** @description `If-Match` için sürüm; ayarı hiç yazılmamış varsayılan türde 1 */
+                            version: number;
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createLeaveType: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description `excuse` mazeret, `unpaid` ücretsiz, `other` diğer
+                     * @enum {string}
+                     */
+                    kind: "excuse" | "unpaid" | "other";
+                    /** @description Tür adı, 2–80 karakter; kurumda tekil */
+                    label: string;
+                    /** @description İzin günleri ücretli mi */
+                    paid: boolean;
+                    /** @description Kullanılan gün yıllık izin bakiyesinden düşer mi */
+                    deductsFromAnnual: boolean;
+                    /**
+                     * @description Varsayılan gün (bilgi; kayıtta gün elle girilir)
+                     * @default null
+                     */
+                    defaultDays?: number | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Tür kodu */
+                            code: string;
+                            /**
+                             * @description `annual` yıllık, `excuse` mazeret, `unpaid` ücretsiz, `sick` rapor, `other` diğer
+                             * @enum {string}
+                             */
+                            kind: "annual" | "excuse" | "unpaid" | "sick" | "other";
+                            label: string;
+                            /** @description İzin günleri ücretli mi */
+                            paid: boolean;
+                            /** @description Yıllık izin bakiyesinden düşer mi */
+                            deductsFromAnnual: boolean;
+                            /** @description Varsayılan gün (bilgi) */
+                            defaultDays: number | null;
+                            /** @description Yasal en az gün (4857 Ek md. 2); varsayılan gün bunun altına inmez */
+                            statutoryMinDays: number | null;
+                            isActive: boolean;
+                            /** @description Kurumun ek türü mü */
+                            isCustom: boolean;
+                            /** @description Kurum ayarıyla değişmeyen alanlar (K-361) */
+                            locked: ("paid" | "deductsFromAnnual" | "isActive")[];
+                            /** @description `If-Match` için sürüm; ayarı hiç yazılmamış varsayılan türde 1 */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateLeaveType: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description İzin türü kodu (varsayılan türlerde sabit ad, kurum türünde `custom_…`) */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    label?: string;
+                    paid?: boolean;
+                    deductsFromAnnual?: boolean;
+                    defaultDays?: number | null;
+                    /** @description Pasif tür yeni kayıtta seçilmez */
+                    isActive?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Tür kodu */
+                            code: string;
+                            /**
+                             * @description `annual` yıllık, `excuse` mazeret, `unpaid` ücretsiz, `sick` rapor, `other` diğer
+                             * @enum {string}
+                             */
+                            kind: "annual" | "excuse" | "unpaid" | "sick" | "other";
+                            label: string;
+                            /** @description İzin günleri ücretli mi */
+                            paid: boolean;
+                            /** @description Yıllık izin bakiyesinden düşer mi */
+                            deductsFromAnnual: boolean;
+                            /** @description Varsayılan gün (bilgi) */
+                            defaultDays: number | null;
+                            /** @description Yasal en az gün (4857 Ek md. 2); varsayılan gün bunun altına inmez */
+                            statutoryMinDays: number | null;
+                            isActive: boolean;
+                            /** @description Kurumun ek türü mü */
+                            isCustom: boolean;
+                            /** @description Kurum ayarıyla değişmeyen alanlar (K-361) */
+                            locked: ("paid" | "deductsFromAnnual" | "isActive")[];
+                            /** @description `If-Match` için sürüm; ayarı hiç yazılmamış varsayılan türde 1 */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listLeaveStaff: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Personel adında arama */
+                q?: string;
+                /** @description `active` etkin, `passive` pasifleştirilmiş (ayrılan) personel */
+                status?: "active" | "passive";
+                /** @description Bakiyenin hesaplanacağı gün (YYYY-MM-DD); varsayılan bugün (Europe/Istanbul) */
+                date?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            membershipId: string;
+                            name: string;
+                            /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                            role: string;
+                            /** @description Pasifleştirilmiş (ayrılan) personelde `false` */
+                            active: boolean;
+                            /** @description Kıdem başlangıcı; profil yoksa boş */
+                            seniorityStartDate: string | null;
+                            /** @description Gündeki yıllık izin özeti; profil yoksa boş */
+                            summary: {
+                                serviceYears: number;
+                                lastAccrualDate: string | null;
+                                /** @description Son hak edişte kazanılan gün */
+                                annualDays: number | null;
+                                nextAccrualDate: string | null;
+                                nextAccrualDays: number | null;
+                                entitledDays: number;
+                                usedDays: number;
+                                carriedOverDays: number;
+                                balanceDays: number;
+                                balanceAfterPlannedDays: number;
+                            } | null;
+                            /** @description İptal edilmemiş izin kaydı sayısı */
+                            recordCount: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getLeaveStaff: {
+        parameters: {
+            query?: {
+                /** @description Bakiyenin hesaplanacağı gün (YYYY-MM-DD); varsayılan bugün (Europe/Istanbul) */
+                date?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Personelin kurum üyeliği */
+                membershipId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            membershipId: string;
+                            name: string;
+                            /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                            role: string;
+                            /** @description Pasifleştirilmiş (ayrılan) personelde `false` */
+                            active: boolean;
+                            /** @description Bakiyenin hesaplandığı gün */
+                            date: string;
+                            /** @description Pasifleştirilme günü; hizmet o gün biter (etkin personelde boş) */
+                            employmentEndDate: string | null;
+                            profile: {
+                                /** @description Kıdem başlangıcı (işe giriş günü) */
+                                seniorityStartDate: string;
+                                /** @description Doğum günü (yaş kuralı için) */
+                                birthDate: string | null;
+                                openingBalance: {
+                                    /** @description Açılış devrinin günü */
+                                    asOf: string;
+                                    /** @description O günün sonundaki kalan yıllık izin (gün) */
+                                    days: number;
+                                } | null;
+                                /** @description `If-Match` için profil sürümü */
+                                version: number;
+                            } | null;
+                            /** @description Hak ediş ve bakiye; profil yoksa boş */
+                            entitlement: {
+                                asOf: string;
+                                serviceYears: number;
+                                /** @description Her tam hizmet yılının hak edişi */
+                                accruals: {
+                                    /** @description Kaçıncı hizmet yılının dolumu */
+                                    serviceYear: number;
+                                    /** @description Hak ediş günü (yıl dönümü) */
+                                    date: string;
+                                    /** @description Kıdem dilimine göre gün (14, 20, 26) */
+                                    baseDays: number;
+                                    /** @description Hak ediş günündeki yaş; doğum günü yoksa boş */
+                                    age: number | null;
+                                    /** @description 18 yaş altı ya da 50 yaş ve üstü en az 20 gün uygulandı mı */
+                                    ageRule: boolean;
+                                    days: number;
+                                    /** @description Açılış devrinin içinde (ayrıca sayılmaz) */
+                                    inOpeningBalance: boolean;
+                                }[];
+                                /** @description Bir sonraki hak ediş; hizmet bittiyse boş */
+                                next: {
+                                    /** @description Kaçıncı hizmet yılının dolumu */
+                                    serviceYear: number;
+                                    /** @description Hak ediş günü (yıl dönümü) */
+                                    date: string;
+                                    /** @description Kıdem dilimine göre gün (14, 20, 26) */
+                                    baseDays: number;
+                                    /** @description Hak ediş günündeki yaş; doğum günü yoksa boş */
+                                    age: number | null;
+                                    /** @description 18 yaş altı ya da 50 yaş ve üstü en az 20 gün uygulandı mı */
+                                    ageRule: boolean;
+                                    days: number;
+                                } | null;
+                                openingDays: number;
+                                entitledDays: number;
+                                usedDays: number;
+                                /** @description Günden sonra başlayan yıllık izin kayıtları */
+                                plannedDays: number;
+                                /** @description Son hak edişten önceki yıllardan devreden */
+                                carriedOverDays: number;
+                                currentYearDays: number;
+                                usedThisYearDays: number;
+                                /** @description Kalan; eksi avans izindir */
+                                balanceDays: number;
+                                balanceAfterPlannedDays: number;
+                            } | null;
+                            /** @description İptal edilmemiş kayıtlar, yeni başlayan önce */
+                            records: {
+                                id: string;
+                                membershipId: string;
+                                typeCode: string;
+                                /**
+                                 * @description `annual` yıllık, `excuse` mazeret, `unpaid` ücretsiz, `sick` rapor, `other` diğer
+                                 * @enum {string}
+                                 */
+                                kind: "annual" | "excuse" | "unpaid" | "sick" | "other";
+                                /** @description Kayıt anındaki tür adı */
+                                typeLabel: string;
+                                /** @description Kayıt anında ücretli miydi */
+                                paid: boolean;
+                                /** @description Kayıt anında yıllık izinden düşüyor muydu */
+                                deductsFromAnnual: boolean;
+                                startDate: string;
+                                endDate: string;
+                                /** @description Kullanılan iş günü */
+                                days: number;
+                                note: string | null;
+                                createdAt: string;
+                                /** @description `If-Match` için kayıt sürümü (iptal) */
+                                version: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createLeaveProfile: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Personelin kurum üyeliği */
+                    membershipId: string;
+                    /** @description Kıdem başlangıcı (işe giriş günü; personel kaydında olmadığı için elle) */
+                    seniorityStartDate: string;
+                    /**
+                     * @description Doğum günü; 18 yaş altı ve 50 yaş ve üstü kuralı için (boşsa kural uygulanmaz)
+                     * @default null
+                     */
+                    birthDate?: string | null;
+                    /**
+                     * @description İsteğe bağlı açılış devri: sistem öncesi hak ediş ve kullanımın tek satırı
+                     * @default null
+                     */
+                    openingBalance?: {
+                        /** @description Açılış devrinin günü: bu güne kadarki hak ediş ve kullanım devirdedir */
+                        asOf: string;
+                        /** @description O günün sonundaki kalan yıllık izin (gün; eksi avans izindir) */
+                        days: number;
+                    } | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Kıdem başlangıcı (işe giriş günü) */
+                            seniorityStartDate: string;
+                            /** @description Doğum günü (yaş kuralı için) */
+                            birthDate: string | null;
+                            openingBalance: {
+                                /** @description Açılış devrinin günü */
+                                asOf: string;
+                                /** @description O günün sonundaki kalan yıllık izin (gün) */
+                                days: number;
+                            } | null;
+                            /** @description `If-Match` için profil sürümü */
+                            version: number;
+                            membershipId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateLeaveProfile: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Personelin kurum üyeliği */
+                membershipId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Kıdem başlangıcı (işe giriş günü; personel kaydında olmadığı için elle) */
+                    seniorityStartDate?: string;
+                    /** @description Doğum günü; 18 yaş altı ve 50 yaş ve üstü kuralı için (boşsa kural uygulanmaz) */
+                    birthDate?: string | null;
+                    /** @description İsteğe bağlı açılış devri: sistem öncesi hak ediş ve kullanımın tek satırı */
+                    openingBalance?: {
+                        /** @description Açılış devrinin günü: bu güne kadarki hak ediş ve kullanım devirdedir */
+                        asOf: string;
+                        /** @description O günün sonundaki kalan yıllık izin (gün; eksi avans izindir) */
+                        days: number;
+                    } | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Kıdem başlangıcı (işe giriş günü) */
+                            seniorityStartDate: string;
+                            /** @description Doğum günü (yaş kuralı için) */
+                            birthDate: string | null;
+                            openingBalance: {
+                                /** @description Açılış devrinin günü */
+                                asOf: string;
+                                /** @description O günün sonundaki kalan yıllık izin (gün) */
+                                days: number;
+                            } | null;
+                            /** @description `If-Match` için profil sürümü */
+                            version: number;
+                            membershipId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createLeaveRecord: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Personelin kurum üyeliği */
+                    membershipId: string;
+                    /** @description İzin türü kodu (varsayılan türlerde sabit ad, kurum türünde `custom_…`) */
+                    typeCode: string;
+                    /** @description İznin ilk günü */
+                    startDate: string;
+                    /** @description İznin son günü (dahil) */
+                    endDate: string;
+                    /** @description Kullanılan iş günü (hafta tatili ve genel tatil hariç; elle) */
+                    days: number;
+                    /** @description İsteğe bağlı not, en çok 200 karakter */
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            membershipId: string;
+                            typeCode: string;
+                            /**
+                             * @description `annual` yıllık, `excuse` mazeret, `unpaid` ücretsiz, `sick` rapor, `other` diğer
+                             * @enum {string}
+                             */
+                            kind: "annual" | "excuse" | "unpaid" | "sick" | "other";
+                            /** @description Kayıt anındaki tür adı */
+                            typeLabel: string;
+                            /** @description Kayıt anında ücretli miydi */
+                            paid: boolean;
+                            /** @description Kayıt anında yıllık izinden düşüyor muydu */
+                            deductsFromAnnual: boolean;
+                            startDate: string;
+                            endDate: string;
+                            /** @description Kullanılan iş günü */
+                            days: number;
+                            note: string | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü (iptal) */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelLeaveRecord: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                recordId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description İptal gerekçesi; denetim kaydına yazılmaz */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
                         };
                     };
                 };

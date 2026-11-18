@@ -2673,6 +2673,41 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: personel izin türleri ve hak ediş (ON-181; DOM-FIN-109).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/leave-types', 'typesOf(a.admin)'],
+        ['gövde', 'POST /api/v1/finance/leave-types', "label: 'Alfa izni'"],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/leave-types/:code',
+          'patchType(a.admin, String(bType.code)',
+        ],
+        ['liste', 'GET /api/v1/finance/leave-staff', 'staffListOf(a.admin)'],
+        ['kayıt', 'GET /api/v1/finance/leave-staff/:membershipId', '`${STAFF}/${bStaff}`, a.admin'],
+        ['gövde', 'POST /api/v1/finance/leave-profiles', 'openProfile(a.admin, {'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/leave-profiles/:membershipId',
+          'patchProfile(a.admin, bStaff',
+        ],
+        ['gövde', 'POST /api/v1/finance/leave-records', 'institutionId: b.id'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/leave-records/:recordId/cancel',
+          'cancelRecord(a.admin, bRecord',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-staff-leave.test.ts',
+        'başka kurumun personeli, profili, türü ve kaydı 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

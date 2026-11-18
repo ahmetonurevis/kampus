@@ -198916,6 +198916,2539 @@
         }
       }
     },
+    "/api/v1/finance/leave-types": {
+      "get": {
+        "operationId": "listLeaveTypes",
+        "summary": "İzin türleri",
+        "tags": [
+          "finance-staff-leave"
+        ],
+        "description": "Kurumda geçerli izin türleri: platform varsayılanları (yıllık, 4857 Ek md. 2 mazeret izinleri, ücretsiz, rapor, diğer) kurum ayarı uygulanmış olarak, sonra kurumun ek türleri. `locked` kurumun değiştiremeyeceği alanları, `statutoryMinDays` yasal en az günü verir (K-361). Rol: yalnız `yonetici` (personel kişisel verisi). Modül `finance`.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "code": {
+                            "type": "string",
+                            "description": "Tür kodu"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "annual",
+                              "excuse",
+                              "unpaid",
+                              "sick",
+                              "other"
+                            ],
+                            "description": "`annual` yıllık, `excuse` mazeret, `unpaid` ücretsiz, `sick` rapor, `other` diğer"
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "paid": {
+                            "type": "boolean",
+                            "description": "İzin günleri ücretli mi"
+                          },
+                          "deductsFromAnnual": {
+                            "type": "boolean",
+                            "description": "Yıllık izin bakiyesinden düşer mi"
+                          },
+                          "defaultDays": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Varsayılan gün (bilgi)"
+                          },
+                          "statutoryMinDays": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Yasal en az gün (4857 Ek md. 2); varsayılan gün bunun altına inmez"
+                          },
+                          "isActive": {
+                            "type": "boolean"
+                          },
+                          "isCustom": {
+                            "type": "boolean",
+                            "description": "Kurumun ek türü mü"
+                          },
+                          "locked": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "paid",
+                                "deductsFromAnnual",
+                                "isActive"
+                              ]
+                            },
+                            "description": "Kurum ayarıyla değişmeyen alanlar (K-361)"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için sürüm; ayarı hiç yazılmamış varsayılan türde 1"
+                          }
+                        },
+                        "required": [
+                          "code",
+                          "kind",
+                          "label",
+                          "paid",
+                          "deductsFromAnnual",
+                          "defaultDays",
+                          "statutoryMinDays",
+                          "isActive",
+                          "isCustom",
+                          "locked",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createLeaveType",
+        "summary": "Ek izin türü aç",
+        "tags": [
+          "finance-staff-leave"
+        ],
+        "description": "Kurumun ek türü: mazeret, ücretsiz ya da diğer biçimde; ad, ücretli mi, yıllık izinden düşer mi, isteğe bağlı varsayılan gün. Ad kurumda tekil (422 `leave_type_label_exists`), ücretsiz izin ücretli olamaz (422 `leave_type_locked`), en çok 30 ek tür (422 `leave_type_limit`). `Idempotency-Key` isteğe bağlı. Rol: yalnız `yonetici` (personel kişisel verisi). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "excuse",
+                      "unpaid",
+                      "other"
+                    ],
+                    "description": "`excuse` mazeret, `unpaid` ücretsiz, `other` diğer"
+                  },
+                  "label": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 80,
+                    "description": "Tür adı, 2–80 karakter; kurumda tekil"
+                  },
+                  "paid": {
+                    "type": "boolean",
+                    "description": "İzin günleri ücretli mi"
+                  },
+                  "deductsFromAnnual": {
+                    "type": "boolean",
+                    "description": "Kullanılan gün yıllık izin bakiyesinden düşer mi"
+                  },
+                  "defaultDays": {
+                    "default": null,
+                    "description": "Varsayılan gün (bilgi; kayıtta gün elle girilir)",
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 366
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "kind",
+                  "label",
+                  "paid",
+                  "deductsFromAnnual"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "description": "Tür kodu"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "annual",
+                            "excuse",
+                            "unpaid",
+                            "sick",
+                            "other"
+                          ],
+                          "description": "`annual` yıllık, `excuse` mazeret, `unpaid` ücretsiz, `sick` rapor, `other` diğer"
+                        },
+                        "label": {
+                          "type": "string"
+                        },
+                        "paid": {
+                          "type": "boolean",
+                          "description": "İzin günleri ücretli mi"
+                        },
+                        "deductsFromAnnual": {
+                          "type": "boolean",
+                          "description": "Yıllık izin bakiyesinden düşer mi"
+                        },
+                        "defaultDays": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Varsayılan gün (bilgi)"
+                        },
+                        "statutoryMinDays": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Yasal en az gün (4857 Ek md. 2); varsayılan gün bunun altına inmez"
+                        },
+                        "isActive": {
+                          "type": "boolean"
+                        },
+                        "isCustom": {
+                          "type": "boolean",
+                          "description": "Kurumun ek türü mü"
+                        },
+                        "locked": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "paid",
+                              "deductsFromAnnual",
+                              "isActive"
+                            ]
+                          },
+                          "description": "Kurum ayarıyla değişmeyen alanlar (K-361)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için sürüm; ayarı hiç yazılmamış varsayılan türde 1"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "kind",
+                        "label",
+                        "paid",
+                        "deductsFromAnnual",
+                        "defaultDays",
+                        "statutoryMinDays",
+                        "isActive",
+                        "isCustom",
+                        "locked",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/leave-types/{code}": {
+      "patch": {
+        "operationId": "updateLeaveType",
+        "summary": "İzin türünü ayarla",
+        "tags": [
+          "finance-staff-leave"
+        ],
+        "description": "Ad, ücretli mi, yıllık izinden düşer mi, varsayılan gün ve etkinlik (kısmi). Kilitli alan (yıllık izin ücretli ve yıllıktan düşer, kapatılamaz; mazeret izni ücretli ve yıllıktan düşmez; ücretsiz izin ücretsiz; rapor yıllıktan düşmez ve kapatılamaz) 422 `leave_type_locked`; yasal mazerette varsayılan gün yasal en azın altına inmez (422 `leave_type_days_below_statutory`); değişiklik yoksa 422 `leave_type_unchanged`. Ayar geçmiş kayıtları değiştirmez (kayıt tür kopyasını taşır). `If-Match` zorunlu: ayarı hiç yazılmamış varsayılan türde `\"1\"`. Olmayan tür 404. Rol: yalnız `yonetici` (personel kişisel verisi). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "label": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 80
+                  },
+                  "paid": {
+                    "type": "boolean"
+                  },
+                  "deductsFromAnnual": {
+                    "type": "boolean"
+                  },
+                  "defaultDays": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 366
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "isActive": {
+                    "description": "Pasif tür yeni kayıtta seçilmez",
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{1,39}$"
+            },
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "description": "İzin türü kodu (varsayılan türlerde sabit ad, kurum türünde `custom_…`)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string",
+                          "description": "Tür kodu"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "annual",
+                            "excuse",
+                            "unpaid",
+                            "sick",
+                            "other"
+                          ],
+                          "description": "`annual` yıllık, `excuse` mazeret, `unpaid` ücretsiz, `sick` rapor, `other` diğer"
+                        },
+                        "label": {
+                          "type": "string"
+                        },
+                        "paid": {
+                          "type": "boolean",
+                          "description": "İzin günleri ücretli mi"
+                        },
+                        "deductsFromAnnual": {
+                          "type": "boolean",
+                          "description": "Yıllık izin bakiyesinden düşer mi"
+                        },
+                        "defaultDays": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Varsayılan gün (bilgi)"
+                        },
+                        "statutoryMinDays": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Yasal en az gün (4857 Ek md. 2); varsayılan gün bunun altına inmez"
+                        },
+                        "isActive": {
+                          "type": "boolean"
+                        },
+                        "isCustom": {
+                          "type": "boolean",
+                          "description": "Kurumun ek türü mü"
+                        },
+                        "locked": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "paid",
+                              "deductsFromAnnual",
+                              "isActive"
+                            ]
+                          },
+                          "description": "Kurum ayarıyla değişmeyen alanlar (K-361)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için sürüm; ayarı hiç yazılmamış varsayılan türde 1"
+                        }
+                      },
+                      "required": [
+                        "code",
+                        "kind",
+                        "label",
+                        "paid",
+                        "deductsFromAnnual",
+                        "defaultDays",
+                        "statutoryMinDays",
+                        "isActive",
+                        "isCustom",
+                        "locked",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/leave-staff": {
+      "get": {
+        "operationId": "listLeaveStaff",
+        "summary": "Personel ve yıllık izin özeti",
+        "tags": [
+          "finance-staff-leave"
+        ],
+        "description": "Kurumun yönetici, öğretmen ve ön büro üyelikleri ada göre; her satırda kıdem başlangıcı ve `date` günündeki (varsayılan bugün) hizmet yılı, son ve sonraki hak ediş, hak edilen, kullanılan, devreden ve kalan yıllık izin (DOM-FIN-109, K-360). Kıdem başlangıcı girilmemiş personelde özet boştur. Pasif (ayrılan) personel de listelenir; hizmeti pasifleştirilme gününde biter. Rol: yalnız `yonetici` (personel kişisel verisi). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Personel adında arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "passive"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "`active` etkin, `passive` pasifleştirilmiş (ayrılan) personel"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "date",
+            "required": false,
+            "description": "Bakiyenin hesaplanacağı gün (YYYY-MM-DD); varsayılan bugün (Europe/Istanbul)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "membershipId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "role": {
+                            "type": "string",
+                            "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                          },
+                          "active": {
+                            "type": "boolean",
+                            "description": "Pasifleştirilmiş (ayrılan) personelde `false`"
+                          },
+                          "seniorityStartDate": {
+                            "description": "Kıdem başlangıcı; profil yoksa boş",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "summary": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "serviceYears": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "lastAccrualDate": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "annualDays": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Son hak edişte kazanılan gün"
+                                  },
+                                  "nextAccrualDate": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "nextAccrualDays": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "entitledDays": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "usedDays": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "carriedOverDays": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "balanceDays": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "balanceAfterPlannedDays": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": [
+                                  "serviceYears",
+                                  "lastAccrualDate",
+                                  "annualDays",
+                                  "nextAccrualDate",
+                                  "nextAccrualDays",
+                                  "entitledDays",
+                                  "usedDays",
+                                  "carriedOverDays",
+                                  "balanceDays",
+                                  "balanceAfterPlannedDays"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Gündeki yıllık izin özeti; profil yoksa boş"
+                          },
+                          "recordCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "İptal edilmemiş izin kaydı sayısı"
+                          }
+                        },
+                        "required": [
+                          "membershipId",
+                          "name",
+                          "role",
+                          "active",
+                          "seniorityStartDate",
+                          "summary",
+                          "recordCount"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/leave-staff/{membershipId}": {
+      "get": {
+        "operationId": "getLeaveStaff",
+        "summary": "Personelin izin bilgisi ve hak edişi",
+        "tags": [
+          "finance-staff-leave"
+        ],
+        "description": "İzin profili (kıdem başlangıcı, doğum günü, açılış devri), `date` gününe göre yıl yıl hak ediş dökümü ve bakiye (devreden, bu yılın hakkı, kullanılan, planlanan, kalan), iptal edilmemiş kullanılmış izin kayıtları. Olmayan, başka kurumun ya da personel olmayan (öğrenci, veli) üyelik 404. Rol: yalnız `yonetici` (personel kişisel verisi). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "date",
+            "required": false,
+            "description": "Bakiyenin hesaplanacağı gün (YYYY-MM-DD); varsayılan bugün (Europe/Istanbul)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "path",
+            "name": "membershipId",
+            "required": true,
+            "description": "Personelin kurum üyeliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "membershipId": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "type": "string",
+                          "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                        },
+                        "active": {
+                          "type": "boolean",
+                          "description": "Pasifleştirilmiş (ayrılan) personelde `false`"
+                        },
+                        "date": {
+                          "type": "string",
+                          "description": "Bakiyenin hesaplandığı gün"
+                        },
+                        "employmentEndDate": {
+                          "description": "Pasifleştirilme günü; hizmet o gün biter (etkin personelde boş)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "profile": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "seniorityStartDate": {
+                                  "type": "string",
+                                  "description": "Kıdem başlangıcı (işe giriş günü)"
+                                },
+                                "birthDate": {
+                                  "description": "Doğum günü (yaş kuralı için)",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "openingBalance": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "asOf": {
+                                          "type": "string",
+                                          "description": "Açılış devrinin günü"
+                                        },
+                                        "days": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991,
+                                          "description": "O günün sonundaki kalan yıllık izin (gün)"
+                                        }
+                                      },
+                                      "required": [
+                                        "asOf",
+                                        "days"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "`If-Match` için profil sürümü"
+                                }
+                              },
+                              "required": [
+                                "seniorityStartDate",
+                                "birthDate",
+                                "openingBalance",
+                                "version"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "entitlement": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "asOf": {
+                                  "type": "string"
+                                },
+                                "serviceYears": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "accruals": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "serviceYear": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Kaçıncı hizmet yılının dolumu"
+                                      },
+                                      "date": {
+                                        "type": "string",
+                                        "description": "Hak ediş günü (yıl dönümü)"
+                                      },
+                                      "baseDays": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Kıdem dilimine göre gün (14, 20, 26)"
+                                      },
+                                      "age": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ],
+                                        "description": "Hak ediş günündeki yaş; doğum günü yoksa boş"
+                                      },
+                                      "ageRule": {
+                                        "type": "boolean",
+                                        "description": "18 yaş altı ya da 50 yaş ve üstü en az 20 gün uygulandı mı"
+                                      },
+                                      "days": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "inOpeningBalance": {
+                                        "type": "boolean",
+                                        "description": "Açılış devrinin içinde (ayrıca sayılmaz)"
+                                      }
+                                    },
+                                    "required": [
+                                      "serviceYear",
+                                      "date",
+                                      "baseDays",
+                                      "age",
+                                      "ageRule",
+                                      "days",
+                                      "inOpeningBalance"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "description": "Her tam hizmet yılının hak edişi"
+                                },
+                                "next": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "serviceYear": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991,
+                                          "description": "Kaçıncı hizmet yılının dolumu"
+                                        },
+                                        "date": {
+                                          "type": "string",
+                                          "description": "Hak ediş günü (yıl dönümü)"
+                                        },
+                                        "baseDays": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991,
+                                          "description": "Kıdem dilimine göre gün (14, 20, 26)"
+                                        },
+                                        "age": {
+                                          "anyOf": [
+                                            {
+                                              "type": "integer",
+                                              "minimum": -9007199254740991,
+                                              "maximum": 9007199254740991
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ],
+                                          "description": "Hak ediş günündeki yaş; doğum günü yoksa boş"
+                                        },
+                                        "ageRule": {
+                                          "type": "boolean",
+                                          "description": "18 yaş altı ya da 50 yaş ve üstü en az 20 gün uygulandı mı"
+                                        },
+                                        "days": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        }
+                                      },
+                                      "required": [
+                                        "serviceYear",
+                                        "date",
+                                        "baseDays",
+                                        "age",
+                                        "ageRule",
+                                        "days"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Bir sonraki hak ediş; hizmet bittiyse boş"
+                                },
+                                "openingDays": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "entitledDays": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "usedDays": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "plannedDays": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Günden sonra başlayan yıllık izin kayıtları"
+                                },
+                                "carriedOverDays": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Son hak edişten önceki yıllardan devreden"
+                                },
+                                "currentYearDays": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "usedThisYearDays": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "balanceDays": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Kalan; eksi avans izindir"
+                                },
+                                "balanceAfterPlannedDays": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "asOf",
+                                "serviceYears",
+                                "accruals",
+                                "next",
+                                "openingDays",
+                                "entitledDays",
+                                "usedDays",
+                                "plannedDays",
+                                "carriedOverDays",
+                                "currentYearDays",
+                                "usedThisYearDays",
+                                "balanceDays",
+                                "balanceAfterPlannedDays"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Hak ediş ve bakiye; profil yoksa boş"
+                        },
+                        "records": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "typeCode": {
+                                "type": "string"
+                              },
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "annual",
+                                  "excuse",
+                                  "unpaid",
+                                  "sick",
+                                  "other"
+                                ],
+                                "description": "`annual` yıllık, `excuse` mazeret, `unpaid` ücretsiz, `sick` rapor, `other` diğer"
+                              },
+                              "typeLabel": {
+                                "type": "string",
+                                "description": "Kayıt anındaki tür adı"
+                              },
+                              "paid": {
+                                "type": "boolean",
+                                "description": "Kayıt anında ücretli miydi"
+                              },
+                              "deductsFromAnnual": {
+                                "type": "boolean",
+                                "description": "Kayıt anında yıllık izinden düşüyor muydu"
+                              },
+                              "startDate": {
+                                "type": "string"
+                              },
+                              "endDate": {
+                                "type": "string"
+                              },
+                              "days": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Kullanılan iş günü"
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için kayıt sürümü (iptal)"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "membershipId",
+                              "typeCode",
+                              "kind",
+                              "typeLabel",
+                              "paid",
+                              "deductsFromAnnual",
+                              "startDate",
+                              "endDate",
+                              "days",
+                              "note",
+                              "createdAt",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "İptal edilmemiş kayıtlar, yeni başlayan önce"
+                        }
+                      },
+                      "required": [
+                        "membershipId",
+                        "name",
+                        "role",
+                        "active",
+                        "date",
+                        "employmentEndDate",
+                        "profile",
+                        "entitlement",
+                        "records"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/leave-profiles": {
+      "post": {
+        "operationId": "createLeaveProfile",
+        "summary": "İzin profili aç",
+        "tags": [
+          "finance-staff-leave"
+        ],
+        "description": "Personelin kıdem başlangıcı (işe giriş günü; personel kaydında olmadığı için elle), isteğe bağlı doğum günü (18 yaş altı ve 50 yaş ve üstü kuralı) ve açılış devri (sistem öncesi hak ediş ve kullanımın tek satırı). Kıdem başlangıcı 1960'tan önce ya da bugünden sonra olamaz (422 `staff_leave_seniority_too_early`, `staff_leave_seniority_future`); doğum günü işe başlarken 14 yaşını doldurmayı sağlamalı (422 `staff_leave_birth_date_invalid`); açılış günü kıdem başlangıcı ile bugün arasında (422 `staff_leave_opening_date_invalid`). Profil zaten varsa 422 `staff_leave_profile_exists`; olmayan üyelik 422 `staff_leave_staff_not_found`, öğrenci ya da veli 422 `staff_leave_not_staff`, pasif personel 422 `staff_leave_staff_inactive`. Denetim kaydına alan adları yazılır. `Idempotency-Key` isteğe bağlı. Rol: yalnız `yonetici` (personel kişisel verisi). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "membershipId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Personelin kurum üyeliği"
+                  },
+                  "seniorityStartDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Kıdem başlangıcı (işe giriş günü; personel kaydında olmadığı için elle)"
+                  },
+                  "birthDate": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Doğum günü; 18 yaş altı ve 50 yaş ve üstü kuralı için (boşsa kural uygulanmaz)"
+                  },
+                  "openingBalance": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "asOf": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                            "description": "Açılış devrinin günü: bu güne kadarki hak ediş ve kullanım devirdedir"
+                          },
+                          "days": {
+                            "type": "integer",
+                            "minimum": -366,
+                            "maximum": 999,
+                            "description": "O günün sonundaki kalan yıllık izin (gün; eksi avans izindir)"
+                          }
+                        },
+                        "required": [
+                          "asOf",
+                          "days"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "İsteğe bağlı açılış devri: sistem öncesi hak ediş ve kullanımın tek satırı"
+                  }
+                },
+                "required": [
+                  "membershipId",
+                  "seniorityStartDate"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "seniorityStartDate": {
+                          "type": "string",
+                          "description": "Kıdem başlangıcı (işe giriş günü)"
+                        },
+                        "birthDate": {
+                          "description": "Doğum günü (yaş kuralı için)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "openingBalance": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "asOf": {
+                                  "type": "string",
+                                  "description": "Açılış devrinin günü"
+                                },
+                                "days": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "O günün sonundaki kalan yıllık izin (gün)"
+                                }
+                              },
+                              "required": [
+                                "asOf",
+                                "days"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için profil sürümü"
+                        },
+                        "membershipId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "seniorityStartDate",
+                        "birthDate",
+                        "openingBalance",
+                        "version",
+                        "membershipId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/leave-profiles/{membershipId}": {
+      "patch": {
+        "operationId": "updateLeaveProfile",
+        "summary": "İzin profilini düzelt",
+        "tags": [
+          "finance-staff-leave"
+        ],
+        "description": "Kıdem başlangıcı, doğum günü ya da açılış devri (kısmi; `null` temizler). Birleşik profil açılıştaki denetimlerden geçer; yıllık izinden düşen bir kayıt yeni kıdem başlangıcından önce kalırsa 422 `staff_leave_before_seniority`; değişiklik yoksa 422 `staff_leave_profile_unchanged`. `If-Match` zorunlu. Profili olmayan ya da başka kurumun personeli 404. Rol: yalnız `yonetici` (personel kişisel verisi). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "seniorityStartDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Kıdem başlangıcı (işe giriş günü; personel kaydında olmadığı için elle)"
+                  },
+                  "birthDate": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Doğum günü; 18 yaş altı ve 50 yaş ve üstü kuralı için (boşsa kural uygulanmaz)"
+                  },
+                  "openingBalance": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "asOf": {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                            "description": "Açılış devrinin günü: bu güne kadarki hak ediş ve kullanım devirdedir"
+                          },
+                          "days": {
+                            "type": "integer",
+                            "minimum": -366,
+                            "maximum": 999,
+                            "description": "O günün sonundaki kalan yıllık izin (gün; eksi avans izindir)"
+                          }
+                        },
+                        "required": [
+                          "asOf",
+                          "days"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "İsteğe bağlı açılış devri: sistem öncesi hak ediş ve kullanımın tek satırı"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "path",
+            "name": "membershipId",
+            "required": true,
+            "description": "Personelin kurum üyeliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "seniorityStartDate": {
+                          "type": "string",
+                          "description": "Kıdem başlangıcı (işe giriş günü)"
+                        },
+                        "birthDate": {
+                          "description": "Doğum günü (yaş kuralı için)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "openingBalance": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "asOf": {
+                                  "type": "string",
+                                  "description": "Açılış devrinin günü"
+                                },
+                                "days": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "O günün sonundaki kalan yıllık izin (gün)"
+                                }
+                              },
+                              "required": [
+                                "asOf",
+                                "days"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için profil sürümü"
+                        },
+                        "membershipId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "seniorityStartDate",
+                        "birthDate",
+                        "openingBalance",
+                        "version",
+                        "membershipId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/leave-records": {
+      "post": {
+        "operationId": "createLeaveRecord",
+        "summary": "Kullanılmış izin kaydı yaz",
+        "tags": [
+          "finance-staff-leave"
+        ],
+        "description": "Talep ve onay akışı (ON-182) gelene kadar kullanılan izin elle yazılır: tür, ilk ve son gün (dahil), kullanılan iş günü (elle; aralığın takvim gününü aşamaz, 422 `staff_leave_days_exceed_range`), not (K-362). Kayıt türün ücretli ve yıllıktan düşer ayarını kopyalar. Aynı personelde çakışan kayıt 422 `staff_leave_overlap`; olmayan ya da kapalı tür 422 `staff_leave_type_not_found`, `staff_leave_type_inactive`; rapor elle yazılmaz (422 `staff_leave_sick_not_manual`; sağlık raporu kaydından okunur). Yıllık izinden düşen kayıt kıdem başlangıcı ister (422 `staff_leave_profile_required`) ve ondan önce başlayamaz (422 `staff_leave_before_seniority`). Bakiye eksiye düşebilir (avans izin). `Idempotency-Key` zorunlu: çift gönderim izni iki kez düşmez. Rol: yalnız `yonetici` (personel kişisel verisi). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "membershipId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Personelin kurum üyeliği"
+                  },
+                  "typeCode": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9_]{1,39}$",
+                    "description": "İzin türü kodu (varsayılan türlerde sabit ad, kurum türünde `custom_…`)"
+                  },
+                  "startDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "İznin ilk günü"
+                  },
+                  "endDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "İznin son günü (dahil)"
+                  },
+                  "days": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 366,
+                    "description": "Kullanılan iş günü (hafta tatili ve genel tatil hariç; elle)"
+                  },
+                  "note": {
+                    "description": "İsteğe bağlı not, en çok 200 karakter",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "membershipId",
+                  "typeCode",
+                  "startDate",
+                  "endDate",
+                  "days"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "membershipId": {
+                          "type": "string"
+                        },
+                        "typeCode": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "annual",
+                            "excuse",
+                            "unpaid",
+                            "sick",
+                            "other"
+                          ],
+                          "description": "`annual` yıllık, `excuse` mazeret, `unpaid` ücretsiz, `sick` rapor, `other` diğer"
+                        },
+                        "typeLabel": {
+                          "type": "string",
+                          "description": "Kayıt anındaki tür adı"
+                        },
+                        "paid": {
+                          "type": "boolean",
+                          "description": "Kayıt anında ücretli miydi"
+                        },
+                        "deductsFromAnnual": {
+                          "type": "boolean",
+                          "description": "Kayıt anında yıllık izinden düşüyor muydu"
+                        },
+                        "startDate": {
+                          "type": "string"
+                        },
+                        "endDate": {
+                          "type": "string"
+                        },
+                        "days": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kullanılan iş günü"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü (iptal)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "membershipId",
+                        "typeCode",
+                        "kind",
+                        "typeLabel",
+                        "paid",
+                        "deductsFromAnnual",
+                        "startDate",
+                        "endDate",
+                        "days",
+                        "note",
+                        "createdAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/leave-records/{recordId}/cancel": {
+      "post": {
+        "operationId": "cancelLeaveRecord",
+        "summary": "Kullanılmış izin kaydını iptal et",
+        "tags": [
+          "finance-staff-leave"
+        ],
+        "description": "Yanlış kayıt gerekçeyle (5–500 karakter) iptal edilir; kayıt düzeltilmez ve iptal edilen kayıt bakiyeye sayılmaz. Gerekçe denetim kaydına yazılmaz. `If-Match` zorunlu. Başka kurumun ya da iptal edilmiş kayıt 404. Rol: yalnız `yonetici` (personel kişisel verisi). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500,
+                    "description": "İptal gerekçesi; denetim kaydına yazılmaz"
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "recordId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/finance/paid-activities": {
       "get": {
         "operationId": "listPaidActivities",

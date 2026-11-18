@@ -150,6 +150,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/payroll-periods/{month}/reopen',
   'POST /api/v1/finance/payroll-periods/{month}/adjustments',
   'POST /api/v1/finance/payroll-adjustments/{adjustmentId}/cancel',
+  // Kullanılmış izin kaydı yıllık izin bakiyesinden düşer; çift gönderim izni iki kez düşmez
+  // (routes/finance-staff-leave.ts; DOM-FIN-109, ON-181).
+  'POST /api/v1/finance/leave-records',
 ]
 // Onur: kayıt ve finans sonu
 

@@ -855,6 +855,13 @@
       "when": 1795031610619,
       "tag": "0121_create_payroll_periods",
       "breakpoints": true
+    },
+    {
+      "idx": 122,
+      "version": "7",
+      "when": 1795032955820,
+      "tag": "0122_create_staff_leave",
+      "breakpoints": true
     }
   ]
 }

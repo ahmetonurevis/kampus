@@ -129,6 +129,10 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/ticketed-events/{eventId}/tickets',
   'POST /api/v1/finance/event-tickets/{ticketId}/pay',
   'POST /api/v1/finance/event-tickets/{ticketId}/cancel',
+  // Sağlık raporu girişi ve iptali; çift tıklama ikinci raporu (çakışma) ya da ikinci iptali
+  // yazmaz (routes/finance-medical-reports.ts; DOM-FIN-110, ON-185).
+  'POST /api/v1/finance/medical-reports',
+  'POST /api/v1/finance/medical-reports/{reportId}/cancel',
 ]
 // Onur: kayıt ve finans sonu
 

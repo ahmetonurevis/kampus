@@ -199968,6 +199968,1684 @@
         }
       }
     },
+    "/api/v1/finance/medical-reports": {
+      "get": {
+        "operationId": "listMedicalReports",
+        "summary": "Sağlık raporları",
+        "tags": [
+          "finance-medical-reports"
+        ],
+        "description": "Personel istirahat raporları, en yeni başlangıç önce. `from`/`to` verilirse dönemle kesişen raporlar ve satırda döneme düşen gün (`daysInPeriod`); yalnız biri verilirse eksik uç ayın başı ya da sonudur, dönem en çok 366 gün (422 `medical_report_period_too_long`, sonu başından önce 422 `medical_report_period_invalid`). `state=cancelled` iptal edilmiş raporları gerekçesiyle verir. Tanı tutulmaz (K-363). Sağlık verisi olduğu için her okuma denetim kaydına `finance.medical_report.read` olarak düşer (yalnız alan adları). Rol: yalnız `yonetici` (K-363; muhasebe rolü açılsa da sağlık raporu görmez). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "membershipId",
+            "required": false,
+            "description": "Yalnız bu personel"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "description": "Dönem başı (YYYY-MM-DD); verilmezse bugünün ayı (Europe/Istanbul)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "description": "Dönem sonu (YYYY-MM-DD, dahil); verilmezse dönem başının ay sonu. En çok 366 gün"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "sickness",
+                "work_accident",
+                "occupational_disease",
+                "maternity"
+              ]
+            },
+            "in": "query",
+            "name": "reportType",
+            "required": false,
+            "description": "Rapor türü"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "cancelled"
+              ]
+            },
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "description": "`active` (varsayılan) iptal edilmemiş, `cancelled` iptal edilmiş raporlar"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "membershipId": {
+                            "type": "string"
+                          },
+                          "staffName": {
+                            "type": "string",
+                            "description": "Personelin adı"
+                          },
+                          "reportType": {
+                            "type": "string",
+                            "enum": [
+                              "sickness",
+                              "work_accident",
+                              "occupational_disease",
+                              "maternity"
+                            ],
+                            "description": "`sickness` istirahat (hastalık), `work_accident` iş kazası, `occupational_disease` meslek hastalığı, `maternity` analık"
+                          },
+                          "startDate": {
+                            "type": "string",
+                            "description": "Başlangıç (YYYY-MM-DD, dahil)"
+                          },
+                          "endDate": {
+                            "type": "string",
+                            "description": "Bitiş (YYYY-MM-DD, dahil)"
+                          },
+                          "dayCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Takvim günü sayısı, uçlar dahil"
+                          },
+                          "daysInPeriod": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Sorgudaki döneme düşen gün; dönem verilmediyse `null`"
+                          },
+                          "issuerType": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "public",
+                                  "private",
+                                  "family_physician"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Veren kurum türü (isteğe bağlı)"
+                          },
+                          "fileId": {
+                            "description": "Rapor dosyası; `GET /files/{fileId}/url` ile açılır, her açılış denetimde",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "employerNotifiedAt": {
+                            "description": "\"İşverene bildirildi\" işaret anı",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "sgkApprovedAt": {
+                            "description": "\"SGK sisteminde onaylandı\" işaret anı",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "state": {
+                            "type": "string",
+                            "enum": [
+                              "scheduled",
+                              "ongoing",
+                              "ended",
+                              "cancelled"
+                            ],
+                            "description": "Bugüne göre: `scheduled` ileri tarihli, `ongoing` sürüyor, `ended` bitti, `cancelled` iptal"
+                          },
+                          "cancelledAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "cancelReason": {
+                            "description": "İptal gerekçesi (yalnız iptal edilmiş raporda)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü (işaret, dosya ve iptal)"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "membershipId",
+                          "staffName",
+                          "reportType",
+                          "startDate",
+                          "endDate",
+                          "dayCount",
+                          "daysInPeriod",
+                          "issuerType",
+                          "fileId",
+                          "employerNotifiedAt",
+                          "sgkApprovedAt",
+                          "state",
+                          "cancelledAt",
+                          "cancelReason",
+                          "createdAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991,
+                          "description": "Sayfa numarası (1’den başlar)"
+                        },
+                        "pageSize": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100,
+                          "description": "Sayfa boyutu"
+                        },
+                        "total": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991,
+                          "description": "Filtre uygulanmış toplam kayıt sayısı"
+                        },
+                        "period": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "from": {
+                                  "type": "string",
+                                  "description": "Dönem başı (YYYY-MM-DD)"
+                                },
+                                "to": {
+                                  "type": "string",
+                                  "description": "Dönem sonu (YYYY-MM-DD)"
+                                }
+                              },
+                              "required": [
+                                "from",
+                                "to"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Uygulanan dönem; dönem verilmediyse `null`"
+                        }
+                      },
+                      "required": [
+                        "page",
+                        "pageSize",
+                        "total",
+                        "period"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createMedicalReport",
+        "summary": "Sağlık raporu gir",
+        "tags": [
+          "finance-medical-reports"
+        ],
+        "description": "Personel (kurum üyeliği), rapor türü (`sickness` istirahat, `work_accident` iş kazası, `occupational_disease` meslek hastalığı, `maternity` analık), başlangıç–bitiş günü (dahil; bitiş başlangıçtan önce ya da rapor 366 günden uzunsa 400), isteğe bağlı veren kurum türü ve rapor dosyası (`POST /files`, `purpose: document`, PDF; yükleyen yönetici bağlar: başkasının ya da başka kurumun dosyası 422 `file_unavailable`, başka kayda bağlı 409 `file_already_attached`). Tanı, hastalık adı, ICD kodu ve not alanı yoktur; bilinmeyen alan 400 (K-363). Gün sayısı takvim günüdür. Aynı personelin iptal edilmemiş raporuyla bir gün bile kesişirse 422 `medical_report_overlap`; başlangıç bugünden 180 günden ileride 422 `medical_report_start_too_far`; pasif personelde ayrıldığı günden sonra başlarsa 422 `medical_report_after_leave` (K-364). Olmayan ya da başka kurumun üyeliği 422 `medical_report_staff_not_found`, öğrenci ya da veli 422 `medical_report_not_staff`. Denetim kaydına yalnız alan adları yazılır. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (K-363; muhasebe rolü açılsa da sağlık raporu görmez). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "membershipId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Raporun ait olduğu personelin kurum üyeliği"
+                  },
+                  "reportType": {
+                    "type": "string",
+                    "enum": [
+                      "sickness",
+                      "work_accident",
+                      "occupational_disease",
+                      "maternity"
+                    ],
+                    "description": "`sickness` istirahat (hastalık), `work_accident` iş kazası, `occupational_disease` meslek hastalığı, `maternity` analık"
+                  },
+                  "startDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Rapor başlangıcı (gün, dahil)"
+                  },
+                  "endDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Rapor bitişi (gün, dahil); başlangıçtan önce olamaz"
+                  },
+                  "issuerType": {
+                    "default": null,
+                    "description": "İsteğe bağlı: `public` devlet, `private` özel sağlık kuruluşu, `family_physician` aile hekimi",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "public",
+                          "private",
+                          "family_physician"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "fileId": {
+                    "default": null,
+                    "description": "İsteğe bağlı rapor dosyası (`POST /files`, `purpose: document`, PDF)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "membershipId",
+                  "reportType",
+                  "startDate",
+                  "endDate"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "membershipId": {
+                          "type": "string"
+                        },
+                        "staffName": {
+                          "type": "string",
+                          "description": "Personelin adı"
+                        },
+                        "reportType": {
+                          "type": "string",
+                          "enum": [
+                            "sickness",
+                            "work_accident",
+                            "occupational_disease",
+                            "maternity"
+                          ],
+                          "description": "`sickness` istirahat (hastalık), `work_accident` iş kazası, `occupational_disease` meslek hastalığı, `maternity` analık"
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "description": "Başlangıç (YYYY-MM-DD, dahil)"
+                        },
+                        "endDate": {
+                          "type": "string",
+                          "description": "Bitiş (YYYY-MM-DD, dahil)"
+                        },
+                        "dayCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Takvim günü sayısı, uçlar dahil"
+                        },
+                        "daysInPeriod": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Sorgudaki döneme düşen gün; dönem verilmediyse `null`"
+                        },
+                        "issuerType": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "public",
+                                "private",
+                                "family_physician"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Veren kurum türü (isteğe bağlı)"
+                        },
+                        "fileId": {
+                          "description": "Rapor dosyası; `GET /files/{fileId}/url` ile açılır, her açılış denetimde",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "employerNotifiedAt": {
+                          "description": "\"İşverene bildirildi\" işaret anı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "sgkApprovedAt": {
+                          "description": "\"SGK sisteminde onaylandı\" işaret anı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "scheduled",
+                            "ongoing",
+                            "ended",
+                            "cancelled"
+                          ],
+                          "description": "Bugüne göre: `scheduled` ileri tarihli, `ongoing` sürüyor, `ended` bitti, `cancelled` iptal"
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "description": "İptal gerekçesi (yalnız iptal edilmiş raporda)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü (işaret, dosya ve iptal)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "membershipId",
+                        "staffName",
+                        "reportType",
+                        "startDate",
+                        "endDate",
+                        "dayCount",
+                        "daysInPeriod",
+                        "issuerType",
+                        "fileId",
+                        "employerNotifiedAt",
+                        "sgkApprovedAt",
+                        "state",
+                        "cancelledAt",
+                        "cancelReason",
+                        "createdAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/medical-report-summary": {
+      "get": {
+        "operationId": "getMedicalReportSummary",
+        "summary": "Dönem rapor günü özeti",
+        "tags": [
+          "finance-medical-reports"
+        ],
+        "description": "Bordro girdisi: kurumun personeli (yönetici, öğretmen, ön büro; pasif dahil) ada göre, her satırda dönemde (`from`–`to`, varsayılan bugünün ayı, en çok 366 gün) iptal edilmemiş raporların döneme düşen takvim günü, türe göre gün, rapor sayısı ve işareti eksik rapor sayısı. `withReports=true` yalnız dönemde raporu olan personeli verir. SGK ödeneği ve bordro kesintisi hesaplanmaz (K-365). Her okuma denetim kaydına `finance.medical_report.read` olarak düşer. Rol: yalnız `yonetici` (K-363; muhasebe rolü açılsa da sağlık raporu görmez). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Personel adında arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "passive"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "`active` etkin, `passive` pasifleştirilmiş (ayrılan) personel"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "description": "Dönem başı (YYYY-MM-DD); verilmezse bugünün ayı (Europe/Istanbul)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "description": "Dönem sonu (YYYY-MM-DD, dahil); verilmezse dönem başının ay sonu. En çok 366 gün"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "in": "query",
+            "name": "withReports",
+            "required": false,
+            "description": "`true` yalnız dönemde raporu olan personel; varsayılan bütün personel"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "membershipId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "role": {
+                            "type": "string",
+                            "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                          },
+                          "active": {
+                            "type": "boolean",
+                            "description": "Pasifleştirilmiş (ayrılan) personelde `false`"
+                          },
+                          "totalDays": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Döneme düşen rapor günü (takvim günü)"
+                          },
+                          "byType": {
+                            "type": "object",
+                            "properties": {
+                              "sickness": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "work_accident": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "occupational_disease": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "maternity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "sickness",
+                              "work_accident",
+                              "occupational_disease",
+                              "maternity"
+                            ],
+                            "additionalProperties": false,
+                            "description": "Türe göre döneme düşen gün"
+                          },
+                          "reportCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Dönemle kesişen rapor sayısı"
+                          },
+                          "awaitingNoticeCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "İşverene bildirildi işareti olmayan rapor"
+                          },
+                          "awaitingSgkCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "SGK onayı işareti olmayan rapor"
+                          }
+                        },
+                        "required": [
+                          "membershipId",
+                          "name",
+                          "role",
+                          "active",
+                          "totalDays",
+                          "byType",
+                          "reportCount",
+                          "awaitingNoticeCount",
+                          "awaitingSgkCount"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991,
+                          "description": "Sayfa numarası (1’den başlar)"
+                        },
+                        "pageSize": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100,
+                          "description": "Sayfa boyutu"
+                        },
+                        "total": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991,
+                          "description": "Filtre uygulanmış toplam kayıt sayısı"
+                        },
+                        "period": {
+                          "type": "object",
+                          "properties": {
+                            "from": {
+                              "type": "string",
+                              "description": "Dönem başı (YYYY-MM-DD)"
+                            },
+                            "to": {
+                              "type": "string",
+                              "description": "Dönem sonu (YYYY-MM-DD)"
+                            }
+                          },
+                          "required": [
+                            "from",
+                            "to"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "page",
+                        "pageSize",
+                        "total",
+                        "period"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/medical-reports/{reportId}": {
+      "patch": {
+        "operationId": "updateMedicalReport",
+        "summary": "Rapor işaretlerini ya da dosyasını değiştir",
+        "tags": [
+          "finance-medical-reports"
+        ],
+        "description": "Yalnız \"işverene bildirildi\" (`employerNotified`), \"SGK sisteminde onaylandı\" (`sgkApproved`; e-Rapor onayı işverence SGK'da yapılır, burada yalnız işaretlenir) ve rapor dosyası (`fileId`; `null` kaldırır) değişir; tarih ve tür değişmez, yanlışsa rapor iptal edilip yeniden girilir (K-364, K-365). SGK onayı bildirim işaretini ister (422 `medical_report_sgk_requires_notice`); işaretler geri alınabilir, işaretleyen ve an saklanır. Değişiklik yoksa 422 `medical_report_unchanged`, iptal edilmiş rapor 422 `medical_report_cancelled`. `If-Match` zorunlu, sürüm tutmazsa 409. Başka kurumun raporu 404. Rol: yalnız `yonetici` (K-363; muhasebe rolü açılsa da sağlık raporu görmez). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "employerNotified": {
+                    "description": "Rapor işverene bildirildi (personel raporu verdi)",
+                    "type": "boolean"
+                  },
+                  "sgkApproved": {
+                    "description": "İşveren raporu SGK sisteminde onayladı (çalışmadığına dair bildirim)",
+                    "type": "boolean"
+                  },
+                  "fileId": {
+                    "description": "Rapor dosyası; `null` eki kaldırır, yeni kimlik eskisinin yerine bağlanır",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "reportId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "membershipId": {
+                          "type": "string"
+                        },
+                        "staffName": {
+                          "type": "string",
+                          "description": "Personelin adı"
+                        },
+                        "reportType": {
+                          "type": "string",
+                          "enum": [
+                            "sickness",
+                            "work_accident",
+                            "occupational_disease",
+                            "maternity"
+                          ],
+                          "description": "`sickness` istirahat (hastalık), `work_accident` iş kazası, `occupational_disease` meslek hastalığı, `maternity` analık"
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "description": "Başlangıç (YYYY-MM-DD, dahil)"
+                        },
+                        "endDate": {
+                          "type": "string",
+                          "description": "Bitiş (YYYY-MM-DD, dahil)"
+                        },
+                        "dayCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Takvim günü sayısı, uçlar dahil"
+                        },
+                        "daysInPeriod": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Sorgudaki döneme düşen gün; dönem verilmediyse `null`"
+                        },
+                        "issuerType": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "public",
+                                "private",
+                                "family_physician"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Veren kurum türü (isteğe bağlı)"
+                        },
+                        "fileId": {
+                          "description": "Rapor dosyası; `GET /files/{fileId}/url` ile açılır, her açılış denetimde",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "employerNotifiedAt": {
+                          "description": "\"İşverene bildirildi\" işaret anı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "sgkApprovedAt": {
+                          "description": "\"SGK sisteminde onaylandı\" işaret anı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "scheduled",
+                            "ongoing",
+                            "ended",
+                            "cancelled"
+                          ],
+                          "description": "Bugüne göre: `scheduled` ileri tarihli, `ongoing` sürüyor, `ended` bitti, `cancelled` iptal"
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "description": "İptal gerekçesi (yalnız iptal edilmiş raporda)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü (işaret, dosya ve iptal)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "membershipId",
+                        "staffName",
+                        "reportType",
+                        "startDate",
+                        "endDate",
+                        "dayCount",
+                        "daysInPeriod",
+                        "issuerType",
+                        "fileId",
+                        "employerNotifiedAt",
+                        "sgkApprovedAt",
+                        "state",
+                        "cancelledAt",
+                        "cancelReason",
+                        "createdAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/medical-reports/{reportId}/cancel": {
+      "post": {
+        "operationId": "cancelMedicalReport",
+        "summary": "Sağlık raporunu iptal et",
+        "tags": [
+          "finance-medical-reports"
+        ],
+        "description": "Yanlış kayıt gerekçeyle (5–500 karakter; tanı yazılmaz) iptal edilir; rapor silinmez, gün hesabına ve çakışma denetimine girmez. Rapor dosyasının bağı kalkar (bağsız dosya 24 saat sonra silinir; K-363). İkinci iptal 422 `medical_report_cancelled`. Gerekçe denetim kaydına yazılmaz. `If-Match` ve `Idempotency-Key` zorunlu. Başka kurumun raporu 404. Rol: yalnız `yonetici` (K-363; muhasebe rolü açılsa da sağlık raporu görmez). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500,
+                    "description": "İptal gerekçesi (tanı yazılmaz); denetim kaydına yazılmaz"
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "reportId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "membershipId": {
+                          "type": "string"
+                        },
+                        "staffName": {
+                          "type": "string",
+                          "description": "Personelin adı"
+                        },
+                        "reportType": {
+                          "type": "string",
+                          "enum": [
+                            "sickness",
+                            "work_accident",
+                            "occupational_disease",
+                            "maternity"
+                          ],
+                          "description": "`sickness` istirahat (hastalık), `work_accident` iş kazası, `occupational_disease` meslek hastalığı, `maternity` analık"
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "description": "Başlangıç (YYYY-MM-DD, dahil)"
+                        },
+                        "endDate": {
+                          "type": "string",
+                          "description": "Bitiş (YYYY-MM-DD, dahil)"
+                        },
+                        "dayCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Takvim günü sayısı, uçlar dahil"
+                        },
+                        "daysInPeriod": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Sorgudaki döneme düşen gün; dönem verilmediyse `null`"
+                        },
+                        "issuerType": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "public",
+                                "private",
+                                "family_physician"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Veren kurum türü (isteğe bağlı)"
+                        },
+                        "fileId": {
+                          "description": "Rapor dosyası; `GET /files/{fileId}/url` ile açılır, her açılış denetimde",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "employerNotifiedAt": {
+                          "description": "\"İşverene bildirildi\" işaret anı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "sgkApprovedAt": {
+                          "description": "\"SGK sisteminde onaylandı\" işaret anı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "scheduled",
+                            "ongoing",
+                            "ended",
+                            "cancelled"
+                          ],
+                          "description": "Bugüne göre: `scheduled` ileri tarihli, `ongoing` sürüyor, `ended` bitti, `cancelled` iptal"
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "description": "İptal gerekçesi (yalnız iptal edilmiş raporda)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü (işaret, dosya ve iptal)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "membershipId",
+                        "staffName",
+                        "reportType",
+                        "startDate",
+                        "endDate",
+                        "dayCount",
+                        "daysInPeriod",
+                        "issuerType",
+                        "fileId",
+                        "employerNotifiedAt",
+                        "sgkApprovedAt",
+                        "state",
+                        "cancelledAt",
+                        "cancelReason",
+                        "createdAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

@@ -8476,6 +8476,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/medical-reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sağlık raporları
+         * @description Personel istirahat raporları, en yeni başlangıç önce. `from`/`to` verilirse dönemle kesişen raporlar ve satırda döneme düşen gün (`daysInPeriod`); yalnız biri verilirse eksik uç ayın başı ya da sonudur, dönem en çok 366 gün (422 `medical_report_period_too_long`, sonu başından önce 422 `medical_report_period_invalid`). `state=cancelled` iptal edilmiş raporları gerekçesiyle verir. Tanı tutulmaz (K-363). Sağlık verisi olduğu için her okuma denetim kaydına `finance.medical_report.read` olarak düşer (yalnız alan adları). Rol: yalnız `yonetici` (K-363; muhasebe rolü açılsa da sağlık raporu görmez). Modül `finance`.
+         */
+        get: operations["listMedicalReports"];
+        put?: never;
+        /**
+         * Sağlık raporu gir
+         * @description Personel (kurum üyeliği), rapor türü (`sickness` istirahat, `work_accident` iş kazası, `occupational_disease` meslek hastalığı, `maternity` analık), başlangıç–bitiş günü (dahil; bitiş başlangıçtan önce ya da rapor 366 günden uzunsa 400), isteğe bağlı veren kurum türü ve rapor dosyası (`POST /files`, `purpose: document`, PDF; yükleyen yönetici bağlar: başkasının ya da başka kurumun dosyası 422 `file_unavailable`, başka kayda bağlı 409 `file_already_attached`). Tanı, hastalık adı, ICD kodu ve not alanı yoktur; bilinmeyen alan 400 (K-363). Gün sayısı takvim günüdür. Aynı personelin iptal edilmemiş raporuyla bir gün bile kesişirse 422 `medical_report_overlap`; başlangıç bugünden 180 günden ileride 422 `medical_report_start_too_far`; pasif personelde ayrıldığı günden sonra başlarsa 422 `medical_report_after_leave` (K-364). Olmayan ya da başka kurumun üyeliği 422 `medical_report_staff_not_found`, öğrenci ya da veli 422 `medical_report_not_staff`. Denetim kaydına yalnız alan adları yazılır. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (K-363; muhasebe rolü açılsa da sağlık raporu görmez). Modül `finance`.
+         */
+        post: operations["createMedicalReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/medical-report-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Dönem rapor günü özeti
+         * @description Bordro girdisi: kurumun personeli (yönetici, öğretmen, ön büro; pasif dahil) ada göre, her satırda dönemde (`from`–`to`, varsayılan bugünün ayı, en çok 366 gün) iptal edilmemiş raporların döneme düşen takvim günü, türe göre gün, rapor sayısı ve işareti eksik rapor sayısı. `withReports=true` yalnız dönemde raporu olan personeli verir. SGK ödeneği ve bordro kesintisi hesaplanmaz (K-365). Her okuma denetim kaydına `finance.medical_report.read` olarak düşer. Rol: yalnız `yonetici` (K-363; muhasebe rolü açılsa da sağlık raporu görmez). Modül `finance`.
+         */
+        get: operations["getMedicalReportSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/medical-reports/{reportId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Rapor işaretlerini ya da dosyasını değiştir
+         * @description Yalnız "işverene bildirildi" (`employerNotified`), "SGK sisteminde onaylandı" (`sgkApproved`; e-Rapor onayı işverence SGK'da yapılır, burada yalnız işaretlenir) ve rapor dosyası (`fileId`; `null` kaldırır) değişir; tarih ve tür değişmez, yanlışsa rapor iptal edilip yeniden girilir (K-364, K-365). SGK onayı bildirim işaretini ister (422 `medical_report_sgk_requires_notice`); işaretler geri alınabilir, işaretleyen ve an saklanır. Değişiklik yoksa 422 `medical_report_unchanged`, iptal edilmiş rapor 422 `medical_report_cancelled`. `If-Match` zorunlu, sürüm tutmazsa 409. Başka kurumun raporu 404. Rol: yalnız `yonetici` (K-363; muhasebe rolü açılsa da sağlık raporu görmez). Modül `finance`.
+         */
+        patch: operations["updateMedicalReport"];
+        trace?: never;
+    };
+    "/api/v1/finance/medical-reports/{reportId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sağlık raporunu iptal et
+         * @description Yanlış kayıt gerekçeyle (5–500 karakter; tanı yazılmaz) iptal edilir; rapor silinmez, gün hesabına ve çakışma denetimine girmez. Rapor dosyasının bağı kalkar (bağsız dosya 24 saat sonra silinir; K-363). İkinci iptal 422 `medical_report_cancelled`. Gerekçe denetim kaydına yazılmaz. `If-Match` ve `Idempotency-Key` zorunlu. Başka kurumun raporu 404. Rol: yalnız `yonetici` (K-363; muhasebe rolü açılsa da sağlık raporu görmez). Modül `finance`.
+         */
+        post: operations["cancelMedicalReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -90078,6 +90162,766 @@ export interface operations {
                             /** @description Talebin bu durumda yapılabilecek işlemleri */
                             actions: ("start" | "ready" | "deliver" | "reject")[];
                             /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listMedicalReports: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Yalnız bu personel */
+                membershipId?: string;
+                /** @description Dönem başı (YYYY-MM-DD); verilmezse bugünün ayı (Europe/Istanbul) */
+                from?: string;
+                /** @description Dönem sonu (YYYY-MM-DD, dahil); verilmezse dönem başının ay sonu. En çok 366 gün */
+                to?: string;
+                /** @description Rapor türü */
+                reportType?: "sickness" | "work_accident" | "occupational_disease" | "maternity";
+                /** @description `active` (varsayılan) iptal edilmemiş, `cancelled` iptal edilmiş raporlar */
+                state?: "active" | "cancelled";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            membershipId: string;
+                            /** @description Personelin adı */
+                            staffName: string;
+                            /**
+                             * @description `sickness` istirahat (hastalık), `work_accident` iş kazası, `occupational_disease` meslek hastalığı, `maternity` analık
+                             * @enum {string}
+                             */
+                            reportType: "sickness" | "work_accident" | "occupational_disease" | "maternity";
+                            /** @description Başlangıç (YYYY-MM-DD, dahil) */
+                            startDate: string;
+                            /** @description Bitiş (YYYY-MM-DD, dahil) */
+                            endDate: string;
+                            /** @description Takvim günü sayısı, uçlar dahil */
+                            dayCount: number;
+                            /** @description Sorgudaki döneme düşen gün; dönem verilmediyse `null` */
+                            daysInPeriod: number | null;
+                            /** @description Veren kurum türü (isteğe bağlı) */
+                            issuerType: ("public" | "private" | "family_physician") | null;
+                            /** @description Rapor dosyası; `GET /files/{fileId}/url` ile açılır, her açılış denetimde */
+                            fileId: string | null;
+                            /** @description "İşverene bildirildi" işaret anı */
+                            employerNotifiedAt: string | null;
+                            /** @description "SGK sisteminde onaylandı" işaret anı */
+                            sgkApprovedAt: string | null;
+                            /**
+                             * @description Bugüne göre: `scheduled` ileri tarihli, `ongoing` sürüyor, `ended` bitti, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            state: "scheduled" | "ongoing" | "ended" | "cancelled";
+                            cancelledAt: string | null;
+                            /** @description İptal gerekçesi (yalnız iptal edilmiş raporda) */
+                            cancelReason: string | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü (işaret, dosya ve iptal) */
+                            version: number;
+                        }[];
+                        meta: {
+                            /** @description Sayfa numarası (1’den başlar) */
+                            page: number;
+                            /** @description Sayfa boyutu */
+                            pageSize: number;
+                            /** @description Filtre uygulanmış toplam kayıt sayısı */
+                            total: number;
+                            /** @description Uygulanan dönem; dönem verilmediyse `null` */
+                            period: {
+                                /** @description Dönem başı (YYYY-MM-DD) */
+                                from: string;
+                                /** @description Dönem sonu (YYYY-MM-DD) */
+                                to: string;
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createMedicalReport: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Raporun ait olduğu personelin kurum üyeliği */
+                    membershipId: string;
+                    /**
+                     * @description `sickness` istirahat (hastalık), `work_accident` iş kazası, `occupational_disease` meslek hastalığı, `maternity` analık
+                     * @enum {string}
+                     */
+                    reportType: "sickness" | "work_accident" | "occupational_disease" | "maternity";
+                    /** @description Rapor başlangıcı (gün, dahil) */
+                    startDate: string;
+                    /** @description Rapor bitişi (gün, dahil); başlangıçtan önce olamaz */
+                    endDate: string;
+                    /**
+                     * @description İsteğe bağlı: `public` devlet, `private` özel sağlık kuruluşu, `family_physician` aile hekimi
+                     * @default null
+                     */
+                    issuerType?: ("public" | "private" | "family_physician") | null;
+                    /**
+                     * @description İsteğe bağlı rapor dosyası (`POST /files`, `purpose: document`, PDF)
+                     * @default null
+                     */
+                    fileId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            membershipId: string;
+                            /** @description Personelin adı */
+                            staffName: string;
+                            /**
+                             * @description `sickness` istirahat (hastalık), `work_accident` iş kazası, `occupational_disease` meslek hastalığı, `maternity` analık
+                             * @enum {string}
+                             */
+                            reportType: "sickness" | "work_accident" | "occupational_disease" | "maternity";
+                            /** @description Başlangıç (YYYY-MM-DD, dahil) */
+                            startDate: string;
+                            /** @description Bitiş (YYYY-MM-DD, dahil) */
+                            endDate: string;
+                            /** @description Takvim günü sayısı, uçlar dahil */
+                            dayCount: number;
+                            /** @description Sorgudaki döneme düşen gün; dönem verilmediyse `null` */
+                            daysInPeriod: number | null;
+                            /** @description Veren kurum türü (isteğe bağlı) */
+                            issuerType: ("public" | "private" | "family_physician") | null;
+                            /** @description Rapor dosyası; `GET /files/{fileId}/url` ile açılır, her açılış denetimde */
+                            fileId: string | null;
+                            /** @description "İşverene bildirildi" işaret anı */
+                            employerNotifiedAt: string | null;
+                            /** @description "SGK sisteminde onaylandı" işaret anı */
+                            sgkApprovedAt: string | null;
+                            /**
+                             * @description Bugüne göre: `scheduled` ileri tarihli, `ongoing` sürüyor, `ended` bitti, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            state: "scheduled" | "ongoing" | "ended" | "cancelled";
+                            cancelledAt: string | null;
+                            /** @description İptal gerekçesi (yalnız iptal edilmiş raporda) */
+                            cancelReason: string | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü (işaret, dosya ve iptal) */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getMedicalReportSummary: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Personel adında arama */
+                q?: string;
+                /** @description `active` etkin, `passive` pasifleştirilmiş (ayrılan) personel */
+                status?: "active" | "passive";
+                /** @description Dönem başı (YYYY-MM-DD); verilmezse bugünün ayı (Europe/Istanbul) */
+                from?: string;
+                /** @description Dönem sonu (YYYY-MM-DD, dahil); verilmezse dönem başının ay sonu. En çok 366 gün */
+                to?: string;
+                /** @description `true` yalnız dönemde raporu olan personel; varsayılan bütün personel */
+                withReports?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            membershipId: string;
+                            name: string;
+                            /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                            role: string;
+                            /** @description Pasifleştirilmiş (ayrılan) personelde `false` */
+                            active: boolean;
+                            /** @description Döneme düşen rapor günü (takvim günü) */
+                            totalDays: number;
+                            /** @description Türe göre döneme düşen gün */
+                            byType: {
+                                sickness: number;
+                                work_accident: number;
+                                occupational_disease: number;
+                                maternity: number;
+                            };
+                            /** @description Dönemle kesişen rapor sayısı */
+                            reportCount: number;
+                            /** @description İşverene bildirildi işareti olmayan rapor */
+                            awaitingNoticeCount: number;
+                            /** @description SGK onayı işareti olmayan rapor */
+                            awaitingSgkCount: number;
+                        }[];
+                        meta: {
+                            /** @description Sayfa numarası (1’den başlar) */
+                            page: number;
+                            /** @description Sayfa boyutu */
+                            pageSize: number;
+                            /** @description Filtre uygulanmış toplam kayıt sayısı */
+                            total: number;
+                            period: {
+                                /** @description Dönem başı (YYYY-MM-DD) */
+                                from: string;
+                                /** @description Dönem sonu (YYYY-MM-DD) */
+                                to: string;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateMedicalReport: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                reportId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Rapor işverene bildirildi (personel raporu verdi) */
+                    employerNotified?: boolean;
+                    /** @description İşveren raporu SGK sisteminde onayladı (çalışmadığına dair bildirim) */
+                    sgkApproved?: boolean;
+                    /** @description Rapor dosyası; `null` eki kaldırır, yeni kimlik eskisinin yerine bağlanır */
+                    fileId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            membershipId: string;
+                            /** @description Personelin adı */
+                            staffName: string;
+                            /**
+                             * @description `sickness` istirahat (hastalık), `work_accident` iş kazası, `occupational_disease` meslek hastalığı, `maternity` analık
+                             * @enum {string}
+                             */
+                            reportType: "sickness" | "work_accident" | "occupational_disease" | "maternity";
+                            /** @description Başlangıç (YYYY-MM-DD, dahil) */
+                            startDate: string;
+                            /** @description Bitiş (YYYY-MM-DD, dahil) */
+                            endDate: string;
+                            /** @description Takvim günü sayısı, uçlar dahil */
+                            dayCount: number;
+                            /** @description Sorgudaki döneme düşen gün; dönem verilmediyse `null` */
+                            daysInPeriod: number | null;
+                            /** @description Veren kurum türü (isteğe bağlı) */
+                            issuerType: ("public" | "private" | "family_physician") | null;
+                            /** @description Rapor dosyası; `GET /files/{fileId}/url` ile açılır, her açılış denetimde */
+                            fileId: string | null;
+                            /** @description "İşverene bildirildi" işaret anı */
+                            employerNotifiedAt: string | null;
+                            /** @description "SGK sisteminde onaylandı" işaret anı */
+                            sgkApprovedAt: string | null;
+                            /**
+                             * @description Bugüne göre: `scheduled` ileri tarihli, `ongoing` sürüyor, `ended` bitti, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            state: "scheduled" | "ongoing" | "ended" | "cancelled";
+                            cancelledAt: string | null;
+                            /** @description İptal gerekçesi (yalnız iptal edilmiş raporda) */
+                            cancelReason: string | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü (işaret, dosya ve iptal) */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelMedicalReport: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                reportId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description İptal gerekçesi (tanı yazılmaz); denetim kaydına yazılmaz */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            membershipId: string;
+                            /** @description Personelin adı */
+                            staffName: string;
+                            /**
+                             * @description `sickness` istirahat (hastalık), `work_accident` iş kazası, `occupational_disease` meslek hastalığı, `maternity` analık
+                             * @enum {string}
+                             */
+                            reportType: "sickness" | "work_accident" | "occupational_disease" | "maternity";
+                            /** @description Başlangıç (YYYY-MM-DD, dahil) */
+                            startDate: string;
+                            /** @description Bitiş (YYYY-MM-DD, dahil) */
+                            endDate: string;
+                            /** @description Takvim günü sayısı, uçlar dahil */
+                            dayCount: number;
+                            /** @description Sorgudaki döneme düşen gün; dönem verilmediyse `null` */
+                            daysInPeriod: number | null;
+                            /** @description Veren kurum türü (isteğe bağlı) */
+                            issuerType: ("public" | "private" | "family_physician") | null;
+                            /** @description Rapor dosyası; `GET /files/{fileId}/url` ile açılır, her açılış denetimde */
+                            fileId: string | null;
+                            /** @description "İşverene bildirildi" işaret anı */
+                            employerNotifiedAt: string | null;
+                            /** @description "SGK sisteminde onaylandı" işaret anı */
+                            sgkApprovedAt: string | null;
+                            /**
+                             * @description Bugüne göre: `scheduled` ileri tarihli, `ongoing` sürüyor, `ended` bitti, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            state: "scheduled" | "ongoing" | "ended" | "cancelled";
+                            cancelledAt: string | null;
+                            /** @description İptal gerekçesi (yalnız iptal edilmiş raporda) */
+                            cancelReason: string | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü (işaret, dosya ve iptal) */
                             version: number;
                         };
                     };

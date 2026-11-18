@@ -57,6 +57,12 @@ const BANK_JOIN = and(
 const studentName = sql<string | null>`${records.data} ->> 'name'`
 const studentClassId = sql<string | null>`${records.data} ->> 'classId'`
 const studentParentId = sql<string | null>`${records.data} ->> 'parentId'`
+/**
+ * Öğrenci kurumda etkin mi: kaydı var, arşivlenmemiş ve `isActive` `false` değil (ayrılış ve
+ * mezuniyet pasifleştirir). Yedekten geçiş etkin olmayanı atlar (K-396).
+ */
+const studentActive = sql<boolean>`(${records.id} is not null and ${records.archivedAt} is null
+  and coalesce(${records.data} ->> 'isActive', 'true') <> 'false')`
 /** Yer tutan katılım: asil ve izin bekleyen (K-369). */
 const SEAT_SQL = sql`${paidActivityParticipants.status} in ('active', 'awaiting_consent')`
 const labelOf = (bankName: string | null, iban: string | null) =>
@@ -456,11 +462,13 @@ export interface OpenParticipant {
   consentStatus: ConsentStatus
   consentChannel: ConsentChannel | null
   version: number
+  /** Öğrenci kurumda etkin mi (K-396); etkin olmayanın yedeği asile geçmez. */
+  studentActive: boolean
 }
 
 /**
  * Etkinliğin iptal edilmemiş (asil, izin bekleyen, yedek) katılımları: kontenjan, mükerrer
- * katılım, yedekten geçiş, izin eşitlemesi ve kurum iptali (K-369, K-370).
+ * katılım, yedekten geçiş, izin eşitlemesi ve kurum iptali (K-369, K-370, K-396).
  */
 export async function openParticipants(
   db: Database,
@@ -478,8 +486,10 @@ export async function openParticipants(
       consentStatus: sql<ConsentStatus>`${paidActivityParticipants.consentStatus}`,
       consentChannel: sql<ConsentChannel | null>`${paidActivityParticipants.consentChannel}`,
       version: paidActivityParticipants.version,
+      studentActive,
     })
     .from(paidActivityParticipants)
+    .leftJoin(records, STUDENT_JOIN)
     .where(
       and(
         liveParticipant(institutionId),
@@ -845,7 +855,8 @@ export interface WithdrawalParticipationRow {
   studentId: string
   name: string
   status: ParticipationStatus
-  invoiceId: string
+  /** Yedek ve izin bekleyende boş (K-369, K-370). */
+  invoiceId: string | null
   feeCents: number
   debtInvoiceId: string | null
   activityDate: string
@@ -857,8 +868,9 @@ export interface WithdrawalParticipationRow {
 }
 
 /**
- * Öğrencinin ayrılışta değerlendirilen katılımları: iptal edilmemişler ve kesinti taksiti olan
- * iptal edilmişler (K-348). Etkinlik günü ve iade koşulları etkinlikten okunur.
+ * Öğrencinin ayrılışta değerlendirilen katılımları: iptal edilmemişler (asil, izin bekleyen, yedek;
+ * K-348, K-395) ve kesinti taksiti olan iptal edilmişler. Etkinlik günü ve iade koşulları
+ * etkinlikten okunur.
  */
 export async function withdrawalParticipations(
   db: Database,
@@ -872,8 +884,7 @@ export async function withdrawalParticipations(
       studentId: paidActivityParticipants.studentId,
       name: paidActivities.name,
       status: sql<ParticipationStatus>`${paidActivityParticipants.status}`,
-      // Asil ya da borçlu katılımın taksiti vardır; yedek ve izin bekleyen sorguya girmez.
-      invoiceId: sql<string>`${paidActivityParticipants.invoiceId}`,
+      invoiceId: paidActivityParticipants.invoiceId,
       feeCents: paidActivityParticipants.feeCents,
       debtInvoiceId: paidActivityParticipants.debtInvoiceId,
       activityDate: paidActivities.activityDate,
@@ -895,8 +906,7 @@ export async function withdrawalParticipations(
       and(
         liveParticipant(institutionId),
         eq(paidActivityParticipants.studentId, studentId),
-        sql`(${paidActivityParticipants.status} = 'active' or ${paidActivityParticipants.debtInvoiceId} is not null)`,
-        isNotNull(paidActivityParticipants.invoiceId),
+        sql`(${paidActivityParticipants.status} <> 'cancelled' or ${paidActivityParticipants.debtInvoiceId} is not null)`,
       ),
     )
     .orderBy(asc(paidActivities.activityDate), asc(paidActivityParticipants.id))

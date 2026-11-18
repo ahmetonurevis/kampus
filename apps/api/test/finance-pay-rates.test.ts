@@ -11,7 +11,6 @@ import { auditLog } from '../src/db/schema/audit-log.ts'
 import { memberships } from '../src/db/schema/auth.ts'
 import { staffPayRates } from '../src/db/schema/finance-pay-rates.ts'
 import { ensureMember } from '../src/services/identity.ts'
-import { payRatesInEffectFor } from '../src/services/finance-pay-rates.ts'
 import {
   buildTestApp,
   createInstitution,
@@ -224,16 +223,6 @@ describe('DOM-FIN-099: personel ücret tanımı uçları', () => {
       (later.effective as Json[]).map((rate) => rate.rateType),
       ['hourly', 'extra', 'meal'],
     )
-    assert.deepEqual(
-      await payRatesInEffectFor({ db, institutionId: t.id }, selin, '2026-10-06').then(
-        (r) => r.severance,
-      ),
-      {
-        grossWageCents: 4_000_000,
-        regularBenefitsCents: 300_000,
-      },
-    )
-
     // Denetimde tutar ve not yok; kapatma ayrı satırdır, her tutarlı okuma kayıtlıdır (K-307).
     const creates = await auditOf(t.id, 'finance.pay_rate.create')
     assert.equal(creates.length, 4)

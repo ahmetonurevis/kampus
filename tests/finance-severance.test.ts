@@ -7,12 +7,13 @@ import {
   INCOME_TAX_METHOD_LABELS,
   NOTICE_STATUS_LABELS,
   noticeWeeks,
-  SEVERANCE_CEILINGS,
   SEVERANCE_EXIT_REASON_INFO,
   SEVERANCE_EXIT_REASONS,
+  SEVERANCE_FALLBACK_CEILINGS,
   SEVERANCE_STATUS_LABELS,
-  severanceCeilingOn,
   severanceEstimate,
+  severanceParametersOn,
+  severancePaySource,
   severanceRequestSchema,
   servicePeriod,
   servicePeriodLabel,
@@ -21,12 +22,17 @@ import {
   severanceNotes,
   severanceWarningCodes,
   severanceWarnings,
-  wageTariffFor,
-  WAGE_INCOME_TAX_TARIFFS,
+  WAGE_INCOME_TAX_FALLBACK_TARIFFS,
   type SeveranceRequestInput,
 } from '../packages/school-core/src/lib/finance-severance.ts'
+import { severancePaySuggestion } from '../packages/school-core/src/lib/finance-pay-rates.ts'
+import {
+  PAYROLL_PLATFORM_DEFAULTS,
+  type PayrollInstitutionSet,
+} from '../packages/school-core/src/lib/finance-payroll-parameters.ts'
 
-// Kıdem ve ihbar tazminatı tahmini (DOM-FIN-094; ON-205). Elle girdili saf hesap; kayıt yok (K-273).
+// Kıdem ve ihbar tazminatı tahmini (DOM-FIN-094; ON-205, ON-341). Saf hesap; kayıt yok (K-273).
+// Tavan, dilim ve damga oranı çıkış günündeki bordro parametre setinden (K-344).
 
 const input = (overrides: Partial<SeveranceRequestInput> = {}): SeveranceRequestInput => ({
   startDate: '2023-01-02',
@@ -108,17 +114,21 @@ test('DOM-FIN-094: tavan dönem sınırında değişir; aynı ücret 30 Haziran 
   assert.equal(equal.severance.ceilingApplied, false)
 })
 
-test('DOM-FIN-094: tavan tablosu sıralı ve son dönemden altı ay sonra güncel değil uyarısı verir', () => {
-  for (let index = 1; index < SEVERANCE_CEILINGS.length; index += 1)
-    assert.ok((SEVERANCE_CEILINGS[index - 1]?.from ?? '') < (SEVERANCE_CEILINGS[index]?.from ?? ''))
-  assert.deepEqual(severanceCeilingOn('2026-06-30'), {
+test('DOM-FIN-094: tavan yarıyılda değişir; son setin yarıyılından sonra güncel değil uyarısı (K-344)', () => {
+  for (let index = 1; index < SEVERANCE_FALLBACK_CEILINGS.length; index += 1)
+    assert.ok(
+      (SEVERANCE_FALLBACK_CEILINGS[index - 1]?.from ?? '') <
+        (SEVERANCE_FALLBACK_CEILINGS[index]?.from ?? ''),
+    )
+  assert.deepEqual(severanceParametersOn('2026-06-30').ceiling, {
     from: '2026-01-01',
     monthlyCents: 6_494_877,
     stale: false,
   })
-  assert.equal(severanceCeilingOn('2026-07-01').stale, true)
-  assert.equal(severanceCeilingOn('2025-12-31').stale, false)
-  assert.throws(() => severanceCeilingOn('2021-12-31'), RangeError)
+  assert.equal(severanceParametersOn('2026-07-01').ceiling.stale, true)
+  assert.equal(severanceParametersOn('2025-12-31').ceiling.stale, false)
+  assert.equal(severanceParametersOn('2024-12-31').ceiling.stale, false)
+  assert.throws(() => severanceParametersOn('2021-12-31'), RangeError)
   const stale = severanceEstimate(input({ endDate: '2026-11-15' }))
   assert.equal(stale.severance.ceiling.stale, true)
   assert.match(severanceWarnings(stale).join(' '), /1 Ocak 2026 dönemi tavanı/)
@@ -265,14 +275,17 @@ test('DOM-FIN-094: ihbarda gelir vergisi; matrah yoksa ilk dilim, girilirse dili
   assert.equal(zero.notice.incomeTaxCents, 630_000)
 })
 
-test('DOM-FIN-094: tarife yılı tabloda yoksa en yakın önceki yıl kullanılır ve uyarı verilir', () => {
-  assert.deepEqual(Object.keys(WAGE_INCOME_TAX_TARIFFS), ['2022', '2023', '2024', '2025', '2026'])
-  assert.equal(wageTariffFor(2024).stale, false)
+test('DOM-FIN-094: çıkış yılı için set yoksa son setin dilimleri kullanılır ve uyarı verilir', () => {
+  assert.deepEqual(Object.keys(WAGE_INCOME_TAX_FALLBACK_TARIFFS), ['2022', '2023', '2024'])
+  assert.equal(severanceParametersOn('2024-05-01').tariff.stale, false)
+  assert.equal(severanceParametersOn('2024-05-01').tariff.year, 2024)
   assert.deepEqual(
-    { year: wageTariffFor(2027).year, stale: wageTariffFor(2027).stale },
+    {
+      year: severanceParametersOn('2027-02-01').tariff.year,
+      stale: severanceParametersOn('2027-02-01').tariff.stale,
+    },
     { year: 2026, stale: true },
   )
-  assert.equal(wageTariffFor(2010).year, 2022)
   const later = severanceEstimate(
     input({ endDate: '2027-02-01', cumulativeTaxBaseCents: 1_000_000 }),
   )
@@ -383,4 +396,323 @@ test('DOM-FIN-094: döküm satırları, dayanaklar ve notlar ekran ile PDF için
   assert.equal(givenFacts['İhbarda gelir vergisi'], 'Gelir vergisi yok')
   assert.equal(givenFacts['Kıdem tavanı'], '46.655,43 ₺ (1 Ocak 2025 dönemi)')
   assert.deepEqual(severanceBreakdownRows(given)[0], ['Hak', 'Yok', 'Yok', '—'])
+})
+
+// --- ON-341: bordro parametresinden tavan ve dilim, ücret tanımından öneri ----------------------
+
+const PLATFORM_2026 = PAYROLL_PLATFORM_DEFAULTS.find((set) => set.effectiveFrom === '2026-01-01')
+if (!PLATFORM_2026) throw new Error('2026 platform seti yok')
+
+/** Kurum kopyası: 2026 platform değerleri üstüne değişiklik. */
+const institutionSet = (overrides: Partial<PayrollInstitutionSet> = {}): PayrollInstitutionSet => ({
+  effectiveFrom: PLATFORM_2026.effectiveFrom,
+  minimumWageGrossCents: PLATFORM_2026.minimumWageGrossCents,
+  incomeTaxBrackets: PLATFORM_2026.incomeTaxBrackets.map((bracket) => ({ ...bracket })),
+  sgkEmployeeRateBasisPoints: PLATFORM_2026.sgkEmployeeRateBasisPoints,
+  sgkEmployerRateBasisPoints: PLATFORM_2026.sgkEmployerRateBasisPoints,
+  sgkEmployerIncentiveBasisPoints: PLATFORM_2026.sgkEmployerIncentiveBasisPoints,
+  unemploymentEmployeeRateBasisPoints: PLATFORM_2026.unemploymentEmployeeRateBasisPoints,
+  unemploymentEmployerRateBasisPoints: PLATFORM_2026.unemploymentEmployerRateBasisPoints,
+  sgkFloorMultiplierBasisPoints: PLATFORM_2026.sgkFloorMultiplierBasisPoints,
+  sgkCeilingMultiplierBasisPoints: PLATFORM_2026.sgkCeilingMultiplierBasisPoints,
+  stampTaxRatePer100k: PLATFORM_2026.stampTaxRatePer100k,
+  minimumWageIncomeTaxExempt: PLATFORM_2026.minimumWageIncomeTaxExempt,
+  minimumWageStampTaxExempt: PLATFORM_2026.minimumWageStampTaxExempt,
+  severanceCeilingCents: PLATFORM_2026.severanceCeilingCents,
+  source: PLATFORM_2026.source,
+  id: 'set-kurum',
+  version: 1,
+  ...overrides,
+})
+
+/** ON-205'teki sabit tablolar: parametre setine geçiş bu değerleri değiştirmemelidir. */
+const ON205_CEILINGS = [
+  ['2022-01-01', 1_084_859],
+  ['2022-07-01', 1_537_140],
+  ['2023-01-01', 1_998_283],
+  ['2023-07-01', 2_348_983],
+  ['2024-01-01', 3_505_858],
+  ['2024-07-01', 4_182_842],
+  ['2025-01-01', 4_665_543],
+  ['2025-07-01', 5_391_968],
+  ['2026-01-01', 6_494_877],
+] as const
+const ON205_TARIFF_LIMITS: Readonly<Record<number, readonly number[]>> = {
+  2022: [3_200_000, 7_000_000, 25_000_000, 88_000_000],
+  2023: [7_000_000, 15_000_000, 55_000_000, 190_000_000],
+  2024: [11_000_000, 23_000_000, 87_000_000, 300_000_000],
+  2025: [15_800_000, 33_000_000, 120_000_000, 430_000_000],
+  2026: [19_000_000, 40_000_000, 150_000_000, 530_000_000],
+}
+
+test('DOM-FIN-094: geriye dönük — kurum seti yokken her dönemin tavanı, dilimleri ve damga oranı ON-205 tablosuyla aynı (K-344)', () => {
+  for (const [from, monthlyCents] of ON205_CEILINGS)
+    for (const day of [from, addMonthsClamped(from, 5).slice(0, 8) + '28']) {
+      const parameters = severanceParametersOn(day)
+      assert.equal(parameters.ceiling.monthlyCents, monthlyCents, `tavan ${day}`)
+      assert.equal(parameters.ceiling.from, from, `dönem ${day}`)
+      assert.equal(parameters.stampTaxRatePer100k, 759, `damga ${day}`)
+      const limits = ON205_TARIFF_LIMITS[Number(day.slice(0, 4))]
+      assert.deepEqual(
+        parameters.tariff.brackets.map((bracket) => bracket.upToCents),
+        [...(limits ?? []), null],
+        `dilimler ${day}`,
+      )
+      assert.equal(parameters.source, from < '2025-01-01' ? 'fallback_table' : 'payroll_parameters')
+    }
+  // Bilinen bir hesabın tutarları kuruşu kuruşuna aynıdır (ekran ve PDF'teki eski sonuç).
+  const old = severanceEstimate(
+    input({
+      startDate: '2020-03-15',
+      endDate: '2025-09-30',
+      grossWageCents: 5_000_000,
+      regularBenefitsCents: 500_000,
+    }),
+  )
+  assert.equal(old.totals.netCents, 38_336_036)
+  assert.deepEqual(old.parameters, {
+    source: 'payroll_parameters',
+    setId: 'platform-2025-07-01',
+    origin: 'platform',
+    version: null,
+    effectiveFrom: '2025-07-01',
+    stampTaxRatePer100k: 759,
+  })
+  assert.equal(old.paySource, null)
+  const early = severanceEstimate(input({ startDate: '2021-01-04', endDate: '2023-08-31' }))
+  assert.equal(early.parameters.source, 'fallback_table')
+  assert.equal(early.parameters.setId, null)
+  assert.equal(early.severance.ceiling.monthlyCents, 2_348_983)
+})
+
+test('DOM-FIN-094: tavan aşımı kurumun çıkış günündeki setinin tavanıyla; kurum seti platformun yerini alır (K-344)', () => {
+  const sets = [institutionSet({ effectiveFrom: '2026-01-01', severanceCeilingCents: 6_000_000 })]
+  const request = input({
+    startDate: '2021-01-01',
+    endDate: '2026-03-31',
+    grossWageCents: 8_000_000,
+  })
+  const own = severanceEstimate(request, { parameters: severanceParametersOn('2026-03-31', sets) })
+  assert.equal(own.severance.ceilingApplied, true)
+  assert.equal(own.severance.baseMonthlyCents, 6_000_000)
+  assert.equal(own.parameters.origin, 'institution')
+  assert.equal(own.parameters.setId, 'set-kurum')
+  assert.equal(own.parameters.version, 1)
+  const platform = severanceEstimate(request)
+  assert.equal(platform.severance.baseMonthlyCents, 6_494_877)
+  assert.ok(own.severance.grossCents < platform.severance.grossCents)
+  assert.equal(
+    Object.fromEntries(severanceFacts(own))['Parametre kaynağı'],
+    'Kurumun bordro parametresi, 1 Ocak 2026 dönemi',
+  )
+  assert.equal(
+    Object.fromEntries(severanceFacts(platform))['Parametre kaynağı'],
+    'Platformun bordro parametresi, 1 Ocak 2026 dönemi',
+  )
+  // Damga oranı ve dilimler de setten gelir.
+  const stamp = severanceEstimate(request, {
+    parameters: severanceParametersOn('2026-03-31', [
+      institutionSet({
+        stampTaxRatePer100k: 1000,
+        incomeTaxBrackets: [
+          { lowerBoundCents: 0, rateBasisPoints: 1000 },
+          { lowerBoundCents: 50_000_000, rateBasisPoints: 2000 },
+        ],
+      }),
+    ]),
+  })
+  assert.equal(stamp.severance.stampTaxCents, Math.round(stamp.severance.grossCents / 100))
+  assert.equal(stamp.notice.incomeTaxCents, Math.round(stamp.notice.grossCents / 10))
+  assert.equal(Object.fromEntries(severanceFacts(stamp))['Damga vergisi oranı'], 'binde 10')
+})
+
+test('DOM-FIN-094: yıl ortası (temmuz) tavan değişimi: 30 Haziran eski, 1 Temmuz yeni set; temmuz seti yoksa uyarı (K-344, H-44)', () => {
+  const july = institutionSet({
+    id: 'set-temmuz',
+    effectiveFrom: '2026-07-01',
+    severanceCeilingCents: 7_500_000,
+  })
+  const request = (endDate: string) =>
+    input({ startDate: '2020-01-01', endDate, grossWageCents: 10_000_000 })
+  const june30 = severanceEstimate(request('2026-06-30'), {
+    parameters: severanceParametersOn('2026-06-30', [july]),
+  })
+  const july1 = severanceEstimate(request('2026-07-01'), {
+    parameters: severanceParametersOn('2026-07-01', [july]),
+  })
+  assert.equal(june30.severance.ceiling.monthlyCents, 6_494_877)
+  assert.equal(june30.severance.ceiling.stale, false)
+  assert.equal(july1.severance.ceiling.monthlyCents, 7_500_000)
+  assert.equal(july1.severance.ceiling.from, '2026-07-01')
+  assert.equal(july1.severance.ceiling.stale, false)
+  assert.deepEqual(severanceWarningCodes(july1), [])
+  // Temmuz seti girilmemişse ocak tavanı kullanılır ve uyarı verilir.
+  const missing = severanceEstimate(request('2026-07-01'))
+  assert.equal(missing.severance.ceiling.monthlyCents, 6_494_877)
+  assert.deepEqual(severanceWarningCodes(missing), ['ceiling_stale'])
+  // Yıl içi (mart) asgari ücret seti tavanı taşır; aynı yarıyılda uyarı yok.
+  const march = institutionSet({ id: 'set-mart', effectiveFrom: '2026-03-01' })
+  assert.equal(severanceParametersOn('2026-05-31', [march]).ceiling.stale, false)
+  assert.equal(severanceParametersOn('2026-08-31', [march]).ceiling.stale, true)
+})
+
+test('DOM-FIN-094: saklanan sonuç değişmez — sonradan eklenen ya da değişen set önceki çıkış gününün sonucunu etkilemez (K-346)', () => {
+  const request = input({
+    startDate: '2019-05-06',
+    endDate: '2026-03-31',
+    grossWageCents: 9_000_000,
+  })
+  const before = severanceEstimate(request, { parameters: severanceParametersOn('2026-03-31', []) })
+  const snapshot = structuredClone(before)
+  const laterSets = [
+    institutionSet({
+      id: 'set-temmuz',
+      effectiveFrom: '2026-07-01',
+      severanceCeilingCents: 9_999_999,
+    }),
+  ]
+  const after = severanceEstimate(request, {
+    parameters: severanceParametersOn('2026-03-31', laterSets),
+  })
+  assert.deepEqual(after, before)
+  // Yanıt, parametre nesnesine bağlı değildir: sonradan değişen nesne eski sonucu bozmaz.
+  const parameters = severanceParametersOn('2026-03-31', [])
+  const result = severanceEstimate(request, { parameters })
+  parameters.ceiling.monthlyCents = 1
+  parameters.stampTaxRatePer100k = 1
+  assert.deepEqual(result, snapshot)
+})
+
+const RATES = [
+  {
+    id: 'w-0001-aaaa',
+    component: 'wage' as const,
+    rateType: 'monthly_gross',
+    amountCents: 6_000_000,
+    startDate: '2025-09-01',
+    endDate: null,
+    benefitForm: null,
+  },
+  {
+    id: 'b-yol-0001',
+    component: 'benefit' as const,
+    rateType: 'transport',
+    amountCents: 250_000,
+    startDate: '2025-09-01',
+    endDate: null,
+    benefitForm: 'cash' as const,
+  },
+  {
+    id: 'b-yemek-01',
+    component: 'benefit' as const,
+    rateType: 'meal',
+    amountCents: 400_000,
+    startDate: '2025-09-01',
+    endDate: null,
+    benefitForm: 'in_kind' as const,
+  },
+  {
+    id: 'l-ek-00001',
+    component: 'lesson' as const,
+    rateType: 'extra',
+    amountCents: 50_000,
+    startDate: '2025-09-01',
+    endDate: null,
+    benefitForm: null,
+  },
+]
+
+test('DOM-FIN-094: öneri kaynağı sonuçta: tanım kimliği, başlangıç günü, ayni hariç; elle değişiklik işaretlenir (K-345, K-346)', () => {
+  const request = input({
+    startDate: '2022-09-01',
+    endDate: '2026-06-30',
+    grossWageCents: 6_000_000,
+    regularBenefitsCents: 250_000,
+  })
+  const suggestion = severancePaySuggestion(RATES, '2026-06-30')
+  const source = severancePaySource(
+    'm-1',
+    '2026-06-30',
+    suggestion,
+    severanceRequestSchema.parse(request),
+  )
+  assert.deepEqual(source, {
+    membershipId: 'm-1',
+    date: '2026-06-30',
+    status: 'suggested',
+    wageRateId: 'w-0001-aaaa',
+    wageRateType: 'monthly_gross',
+    wageStartDate: '2025-09-01',
+    benefitRateIds: ['b-yol-0001'],
+    excludedBenefitCount: 1,
+    suggestedGrossWageCents: 6_000_000,
+    suggestedBenefitsCents: 250_000,
+    grossWageChanged: false,
+    benefitsChanged: false,
+  })
+  const result = severanceEstimate(request, { paySource: source })
+  assert.equal(result.wage.dressedWageCents, 6_250_000)
+  const facts = Object.fromEntries(severanceFacts(result))
+  assert.equal(
+    facts['Ücret kaynağı'],
+    'Ücret tanımı: Aylık brüt, 1 Eylül 2025 başlangıçlı (tanım w-0001-a), 30 Haziran 2026 günü geçerli',
+  )
+  assert.equal(facts['Yan ödeme kaynağı'], '1 nakdi yan hak (tanım b-yol-00), 1 ayni yan hak hariç')
+  assert.deepEqual(severanceWarningCodes(result), [])
+
+  const edited = severancePaySource(
+    'm-1',
+    '2026-06-30',
+    suggestion,
+    severanceRequestSchema.parse({ ...request, grossWageCents: 6_100_000 }),
+  )
+  assert.equal(edited.grossWageChanged, true)
+  assert.equal(edited.benefitsChanged, false)
+  assert.match(
+    Object.fromEntries(
+      severanceFacts(
+        severanceEstimate({ ...request, grossWageCents: 6_100_000 }, { paySource: edited }),
+      ),
+    )['Ücret kaynağı'] ?? '',
+    /; öneri değiştirildi$/,
+  )
+  // Personel seçilmediyse kaynak elle girilmiştir.
+  assert.equal(
+    Object.fromEntries(severanceFacts(severanceEstimate(request)))['Ücret kaynağı'],
+    'Elle girildi',
+  )
+})
+
+test('DOM-FIN-094: net tanımlı ücrette öneri yapılmaz; sonuç uyarı taşır (K-345, M-39)', () => {
+  const net = RATES.map((rate) =>
+    rate.id === 'w-0001-aaaa' ? { ...rate, rateType: 'monthly_net' } : rate,
+  )
+  const suggestion = severancePaySuggestion(net, '2026-06-30')
+  assert.equal(suggestion.status, 'net_wage')
+  assert.equal(suggestion.grossWageCents, null)
+  assert.equal(suggestion.regularBenefitsCents, null)
+  const request = input({
+    startDate: '2022-09-01',
+    endDate: '2026-06-30',
+    grossWageCents: 7_000_000,
+  })
+  const source = severancePaySource(
+    'm-1',
+    '2026-06-30',
+    suggestion,
+    severanceRequestSchema.parse(request),
+  )
+  assert.equal(source.wageRateType, 'monthly_net')
+  assert.equal(source.grossWageChanged, true)
+  const result = severanceEstimate(request, { paySource: source })
+  assert.deepEqual(severanceWarningCodes(result), ['pay_suggestion_unavailable'])
+  assert.deepEqual(severanceWarnings(result), [
+    'Ücret tanımından öneri yapılmadı (ana ücret net tanımlı, brüte çevrilmez); hesap elle girilen ücretle yapıldı.',
+  ])
+  assert.equal(
+    Object.fromEntries(severanceFacts(result))['Ücret kaynağı'],
+    'Ücret tanımından öneri yapılmadı (aylık net); elle girildi',
+  )
+  assert.equal(Object.fromEntries(severanceFacts(result))['Yan ödeme kaynağı'], undefined)
+  assert.equal(severancePaySuggestion([], '2026-06-30').status, 'no_wage')
 })

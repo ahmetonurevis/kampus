@@ -12,6 +12,7 @@ import type { SettingsEntry } from './settings-tabs.ts'
 // Onur: kayıt ve finans
 import { FinancePurchaseApprovalSettings } from './FinancePurchaseApprovalSettings.tsx'
 import { PaymentSettingsSection } from './PaymentSettingsSection.tsx'
+import { ProspectDocumentTypeSettings } from './ProspectDocumentTypeSettings.tsx'
 
 const ONUR_SETTINGS_SECTIONS: readonly SettingsEntry<ComponentType>[] = [
   // Nakit tahsilat ve banka hesapları kendi sekmesindedir; finans kapalıysa sekme de kapanır.
@@ -35,6 +36,17 @@ const ONUR_SETTINGS_SECTIONS: readonly SettingsEntry<ComponentType>[] = [
     module: 'finance',
     order: 29,
     component: FinancePurchaseApprovalSettings,
+  },
+  // Aday belge türü listesi (ON-263, K-320); aday modülü (crm) kapalıysa sekme kapanır.
+  {
+    kind: 'tab',
+    id: 'prospect-documents',
+    label: 'Aday belgeleri',
+    param: 'aday-belgeleri',
+    roles: ['yonetici'],
+    module: 'crm',
+    order: 27,
+    component: ProspectDocumentTypeSettings,
   },
 ]
 // Onur: kayıt ve finans sonu

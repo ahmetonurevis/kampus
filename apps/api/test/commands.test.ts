@@ -135,6 +135,10 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // Personel belgesi yıl bazlı numara keser; çift tıklama ikinci belge açmaz
   // (routes/finance-staff-certificates.ts; DOM-FIN-106).
   'POST /api/v1/finance/staff-certificates',
+  // Etkinlik bileti iadesinin ödendiği işareti ve girişi geri alma; çift tıklama ikinci iade ya da
+  // ikinci geri alma izi yazmaz (routes/finance-event-tickets.ts; DOM-FIN-103, ON-345).
+  'POST /api/v1/finance/event-tickets/{ticketId}/refund',
+  'POST /api/v1/finance/event-tickets/{ticketId}/undo-check-in',
 ]
 // Onur: kayıt ve finans sonu
 

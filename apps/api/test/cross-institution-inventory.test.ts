@@ -2364,6 +2364,16 @@ const FINANCE: Readonly<Record<string, Proof>> = {
           'POST /api/v1/finance/event-tickets/:ticketId/cancel',
           'cancel(a.admin, bTicket)',
         ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/event-tickets/:ticketId/refund',
+          'refund(a.admin, bTicket)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/event-tickets/:ticketId/undo-check-in',
+          'undo(a.admin, bTicket)',
+        ],
       ] as const
     ).map(([kind, key, marker]) => [
       key,

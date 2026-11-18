@@ -40,6 +40,7 @@ const EVENT: TicketedEventRow = {
     { key: 'k2', name: 'Veli bileti', kind: 'paid', priceCents: 15050 },
   ],
   perStudentLimit: 2,
+  limitScope: 'student',
   salesOpen: true,
   totalCapacity: 10,
   activeCount: 1,
@@ -48,6 +49,8 @@ const EVENT: TicketedEventRow = {
   usedCount: 0,
   unpaidCount: 0,
   collectedCents: 15050,
+  pendingRefundCount: 0,
+  pendingRefundCents: 0,
   takenSeats: ['B2'],
   version: 3,
 }
@@ -68,11 +71,16 @@ const TICKET: EventTicketRow = {
   paymentStatus: 'paid',
   paymentMethod: 'transfer',
   paidAt: '2026-11-16T09:00:00.000Z',
+  refundCents: null,
+  refundMethod: null,
   refundedAt: null,
+  refundStatus: 'none',
   usedAt: null,
   cancelledAt: null,
   cancelReason: null,
   state: 'valid',
+  checkInUndoCount: 0,
+  canUndoCheckIn: false,
   createdAt: '2026-11-16T08:00:00.000Z',
   version: 2,
 }
@@ -90,7 +98,7 @@ test('DOM-FIN-103: başlangıç Türkiye saatiyle girilir; fiyat TL metninden ku
   assert.equal(priceTextOf(0), '0')
 })
 
-test('DOM-FIN-103, K-325: düzeltme formu etkinlikten dolar ve aynı gövdeye döner', () => {
+test('DOM-FIN-103, K-325, K-379: düzeltme formu etkinlikten dolar ve aynı gövdeye döner; sınır kapsamı taşınır', () => {
   const values = eventDefaults(EVENT)
   assert.equal(values.blockedSeats, 'A1, C4')
   assert.equal(values.startsAt, '2026-12-20T16:00')
@@ -108,7 +116,11 @@ test('DOM-FIN-103, K-325: düzeltme formu etkinlikten dolar ve aynı gövdeye d�
     [general.rowCount, general.seatsPerRow, general.blockedSeats, general.capacity],
     [null, null, [], 200],
   )
+  assert.equal(body.limitScope, 'student')
+  assert.equal(eventBody({ ...values, limitScope: 'family' }).limitScope, 'family')
+  assert.equal(eventDefaults({ ...EVENT, limitScope: 'family' }).limitScope, 'family')
   const fresh = eventDefaults()
+  assert.equal(fresh.limitScope, 'student')
   assert.equal(fresh.ticketTypes[0]?.kind, 'invitation')
   assert.equal(eventBody({ ...fresh, startsAt: '2026-12-01T10:00' }).ticketTypes[0]?.key, undefined)
 })
@@ -128,6 +140,7 @@ test('DOM-FIN-103, K-325: form eksik düzeni ve geçersiz fiyatı yakalar; sunuc
   )
   assert.equal(eventFormField('blockedSeats.1'), 'blockedSeats')
   assert.equal(eventFormField('ticketTypes.0.priceCents'), 'ticketTypes')
+  assert.equal(eventFormField('limitScope'), 'limitScope')
   assert.equal(eventFormField('salesOpen'), null)
 })
 

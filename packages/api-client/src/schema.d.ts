@@ -3715,7 +3715,7 @@ export interface paths {
         put?: never;
         /**
          * Ayrılış ve iade hesabını önizle
-         * @description Hiçbir kayıt yazmaz. Taban sözleşmenin net ücretidir; kesinti %10, dönem başladıysa kullanım `taban × görülen / toplam` (okulda ders günü, dil okulunda ders saati; yönetici girer). Hak edilen tabanı aşamaz; ödenen azsa iade sıfır, kalan borçtur. Ek hizmetin kullanılmayan kısmı iade edilir (DOM-FIN-040; oranlar ve taban doğrulanmalı). Paket satışında kullanım kayıtlı saatten gelir; saat girilmemişse satır `usedHoursMissing` taşır ve hesap sıfır saate dayanır (K-21). İleri tarih 422 `withdrawal_date_in_future`; görülen toplamı aşarsa 422 `attended_exceeds_total`; dönem başlamadan görülen birim 422 `attended_before_term`; kesintisiz iade yalnız okulda ve dönem başlamadan (422 `exemption_not_applicable`). Sözleşme yoksa 422 `withdrawal_contract_missing`. Roller: `yonetici`, `onburo`.
+         * @description Hiçbir kayıt yazmaz. Taban sözleşmenin net ücretidir; kesinti %10, dönem başladıysa kullanım `taban × görülen / toplam` (okulda ders günü, dil okulunda ders saati; yönetici girer). Hak edilen tabanı aşamaz; ödenen azsa iade sıfır, kalan borçtur. Ek hizmetin kullanılmayan kısmı iade edilir (DOM-FIN-040; oranlar ve taban doğrulanmalı). Paket satışında kullanım kayıtlı saatten gelir; saat girilmemişse satır `usedHoursMissing` taşır ve hesap sıfır saate dayanır (K-21). İleri tarih 422 `withdrawal_date_in_future`; görülen toplamı aşarsa 422 `attended_exceeds_total`; dönem başlamadan görülen birim 422 `attended_before_term`; kesintisiz iade yalnız okulda ve dönem başlamadan (422 `exemption_not_applicable`). Sözleşme yoksa 422 `withdrawal_contract_missing`. Ayrılış gününde yürürlükteki burs kesmesi ya da iptali burslu istisnasını kaldırır, kalkan pay tabana eklenir (`contracts[].scholarshipEnd`, K-350); geri isteme alacağı `scholarshipClawbacks` satırıdır, iade ve borca girmez (K-351). Etkinlik katılımları `activities` alanındadır: etkinliği ayrılış gününden sonra olan katılım ayrılış gününe göre etkinliğin kuralıyla iptal edilir, gerçekleşmişin ödenmemiş kısmı borç kalır; iade ve borca girmez (K-348, K-349). Roller: `yonetici`, `onburo`.
          */
         post: operations["quoteWithdrawal"];
         delete?: never;
@@ -3735,7 +3735,7 @@ export interface paths {
         put?: never;
         /**
          * Öğrencinin ayrılışını onayla
-         * @description Tek işlemde öğrenciyi pasifleştirir, açık taksitleri iptal eder, borç kalırsa tek taksit açar, ileri tarihli etüt, servis ve kulüp kayıtlarını sonlandırır, planlanmış yenilemeyi iptal eder, iptal edilen burslu yenilemenin burs atamasını arşivleyip açık fonlardan karşılanan payını sistem gerekçesiyle bakiyeye döndürür (K-117) ve iade kaydını oluşturur (DOM-FIN-041, DOM-KAY-024). Paket satışı hesaba giriyorsa iade tutarı yönetici onayından geçer (K-21): önizlemede görülen tutar `approvedRefundCents` ile gelir, yoksa 422 `withdrawal_refund_approval_required`, tutar değiştiyse 409 `withdrawal_refund_changed`; kullanılan saat girilmemişse satır `usedHoursMissing` taşır. Pasif öğrenci 409 `student_already_withdrawn`; tahsilatı olan yenileme 409 `withdrawal_renewal_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Rol: `yonetici`.
+         * @description Tek işlemde öğrenciyi pasifleştirir, açık taksitleri iptal eder, borç kalırsa tek taksit açar, ileri tarihli etüt, servis ve kulüp kayıtlarını sonlandırır, planlanmış yenilemeyi iptal eder, iptal edilen burslu yenilemenin burs atamasını arşivleyip açık fonlardan karşılanan payını sistem gerekçesiyle bakiyeye döndürür (K-117), etkinliği ayrılış gününden sonra olan katılımı etkinliğin kuralıyla iptal eder (iade katılım kaydından ödenir, kesinti farkı etkinlik taksiti olur; K-348) ve iade kaydını oluşturur (DOM-FIN-041, DOM-KAY-024). Etkinlik taksiti ve burs geri isteme alacağı iptal edilmez (K-349, K-351). Paket satışı hesaba giriyorsa iade tutarı yönetici onayından geçer (K-21): önizlemede görülen tutar `approvedRefundCents` ile gelir, yoksa 422 `withdrawal_refund_approval_required`, tutar değiştiyse 409 `withdrawal_refund_changed`; kullanılan saat girilmemişse satır `usedHoursMissing` taşır. Pasif öğrenci 409 `student_already_withdrawn`; tahsilatı olan yenileme 409 `withdrawal_renewal_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Rol: `yonetici`.
          */
         post: operations["withdrawStudent"];
         delete?: never;
@@ -6927,7 +6927,7 @@ export interface paths {
         put?: never;
         /**
          * Biletli etkinlik aç
-         * @description Gösteri ya da tören için etkinlik açar (DOM-FIN-103, K-325): Ad (2–120), başlangıç anı (ISO 8601, gelecekte; 422 `event_starts_in_past`), salon (2–120), isteğe bağlı okul takvimi etkinliği (`schoolEventId`; kurumda yoksa 422 `event_school_event_not_found`), oturma düzeni: `seated` sıra sayısı (1–26, A–Z) × sıra başına koltuk (1–60) ve kapalı koltuklar (`A1` biçimi) ya da `general` kontenjan (1–5000); bilet türleri (1–5; `invitation` fiyat 0, `paid` fiyat > 0 kuruş, ad tekil) ve öğrenci başına üst sınır (1–20, boşsa sınırsız). Satış açık başlar. Rol: `yonetici` (K-324). Modül `finance`.
+         * @description Gösteri ya da tören için etkinlik açar (DOM-FIN-103, K-325): Ad (2–120), başlangıç anı (ISO 8601, gelecekte; 422 `event_starts_in_past`), salon (2–120), isteğe bağlı okul takvimi etkinliği (`schoolEventId`; kurumda yoksa 422 `event_school_event_not_found`), oturma düzeni: `seated` sıra sayısı (1–26, A–Z) × sıra başına koltuk (1–60) ve kapalı koltuklar (`A1` biçimi) ya da `general` kontenjan (1–5000); bilet türleri (1–5; `invitation` fiyat 0, `paid` fiyat > 0 kuruş, ad tekil) ve öğrenci ya da aile başına üst sınır (1–20, boşsa sınırsız; `limitScope` `student` ya da `family`, K-379). Satış açık başlar. Rol: `yonetici` (K-324). Modül `finance`.
          */
         post: operations["createTicketedEvent"];
         delete?: never;
@@ -6979,7 +6979,7 @@ export interface paths {
         put?: never;
         /**
          * Öğrenci ailesine bilet ayır
-         * @description Bir öğrencinin ailesine 1–10 bilet ayırır (K-325): bilet başına tür, bilet sahibinin adı (veli ya da misafir) ve numaralı salonda koltuk. Satış kapalıysa 422 `event_sales_closed`; öğrenci kurumda yoksa 422 `event_ticket_student_not_found` (başka kurumun öğrencisi de), etkin değilse `event_ticket_student_inactive`. Koltuk: eksik `event_seat_required`, salonda yok `event_seat_unknown`, kapalı `event_seat_blocked`, istekte iki kez `event_seat_duplicate`, başka bilette 409 `event_seat_taken` (eşzamanlı ayırma kurum kilidiyle sıraya girer; kısmi tekil indeks son güvencedir). Numarasızda koltuk 422 `event_seat_not_allowed`, kontenjan aşımı `event_sold_out`; öğrenci başına üst sınır `event_ticket_limit_exceeded` (iptal edilen bilet sayılmaz). Ücretli bilet ödenmemiş başlar. Her bilete tahmin edilemez kod verilir (K-326). `Idempotency-Key` zorunlu. Roller: `yonetici`, `onburo` (K-324). Modül `finance`.
+         * @description Bir öğrencinin ailesine 1–10 bilet ayırır (K-325): bilet başına tür, bilet sahibinin adı (veli ya da misafir) ve numaralı salonda koltuk. Satış kapalıysa 422 `event_sales_closed`; öğrenci kurumda yoksa 422 `event_ticket_student_not_found` (başka kurumun öğrencisi de), etkin değilse `event_ticket_student_inactive`. Koltuk: eksik `event_seat_required`, salonda yok `event_seat_unknown`, kapalı `event_seat_blocked`, istekte iki kez `event_seat_duplicate`, başka bilette 409 `event_seat_taken` (eşzamanlı ayırma kurum kilidiyle sıraya girer; kısmi tekil indeks son güvencedir). Numarasızda koltuk 422 `event_seat_not_allowed`, kontenjan aşımı `event_sold_out`; üst sınır aşımı `event_ticket_limit_exceeded` (iptal edilen bilet sayılmaz; aile kapsamında aynı veliye bağlı kardeşlerin biletleri birlikte sayılır ve kardeş kümesi kurum kilidi altında okunur, K-379). Ücretli bilet ödenmemiş başlar. Her bilete tahmin edilemez kod verilir (K-326). `Idempotency-Key` zorunlu. Roller: `yonetici`, `onburo` (K-324). Modül `finance`.
          */
         post: operations["allocateEventTickets"];
         delete?: never;
@@ -7039,9 +7039,49 @@ export interface paths {
         put?: never;
         /**
          * Bileti iptal et
-         * @description Bileti iptal eder; koltuk boşa çıkar ve yeniden ayrılabilir (K-326). Ödenmiş biletin bedeli iptalle elle iade edilmiş sayılır (`refundedAt`; kısmi iade yok), bu yüzden taze oturum ister (eskiyse 403 `reauthentication_required`). Kullanılmış bilet 422 `event_ticket_used`, iptal edilmiş 409 `event_ticket_already_cancelled`. İsteğe bağlı not (≤ 200) denetime yazılmaz. Başka kurumun bileti 404. `Idempotency-Key` zorunlu; `If-Match` verilirse biletin sürümüdür. Roller: `yonetici`, `onburo` (K-324). Modül `finance`.
+         * @description Bileti iptal eder; koltuk boşa çıkar ve yeniden ayrılabilir (K-326). Ödenmiş bilette iade tutarı yazılır (`refundCents`, K-380): verilmezse kural, İstanbul günüyle etkinliğe 7+ gün kala tam, 1–6 gün kala %50, etkinlik günü ve sonrası 0. Kuraldan farklı tutarı yalnız yönetici yazar (ön büroya 403 `event_ticket_refund_override_forbidden`), not zorunludur (422 `event_ticket_refund_reason_required`), bedeli aşamaz (422 `event_ticket_refund_exceeds_price`); ödenmemiş bilette tutar 422 `event_ticket_refund_not_applicable`. İadenin ödendiği ayrıca işaretlenir (`…/refund`). İade para çıkışı olduğu için taze oturum ister (eskiyse 403 `reauthentication_required`). Kullanılmış bilet 422 `event_ticket_used`, iptal edilmiş 409 `event_ticket_already_cancelled`. Not (≤ 200) ve tutar denetime yazılmaz. Başka kurumun bileti 404. `Idempotency-Key` zorunlu; `If-Match` verilirse biletin sürümüdür. Roller: `yonetici`, `onburo` (K-324). Modül `finance`.
          */
         post: operations["cancelEventTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/event-tickets/{ticketId}/refund": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bilet iadesinin ödendiğini işaretle
+         * @description İptal edilen biletin iade tutarının veliye elle (`cash` nakit, `transfer` havale/EFT) ödendiğini işaretler (K-380). Gün sonuna ve muhasebe aktarımına girmez (M-49, M-72). İptal edilmemiş bilet 422 `event_ticket_not_cancelled`, iade tutarı 0 ya da yok 422 `event_ticket_no_refund`, ikinci işaret 409 `event_ticket_already_refunded`. Para çıkışı olduğu için taze oturum ister (eskiyse 403 `reauthentication_required`). Başka kurumun bileti 404. `Idempotency-Key` zorunlu; `If-Match` verilirse biletin sürümüdür. Roller: `yonetici`, `onburo` (K-324). Modül `finance`.
+         */
+        post: operations["refundEventTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/event-tickets/{ticketId}/undo-check-in": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Yanlış okutulan girişi geri al
+         * @description Biletin "kullanıldı" işaretini gerekçeyle (5–200) kaldırır; bilet yeniden geçerli olur ve yeniden okutulabilir (K-378). Eski kullanımın anı, okutanı, gerekçesi ve geri alan ayrı kayıtta kalır (`checkInUndoCount`); denetim `event_ticket.undo_check_in`, gerekçe denetime yazılmaz. Yönetici her girişi, ön büro yalnız kendi okuttuğu girişi geri alır (403 `event_ticket_check_in_not_owner`); etkinlik günü (Europe/Istanbul) bitince 422 `event_ticket_check_in_undo_expired`. Kullanılmamış bilet 409 `event_ticket_not_used`. Başka kurumun bileti 404. `Idempotency-Key` zorunlu; `If-Match` verilirse biletin sürümüdür. Roller: `yonetici`, `onburo` (K-324). Modül `finance`.
+         */
+        post: operations["undoEventTicketCheckIn"];
         delete?: never;
         options?: never;
         head?: never;
@@ -9142,6 +9182,106 @@ export interface paths {
          * @description Şablonu yazar; `profile: null` genel dosyaya döner. Sütun kaynağı dosyanın alanlarından biri ya da `fixed` sabit değerdir (ör. şube kodu); başlıklar tekil, ayırıcı ondalıkla aynı olamaz (400). Şablon yalnız biçimi belirler, satırları ve toplamları değiştirmez; hazır bordro programı şablonu yoktur (K-339). `If-Match` zorunlu; sürüm tutmazsa 409. Denetim kaydına alan adı yazılır. Rol: yalnız `yonetici` (K-306, K-338; muhasebe rolü açılsa da ücret görmez). Modül `finance`.
          */
         patch: operations["setPayrollExportProfile"];
+        trace?: never;
+    };
+    "/api/v1/finance/staff-costs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tahmini personel maliyeti (maliyet merkezine göre)
+         * @description `from`–`to` ayları (en çok 12; varsayılan bu ay, Europe/Istanbul) için personelin tahmini işveren maliyeti maliyet merkezlerine dağıtılır (DOM-FIN-104). Bordro değildir: brüt (aylık brüt ana ücret, saatli ücret × atamadaki tahmini saat, ek ders ve nöbet × tahmini saat; yürürlükteki gün oranıyla), SGK işveren payı (prim indirimi düşülmüş) ve işsizlik işveren payı (matrah SGK tavanına kadar, ayın ilk günü geçerli bordro parametresiyle), yan haklar (olduğu gibi) ve toplam (K-333). Net tanımlı ana ücret ve saati girilmemiş saatli ücret dahil edilmez, `warnings` ve kişi satırındaki `flags` ile bildirilir. Ataması olmayan personel "Atanmamış" satırındadır. Personeli 5'ten az olan merkezin tutarları gizlenir (`suppressed`, K-77 deseni); `people=true` kişi satırlarını verir ve bastırmayı kaldırır. Her okuma `finance.staff_cost.read` denetimi yazar (tutar değil, alan adları; K-334). `Accept: text/csv` ile aynı rapor dosya iner (`;`, UTF-8 BOM, ondalık virgül, formül kaçışı): taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.staff_cost.export`. İlk bordro parametre setinden önceki ay 422 `payroll_parameters_missing`; `to` `from`'dan önce ya da dönem 12 aydan uzunsa 400. Rol: yalnız `yonetici` (K-334). Modül `finance`; kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getFinanceStaffCosts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staff-cost-staff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Personel ve maliyet merkezi ataması
+         * @description Kurumun yönetici, öğretmen ve ön büro üyelikleri ada göre; her satırda `month` ayında (varsayılan bu ay) yürürlükteki atama (merkezler, paylar, tahmini saatler) ve iptal edilmemiş atama sayısı (K-332). Ücret tutarı taşımaz; okuma denetime düşmez. Pasif (ayrılan) personel de listelenir. Rol: yalnız `yonetici` (K-334). Modül `finance`; kapalıysa 403 `module_disabled`.
+         */
+        get: operations["listStaffCostStaff"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staff-cost-staff/{membershipId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Personelin maliyet merkezi atamaları
+         * @description İptal edilmemiş bütün atamalar başlangıç ayına göre; her atamanın son ayı sonraki atamadan hesaplanır, `currentId` bu ay yürürlükteki atamadır. Olmayan, başka kurumun ya da personel olmayan (öğrenci, veli) üyelik 404. Rol: yalnız `yonetici` (K-334). Modül `finance`; kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getStaffCostAllocations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staff-cost-allocations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Personeli maliyet merkezlerine ata
+         * @description Personelin `startMonth` ayından yürürlüğe giren ataması (K-332): 1–10 maliyet merkezi ve on binde bir pay (toplamı 10.000 = %100; aynı merkez iki kez 400), saatlik ya da ders saati ücretinin, ek dersin ve nöbetin tahmini aylık saati (0–300, isteğe bağlı). Atama personelin sonraki atamasının başlangıcına kadar sürer. Aynı ayda iptal edilmemiş atama varsa 409 `staff_cost_allocation_exists` (önce iptal edin). Olmayan üyelik 422 `staff_cost_staff_not_found`, öğrenci ya da veli 422 `staff_cost_not_staff`; pasif personele de yazılır (geçmiş aylar). Olmayan ya da başka kurumun merkezi 422 `staff_cost_center_not_found`, pasif merkez 422 `staff_cost_center_inactive`. Denetim kaydına alan adları yazılır. `Idempotency-Key` isteğe bağlı. Rol: yalnız `yonetici` (K-334). Modül `finance`; kapalıysa 403 `module_disabled`.
+         */
+        post: operations["createStaffCostAllocation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staff-cost-allocations/{allocationId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Atamayı iptal et
+         * @description Yanlış atama gerekçeyle (5–500 karakter) iptal edilir; atama düzeltilmez (K-332). Önceki atama iptal edilenin aylarını da kapsar hâle gelir; sonraki atamalar yerinde kalır. Gerekçe denetim kaydına yazılmaz. `If-Match` zorunlu. Başka kurumun ya da iptal edilmiş atama 404. Rol: yalnız `yonetici` (K-334). Modül `finance`; kapalıysa 403 `module_disabled`.
+         */
+        post: operations["cancelStaffCostAllocation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/finance/medical-reports": {
@@ -47035,6 +47175,15 @@ export interface operations {
                                     /** @description Pakette kullanılan saat girilmedi; hesap sıfır saate dayanır (K-21) */
                                     usedHoursMissing?: boolean;
                                     scholarshipExempt: boolean;
+                                    /** @description Ayrılış gününde yürürlükteki burs kesmesi ya da iptali: burslu istisnası uygulanmaz (K-350); eski kayıtta yok */
+                                    scholarshipEnd?: {
+                                        /** @enum {string} */
+                                        kind: "terminate" | "revoke";
+                                        /** @description Kesme günü (o gün burslu sayılır) ya da iptal günü */
+                                        effectiveDate: string;
+                                        /** @description Kesme ya da iptalin kaldırdığı burs payı; tabana eklenir */
+                                        reinstatedCents: number;
+                                    };
                                     baseCents: number;
                                     deductionCents: number;
                                     usageCents: number;
@@ -47053,6 +47202,41 @@ export interface operations {
                                 };
                                 /** @description Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok */
                                 refundApprovedCents?: number;
+                                /** @description Geri istenen burs alacağı: iade ve borca girmez, ayrılış iptal etmez (K-351, K-266); yalnız varsa */
+                                scholarshipClawbacks?: {
+                                    awardId: string;
+                                    contractId: string;
+                                    /** @description Geri isteme (iptal) günü */
+                                    effectiveDate: string;
+                                    principalCents: number;
+                                    /** @description Kanuni faiz */
+                                    interestCents: number;
+                                    /** @description Ayrılış anında ödenmemiş kısım */
+                                    openCents: number;
+                                }[];
+                                /** @description Gezi ve etkinlik katılımları (K-348, K-349): iade ve borca girmez; yalnız varsa, eski kayıtta yok */
+                                activities?: {
+                                    participantId: string;
+                                    activityId: string;
+                                    name: string;
+                                    activityDate: string;
+                                    /**
+                                     * @description `cancelled`: etkinlik ayrılıştan sonra, katılım etkinliğin kuralıyla iptal edildi; `held`: gerçekleşti, ödenmemiş kısım borç
+                                     * @enum {string}
+                                     */
+                                    outcome: "cancelled" | "held";
+                                    invoiceId: string;
+                                    amountCents: number;
+                                    paidCents: number;
+                                    /** @description İptalde katılımcıda kalan kesinti */
+                                    retainedCents: number;
+                                    /** @description Katılım kaydından ödenecek iade (K-303) */
+                                    refundCents: number;
+                                    /** @description Ayrılıştan sonra açık kalan etkinlik borcu */
+                                    openCents: number;
+                                    /** @description İptalde kesinti farkı için açılan taksit; yalnız ayrılış kaydında */
+                                    debtInvoiceId?: string;
+                                }[];
                             };
                             /** @description Hesaba giren sözleşmelerin ödeyicileri farklı mı; iade varsa ayrılış yöneticinin kararını ister (K-12) */
                             payersDiffer: boolean;
@@ -47247,6 +47431,15 @@ export interface operations {
                                     /** @description Pakette kullanılan saat girilmedi; hesap sıfır saate dayanır (K-21) */
                                     usedHoursMissing?: boolean;
                                     scholarshipExempt: boolean;
+                                    /** @description Ayrılış gününde yürürlükteki burs kesmesi ya da iptali: burslu istisnası uygulanmaz (K-350); eski kayıtta yok */
+                                    scholarshipEnd?: {
+                                        /** @enum {string} */
+                                        kind: "terminate" | "revoke";
+                                        /** @description Kesme günü (o gün burslu sayılır) ya da iptal günü */
+                                        effectiveDate: string;
+                                        /** @description Kesme ya da iptalin kaldırdığı burs payı; tabana eklenir */
+                                        reinstatedCents: number;
+                                    };
                                     baseCents: number;
                                     deductionCents: number;
                                     usageCents: number;
@@ -47265,6 +47458,41 @@ export interface operations {
                                 };
                                 /** @description Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok */
                                 refundApprovedCents?: number;
+                                /** @description Geri istenen burs alacağı: iade ve borca girmez, ayrılış iptal etmez (K-351, K-266); yalnız varsa */
+                                scholarshipClawbacks?: {
+                                    awardId: string;
+                                    contractId: string;
+                                    /** @description Geri isteme (iptal) günü */
+                                    effectiveDate: string;
+                                    principalCents: number;
+                                    /** @description Kanuni faiz */
+                                    interestCents: number;
+                                    /** @description Ayrılış anında ödenmemiş kısım */
+                                    openCents: number;
+                                }[];
+                                /** @description Gezi ve etkinlik katılımları (K-348, K-349): iade ve borca girmez; yalnız varsa, eski kayıtta yok */
+                                activities?: {
+                                    participantId: string;
+                                    activityId: string;
+                                    name: string;
+                                    activityDate: string;
+                                    /**
+                                     * @description `cancelled`: etkinlik ayrılıştan sonra, katılım etkinliğin kuralıyla iptal edildi; `held`: gerçekleşti, ödenmemiş kısım borç
+                                     * @enum {string}
+                                     */
+                                    outcome: "cancelled" | "held";
+                                    invoiceId: string;
+                                    amountCents: number;
+                                    paidCents: number;
+                                    /** @description İptalde katılımcıda kalan kesinti */
+                                    retainedCents: number;
+                                    /** @description Katılım kaydından ödenecek iade (K-303) */
+                                    refundCents: number;
+                                    /** @description Ayrılıştan sonra açık kalan etkinlik borcu */
+                                    openCents: number;
+                                    /** @description İptalde kesinti farkı için açılan taksit; yalnız ayrılış kaydında */
+                                    debtInvoiceId?: string;
+                                }[];
                             };
                             refundCents: number;
                             debtCents: number;
@@ -47446,6 +47674,15 @@ export interface operations {
                                     /** @description Pakette kullanılan saat girilmedi; hesap sıfır saate dayanır (K-21) */
                                     usedHoursMissing?: boolean;
                                     scholarshipExempt: boolean;
+                                    /** @description Ayrılış gününde yürürlükteki burs kesmesi ya da iptali: burslu istisnası uygulanmaz (K-350); eski kayıtta yok */
+                                    scholarshipEnd?: {
+                                        /** @enum {string} */
+                                        kind: "terminate" | "revoke";
+                                        /** @description Kesme günü (o gün burslu sayılır) ya da iptal günü */
+                                        effectiveDate: string;
+                                        /** @description Kesme ya da iptalin kaldırdığı burs payı; tabana eklenir */
+                                        reinstatedCents: number;
+                                    };
                                     baseCents: number;
                                     deductionCents: number;
                                     usageCents: number;
@@ -47464,6 +47701,41 @@ export interface operations {
                                 };
                                 /** @description Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok */
                                 refundApprovedCents?: number;
+                                /** @description Geri istenen burs alacağı: iade ve borca girmez, ayrılış iptal etmez (K-351, K-266); yalnız varsa */
+                                scholarshipClawbacks?: {
+                                    awardId: string;
+                                    contractId: string;
+                                    /** @description Geri isteme (iptal) günü */
+                                    effectiveDate: string;
+                                    principalCents: number;
+                                    /** @description Kanuni faiz */
+                                    interestCents: number;
+                                    /** @description Ayrılış anında ödenmemiş kısım */
+                                    openCents: number;
+                                }[];
+                                /** @description Gezi ve etkinlik katılımları (K-348, K-349): iade ve borca girmez; yalnız varsa, eski kayıtta yok */
+                                activities?: {
+                                    participantId: string;
+                                    activityId: string;
+                                    name: string;
+                                    activityDate: string;
+                                    /**
+                                     * @description `cancelled`: etkinlik ayrılıştan sonra, katılım etkinliğin kuralıyla iptal edildi; `held`: gerçekleşti, ödenmemiş kısım borç
+                                     * @enum {string}
+                                     */
+                                    outcome: "cancelled" | "held";
+                                    invoiceId: string;
+                                    amountCents: number;
+                                    paidCents: number;
+                                    /** @description İptalde katılımcıda kalan kesinti */
+                                    retainedCents: number;
+                                    /** @description Katılım kaydından ödenecek iade (K-303) */
+                                    refundCents: number;
+                                    /** @description Ayrılıştan sonra açık kalan etkinlik borcu */
+                                    openCents: number;
+                                    /** @description İptalde kesinti farkı için açılan taksit; yalnız ayrılış kaydında */
+                                    debtInvoiceId?: string;
+                                }[];
                             };
                             refundCents: number;
                             debtCents: number;
@@ -47639,6 +47911,15 @@ export interface operations {
                                     /** @description Pakette kullanılan saat girilmedi; hesap sıfır saate dayanır (K-21) */
                                     usedHoursMissing?: boolean;
                                     scholarshipExempt: boolean;
+                                    /** @description Ayrılış gününde yürürlükteki burs kesmesi ya da iptali: burslu istisnası uygulanmaz (K-350); eski kayıtta yok */
+                                    scholarshipEnd?: {
+                                        /** @enum {string} */
+                                        kind: "terminate" | "revoke";
+                                        /** @description Kesme günü (o gün burslu sayılır) ya da iptal günü */
+                                        effectiveDate: string;
+                                        /** @description Kesme ya da iptalin kaldırdığı burs payı; tabana eklenir */
+                                        reinstatedCents: number;
+                                    };
                                     baseCents: number;
                                     deductionCents: number;
                                     usageCents: number;
@@ -47657,6 +47938,41 @@ export interface operations {
                                 };
                                 /** @description Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok */
                                 refundApprovedCents?: number;
+                                /** @description Geri istenen burs alacağı: iade ve borca girmez, ayrılış iptal etmez (K-351, K-266); yalnız varsa */
+                                scholarshipClawbacks?: {
+                                    awardId: string;
+                                    contractId: string;
+                                    /** @description Geri isteme (iptal) günü */
+                                    effectiveDate: string;
+                                    principalCents: number;
+                                    /** @description Kanuni faiz */
+                                    interestCents: number;
+                                    /** @description Ayrılış anında ödenmemiş kısım */
+                                    openCents: number;
+                                }[];
+                                /** @description Gezi ve etkinlik katılımları (K-348, K-349): iade ve borca girmez; yalnız varsa, eski kayıtta yok */
+                                activities?: {
+                                    participantId: string;
+                                    activityId: string;
+                                    name: string;
+                                    activityDate: string;
+                                    /**
+                                     * @description `cancelled`: etkinlik ayrılıştan sonra, katılım etkinliğin kuralıyla iptal edildi; `held`: gerçekleşti, ödenmemiş kısım borç
+                                     * @enum {string}
+                                     */
+                                    outcome: "cancelled" | "held";
+                                    invoiceId: string;
+                                    amountCents: number;
+                                    paidCents: number;
+                                    /** @description İptalde katılımcıda kalan kesinti */
+                                    retainedCents: number;
+                                    /** @description Katılım kaydından ödenecek iade (K-303) */
+                                    refundCents: number;
+                                    /** @description Ayrılıştan sonra açık kalan etkinlik borcu */
+                                    openCents: number;
+                                    /** @description İptalde kesinti farkı için açılan taksit; yalnız ayrılış kaydında */
+                                    debtInvoiceId?: string;
+                                }[];
                             };
                             refundCents: number;
                             debtCents: number;
@@ -47846,6 +48162,15 @@ export interface operations {
                                     /** @description Pakette kullanılan saat girilmedi; hesap sıfır saate dayanır (K-21) */
                                     usedHoursMissing?: boolean;
                                     scholarshipExempt: boolean;
+                                    /** @description Ayrılış gününde yürürlükteki burs kesmesi ya da iptali: burslu istisnası uygulanmaz (K-350); eski kayıtta yok */
+                                    scholarshipEnd?: {
+                                        /** @enum {string} */
+                                        kind: "terminate" | "revoke";
+                                        /** @description Kesme günü (o gün burslu sayılır) ya da iptal günü */
+                                        effectiveDate: string;
+                                        /** @description Kesme ya da iptalin kaldırdığı burs payı; tabana eklenir */
+                                        reinstatedCents: number;
+                                    };
                                     baseCents: number;
                                     deductionCents: number;
                                     usageCents: number;
@@ -47864,6 +48189,41 @@ export interface operations {
                                 };
                                 /** @description Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok */
                                 refundApprovedCents?: number;
+                                /** @description Geri istenen burs alacağı: iade ve borca girmez, ayrılış iptal etmez (K-351, K-266); yalnız varsa */
+                                scholarshipClawbacks?: {
+                                    awardId: string;
+                                    contractId: string;
+                                    /** @description Geri isteme (iptal) günü */
+                                    effectiveDate: string;
+                                    principalCents: number;
+                                    /** @description Kanuni faiz */
+                                    interestCents: number;
+                                    /** @description Ayrılış anında ödenmemiş kısım */
+                                    openCents: number;
+                                }[];
+                                /** @description Gezi ve etkinlik katılımları (K-348, K-349): iade ve borca girmez; yalnız varsa, eski kayıtta yok */
+                                activities?: {
+                                    participantId: string;
+                                    activityId: string;
+                                    name: string;
+                                    activityDate: string;
+                                    /**
+                                     * @description `cancelled`: etkinlik ayrılıştan sonra, katılım etkinliğin kuralıyla iptal edildi; `held`: gerçekleşti, ödenmemiş kısım borç
+                                     * @enum {string}
+                                     */
+                                    outcome: "cancelled" | "held";
+                                    invoiceId: string;
+                                    amountCents: number;
+                                    paidCents: number;
+                                    /** @description İptalde katılımcıda kalan kesinti */
+                                    retainedCents: number;
+                                    /** @description Katılım kaydından ödenecek iade (K-303) */
+                                    refundCents: number;
+                                    /** @description Ayrılıştan sonra açık kalan etkinlik borcu */
+                                    openCents: number;
+                                    /** @description İptalde kesinti farkı için açılan taksit; yalnız ayrılış kaydında */
+                                    debtInvoiceId?: string;
+                                }[];
                             };
                             refundCents: number;
                             debtCents: number;
@@ -74931,8 +75291,13 @@ export interface operations {
                                 /** @description Fiyat, kuruş; davetiyede 0 */
                                 priceCents: number;
                             }[];
-                            /** @description Öğrenci başına üst sınır; boşsa sınırsız */
+                            /** @description Öğrenci ya da aile başına üst sınır; boşsa sınırsız */
                             perStudentLimit: number | null;
+                            /**
+                             * @description `student` öğrenci başına, `family` aile başına (kardeşler birlikte sayılır; K-379)
+                             * @enum {string}
+                             */
+                            limitScope: "student" | "family";
                             salesOpen: boolean;
                             /** @description Satışa açık koltuk ya da kontenjan */
                             totalCapacity: number;
@@ -74946,8 +75311,12 @@ export interface operations {
                             usedCount: number;
                             /** @description Ödemesi beklenen ücretli bilet */
                             unpaidCount: number;
-                            /** @description Ödenmiş etkin biletlerin toplamı, kuruş (iade düşer) */
+                            /** @description Ödenmiş biletlerin net toplamı, kuruş: iptalde yazılan iade düşer, kesinti kalır */
                             collectedCents: number;
+                            /** @description Ödendiği işaretlenmemiş iade sayısı (K-380) */
+                            pendingRefundCount: number;
+                            /** @description Ödenmesi bekleyen iade toplamı, kuruş */
+                            pendingRefundCents: number;
                             /** @description Etkin bileti olan koltuklar (koltuk haritası) */
                             takenSeats: string[];
                             /** @description `If-Match` için etkinliğin sürümü */
@@ -75085,10 +75454,16 @@ export interface operations {
                         priceCents: number;
                     }[];
                     /**
-                     * @description Öğrenci (aile) başına etkin bilet üst sınırı; boşsa sınırsız
+                     * @description Öğrenci ya da aile başına etkin bilet üst sınırı; boşsa sınırsız
                      * @default null
                      */
                     perStudentLimit?: number | null;
+                    /**
+                     * @description `student` öğrenci başına, `family` aile başına (aynı veliye bağlı kardeşlerin biletleri birlikte sayılır); sınır boşsa etkisiz
+                     * @default student
+                     * @enum {string}
+                     */
+                    limitScope?: "student" | "family";
                 };
             };
         };
@@ -75133,8 +75508,13 @@ export interface operations {
                                 /** @description Fiyat, kuruş; davetiyede 0 */
                                 priceCents: number;
                             }[];
-                            /** @description Öğrenci başına üst sınır; boşsa sınırsız */
+                            /** @description Öğrenci ya da aile başına üst sınır; boşsa sınırsız */
                             perStudentLimit: number | null;
+                            /**
+                             * @description `student` öğrenci başına, `family` aile başına (kardeşler birlikte sayılır; K-379)
+                             * @enum {string}
+                             */
+                            limitScope: "student" | "family";
                             salesOpen: boolean;
                             /** @description Satışa açık koltuk ya da kontenjan */
                             totalCapacity: number;
@@ -75148,8 +75528,12 @@ export interface operations {
                             usedCount: number;
                             /** @description Ödemesi beklenen ücretli bilet */
                             unpaidCount: number;
-                            /** @description Ödenmiş etkin biletlerin toplamı, kuruş (iade düşer) */
+                            /** @description Ödenmiş biletlerin net toplamı, kuruş: iptalde yazılan iade düşer, kesinti kalır */
                             collectedCents: number;
+                            /** @description Ödendiği işaretlenmemiş iade sayısı (K-380) */
+                            pendingRefundCount: number;
+                            /** @description Ödenmesi bekleyen iade toplamı, kuruş */
+                            pendingRefundCents: number;
                             /** @description Etkin bileti olan koltuklar (koltuk haritası) */
                             takenSeats: string[];
                             /** @description `If-Match` için etkinliğin sürümü */
@@ -75283,8 +75667,13 @@ export interface operations {
                                 /** @description Fiyat, kuruş; davetiyede 0 */
                                 priceCents: number;
                             }[];
-                            /** @description Öğrenci başına üst sınır; boşsa sınırsız */
+                            /** @description Öğrenci ya da aile başına üst sınır; boşsa sınırsız */
                             perStudentLimit: number | null;
+                            /**
+                             * @description `student` öğrenci başına, `family` aile başına (kardeşler birlikte sayılır; K-379)
+                             * @enum {string}
+                             */
+                            limitScope: "student" | "family";
                             salesOpen: boolean;
                             /** @description Satışa açık koltuk ya da kontenjan */
                             totalCapacity: number;
@@ -75298,8 +75687,12 @@ export interface operations {
                             usedCount: number;
                             /** @description Ödemesi beklenen ücretli bilet */
                             unpaidCount: number;
-                            /** @description Ödenmiş etkin biletlerin toplamı, kuruş (iade düşer) */
+                            /** @description Ödenmiş biletlerin net toplamı, kuruş: iptalde yazılan iade düşer, kesinti kalır */
                             collectedCents: number;
+                            /** @description Ödendiği işaretlenmemiş iade sayısı (K-380) */
+                            pendingRefundCount: number;
+                            /** @description Ödenmesi bekleyen iade toplamı, kuruş */
+                            pendingRefundCents: number;
                             /** @description Etkin bileti olan koltuklar (koltuk haritası) */
                             takenSeats: string[];
                             /** @description `If-Match` için etkinliğin sürümü */
@@ -75531,8 +75924,13 @@ export interface operations {
                         /** @description Kuruş; davetiyede 0, ücretlide 0’dan büyük */
                         priceCents: number;
                     }[];
-                    /** @description Öğrenci (aile) başına etkin bilet üst sınırı; boşsa sınırsız */
+                    /** @description Öğrenci ya da aile başına etkin bilet üst sınırı; boşsa sınırsız */
                     perStudentLimit?: number | null;
+                    /**
+                     * @description `student` öğrenci başına, `family` aile başına (aynı veliye bağlı kardeşlerin biletleri birlikte sayılır); sınır boşsa etkisiz
+                     * @enum {string}
+                     */
+                    limitScope?: "student" | "family";
                     /** @description Bilet ayırma açık mı */
                     salesOpen?: boolean;
                 };
@@ -75579,8 +75977,13 @@ export interface operations {
                                 /** @description Fiyat, kuruş; davetiyede 0 */
                                 priceCents: number;
                             }[];
-                            /** @description Öğrenci başına üst sınır; boşsa sınırsız */
+                            /** @description Öğrenci ya da aile başına üst sınır; boşsa sınırsız */
                             perStudentLimit: number | null;
+                            /**
+                             * @description `student` öğrenci başına, `family` aile başına (kardeşler birlikte sayılır; K-379)
+                             * @enum {string}
+                             */
+                            limitScope: "student" | "family";
                             salesOpen: boolean;
                             /** @description Satışa açık koltuk ya da kontenjan */
                             totalCapacity: number;
@@ -75594,8 +75997,12 @@ export interface operations {
                             usedCount: number;
                             /** @description Ödemesi beklenen ücretli bilet */
                             unpaidCount: number;
-                            /** @description Ödenmiş etkin biletlerin toplamı, kuruş (iade düşer) */
+                            /** @description Ödenmiş biletlerin net toplamı, kuruş: iptalde yazılan iade düşer, kesinti kalır */
                             collectedCents: number;
+                            /** @description Ödendiği işaretlenmemiş iade sayısı (K-380) */
+                            pendingRefundCount: number;
+                            /** @description Ödenmesi bekleyen iade toplamı, kuruş */
+                            pendingRefundCents: number;
                             /** @description Etkin bileti olan koltuklar (koltuk haritası) */
                             takenSeats: string[];
                             /** @description `If-Match` için etkinliğin sürümü */
@@ -75730,8 +76137,17 @@ export interface operations {
                             paymentStatus: "not_required" | "unpaid" | "paid";
                             paymentMethod: ("cash" | "transfer") | null;
                             paidAt: string | null;
-                            /** @description Ödenmiş biletin iptalinde bedelin iade edildiği an */
+                            /** @description İptal edilen ödenmiş bilette iade tutarı, kuruş (0…bedel; K-380); diğerlerinde boş */
+                            refundCents: number | null;
+                            /** @description İadenin yöntemi */
+                            refundMethod: ("cash" | "transfer") | null;
+                            /** @description İadenin ödendiğinin işaretlendiği an */
                             refundedAt: string | null;
+                            /**
+                             * @description `none` iade yok, `pending` iade bekliyor, `paid` iade ödendi
+                             * @enum {string}
+                             */
+                            refundStatus: "none" | "pending" | "paid";
                             usedAt: string | null;
                             cancelledAt: string | null;
                             cancelReason: string | null;
@@ -75740,6 +76156,10 @@ export interface operations {
                              * @enum {string}
                              */
                             state: "valid" | "unpaid" | "used" | "cancelled";
+                            /** @description Geri alınmış giriş sayısı (K-378) */
+                            checkInUndoCount: number;
+                            /** @description İsteği yapan bu biletin girişini şimdi geri alabilir mi (kullanılmış, yönetici ya da okutan, etkinlik günü bitmemiş) */
+                            canUndoCheckIn: boolean;
                             createdAt: string;
                             /** @description `If-Match` için biletin sürümü */
                             version: number;
@@ -75837,7 +76257,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    /** @description Biletin ayrıldığı öğrenci (ailesi); üst sınır öğrenci başınadır */
+                    /** @description Biletin ayrıldığı öğrenci (ailesi); üst sınır öğrenci ya da aile başınadır */
                     studentId: string;
                     items: {
                         ticketTypeKey: string;
@@ -75880,8 +76300,17 @@ export interface operations {
                             paymentStatus: "not_required" | "unpaid" | "paid";
                             paymentMethod: ("cash" | "transfer") | null;
                             paidAt: string | null;
-                            /** @description Ödenmiş biletin iptalinde bedelin iade edildiği an */
+                            /** @description İptal edilen ödenmiş bilette iade tutarı, kuruş (0…bedel; K-380); diğerlerinde boş */
+                            refundCents: number | null;
+                            /** @description İadenin yöntemi */
+                            refundMethod: ("cash" | "transfer") | null;
+                            /** @description İadenin ödendiğinin işaretlendiği an */
                             refundedAt: string | null;
+                            /**
+                             * @description `none` iade yok, `pending` iade bekliyor, `paid` iade ödendi
+                             * @enum {string}
+                             */
+                            refundStatus: "none" | "pending" | "paid";
                             usedAt: string | null;
                             cancelledAt: string | null;
                             cancelReason: string | null;
@@ -75890,6 +76319,10 @@ export interface operations {
                              * @enum {string}
                              */
                             state: "valid" | "unpaid" | "used" | "cancelled";
+                            /** @description Geri alınmış giriş sayısı (K-378) */
+                            checkInUndoCount: number;
+                            /** @description İsteği yapan bu biletin girişini şimdi geri alabilir mi (kullanılmış, yönetici ya da okutan, etkinlik günü bitmemiş) */
+                            canUndoCheckIn: boolean;
                             createdAt: string;
                             /** @description `If-Match` için biletin sürümü */
                             version: number;
@@ -76022,8 +76455,17 @@ export interface operations {
                             paymentStatus: "not_required" | "unpaid" | "paid";
                             paymentMethod: ("cash" | "transfer") | null;
                             paidAt: string | null;
-                            /** @description Ödenmiş biletin iptalinde bedelin iade edildiği an */
+                            /** @description İptal edilen ödenmiş bilette iade tutarı, kuruş (0…bedel; K-380); diğerlerinde boş */
+                            refundCents: number | null;
+                            /** @description İadenin yöntemi */
+                            refundMethod: ("cash" | "transfer") | null;
+                            /** @description İadenin ödendiğinin işaretlendiği an */
                             refundedAt: string | null;
+                            /**
+                             * @description `none` iade yok, `pending` iade bekliyor, `paid` iade ödendi
+                             * @enum {string}
+                             */
+                            refundStatus: "none" | "pending" | "paid";
                             usedAt: string | null;
                             cancelledAt: string | null;
                             cancelReason: string | null;
@@ -76032,6 +76474,10 @@ export interface operations {
                              * @enum {string}
                              */
                             state: "valid" | "unpaid" | "used" | "cancelled";
+                            /** @description Geri alınmış giriş sayısı (K-378) */
+                            checkInUndoCount: number;
+                            /** @description İsteği yapan bu biletin girişini şimdi geri alabilir mi (kullanılmış, yönetici ya da okutan, etkinlik günü bitmemiş) */
+                            canUndoCheckIn: boolean;
                             createdAt: string;
                             /** @description `If-Match` için biletin sürümü */
                             version: number;
@@ -76166,8 +76612,17 @@ export interface operations {
                             paymentStatus: "not_required" | "unpaid" | "paid";
                             paymentMethod: ("cash" | "transfer") | null;
                             paidAt: string | null;
-                            /** @description Ödenmiş biletin iptalinde bedelin iade edildiği an */
+                            /** @description İptal edilen ödenmiş bilette iade tutarı, kuruş (0…bedel; K-380); diğerlerinde boş */
+                            refundCents: number | null;
+                            /** @description İadenin yöntemi */
+                            refundMethod: ("cash" | "transfer") | null;
+                            /** @description İadenin ödendiğinin işaretlendiği an */
                             refundedAt: string | null;
+                            /**
+                             * @description `none` iade yok, `pending` iade bekliyor, `paid` iade ödendi
+                             * @enum {string}
+                             */
+                            refundStatus: "none" | "pending" | "paid";
                             usedAt: string | null;
                             cancelledAt: string | null;
                             cancelReason: string | null;
@@ -76176,6 +76631,10 @@ export interface operations {
                              * @enum {string}
                              */
                             state: "valid" | "unpaid" | "used" | "cancelled";
+                            /** @description Geri alınmış giriş sayısı (K-378) */
+                            checkInUndoCount: number;
+                            /** @description İsteği yapan bu biletin girişini şimdi geri alabilir mi (kullanılmış, yönetici ya da okutan, etkinlik günü bitmemiş) */
+                            canUndoCheckIn: boolean;
                             createdAt: string;
                             /** @description `If-Match` için biletin sürümü */
                             version: number;
@@ -76275,10 +76734,15 @@ export interface operations {
             content: {
                 "application/json": {
                     /**
-                     * @description İsteğe bağlı iptal notu
+                     * @description İsteğe bağlı iptal notu; iade tutarı kuraldan farklıysa zorunlu
                      * @default null
                      */
                     reason?: string | null;
+                    /**
+                     * @description Ödenmiş bilette iade tutarı, kuruş; boşsa kural (K-380). Kuraldan farklı tutarı yalnız yönetici yazar
+                     * @default null
+                     */
+                    refundCents?: number | null;
                 };
             };
         };
@@ -76313,8 +76777,17 @@ export interface operations {
                             paymentStatus: "not_required" | "unpaid" | "paid";
                             paymentMethod: ("cash" | "transfer") | null;
                             paidAt: string | null;
-                            /** @description Ödenmiş biletin iptalinde bedelin iade edildiği an */
+                            /** @description İptal edilen ödenmiş bilette iade tutarı, kuruş (0…bedel; K-380); diğerlerinde boş */
+                            refundCents: number | null;
+                            /** @description İadenin yöntemi */
+                            refundMethod: ("cash" | "transfer") | null;
+                            /** @description İadenin ödendiğinin işaretlendiği an */
                             refundedAt: string | null;
+                            /**
+                             * @description `none` iade yok, `pending` iade bekliyor, `paid` iade ödendi
+                             * @enum {string}
+                             */
+                            refundStatus: "none" | "pending" | "paid";
                             usedAt: string | null;
                             cancelledAt: string | null;
                             cancelReason: string | null;
@@ -76323,6 +76796,324 @@ export interface operations {
                              * @enum {string}
                              */
                             state: "valid" | "unpaid" | "used" | "cancelled";
+                            /** @description Geri alınmış giriş sayısı (K-378) */
+                            checkInUndoCount: number;
+                            /** @description İsteği yapan bu biletin girişini şimdi geri alabilir mi (kullanılmış, yönetici ya da okutan, etkinlik günü bitmemiş) */
+                            canUndoCheckIn: boolean;
+                            createdAt: string;
+                            /** @description `If-Match` için biletin sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    refundEventTicket: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
+                "if-match"?: string;
+            };
+            path: {
+                ticketId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    method: "cash" | "transfer";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            eventId: string;
+                            /** @description Bilet kodu (`XXXX-XXXX-XXXX`); PDF ve girişte kullanılır */
+                            code: string;
+                            ticketTypeKey: string;
+                            /** @description Ayırma anındaki tür adı */
+                            ticketTypeName: string;
+                            /** @enum {string} */
+                            ticketKind: "invitation" | "paid";
+                            /** @description Ayırma anındaki fiyat, kuruş */
+                            priceCents: number;
+                            seat: string | null;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @description Bileti kullanacak veli ya da misafir */
+                            holderName: string;
+                            /** @enum {string} */
+                            status: "active" | "cancelled";
+                            /** @enum {string} */
+                            paymentStatus: "not_required" | "unpaid" | "paid";
+                            paymentMethod: ("cash" | "transfer") | null;
+                            paidAt: string | null;
+                            /** @description İptal edilen ödenmiş bilette iade tutarı, kuruş (0…bedel; K-380); diğerlerinde boş */
+                            refundCents: number | null;
+                            /** @description İadenin yöntemi */
+                            refundMethod: ("cash" | "transfer") | null;
+                            /** @description İadenin ödendiğinin işaretlendiği an */
+                            refundedAt: string | null;
+                            /**
+                             * @description `none` iade yok, `pending` iade bekliyor, `paid` iade ödendi
+                             * @enum {string}
+                             */
+                            refundStatus: "none" | "pending" | "paid";
+                            usedAt: string | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /**
+                             * @description `valid` girişe hazır, `unpaid` ödeme bekliyor, `used` kullanıldı, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            state: "valid" | "unpaid" | "used" | "cancelled";
+                            /** @description Geri alınmış giriş sayısı (K-378) */
+                            checkInUndoCount: number;
+                            /** @description İsteği yapan bu biletin girişini şimdi geri alabilir mi (kullanılmış, yönetici ya da okutan, etkinlik günü bitmemiş) */
+                            canUndoCheckIn: boolean;
+                            createdAt: string;
+                            /** @description `If-Match` için biletin sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    undoEventTicketCheckIn: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
+                "if-match"?: string;
+            };
+            path: {
+                ticketId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Girişin neden geri alındığı (ör. yanlış bilet okutuldu); denetim kaydına yazılmaz */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            eventId: string;
+                            /** @description Bilet kodu (`XXXX-XXXX-XXXX`); PDF ve girişte kullanılır */
+                            code: string;
+                            ticketTypeKey: string;
+                            /** @description Ayırma anındaki tür adı */
+                            ticketTypeName: string;
+                            /** @enum {string} */
+                            ticketKind: "invitation" | "paid";
+                            /** @description Ayırma anındaki fiyat, kuruş */
+                            priceCents: number;
+                            seat: string | null;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @description Bileti kullanacak veli ya da misafir */
+                            holderName: string;
+                            /** @enum {string} */
+                            status: "active" | "cancelled";
+                            /** @enum {string} */
+                            paymentStatus: "not_required" | "unpaid" | "paid";
+                            paymentMethod: ("cash" | "transfer") | null;
+                            paidAt: string | null;
+                            /** @description İptal edilen ödenmiş bilette iade tutarı, kuruş (0…bedel; K-380); diğerlerinde boş */
+                            refundCents: number | null;
+                            /** @description İadenin yöntemi */
+                            refundMethod: ("cash" | "transfer") | null;
+                            /** @description İadenin ödendiğinin işaretlendiği an */
+                            refundedAt: string | null;
+                            /**
+                             * @description `none` iade yok, `pending` iade bekliyor, `paid` iade ödendi
+                             * @enum {string}
+                             */
+                            refundStatus: "none" | "pending" | "paid";
+                            usedAt: string | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /**
+                             * @description `valid` girişe hazır, `unpaid` ödeme bekliyor, `used` kullanıldı, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            state: "valid" | "unpaid" | "used" | "cancelled";
+                            /** @description Geri alınmış giriş sayısı (K-378) */
+                            checkInUndoCount: number;
+                            /** @description İsteği yapan bu biletin girişini şimdi geri alabilir mi (kullanılmış, yönetici ya da okutan, etkinlik günü bitmemiş) */
+                            canUndoCheckIn: boolean;
                             createdAt: string;
                             /** @description `If-Match` için biletin sürümü */
                             version: number;
@@ -96187,6 +96978,739 @@ export interface operations {
                             } | null;
                             /** @description `If-Match` için şablon sürümü */
                             version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getFinanceStaffCosts: {
+        parameters: {
+            query?: {
+                /** @description Başlangıç ayı (YYYY-MM); varsayılan `to` ya da bu ay */
+                from?: string;
+                /** @description Bitiş ayı (YYYY-MM, dahil); varsayılan `from` */
+                to?: string;
+                /** @description `true` kişi satırlarını verir ve küçük grup bastırmasını kaldırır (K-334) */
+                people?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            from: string;
+                            to: string;
+                            people: boolean;
+                            /** @description Tutarların gösterildiği en küçük personel grubu */
+                            minGroupSize: number;
+                            centers: {
+                                /** @description Atanmamış satırında boş */
+                                id: string | null;
+                                code: string | null;
+                                name: string;
+                                type: ("campus" | "unit" | "program") | null;
+                                /** @description Kökten merkeze kod yolu */
+                                path: string | null;
+                                isActive: boolean;
+                                /** @description Dönemde merkeze payı düşen farklı personel */
+                                staffCount: number;
+                                /** @description Brüt; küçük grupta boş */
+                                grossCents: number | null;
+                                /** @description SGK işveren payı; küçük grupta boş */
+                                employerSgkCents: number | null;
+                                /** @description İşsizlik işveren payı; küçük grupta boş */
+                                unemploymentCents: number | null;
+                                /** @description Yan haklar; küçük grupta boş */
+                                benefitsCents: number | null;
+                                /** @description Toplam; küçük grupta boş */
+                                totalCents: number | null;
+                                /** @description Küçük grup: tutarlar gizlendi */
+                                suppressed: boolean;
+                            }[];
+                            /** @description Kişi satırları; yalnız `people=true` iken */
+                            persons: {
+                                membershipId: string;
+                                name: string;
+                                role: string;
+                                centerId: string | null;
+                                centerName: string;
+                                /** @description Dönem boyunca aynı pay; değiştiyse boş */
+                                shareBasisPoints: number | null;
+                                monthCount: number;
+                                flags: ("net_wage" | "missing_wage_hours" | "missing_lesson_hours")[];
+                                /** @description Tahmini brüt ücret (ana ücret ve ek ders), kuruş */
+                                grossCents: number;
+                                /** @description SGK işveren payı (prim indirimi düşülmüş, tavanlı) */
+                                employerSgkCents: number;
+                                /** @description İşsizlik sigortası işveren payı (tavanlı) */
+                                unemploymentCents: number;
+                                /** @description Yan haklar */
+                                benefitsCents: number;
+                                /** @description Tahmini toplam işveren maliyeti */
+                                totalCents: number;
+                            }[] | null;
+                            months: {
+                                month: string;
+                                staffCount: number;
+                                /** @description Tahmini brüt ücret (ana ücret ve ek ders), kuruş */
+                                grossCents: number;
+                                /** @description SGK işveren payı (prim indirimi düşülmüş, tavanlı) */
+                                employerSgkCents: number;
+                                /** @description İşsizlik sigortası işveren payı (tavanlı) */
+                                unemploymentCents: number;
+                                /** @description Yan haklar */
+                                benefitsCents: number;
+                                /** @description Tahmini toplam işveren maliyeti */
+                                totalCents: number;
+                                parameterSetId: string;
+                                /** @enum {string} */
+                                parameterOrigin: "platform" | "institution";
+                                stale: boolean;
+                            }[];
+                            totals: {
+                                /** @description Tahmini brüt ücret (ana ücret ve ek ders), kuruş */
+                                grossCents: number;
+                                /** @description SGK işveren payı (prim indirimi düşülmüş, tavanlı) */
+                                employerSgkCents: number;
+                                /** @description İşsizlik sigortası işveren payı (tavanlı) */
+                                unemploymentCents: number;
+                                /** @description Yan haklar */
+                                benefitsCents: number;
+                                /** @description Tahmini toplam işveren maliyeti */
+                                totalCents: number;
+                                staffCount: number;
+                            };
+                            warnings: {
+                                netWageStaffCount: number;
+                                missingHoursStaffCount: number;
+                                assignedWithoutRateCount: number;
+                                unassignedStaffCount: number;
+                                staleMonths: string[];
+                                unverifiedParameters: boolean;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listStaffCostStaff: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Personel adında arama */
+                q?: string;
+                /** @description `active` etkin, `passive` pasifleştirilmiş (ayrılan) personel */
+                status?: "active" | "passive";
+                /** @description Atamanın gösterileceği ay (YYYY-MM); varsayılan bu ay (Europe/Istanbul) */
+                month?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            membershipId: string;
+                            name: string;
+                            /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                            role: string;
+                            /** @description Pasifleştirilmiş (ayrılan) personelde `false` */
+                            active: boolean;
+                            /** @description `month` ayındaki atama; yoksa boş */
+                            allocation: {
+                                id: string;
+                                membershipId: string;
+                                /** @description Yürürlük başlangıç ayı (YYYY-MM) */
+                                startMonth: string;
+                                /** @description Son ay (YYYY-MM): sonraki atamanın başlangıcından bir önceki ay; yoksa süresiz */
+                                endMonth: string | null;
+                                shares: {
+                                    costCenterId: string;
+                                    code: string;
+                                    name: string;
+                                    /** @description Merkez bugün etkin mi */
+                                    isActive: boolean;
+                                    /** @description Pay, on binde bir */
+                                    shareBasisPoints: number;
+                                }[];
+                                /** @description Saatli ana ücretin tahmini aylık saati */
+                                wageHours: number | null;
+                                /** @description Tahmini aylık ek ders saati */
+                                extraLessonHours: number | null;
+                                /** @description Tahmini aylık nöbet saati */
+                                dutyHours: number | null;
+                                createdAt: string;
+                                /** @description `If-Match` için kayıt sürümü (iptal) */
+                                version: number;
+                            } | null;
+                            /** @description İptal edilmemiş atama sayısı */
+                            allocationCount: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getStaffCostAllocations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Personelin kurum üyeliği */
+                membershipId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            membershipId: string;
+                            name: string;
+                            role: string;
+                            active: boolean;
+                            /** @description Bugünün ayı (YYYY-MM) */
+                            month: string;
+                            /** @description Bu ay yürürlükteki atama */
+                            currentId: string | null;
+                            /** @description İptal edilmemiş atamalar, başlangıca göre */
+                            allocations: {
+                                id: string;
+                                membershipId: string;
+                                /** @description Yürürlük başlangıç ayı (YYYY-MM) */
+                                startMonth: string;
+                                /** @description Son ay (YYYY-MM): sonraki atamanın başlangıcından bir önceki ay; yoksa süresiz */
+                                endMonth: string | null;
+                                shares: {
+                                    costCenterId: string;
+                                    code: string;
+                                    name: string;
+                                    /** @description Merkez bugün etkin mi */
+                                    isActive: boolean;
+                                    /** @description Pay, on binde bir */
+                                    shareBasisPoints: number;
+                                }[];
+                                /** @description Saatli ana ücretin tahmini aylık saati */
+                                wageHours: number | null;
+                                /** @description Tahmini aylık ek ders saati */
+                                extraLessonHours: number | null;
+                                /** @description Tahmini aylık nöbet saati */
+                                dutyHours: number | null;
+                                createdAt: string;
+                                /** @description `If-Match` için kayıt sürümü (iptal) */
+                                version: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createStaffCostAllocation: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Atanan personelin kurum üyeliği */
+                    membershipId: string;
+                    /** @description Yürürlük başlangıç ayı (YYYY-MM) */
+                    startMonth: string;
+                    /** @description Merkez payları; toplam 10.000 (%100), merkez tekrarlanmaz */
+                    shares: {
+                        /**
+                         * Format: uuid
+                         * @description Maliyet merkezi
+                         */
+                        costCenterId: string;
+                        /** @description Pay, on binde bir (10.000 = %100) */
+                        shareBasisPoints: number;
+                    }[];
+                    /**
+                     * @description Saatlik ya da ders saati ücretli personelin tahmini aylık saati; boşsa ana ücret rapora girmez
+                     * @default null
+                     */
+                    wageHours?: number | null;
+                    /**
+                     * @description Tahmini aylık ek ders saati; boşsa ek ders ücreti rapora girmez
+                     * @default null
+                     */
+                    extraLessonHours?: number | null;
+                    /**
+                     * @description Tahmini aylık nöbet saati; boşsa nöbet ücreti rapora girmez
+                     * @default null
+                     */
+                    dutyHours?: number | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            membershipId: string;
+                            /** @description Yürürlük başlangıç ayı (YYYY-MM) */
+                            startMonth: string;
+                            /** @description Son ay (YYYY-MM): sonraki atamanın başlangıcından bir önceki ay; yoksa süresiz */
+                            endMonth: string | null;
+                            shares: {
+                                costCenterId: string;
+                                code: string;
+                                name: string;
+                                /** @description Merkez bugün etkin mi */
+                                isActive: boolean;
+                                /** @description Pay, on binde bir */
+                                shareBasisPoints: number;
+                            }[];
+                            /** @description Saatli ana ücretin tahmini aylık saati */
+                            wageHours: number | null;
+                            /** @description Tahmini aylık ek ders saati */
+                            extraLessonHours: number | null;
+                            /** @description Tahmini aylık nöbet saati */
+                            dutyHours: number | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü (iptal) */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelStaffCostAllocation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                allocationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description İptal gerekçesi; denetim kaydına yazılmaz */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
                         };
                     };
                 };

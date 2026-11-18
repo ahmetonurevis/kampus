@@ -6,19 +6,27 @@ import {
   useEventTickets,
   useEventTicketsExport,
   usePayEventTicket,
+  useRefundEventTicket,
   useTicketedEvent,
   useTicketedEvents,
+  useUndoEventTicketCheckIn,
   useUpdateTicketedEvent,
   type EventTicketRow,
   type TicketedEventRow,
 } from '@kampus/react-shared/use-finance-event-tickets.ts'
 import {
   canManageEvents,
+  EVENT_FULL_REFUND_DAYS,
+  EVENT_LATE_REFUND_PERCENT,
   EVENT_SEATING_MODE_LABELS,
   EVENT_TICKET_PAYMENT_METHOD_LABELS,
   EVENT_TICKET_PAYMENT_METHODS,
+  EVENT_TICKET_REFUND_STATUS_LABELS,
   EVENT_TICKET_STATE_LABELS,
   EVENT_TICKET_STATES,
+  EVENT_UNDO_REASON_MAX,
+  EVENT_UNDO_REASON_MIN,
+  eventRefundQuote,
   seatLabel,
   type EventTicketPaymentMethod,
   type EventTicketState,
@@ -45,6 +53,7 @@ import { EVENT_TICKET_TITLE } from '@/lib/pdf/templates/finance-event-ticket.ts'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { PdfDialogButton } from './CorporateParts.tsx'
 import { AllocateTicketsModal, EventFormModal } from './FinanceEventTicketForms.tsx'
+import { centsOf, priceTextOf } from './finance-event-ticket-forms.ts'
 
 /** Etkinlik seçimi adres parametresi (`?etkinlik=`). */
 export const EVENT_PANEL = 'etkinlik'
@@ -57,6 +66,12 @@ const STATE_TONES = {
   used: 'purple',
   cancelled: 'gray',
 } as const satisfies Record<EventTicketState, string>
+
+const REFUND_TONES = {
+  none: 'gray',
+  pending: 'amber',
+  paid: 'green',
+} as const satisfies Record<EventTicketRow['refundStatus'], string>
 
 const momentText = (iso: string) => `${dateLabel(iso, { year: 'numeric' })} ${timeLabel(iso)}`
 const text = (value: unknown) => (typeof value === 'string' && value !== '' ? value : null)
@@ -75,10 +90,11 @@ type EventRow = {
 }
 
 /**
- * Etkinlik biletleri (`?gorunum=etkinlik-bileti`; DOM-FIN-103, ON-159). Yönetici ve ön büro gösteri
- * ve tören etkinliklerini, doluluğu ve tahsil edilen tutarı görür; yönetici etkinlik açar ve düzeltir
- * (K-324). Seçilen etkinlikte koltuk haritası, bilet ayırma, girişte kod okutma ve satış listesi
- * (ödeme, iptal, PDF bilet, CSV) vardır. Ödeme elle (nakit/havale) işaretlenir.
+ * Etkinlik biletleri (`?gorunum=etkinlik-bileti`; DOM-FIN-103, ON-159, ON-345). Yönetici ve ön büro
+ * gösteri ve tören etkinliklerini, doluluğu ve tahsil edilen tutarı görür; yönetici etkinlik açar ve
+ * düzeltir (K-324). Seçilen etkinlikte koltuk haritası, bilet ayırma, girişte kod okutma ve satış
+ * listesi (ödeme, iptal ve iade tutarı, iade ödendi, girişi geri alma, PDF bilet, CSV) vardır. Ödeme
+ * ve iade elle (nakit/havale) işaretlenir.
  */
 export function FinanceEventTicketsSection({ role }: { role: string }) {
   const canManage = canManageEvents(role)
@@ -281,13 +297,19 @@ function EventDetail({
           </Button>
         </div>
       </div>
-      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {[
           ['Bilet', `${String(data.activeCount)} / ${String(data.totalCapacity)}`],
           ['Boş yer', String(data.availableCount)],
           ['Girişte kullanılan', String(data.usedCount)],
           ['Ödeme bekleyen', String(data.unpaidCount)],
-          ['Tahsil edilen', money(data.collectedCents)],
+          ['Tahsil edilen (net)', money(data.collectedCents)],
+          [
+            'Bekleyen iade',
+            data.pendingRefundCount === 0
+              ? 'Yok'
+              : `${String(data.pendingRefundCount)} · ${money(data.pendingRefundCents)}`,
+          ],
         ].map(([label, value]) => (
           <div key={label} className="rounded-lg border p-3">
             <dt className="text-sm text-muted-foreground">{label}</dt>
@@ -324,7 +346,7 @@ function EventDetail({
           </Button>
         </div>
       )}
-      <TicketList event={data} />
+      <TicketList event={data} canManage={canManage} />
       {editing ? (
         <EventFormModal
           event={data}
@@ -484,8 +506,8 @@ type TicketRow = {
   ticket: EventTicketRow
 }
 
-/** Satış listesi: süzgeç, arama, ödeme, iptal, PDF ve CSV. */
-function TicketList({ event }: { event: TicketedEventRow }) {
+/** Satış listesi: süzgeç, arama, ödeme, iptal, iade, girişi geri alma, PDF ve CSV. */
+function TicketList({ event, canManage }: { event: TicketedEventRow; canManage: boolean }) {
   const list = useListState(`etkinlik-satis-${event.id}`, { urlPrefix: 'bilet_' })
   const search = useDebouncedValue(list.state.query).trim()
   const state = text(list.state.filters.state)
@@ -502,6 +524,8 @@ function TicketList({ event }: { event: TicketedEventRow }) {
   const { run, reauthModal } = useReauthRetry()
   const [paying, setPaying] = useState<EventTicketRow | null>(null)
   const [cancelling, setCancelling] = useState<EventTicketRow | null>(null)
+  const [refunding, setRefunding] = useState<EventTicketRow | null>(null)
+  const [undoing, setUndoing] = useState<EventTicketRow | null>(null)
 
   async function download() {
     const outcome = await run(() => exporter.submit({ eventId: event.id, query: filter }))
@@ -549,7 +573,25 @@ function TicketList({ event }: { event: TicketedEventRow }) {
         key: 'state',
         label: 'Durum',
         cell: (row) => (
-          <StatusBadge text={EVENT_TICKET_STATE_LABELS[row.state]} tone={STATE_TONES[row.state]} />
+          <span className="flex flex-wrap items-center gap-2">
+            <StatusBadge
+              text={EVENT_TICKET_STATE_LABELS[row.state]}
+              tone={STATE_TONES[row.state]}
+            />
+            {row.ticket.refundCents !== null && row.ticket.paymentStatus === 'paid' ? (
+              <StatusBadge
+                text={`${EVENT_TICKET_REFUND_STATUS_LABELS[row.ticket.refundStatus]}${
+                  row.ticket.refundCents > 0 ? ` · ${money(row.ticket.refundCents)}` : ''
+                }`}
+                tone={REFUND_TONES[row.ticket.refundStatus]}
+              />
+            ) : null}
+            {row.ticket.checkInUndoCount > 0 ? (
+              <span className="text-sm text-muted-foreground">
+                Giriş {String(row.ticket.checkInUndoCount)} kez geri alındı
+              </span>
+            ) : null}
+          </span>
         ),
       },
       {
@@ -583,6 +625,25 @@ function TicketList({ event }: { event: TicketedEventRow }) {
                 onClick={() => setCancelling(row.ticket)}
               >
                 İptal
+              </Button>
+            ) : null}
+            {row.ticket.canUndoCheckIn ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                aria-label={`${row.holder} biletinin girişini geri al`}
+                onClick={() => setUndoing(row.ticket)}
+              >
+                Girişi geri al
+              </Button>
+            ) : null}
+            {row.ticket.refundStatus === 'pending' ? (
+              <Button
+                size="sm"
+                aria-label={`${row.holder} biletinin iadesini ödendi işaretle`}
+                onClick={() => setRefunding(row.ticket)}
+              >
+                İade ödendi
               </Button>
             ) : null}
           </span>
@@ -629,8 +690,18 @@ function TicketList({ event }: { event: TicketedEventRow }) {
       />
       {paying ? <PayModal ticket={paying} onClose={() => setPaying(null)} /> : null}
       {cancelling ? (
-        <CancelModal ticket={cancelling} run={run} onClose={() => setCancelling(null)} />
+        <CancelModal
+          ticket={cancelling}
+          event={event}
+          canOverride={canManage}
+          run={run}
+          onClose={() => setCancelling(null)}
+        />
       ) : null}
+      {refunding ? (
+        <RefundModal ticket={refunding} run={run} onClose={() => setRefunding(null)} />
+      ) : null}
+      {undoing ? <UndoCheckInModal ticket={undoing} onClose={() => setUndoing(null)} /> : null}
       {reauthModal}
     </section>
   )
@@ -693,27 +764,70 @@ function PayModal({ ticket, onClose }: { ticket: EventTicketRow; onClose: () => 
 }
 
 /**
- * İptal onayı (K-326): koltuk boşa çıkar; ödenmiş biletin bedeli elle iade edilmiş sayılır. İptal
- * taze oturum ister; parola penceresi `run` ile açılır.
+ * İptal onayı (K-326, K-380): koltuk boşa çıkar. Ödenmiş bilette iade tutarı kuralla gösterilir
+ * (etkinliğe kalan gün); yönetici tutarı değiştirebilir, kuraldan farklıysa not zorunludur. İade
+ * iptalle ödenmiş sayılmaz, "İade ödendi" ile ayrıca işaretlenir. İptal taze oturum ister; parola
+ * penceresi `run` ile açılır.
  */
 function CancelModal({
   ticket,
+  event,
+  canOverride,
   run,
   onClose,
 }: {
   ticket: EventTicketRow
+  event: TicketedEventRow
+  canOverride: boolean
   run: ReturnType<typeof useReauthRetry>['run']
   onClose: () => void
 }) {
   const cancel = useCancelEventTicket()
-  const [reason, setReason] = useState('')
   const paid = ticket.paymentStatus === 'paid'
+  const [quote] = useState(() => eventRefundQuote(ticket.priceCents, event.startsAt, new Date()))
+  const [reason, setReason] = useState('')
+  const [amount, setAmount] = useState(() => priceTextOf(quote.refundCents))
+  const [errors, setErrors] = useState<{ refundCents?: string; reason?: string; root?: string }>({})
+  const ruleText =
+    quote.rule === 'full'
+      ? `etkinliğe ${String(quote.daysBefore)} gün var, tam iade`
+      : quote.rule === 'partial'
+        ? `etkinliğe ${String(quote.daysBefore)} gün var, %${String(EVENT_LATE_REFUND_PERCENT)} iade`
+        : 'etkinlik günü ya da sonrası, iade yok'
   const submit = async () => {
+    const note = reason.trim() === '' ? null : reason.trim()
+    const refundCents = paid && canOverride ? centsOf(amount) : null
+    if (paid && canOverride && refundCents === null) {
+      setErrors({ refundCents: 'Tutarı 150 ya da 150,50 biçiminde yazın.' })
+      return
+    }
+    if (refundCents !== null && refundCents !== quote.refundCents && note === null) {
+      setErrors({ reason: 'İade tutarı kuraldan farklıysa not yazın.' })
+      return
+    }
+    setErrors({})
     const outcome = await run(() =>
-      cancel.submit({ ticketId: ticket.id, reason: reason.trim() === '' ? null : reason.trim() }),
+      cancel.submit(
+        { ticketId: ticket.id, body: { reason: note, refundCents } },
+        {
+          setError: (name, error) =>
+            setErrors((current) =>
+              name === 'refundCents' || name === 'reason'
+                ? { ...current, [name]: error.message }
+                : { ...current, root: error.message },
+            ),
+        },
+      ),
     )
     if (outcome.status === 'done' && outcome.result.status === 'success') {
-      notify.success(paid ? 'Bilet iptal edildi; bedel iade edildi.' : 'Bilet iptal edildi.')
+      const saved = outcome.result.data.data
+      notify.success(
+        !paid
+          ? 'Bilet iptal edildi.'
+          : (saved.refundCents ?? 0) > 0
+            ? `Bilet iptal edildi; ${money(saved.refundCents ?? 0)} iade bekliyor.`
+            : 'Bilet iptal edildi; iade yok.',
+      )
       onClose()
     }
   }
@@ -724,7 +838,7 @@ function CancelModal({
       title="Bileti iptal et"
       description={
         paid
-          ? `${ticket.holderName} biletinin ${money(ticket.priceCents)} bedelini iade ettiğinizi onaylıyorsunuz; koltuk boşa çıkar.`
+          ? `${ticket.holderName} biletinin bedeli ${money(ticket.priceCents)}. Kurala göre iade ${money(quote.refundCents)} (${ruleText}); koltuk boşa çıkar.`
           : `${ticket.holderName} bileti iptal edilir; koltuk boşa çıkar.`
       }
       footer={
@@ -742,13 +856,171 @@ function CancelModal({
         </>
       }
     >
-      <FormField id="bilet-iptal-notu" label="Not (isteğe bağlı)">
+      <div className="grid gap-3">
+        {paid && canOverride ? (
+          <FormField
+            id="bilet-iade-tutari"
+            label="İade tutarı (TL)"
+            error={errors.refundCents ? { message: errors.refundCents } : undefined}
+            description={`Kural: ${String(EVENT_FULL_REFUND_DAYS)} gün ve daha çok kala tam, 1–${String(EVENT_FULL_REFUND_DAYS - 1)} gün kala %${String(EVENT_LATE_REFUND_PERCENT)}, etkinlik günü iade yok. Kurum iptalinde tam iade yazabilirsiniz; not zorunludur.`}
+          >
+            {(control) => (
+              <Input
+                {...control}
+                inputMode="decimal"
+                value={amount}
+                onChange={(changeEvent) => setAmount(changeEvent.target.value)}
+              />
+            )}
+          </FormField>
+        ) : null}
+        <FormField
+          id="bilet-iptal-notu"
+          label="Not (isteğe bağlı)"
+          error={errors.reason ? { message: errors.reason } : undefined}
+        >
+          {(control) => (
+            <Input
+              {...control}
+              value={reason}
+              maxLength={200}
+              onChange={(changeEvent) => setReason(changeEvent.target.value)}
+            />
+          )}
+        </FormField>
+        {errors.root ? (
+          <p role="alert" className="text-sm text-destructive">
+            {errors.root}
+          </p>
+        ) : null}
+      </div>
+    </Modal>
+  )
+}
+
+/** İadenin ödendiği işareti (K-380): yöntem nakit ya da havale; taze oturum ister. */
+function RefundModal({
+  ticket,
+  run,
+  onClose,
+}: {
+  ticket: EventTicketRow
+  run: ReturnType<typeof useReauthRetry>['run']
+  onClose: () => void
+}) {
+  const refund = useRefundEventTicket()
+  const [method, setMethod] = useState<EventTicketPaymentMethod>('cash')
+  const submit = async () => {
+    const outcome = await run(() => refund.submit({ ticketId: ticket.id, body: { method } }))
+    if (outcome.status === 'done' && outcome.result.status === 'success') {
+      notify.success('İade ödendi olarak işaretlendi.')
+      onClose()
+    }
+  }
+  return (
+    <Modal
+      open
+      onOpenChange={(open) => (open ? undefined : onClose())}
+      title="İade ödendi"
+      description={`${ticket.holderName} · ${ticket.ticketTypeName} · iade ${money(ticket.refundCents ?? 0)}`}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={refund.isPending}>
+            Vazgeç
+          </Button>
+          <Button
+            onClick={() => void submit()}
+            disabled={refund.isPending}
+            aria-busy={refund.isPending || undefined}
+          >
+            İadeyi işaretle
+          </Button>
+        </>
+      }
+    >
+      <FormField
+        id="bilet-iade-yontemi"
+        label="İade yöntemi"
+        description="İade elle yapılır; gün sonuna ve muhasebe aktarımına girmez."
+      >
+        {(control) => (
+          <NativeSelect
+            {...control}
+            value={method}
+            onChange={(changeEvent) =>
+              setMethod(changeEvent.target.value as EventTicketPaymentMethod)
+            }
+            className="w-full"
+          >
+            {EVENT_TICKET_PAYMENT_METHODS.map((value) => (
+              <NativeSelectOption key={value} value={value}>
+                {EVENT_TICKET_PAYMENT_METHOD_LABELS[value]}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+        )}
+      </FormField>
+    </Modal>
+  )
+}
+
+/**
+ * Girişi geri alma (K-378): yanlış okutulan biletin "kullanıldı" işareti gerekçeyle kaldırılır;
+ * bilet yeniden okutulabilir. Düğme yalnız sunucu izin verdiğinde (`canUndoCheckIn`) görünür.
+ */
+function UndoCheckInModal({ ticket, onClose }: { ticket: EventTicketRow; onClose: () => void }) {
+  const undo = useUndoEventTicketCheckIn()
+  const [reason, setReason] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const submit = async () => {
+    const text = reason.trim()
+    if (text.length < EVENT_UNDO_REASON_MIN) {
+      setError(`Gerekçe en az ${String(EVENT_UNDO_REASON_MIN)} karakter olmalıdır.`)
+      return
+    }
+    setError(null)
+    const outcome = await undo.submit(
+      { ticketId: ticket.id, reason: text },
+      { setError: (_name, fieldError) => setError(fieldError.message) },
+    )
+    if (outcome.status === 'success') {
+      notify.success('Giriş geri alındı; bilet yeniden okutulabilir.')
+      onClose()
+    }
+  }
+  return (
+    <Modal
+      open
+      onOpenChange={(open) => (open ? undefined : onClose())}
+      title="Girişi geri al"
+      description={`${ticket.holderName}${ticket.seat ? `, koltuk ${ticket.seat}` : ''} biletinin girişi geri alınır; eski giriş kaydı saklanır.`}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onClose} disabled={undo.isPending}>
+            Vazgeç
+          </Button>
+          <Button
+            onClick={() => void submit()}
+            disabled={undo.isPending}
+            aria-busy={undo.isPending || undefined}
+          >
+            Girişi geri al
+          </Button>
+        </>
+      }
+    >
+      <FormField
+        id="bilet-giris-geri-alma-gerekcesi"
+        label="Gerekçe"
+        error={error ? { message: error } : undefined}
+        description="Ör. yanlış bilet okutuldu. Etkinlik günü bitene kadar geri alınabilir."
+      >
         {(control) => (
           <Input
             {...control}
             value={reason}
-            maxLength={200}
-            onChange={(event) => setReason(event.target.value)}
+            maxLength={EVENT_UNDO_REASON_MAX}
+            onChange={(changeEvent) => setReason(changeEvent.target.value)}
           />
         )}
       </FormField>

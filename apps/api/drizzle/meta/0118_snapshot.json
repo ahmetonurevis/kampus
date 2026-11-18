@@ -1,5 +1,5 @@
 {
-  "id": "8fdb6a75-56d0-4a94-9380-0915fbb473e9",
+  "id": "b9725f0d-995e-44fc-9e83-4c1a234e9dee",
   "prevId": "fbe75b8a-138b-4a76-ba51-e41cf8d5ab8d",
   "version": "7",
   "dialect": "postgresql",
@@ -16396,293 +16396,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.staff_medical_reports": {
-      "name": "staff_medical_reports",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "membership_id": {
-          "name": "membership_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "report_type": {
-          "name": "report_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "start_date": {
-          "name": "start_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "end_date": {
-          "name": "end_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "day_count": {
-          "name": "day_count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "issuer_type": {
-          "name": "issuer_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "file_id": {
-          "name": "file_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "employer_notified_at": {
-          "name": "employer_notified_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "employer_notified_by_user_id": {
-          "name": "employer_notified_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sgk_approved_at": {
-          "name": "sgk_approved_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sgk_approved_by_user_id": {
-          "name": "sgk_approved_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "cancel_reason": {
-          "name": "cancel_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancelled_by_user_id": {
-          "name": "cancelled_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "staff_medical_reports_membership_idx": {
-          "name": "staff_medical_reports_membership_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "membership_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "start_date",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "staff_medical_reports_period_idx": {
-          "name": "staff_medical_reports_period_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "start_date",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "end_date",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"staff_medical_reports\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "staff_medical_reports_file_idx": {
-          "name": "staff_medical_reports_file_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "file_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"staff_medical_reports\".\"file_id\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "staff_medical_reports_institution_id_institutions_id_fk": {
-          "name": "staff_medical_reports_institution_id_institutions_id_fk",
-          "tableFrom": "staff_medical_reports",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "staff_medical_reports_membership_fkey": {
-          "name": "staff_medical_reports_membership_fkey",
-          "tableFrom": "staff_medical_reports",
-          "tableTo": "memberships",
-          "columnsFrom": [
-            "institution_id",
-            "membership_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "staff_medical_reports_file_fkey": {
-          "name": "staff_medical_reports_file_fkey",
-          "tableFrom": "staff_medical_reports",
-          "tableTo": "files",
-          "columnsFrom": [
-            "institution_id",
-            "file_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "staff_medical_reports_pkey": {
-          "name": "staff_medical_reports_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "staff_medical_reports_type_check": {
-          "name": "staff_medical_reports_type_check",
-          "value": "\"staff_medical_reports\".\"report_type\" in ('sickness', 'work_accident', 'occupational_disease', 'maternity')"
-        },
-        "staff_medical_reports_issuer_check": {
-          "name": "staff_medical_reports_issuer_check",
-          "value": "\"staff_medical_reports\".\"issuer_type\" is null or \"staff_medical_reports\".\"issuer_type\" in ('public', 'private', 'family_physician')"
-        },
-        "staff_medical_reports_dates_check": {
-          "name": "staff_medical_reports_dates_check",
-          "value": "\"staff_medical_reports\".\"end_date\" >= \"staff_medical_reports\".\"start_date\"\n        and \"staff_medical_reports\".\"day_count\" = (\"staff_medical_reports\".\"end_date\" - \"staff_medical_reports\".\"start_date\") + 1\n        and \"staff_medical_reports\".\"day_count\" <= 366"
-        },
-        "staff_medical_reports_flags_check": {
-          "name": "staff_medical_reports_flags_check",
-          "value": "((\"staff_medical_reports\".\"employer_notified_at\" is null) = (\"staff_medical_reports\".\"employer_notified_by_user_id\" is null))\n        and ((\"staff_medical_reports\".\"sgk_approved_at\" is null) = (\"staff_medical_reports\".\"sgk_approved_by_user_id\" is null))\n        and (\"staff_medical_reports\".\"sgk_approved_at\" is null or \"staff_medical_reports\".\"employer_notified_at\" is not null)"
-        },
-        "staff_medical_reports_cancel_check": {
-          "name": "staff_medical_reports_cancel_check",
-          "value": "((\"staff_medical_reports\".\"archived_at\" is null) = (\"staff_medical_reports\".\"cancel_reason\" is null))\n        and ((\"staff_medical_reports\".\"archived_at\" is null) = (\"staff_medical_reports\".\"cancelled_by_user_id\" is null))\n        and (\"staff_medical_reports\".\"archived_at\" is null or \"staff_medical_reports\".\"file_id\" is null)\n        and (\"staff_medical_reports\".\"cancel_reason\" is null or char_length(\"staff_medical_reports\".\"cancel_reason\")\n          between 5 and 500)"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.lesson_package_hour_entries": {
       "name": "lesson_package_hour_entries",
       "schema": "",
@@ -23959,6 +23672,356 @@
         "staff_certificates_cancel_check": {
           "name": "staff_certificates_cancel_check",
           "value": "((\"staff_certificates\".\"cancelled_at\" is null) = (\"staff_certificates\".\"cancelled_by_user_id\" is null))\n        and ((\"staff_certificates\".\"cancelled_at\" is null) = (\"staff_certificates\".\"cancel_reason\" is null))\n        and (\"staff_certificates\".\"cancel_reason\" is null or char_length(\"staff_certificates\".\"cancel_reason\")\n          between 5 and 500)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.staff_cost_allocation_shares": {
+      "name": "staff_cost_allocation_shares",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "allocation_id": {
+          "name": "allocation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cost_center_id": {
+          "name": "cost_center_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "share_basis_points": {
+          "name": "share_basis_points",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "staff_cost_allocation_shares_cost_center_idx": {
+          "name": "staff_cost_allocation_shares_cost_center_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "cost_center_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "staff_cost_allocation_shares_institution_id_institutions_id_fk": {
+          "name": "staff_cost_allocation_shares_institution_id_institutions_id_fk",
+          "tableFrom": "staff_cost_allocation_shares",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "staff_cost_allocation_shares_allocation_fkey": {
+          "name": "staff_cost_allocation_shares_allocation_fkey",
+          "tableFrom": "staff_cost_allocation_shares",
+          "tableTo": "staff_cost_allocations",
+          "columnsFrom": [
+            "institution_id",
+            "allocation_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "staff_cost_allocation_shares_cost_center_fkey": {
+          "name": "staff_cost_allocation_shares_cost_center_fkey",
+          "tableFrom": "staff_cost_allocation_shares",
+          "tableTo": "cost_centers",
+          "columnsFrom": [
+            "institution_id",
+            "cost_center_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "staff_cost_allocation_shares_pkey": {
+          "name": "staff_cost_allocation_shares_pkey",
+          "columns": [
+            "institution_id",
+            "allocation_id",
+            "cost_center_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "staff_cost_allocation_shares_share_check": {
+          "name": "staff_cost_allocation_shares_share_check",
+          "value": "\"staff_cost_allocation_shares\".\"share_basis_points\" between 1 and 10000"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.staff_cost_allocations": {
+      "name": "staff_cost_allocations",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "membership_id": {
+          "name": "membership_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_month": {
+          "name": "start_month",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "wage_hours": {
+          "name": "wage_hours",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "extra_lesson_hours": {
+          "name": "extra_lesson_hours",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duty_hours": {
+          "name": "duty_hours",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cancel_reason": {
+          "name": "cancel_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancelled_by_user_id": {
+          "name": "cancelled_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "staff_cost_allocations_month_key": {
+          "name": "staff_cost_allocations_month_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "start_month",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"staff_cost_allocations\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "staff_cost_allocations_membership_idx": {
+          "name": "staff_cost_allocations_membership_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "start_month",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "staff_cost_allocations_institution_id_institutions_id_fk": {
+          "name": "staff_cost_allocations_institution_id_institutions_id_fk",
+          "tableFrom": "staff_cost_allocations",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "staff_cost_allocations_membership_fkey": {
+          "name": "staff_cost_allocations_membership_fkey",
+          "tableFrom": "staff_cost_allocations",
+          "tableTo": "memberships",
+          "columnsFrom": [
+            "institution_id",
+            "membership_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "staff_cost_allocations_pkey": {
+          "name": "staff_cost_allocations_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "staff_cost_allocations_start_month_check": {
+          "name": "staff_cost_allocations_start_month_check",
+          "value": "extract(day from \"staff_cost_allocations\".\"start_month\") = 1 and \"staff_cost_allocations\".\"start_month\" between '2020-01-01' and '2099-12-01'"
+        },
+        "staff_cost_allocations_hours_check": {
+          "name": "staff_cost_allocations_hours_check",
+          "value": "(\"staff_cost_allocations\".\"wage_hours\" is null or \"staff_cost_allocations\".\"wage_hours\" between 0 and 300)\n        and (\"staff_cost_allocations\".\"extra_lesson_hours\" is null or \"staff_cost_allocations\".\"extra_lesson_hours\" between 0 and 300)\n        and (\"staff_cost_allocations\".\"duty_hours\" is null or \"staff_cost_allocations\".\"duty_hours\" between 0 and 300)"
+        },
+        "staff_cost_allocations_cancel_check": {
+          "name": "staff_cost_allocations_cancel_check",
+          "value": "((\"staff_cost_allocations\".\"archived_at\" is null) = (\"staff_cost_allocations\".\"cancel_reason\" is null))\n        and ((\"staff_cost_allocations\".\"archived_at\" is null) = (\"staff_cost_allocations\".\"cancelled_by_user_id\" is null))\n        and (\"staff_cost_allocations\".\"cancel_reason\" is null or char_length(\"staff_cost_allocations\".\"cancel_reason\")\n          between 5 and 500)"
         }
       },
       "isRLSEnabled": false

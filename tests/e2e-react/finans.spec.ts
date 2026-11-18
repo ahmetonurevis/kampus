@@ -5,6 +5,7 @@ import type { Download, Locator, Page, Request } from '@playwright/test'
 
 import { readWorkbook } from '../../apps/api/test/support/finance-workbook.ts'
 import { createApiClient, switchInstitutionApi, type ApiClient } from './support/api.ts'
+import { istanbulDay } from './support/commands.ts'
 import { e2e } from './support/env.ts'
 import { pdfText } from './support/finance-pdf-text.ts'
 import { seedScholarshipContract, seedStudentPayerContract } from './support/finance-terms.ts'
@@ -972,6 +973,70 @@ test.describe('Finans: tahsilat', () => {
     await page.goto('/onburo/tahsilat-takip?gorunum=ayrilis')
     await expect(page.getByRole('table', { name: 'Ayrılış ve iade kayıtları' })).toContainText(name)
     await expect(page.getByRole('button', { name: 'Ayrılış başlat' })).toHaveCount(0)
+  })
+
+  test('ON-342, K-348, K-349: ayrılış gerçekleşmemiş etkinliği iptal eder; döküm ayrı bölümde gösterir', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: [], students: ['s22'] })
+    const client = await api(school.user('yonetici'))
+    const student = (await client.get('/api/v1/collections/students/s22')).body as {
+      data: { record: { name: string } }
+    }
+    const { name } = student.data.record
+    // Etkinlik ayrılıştan sonra, son iptal günü içinde: ödenmemiş taksit kapanır, iade ve borç yok.
+    const created = await client.post('/api/v1/finance/paid-activities', {
+      name: 'E2E ayrılış gezisi',
+      kind: 'trip',
+      activityDate: istanbulDay(10),
+      feeCents: 50_000,
+      joinDeadline: istanbulDay(5),
+      cancelDeadline: istanbulDay(5),
+      capacity: 5,
+      lateRefundRule: 'percent',
+      lateRefundPercent: 50,
+      lateCostCents: null,
+    })
+    expect(created.status, 'etkinlik').toBe(201)
+    const activityId = (created.body as { data: { id: string } }).data.id
+    const joined = await client.post(
+      `/api/v1/finance/paid-activities/${activityId}/participants`,
+      { studentId: 's22' },
+      { 'idempotency-key': randomUUID() },
+    )
+    expect(joined.status, 'katılım').toBe(201)
+
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=ayrilis`)
+    await page.getByRole('button', { name: 'Ayrılış başlat' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Ayrılış başlat' })
+    await dialog.getByLabel('Öğrenci').selectOption({ label: name })
+    await dialog.getByLabel('Dönem başlangıcı').fill('2026-09-07')
+    await dialog.getByLabel('Görülen gün veya ders saati').fill('1')
+    await dialog.getByRole('button', { name: 'Hesabı göster' }).click()
+    const preview = dialog.getByRole('region', { name: 'Gezi ve etkinlik' })
+    await expect(preview).toContainText('E2E ayrılış gezisi')
+    await expect(preview).toContainText('Katılım iptal edildi; iade ve borç yok')
+    await expect(preview).toContainText('iade ve kalan borca girmez')
+
+    await dialog.getByRole('button', { name: 'Ayrılışı onayla' }).click()
+    await expect(page.getByText('Ayrılış kaydedildi.')).toBeVisible()
+    await page.getByRole('button', { name: `${name} hesap dökümünü görüntüle` }).click()
+    await expect(
+      page.getByRole('dialog', { name: 'Hesap dökümü' }).getByRole('region', {
+        name: 'Gezi ve etkinlik',
+      }),
+    ).toContainText('E2E ayrılış gezisi')
+    // Katılım ayrılışla aynı işlemde iptal edildi.
+    await expect
+      .poll(async () => {
+        const list = await client.get(`/api/v1/finance/paid-activities/${activityId}/participants`)
+        return (list.body as { data: { status: string }[] }).data.map((item) => item.status)
+      })
+      .toEqual(['cancelled'])
   })
 
   test('DOM-FIN-040, K-06: önizleme öğrenim sözleşmesini ve paket satışını ayrı ayrı gösterir', async ({

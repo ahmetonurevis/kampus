@@ -129,6 +129,36 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/ticketed-events/{eventId}/tickets',
   'POST /api/v1/finance/event-tickets/{ticketId}/pay',
   'POST /api/v1/finance/event-tickets/{ticketId}/cancel',
+  // Personel avansı taksit planı oluşturur; çift tıklama ikinci avansı açmaz
+  // (routes/finance-staff-deductions.ts; DOM-FIN-101, ON-199).
+  'POST /api/v1/finance/staff-advances',
+  // Personel belgesi yıl bazlı numara keser; çift tıklama ikinci belge açmaz
+  // (routes/finance-staff-certificates.ts; DOM-FIN-106).
+  'POST /api/v1/finance/staff-certificates',
+  // Etkinlik bileti iadesinin ödendiği işareti ve girişi geri alma; çift tıklama ikinci iade ya da
+  // ikinci geri alma izi yazmaz (routes/finance-event-tickets.ts; DOM-FIN-103, ON-345).
+  'POST /api/v1/finance/event-tickets/{ticketId}/refund',
+  'POST /api/v1/finance/event-tickets/{ticketId}/undo-check-in',
+  // Sağlık raporu girişi ve iptali; çift tıklama ikinci raporu (çakışma) ya da ikinci iptali
+  // yazmaz (routes/finance-medical-reports.ts; DOM-FIN-110, ON-185).
+  'POST /api/v1/finance/medical-reports',
+  'POST /api/v1/finance/medical-reports/{reportId}/cancel',
+  // Bordro ayının onayı ve yeniden açılması kilidi değiştirir; düzeltme kaydı sonraki aya bordro
+  // girdisi yazar, iptali onu geri alır; çift tıklama ikinci kaydı açmaz
+  // (routes/finance-payroll-periods.ts; DOM-FIN-108, ON-200).
+  'POST /api/v1/finance/payroll-periods/{month}/approve',
+  'POST /api/v1/finance/payroll-periods/{month}/reopen',
+  'POST /api/v1/finance/payroll-periods/{month}/adjustments',
+  'POST /api/v1/finance/payroll-adjustments/{adjustmentId}/cancel',
+  // Kullanılmış izin kaydı yıllık izin bakiyesinden düşer; çift gönderim izni iki kez düşmez
+  // (routes/finance-staff-leave.ts; DOM-FIN-109, ON-181).
+  'POST /api/v1/finance/leave-records',
+  // Çalışma onayı kaydı açılışı; çift tıklama aynı öğretmene ikinci başvuru açmaz
+  // (routes/finance-work-permits.ts; DOM-FIN-114, ON-174).
+  'POST /api/v1/finance/work-permits',
+  // Gezi planı taslağı numaralı plan açar; çift tıklama ikinci planı açmaz
+  // (routes/finance-trip-plans.ts; DOM-FIN-111, ON-155).
+  'POST /api/v1/finance/trip-plans',
 ]
 // Onur: kayıt ve finans sonu
 

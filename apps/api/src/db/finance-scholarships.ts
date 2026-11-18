@@ -409,3 +409,33 @@ export async function hasScholarshipEndForContract(
     .limit(1)
   return row !== undefined
 }
+
+/**
+ * Öğrencinin bütün burs kesme ve iptal kayıtları, eskiden yeniye; ayrılış hesabı tabanı, burslu
+ * istisnasını ve geri isteme satırını bunlardan çıkarır (ON-342, K-350, K-351).
+ */
+export async function listStudentScholarshipEnds(
+  db: Database,
+  institutionId: string,
+  studentId: string,
+): Promise<StoredScholarshipEnd[]> {
+  const rows = await db
+    .select({ end: scholarshipTerminations })
+    .from(scholarshipTerminations)
+    .innerJoin(
+      scholarshipAwards,
+      and(
+        eq(scholarshipAwards.institutionId, scholarshipTerminations.institutionId),
+        eq(scholarshipAwards.id, scholarshipTerminations.awardId),
+      ),
+    )
+    .where(
+      and(
+        eq(scholarshipTerminations.institutionId, institutionId),
+        isNull(scholarshipTerminations.archivedAt),
+        eq(scholarshipAwards.studentId, studentId),
+      ),
+    )
+    .orderBy(asc(scholarshipTerminations.createdAt), asc(scholarshipTerminations.id))
+  return rows.map((row) => row.end)
+}

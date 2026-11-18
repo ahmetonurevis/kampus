@@ -6,6 +6,7 @@ import { isContractInForce } from './contract-status.ts'
 import { daySchema, requiredText, type MakeId } from './domain.ts'
 import { learnerWords } from './enrollment-learner.ts'
 import { DomainError } from './errors.ts'
+import type { ACTIVITY_FEE_KIND } from './fee-tariffs.ts'
 import { packageUsedHoursRecorded, packageWithdrawalHours } from './finance-package-hours.ts'
 import type { PackageHourKind, PackageHourSource } from './finance-packages.ts'
 import { dayKey, money } from './format.ts'
@@ -24,6 +25,11 @@ import { dayKey, money } from './format.ts'
 export const REFUND_DEDUCTION_BASIS_POINTS = 1_000
 const BASIS = 10_000
 const DAY_TIME = 'T09:00:00.000Z'
+/**
+ * Etkinlik taksitinin türü (`ACTIVITY_FEE_KIND`); değer içe aktarılmaz, `fee-tariffs.ts` →
+ * `payments.ts` → bu dosya döngüsü oluşur. Tip denetimi iki değeri eş tutar.
+ */
+const ACTIVITY_KIND: typeof ACTIVITY_FEE_KIND = 'activity'
 
 export const WITHDRAWAL_REASONS = [
   'transfer',
@@ -169,6 +175,15 @@ export interface WithdrawalContractLine {
   /** Pakette kullanılan saat hiç girilmedi: hesap sıfır saate dayanır, fazla çıkabilir (K-21). */
   usedHoursMissing?: boolean
   scholarshipExempt: boolean
+  /**
+   * Ayrılış gününde yürürlükte olan burs kesmesi ya da iptali (K-350, ON-342): burslu istisnası
+   * uygulanmaz, kalkan burs payı tabana eklenir. Eski kayıtta ve bursu sürende yoktur.
+   */
+  scholarshipEnd?: {
+    kind: WithdrawalScholarshipEndKind
+    effectiveDate: string
+    reinstatedCents: number
+  }
   baseCents: number
   deductionCents: number
   usageCents: number
@@ -177,6 +192,69 @@ export interface WithdrawalContractLine {
   extraBalanceCents: number
   /** Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariçtir. */
   balanceCents: number
+}
+
+export type WithdrawalScholarshipEndKind = 'terminate' | 'revoke'
+
+/**
+ * Sözleşmenin burs kesme ya da iptal kaydı (`scholarship_terminations`, DOM-FIN-025, ON-283).
+ * Ayrılış hesabı bundan tabanı ve burslu istisnasını, geri isteme alacağının satırını çıkarır
+ * (K-350, K-351).
+ */
+export interface WithdrawalScholarshipEnd {
+  awardId: string
+  contractId: string
+  kind: WithdrawalScholarshipEndKind
+  /** Kesme günü (o gün burslu sayılır) ya da iptal günü. */
+  effectiveDate: string
+  /** İleriye kalkan burs payı: sözleşmeye bağlı yeni öğrenim taksitlerinin toplamı. */
+  reinstatedCents: number
+  principalCents: number
+  interestCents: number
+  /** Sözleşme dışı geri isteme alacağı taksitleri (anapara, faiz); ayrılış iptal etmez (K-266). */
+  clawbackInvoiceIds: readonly string[]
+}
+
+/**
+ * Geri istenen burs alacağı (K-351): dökümde ayrı satırdır; iade ve borç bakiyesine, tabana girmez,
+ * ayrılış alacağı iptal etmez. `openCents` ayrılış anında ödenmemiş kısımdır.
+ */
+export interface WithdrawalClawbackLine {
+  awardId: string
+  contractId: string
+  effectiveDate: string
+  principalCents: number
+  interestCents: number
+  openCents: number
+}
+
+/** Etkinlik katılımının ayrılıştaki sonucu (K-348): iptal edildi ya da borcu kaldı. */
+export type WithdrawalActivityOutcome = 'cancelled' | 'held'
+
+/**
+ * Gezi ve etkinlik katılımının ayrılış satırı (DOM-FIN-098, K-348, K-349). `cancelled`: etkinlik
+ * ayrılış gününden sonradır, katılım ayrılış gününe göre etkinliğin kuralıyla iptal edilir.
+ * `held`: etkinlik gerçekleşmiştir (ya da önceki iptalin kesinti taksiti açıktır), ödenmemiş kısım
+ * borç olarak kalır. Tutarlar iade ve borç bakiyesine girmez; iade katılım kaydından ödenir.
+ */
+export interface WithdrawalActivityLine {
+  participantId: string
+  activityId: string
+  name: string
+  activityDate: string
+  outcome: WithdrawalActivityOutcome
+  /** Satırın taksiti: katılım taksiti ya da önceki iptalin kesinti taksiti. */
+  invoiceId: string
+  amountCents: number
+  paidCents: number
+  /** İptalde katılımcıda kalan kesinti; `held` satırında sıfır. */
+  retainedCents: number
+  /** İptalde iade edilecek tutar (katılım kaydında ödenir, K-303). */
+  refundCents: number
+  /** Ayrılıştan sonra açık kalan etkinlik borcu. */
+  openCents: number
+  /** İptalde kesinti farkı için açılan taksit; yalnız ayrılış kaydında. */
+  debtInvoiceId?: string
 }
 
 /** Hesap dökümü: iade kaydında aynen saklanır, sonradan değişmez (DOM-FIN-041). */
@@ -222,6 +300,10 @@ export interface WithdrawalBreakdown {
   }
   /** Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yoktur. */
   refundApprovedCents?: number
+  /** Geri istenen burs alacağı (K-351); yalnız varsa, eski kayıtta yoktur. */
+  scholarshipClawbacks?: WithdrawalClawbackLine[]
+  /** Gezi ve etkinlik katılımları (K-348, K-349); yalnız varsa, eski kayıtta yoktur. */
+  activities?: WithdrawalActivityLine[]
 }
 
 /** Hesaba giren paket satışı ve saat hareketleri (`lesson_package_sales`, DOM-DIL-051). */
@@ -251,6 +333,8 @@ export interface WithdrawalContext {
    * alınmış öğrenim ücreti hakkın kendi iade kaydıyla döndüğü için ayrılışta yeniden iade edilmez.
    */
   freeTuitionContractIds?: ReadonlySet<string>
+  /** Öğrencinin burs kesme ve iptal kayıtları (K-350, K-351); eskiden yeniye. */
+  scholarshipEnds?: readonly WithdrawalScholarshipEnd[]
   now: string
 }
 
@@ -313,6 +397,7 @@ function withdrawalAccount(
   studentId: string,
   sales: readonly WithdrawalPackageSale[],
   institutionType: InstitutionType,
+  standalone: ReadonlySet<string>,
 ): AccountContract[] {
   const planned = plannedRenewalContractIds(state, studentId)
   const saleOf = saleFinder(state, sales)
@@ -332,6 +417,7 @@ function withdrawalAccount(
 
   // Taksit bir kez sayılır. Listesi olmayan eski sözleşme yalnız hiçbir sözleşmenin listesinde
   // bulunmayan taksitleri alır; aynı taksit iki sözleşmede görünürse yeni sözleşmede kalır.
+  // Sözleşmesiz etkinlik taksiti ve burs geri isteme alacağı hiçbir sözleşmeye girmez (K-349, K-351).
   const listed = new Set(
     state.contracts
       .filter((item) => item.studentId === studentId)
@@ -341,12 +427,38 @@ function withdrawalAccount(
   const newestFirst = [...contracts].reverse().map((contract) => {
     const own = contract.invoiceIds
       ? invoicesOf(state, contract)
-      : state.invoices.filter((item) => item.studentId === studentId && !listed.has(item.id))
+      : state.invoices.filter(
+          (item) =>
+            item.studentId === studentId &&
+            !listed.has(item.id) &&
+            item.feeKind !== ACTIVITY_KIND &&
+            !standalone.has(item.id),
+        )
     const invoices = own.filter((item) => !counted.has(item.id))
     for (const item of invoices) counted.add(item.id)
     return { contract, invoices, sale: saleOf(contract) }
   })
   return newestFirst.reverse()
+}
+
+/**
+ * Ayrılış gününde yürürlükte olan burs sonu (K-350). İptal geriye etkilidir, günden bağımsız girer;
+ * iptal varsa önceki kesmenin kaldırdığı pay da girer. Kesme yalnız kesme günü ayrılış gününden
+ * önceyse girer: kesme günü burslu sayılır, pay o günden sonraki vadelerde kalkar (DOM-FIN-025).
+ */
+export function scholarshipEndAtWithdrawal(
+  ends: readonly Pick<WithdrawalScholarshipEnd, 'kind' | 'effectiveDate' | 'reinstatedCents'>[],
+  withdrawalDate: string,
+): WithdrawalContractLine['scholarshipEnd'] {
+  const revoked = ends.find((item) => item.kind === 'revoke')
+  const inEffect = revoked ? ends : ends.filter((item) => item.effectiveDate < withdrawalDate)
+  const decisive = revoked ?? inEffect.at(-1)
+  if (decisive === undefined) return undefined
+  return {
+    kind: decisive.kind,
+    effectiveDate: decisive.effectiveDate,
+    reinstatedCents: inEffect.reduce((sum, item) => sum + item.reinstatedCents, 0),
+  }
 }
 
 /** Bir sözleşmenin hesabı: öğrenimde girilen birim, pakette kayıtlı saat (DOM-FIN-040, DOM-DIL-051). */
@@ -356,6 +468,7 @@ function quoteContract(
   started: boolean,
   allocated: ReadonlyMap<string, number>,
   freeTuition = false,
+  ends: readonly WithdrawalScholarshipEnd[] = [],
 ): { line: WithdrawalContractLine; extras: WithdrawalExtraLine[] } {
   // Ücrete yazılan ve iade edilen saat aynı hareket kümesinden çıkar (DOM-DIL-051, K-43): ayrılıştan
   // sonraki ders ücrete girmez, iade edilir; elle girilen toplam girişin günüyle elenmez (K-21).
@@ -367,7 +480,12 @@ function quoteContract(
   const isTuition = (invoice: Invoice) => !invoice.feeKind || invoice.feeKind === 'tuition'
   const share = (amount: number) => Math.floor((amount * attendedUnits) / totalUnits)
 
-  const baseCents = contract.netCents ?? contract.amount
+  // Ücretsiz okutmada burs olmaz (K-269); kesilen ya da iptal edilen bursun kalkan payı sözleşmeye
+  // bağlı yeni öğrenim taksitidir, taban ona göre büyür; kesmeden önce uygulanan burs girmez (K-350).
+  const scholarshipEnd = freeTuition
+    ? undefined
+    : scholarshipEndAtWithdrawal(ends, data.withdrawalDate)
+  const baseCents = (contract.netCents ?? contract.amount) + (scholarshipEnd?.reinstatedCents ?? 0)
   const deductionCents = data.publicSchoolExemption
     ? 0
     : Math.floor((baseCents * REFUND_DEDUCTION_BASIS_POINTS) / BASIS)
@@ -378,7 +496,7 @@ function quoteContract(
   const paidCents = freeTuition
     ? 0
     : invoices.filter(isTuition).reduce((sum, invoice) => sum + paidOf(invoice, allocated), 0)
-  const scholarshipExempt = contract.scholarship !== undefined
+  const scholarshipExempt = contract.scholarship !== undefined && scholarshipEnd === undefined
   const computedCents = Math.min(baseCents, deductionCents + usageCents)
   // Burs öğrenim ücretini kapsar: ek hizmetin kullanılan payı bursludan da istenir.
   const entitledCents = freeTuition
@@ -412,6 +530,7 @@ function quoteContract(
       attendedUnits,
       totalUnits,
       scholarshipExempt,
+      ...(scholarshipEnd ? { scholarshipEnd } : {}),
       baseCents,
       deductionCents,
       usageCents,
@@ -487,11 +606,13 @@ export function quoteWithdrawal(
       'Kesintisiz iade yalnız okulda, öğretim yılı başlamadan uygulanır.',
       { path: ['publicSchoolExemption'] },
     )
+  const ends = context.scholarshipEnds ?? []
   const account = withdrawalAccount(
     state,
     studentId,
     context.packageSales ?? [],
     context.institutionType,
+    clawbackInvoiceIds(ends),
   )
   const latest = account.at(-1)
   if (!latest) throw contractMissing(context.institutionType)
@@ -502,8 +623,10 @@ export function quoteWithdrawal(
       started,
       context.allocated,
       context.freeTuitionContractIds?.has(item.contract.id) ?? false,
+      ends.filter((end) => end.contractId === item.contract.id),
     ),
   )
+  const clawbacks = clawbackLines(state, ends, context.allocated)
   const lines = quotes.map((quote) => quote.line)
   const total = (pick: (line: WithdrawalContractLine) => number) =>
     lines.reduce((sum, line) => sum + pick(line), 0)
@@ -539,8 +662,39 @@ export function quoteWithdrawal(
       refundCents: Math.max(balance, 0),
       debtCents: Math.max(-balance, 0),
       contracts: lines,
+      ...(clawbacks.length > 0 ? { scholarshipClawbacks: clawbacks } : {}),
     },
   }
+}
+
+const clawbackInvoiceIds = (ends: readonly WithdrawalScholarshipEnd[]) =>
+  new Set(ends.flatMap((end) => end.clawbackInvoiceIds))
+
+/**
+ * Geri isteme alacağının satırları (K-351): anapara, faiz ve ayrılış anında ödenmemiş kısım.
+ * Bakiyeye girmez; ayrılış bu taksitleri iptal etmez (K-266).
+ */
+function clawbackLines(
+  state: State,
+  ends: readonly WithdrawalScholarshipEnd[],
+  allocated: ReadonlyMap<string, number>,
+): WithdrawalClawbackLine[] {
+  const invoiceById = new Map(state.invoices.map((invoice) => [invoice.id, invoice]))
+  return ends
+    .filter((end) => end.principalCents + end.interestCents > 0)
+    .map((end) => ({
+      awardId: end.awardId,
+      contractId: end.contractId,
+      effectiveDate: end.effectiveDate,
+      principalCents: end.principalCents,
+      interestCents: end.interestCents,
+      openCents: end.clawbackInvoiceIds.reduce((sum, id) => {
+        const invoice = invoiceById.get(id)
+        return invoice === undefined
+          ? sum
+          : sum + Math.max(invoice.amount - paidOf(invoice, allocated), 0)
+      }, 0),
+    }))
 }
 
 /**
@@ -703,11 +857,13 @@ export function withdrawStudent(
   const refundApprovedCents = refundApprovalRequired(breakdown)
     ? requireRefundApproval(breakdown.refundCents, data.approvedRefundCents)
     : null
+  const standalone = clawbackInvoiceIds(context.scholarshipEnds ?? [])
   const account = withdrawalAccount(
     state,
     studentId,
     context.packageSales ?? [],
     context.institutionType,
+    standalone,
   )
 
   const planned = state.renewals.filter(
@@ -716,7 +872,11 @@ export function withdrawStudent(
   const renewalContracts = state.contracts.filter((item) =>
     planned.some((renewal) => renewal.contractId === item.id),
   )
-  const renewalInvoices = renewalContracts.flatMap((item) => invoicesOf(state, item))
+  // Listesi olmayan eski yenileme sözleşmesi öğrencinin bütün taksitlerini görür; etkinlik ve geri
+  // isteme taksiti yenilemeye ait değildir (K-349, K-351).
+  const renewalInvoices = renewalContracts
+    .flatMap((item) => invoicesOf(state, item))
+    .filter((invoice) => invoice.feeKind !== ACTIVITY_KIND && !standalone.has(invoice.id))
   if (renewalInvoices.some((invoice) => paidOf(invoice, context.allocated) > 0))
     throw new DomainError(
       'withdrawal_renewal_paid',

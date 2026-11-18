@@ -16,6 +16,7 @@ import { prospectStageLabel } from '@kampus/school-core/lib/prospects.ts'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { canManageGuardianAccounts, isGuardianRecord } from './enrollment-guardian-account.ts'
 import { GuardianAccountAction } from './GuardianAccountPanel.tsx'
+import { ProspectDocumentsSection } from './ProspectDocumentsSection.tsx'
 import { ProspectNoteForm } from './ProspectNoteForm.tsx'
 import { ProspectPlanPanel } from './ProspectPlanPanel.tsx'
 import { ProspectConsentPanel } from './ProspectConsentPanel.tsx'
@@ -70,7 +71,8 @@ export const ENROLL_MODULES_CLOSED_MESSAGE =
 /**
  * Aday detayı (`/onburo/aday/:id`, `/yonetici/aday/:id`; Vue `Crm.vue` aday kartı): iletişim ve
  * aşama kartı, görüşme notu, değişmez iletişim geçmişi, planlanan görüşme ve (dil okulunda) deneme
- * dersi. Kart tek kayıt ucundan okunur; kapsam dışı ya da olmayan aday "Kayıt bulunamadı" görünümüne
+ * dersi; "Belgeler" bölümü eksik belgeleri, belge ekleme ve incelemeyi taşır (DOM-KAY-043). Kart
+ * tek kayıt ucundan okunur; kapsam dışı ya da olmayan aday "Kayıt bulunamadı" görünümüne
  * düşer (API 404). Yazan komutlar kartın okunan sürümünü `If-Match` olarak taşır; araya giren
  * değişiklik 409 ile Türkçe uyarı verir ve kart yenilenir.
  */
@@ -340,6 +342,11 @@ function Detail({
               </li>
             </ol>
           </Section>
+          <ProspectDocumentsSection
+            prospectId={prospect.id}
+            prospectVersion={version}
+            open={open}
+          />
           {prospect.trialAt ? (
             <Section id="aday-gorusme" title="Tanışma görüşmesi planlandı">
               <p className="text-sm">

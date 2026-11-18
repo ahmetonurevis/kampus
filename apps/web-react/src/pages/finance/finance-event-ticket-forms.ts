@@ -4,6 +4,7 @@ import type {
   TicketedEventRow,
 } from '@kampus/react-shared/use-finance-event-tickets.ts'
 import {
+  EVENT_LIMIT_SCOPES,
   EVENT_SEATING_MODES,
   EVENT_TICKET_KINDS,
   normalizeSeat,
@@ -52,6 +53,7 @@ export const eventFormSchema = z
     blockedSeats: z.string(),
     capacity: optionalInt('Kontenjan'),
     perStudentLimit: optionalInt('Üst sınır'),
+    limitScope: z.enum(EVENT_LIMIT_SCOPES),
     ticketTypes: z
       .array(
         z.object({
@@ -100,6 +102,7 @@ export function eventDefaults(event?: TicketedEventRow): EventFormValues {
       blockedSeats: '',
       capacity: '',
       perStudentLimit: '2',
+      limitScope: 'student',
       ticketTypes: [{ key: '', name: 'Davetiye', kind: 'invitation', price: '0' }],
     }
   const text = (value: number | null) => (value === null ? '' : String(value))
@@ -113,6 +116,7 @@ export function eventDefaults(event?: TicketedEventRow): EventFormValues {
     blockedSeats: event.blockedSeats.join(', '),
     capacity: text(event.capacity),
     perStudentLimit: text(event.perStudentLimit),
+    limitScope: event.limitScope,
     ticketTypes: event.ticketTypes.map((type) => ({
       key: type.key,
       name: type.name,
@@ -142,6 +146,7 @@ export function eventBody(values: EventFormValues): CreateTicketedEventBody {
       : [],
     capacity: seated ? null : intOrNull(values.capacity),
     perStudentLimit: intOrNull(values.perStudentLimit),
+    limitScope: values.limitScope,
     ticketTypes: values.ticketTypes.map((type) => ({
       ...(type.key === '' ? {} : { key: type.key }),
       name: type.name.trim(),
@@ -161,6 +166,7 @@ const EVENT_FIELDS = [
   'blockedSeats',
   'capacity',
   'perStudentLimit',
+  'limitScope',
   'ticketTypes',
 ] as const
 export type EventFormField = (typeof EVENT_FIELDS)[number]

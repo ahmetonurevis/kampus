@@ -11,7 +11,6 @@ import {
   planPayRate,
   planPayRateCancel,
   planPayRateEnd,
-  severancePaySuggestion,
   wageOn,
   type PayRateTarget,
 } from '@kampus/school-core/lib/finance-pay-rates.ts'
@@ -171,16 +170,19 @@ export async function getStaffPayRatesFor(
 }
 
 /**
- * Yalnız okuma (ON-205 kıdem hesaplayıcısının "güncel ücret" önerisi için): `day` gününde geçerli
- * tanımlar ve aylık brüt + yan hak önerisi. Denetim kaydını çağıran uç yazar (K-307).
+ * Personelin iptal edilmemiş bütün tanımları, denetimli okuma (kıdem önerisi, DOM-FIN-094, K-347):
+ * üyelik kurumun personeli değilse 404; okuma aynı transaction'da `finance.pay_rate.read` denetimi
+ * yazar (K-307). Rol denetimi (`FINANCE_PAY_RATE_ROLES`) çağıran uçtadır.
  */
-export async function payRatesInEffectFor(
-  ctx: Pick<ServiceContext, 'db' | 'institutionId'>,
+export async function loadAuditedStaffPayRates(
+  tx: Database,
+  ctx: ServiceContext,
   membershipId: string,
-  day: string,
 ) {
-  const rates = await loadStaffPayRates(ctx.db, ctx.institutionId, [membershipId])
-  return { effective: payRatesOn(rates, day), severance: severancePaySuggestion(rates, day) }
+  const member = await staffOf(tx, ctx, membershipId)
+  const rates = await loadStaffPayRates(tx, ctx.institutionId, [membershipId])
+  await auditRead(tx, ctx, membershipId)
+  return { member, rates }
 }
 
 async function rateBody(tx: Database, ctx: ServiceContext, id: string) {

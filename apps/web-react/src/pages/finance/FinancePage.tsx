@@ -143,6 +143,15 @@ const FinancePaidActivitiesSection = lazy(async () => ({
 const FinanceEventTicketsSection = lazy(async () => ({
   default: (await import('./FinanceEventTicketsSection.tsx')).FinanceEventTicketsSection,
 }))
+const FinanceStaffDeductionsSection = lazy(async () => ({
+  default: (await import('./FinanceStaffDeductionsSection.tsx')).FinanceStaffDeductionsSection,
+}))
+const FinanceStaffCertificatesSection = lazy(async () => ({
+  default: (await import('./FinanceStaffCertificatesSection.tsx')).FinanceStaffCertificatesSection,
+}))
+const FinancePayrollExportSection = lazy(async () => ({
+  default: (await import('./FinancePayrollExportSection.tsx')).FinancePayrollExportSection,
+}))
 const FinancePayrollPeriodsSection = lazy(async () => ({
   default: (await import('./FinancePayrollPeriodsSection.tsx')).FinancePayrollPeriodsSection,
 }))
@@ -193,6 +202,9 @@ const VIEWS = {
   payRates: { label: 'Ücret tanımları', param: 'ucret-tanimi' },
   paidActivities: { label: 'Gezi ve etkinlik ücretleri', param: 'gezi-etkinlik' },
   eventTickets: { label: 'Etkinlik biletleri', param: 'etkinlik-bileti' },
+  staffDeductions: { label: 'Avans ve kesintiler', param: 'avans-kesinti' },
+  staffCertificates: { label: 'Personel belgeleri', param: 'personel-belgesi' },
+  payrollExport: { label: 'Bordro aktarımı', param: 'bordro-aktarim' },
   payrollPeriods: { label: 'Bordro dönemleri', param: 'bordro-donemleri' },
 } as const
 type FinanceView = keyof typeof VIEWS
@@ -229,6 +241,8 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Gezi ve etkinlik ücretleri (DOM-FIN-098) ikisine açıktır; ön büro katılım yazar ve iptal eder,
  * etkinliği ve iadeyi yönetici yönetir (K-300).
  * Etkinlik biletleri (DOM-FIN-103) ikisine açıktır; etkinliği yönetici açar (K-324).
+ * Avans ve kesintiler (DOM-FIN-101) yalnız yöneticidedir; icra bilgisi hassastır (K-315).
+ * Personel belgeleri (DOM-FIN-106) yalnız yöneticidedir; belge ücret ve kimlik no içerir (K-342).
  * Bordro dönemleri (DOM-FIN-108) yalnız yöneticidedir; ücret verisiyle aynı (K-359).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
@@ -244,11 +258,14 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'fixedAssets' ||
       value === 'severance' ||
       value === 'freeTuition' ||
+      value === 'payrollPeriods' ||
+      value === 'payrollExport' ||
+      value === 'staffCertificates' ||
+      value === 'staffDeductions' ||
       value === 'payRates' ||
       value === 'stakeholders' ||
       value === 'donations' ||
-      value === 'refundInvoices' ||
-      value === 'payrollPeriods'
+      value === 'refundInvoices'
     )
       return isManager
     if (value === 'packages' || value === 'courseOffers' || value === 'corporate')
@@ -438,6 +455,9 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'payRates' ? <FinancePayRatesSection /> : null}
         {tab === 'paidActivities' ? <FinancePaidActivitiesSection isManager={isManager} /> : null}
         {tab === 'eventTickets' ? <FinanceEventTicketsSection role={session?.role ?? ''} /> : null}
+        {tab === 'staffDeductions' ? <FinanceStaffDeductionsSection /> : null}
+        {tab === 'staffCertificates' ? <FinanceStaffCertificatesSection /> : null}
+        {tab === 'payrollExport' ? <FinancePayrollExportSection /> : null}
         {tab === 'payrollPeriods' ? <FinancePayrollPeriodsSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel

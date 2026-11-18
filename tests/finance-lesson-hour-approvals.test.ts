@@ -24,6 +24,7 @@ import {
   planLessonSheetSubmit,
   staffFingerprints,
   type LessonConfirmationRecord,
+  type LessonTeacherState,
 } from '../packages/school-core/src/lib/finance-lesson-hour-approvals.ts'
 import {
   payrollExportCsv,
@@ -168,9 +169,10 @@ test('DOM-FIN-120: öğretmen yanıtı yalnız kontrolde; itiraz taslağa dönd�
 })
 
 test('DOM-FIN-120: müdür onayı her personelin güncel teyidini ve damgayı ister (K-409)', () => {
-  const all = new Map([
-    ['m-selin', { state: 'confirmed' as const }],
-    ['m-can', { state: 'confirmed' as const }],
+  type States = Map<string, { state: LessonTeacherState }>
+  const all: States = new Map([
+    ['m-selin', { state: 'confirmed' }],
+    ['m-can', { state: 'confirmed' }],
   ])
   const same = { expected: HASH, current: HASH }
   planLessonSheetApproval(REVIEW, all, same)
@@ -183,14 +185,14 @@ test('DOM-FIN-120: müdür onayı her personelin güncel teyidini ve damgayı is
     () => planLessonSheetApproval(REVIEW, all, { expected: HASH, current: 'b'.repeat(64) }),
     isDomainError('lesson_hours_changed', 'conflict'),
   )
-  const missing = new Map([...all, ['m-ece', { state: 'pending' as const }]])
+  const missing: States = new Map([...all, ['m-ece', { state: 'pending' }]])
   assert.throws(
     () => planLessonSheetApproval(REVIEW, missing, same),
     (error: unknown) =>
       isDomainError('lesson_sheet_unconfirmed')(error) &&
       (error as Error).message.startsWith('1 personelin'),
   )
-  const disputed = new Map([...all, ['m-ece', { state: 'disputed' as const }]])
+  const disputed: States = new Map([...all, ['m-ece', { state: 'disputed' }]])
   assert.throws(
     () => planLessonSheetApproval(REVIEW, disputed, same),
     isDomainError('lesson_sheet_unconfirmed'),

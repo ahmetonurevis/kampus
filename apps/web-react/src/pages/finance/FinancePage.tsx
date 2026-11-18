@@ -137,6 +137,9 @@ const FinanceStakeholdersSection = lazy(async () => ({
 const FinancePayRatesSection = lazy(async () => ({
   default: (await import('./FinancePayRatesSection.tsx')).FinancePayRatesSection,
 }))
+const FinanceMedicalReportsSection = lazy(async () => ({
+  default: (await import('./FinanceMedicalReportsSection.tsx')).FinanceMedicalReportsSection,
+}))
 const FinancePaidActivitiesSection = lazy(async () => ({
   default: (await import('./FinancePaidActivitiesSection.tsx')).FinancePaidActivitiesSection,
 }))
@@ -188,6 +191,7 @@ const VIEWS = {
   donations: { label: 'Bağışlar', param: 'bagis' },
   stakeholders: { label: 'Paydaşlar ve sponsorlar', param: 'paydas' },
   payRates: { label: 'Ücret tanımları', param: 'ucret-tanimi' },
+  medicalReports: { label: 'Sağlık raporları', param: 'saglik-raporu' },
   paidActivities: { label: 'Gezi ve etkinlik ücretleri', param: 'gezi-etkinlik' },
   eventTickets: { label: 'Etkinlik biletleri', param: 'etkinlik-bileti' },
 } as const
@@ -222,6 +226,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Bağışlar (DOM-FIN-097) yalnız yöneticidedir; bağışçı verisi kişiseldir (K-299).
  * Paydaşlar ve sponsorlar (DOM-FIN-102) yalnız yöneticidedir (K-317).
  * Ücret tanımları (DOM-FIN-099) yalnız yöneticidedir; ücret kişisel veridir (K-306).
+ * Sağlık raporları (DOM-FIN-110) yalnız yöneticidedir; sağlık verisi özel niteliklidir (K-363).
  * Gezi ve etkinlik ücretleri (DOM-FIN-098) ikisine açıktır; ön büro katılım yazar ve iptal eder,
  * etkinliği ve iadeyi yönetici yönetir (K-300).
  * Etkinlik biletleri (DOM-FIN-103) ikisine açıktır; etkinliği yönetici açar (K-324).
@@ -240,6 +245,7 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'severance' ||
       value === 'freeTuition' ||
       value === 'payRates' ||
+      value === 'medicalReports' ||
       value === 'stakeholders' ||
       value === 'donations' ||
       value === 'refundInvoices'
@@ -430,6 +436,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'donations' ? <DonationsSection /> : null}
         {tab === 'stakeholders' ? <FinanceStakeholdersSection /> : null}
         {tab === 'payRates' ? <FinancePayRatesSection /> : null}
+        {tab === 'medicalReports' ? <FinanceMedicalReportsSection /> : null}
         {tab === 'paidActivities' ? <FinancePaidActivitiesSection isManager={isManager} /> : null}
         {tab === 'eventTickets' ? <FinanceEventTicketsSection role={session?.role ?? ''} /> : null}
       </Suspense>

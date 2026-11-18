@@ -3715,7 +3715,7 @@ export interface paths {
         put?: never;
         /**
          * Ayrılış ve iade hesabını önizle
-         * @description Hiçbir kayıt yazmaz. Taban sözleşmenin net ücretidir; kesinti %10, dönem başladıysa kullanım `taban × görülen / toplam` (okulda ders günü, dil okulunda ders saati; yönetici girer). Hak edilen tabanı aşamaz; ödenen azsa iade sıfır, kalan borçtur. Ek hizmetin kullanılmayan kısmı iade edilir (DOM-FIN-040; oranlar ve taban doğrulanmalı). Paket satışında kullanım kayıtlı saatten gelir; saat girilmemişse satır `usedHoursMissing` taşır ve hesap sıfır saate dayanır (K-21). İleri tarih 422 `withdrawal_date_in_future`; görülen toplamı aşarsa 422 `attended_exceeds_total`; dönem başlamadan görülen birim 422 `attended_before_term`; kesintisiz iade yalnız okulda ve dönem başlamadan (422 `exemption_not_applicable`). Sözleşme yoksa 422 `withdrawal_contract_missing`. Roller: `yonetici`, `onburo`.
+         * @description Hiçbir kayıt yazmaz. Taban sözleşmenin net ücretidir; kesinti %10, dönem başladıysa kullanım `taban × görülen / toplam` (okulda ders günü, dil okulunda ders saati; yönetici girer). Hak edilen tabanı aşamaz; ödenen azsa iade sıfır, kalan borçtur. Ek hizmetin kullanılmayan kısmı iade edilir (DOM-FIN-040; oranlar ve taban doğrulanmalı). Paket satışında kullanım kayıtlı saatten gelir; saat girilmemişse satır `usedHoursMissing` taşır ve hesap sıfır saate dayanır (K-21). İleri tarih 422 `withdrawal_date_in_future`; görülen toplamı aşarsa 422 `attended_exceeds_total`; dönem başlamadan görülen birim 422 `attended_before_term`; kesintisiz iade yalnız okulda ve dönem başlamadan (422 `exemption_not_applicable`). Sözleşme yoksa 422 `withdrawal_contract_missing`. Ayrılış gününde yürürlükteki burs kesmesi ya da iptali burslu istisnasını kaldırır, kalkan pay tabana eklenir (`contracts[].scholarshipEnd`, K-350); geri isteme alacağı `scholarshipClawbacks` satırıdır, iade ve borca girmez (K-351). Etkinlik katılımları `activities` alanındadır: etkinliği ayrılış gününden sonra olan katılım ayrılış gününe göre etkinliğin kuralıyla iptal edilir, gerçekleşmişin ödenmemiş kısmı borç kalır; iade ve borca girmez (K-348, K-349). Roller: `yonetici`, `onburo`.
          */
         post: operations["quoteWithdrawal"];
         delete?: never;
@@ -3735,7 +3735,7 @@ export interface paths {
         put?: never;
         /**
          * Öğrencinin ayrılışını onayla
-         * @description Tek işlemde öğrenciyi pasifleştirir, açık taksitleri iptal eder, borç kalırsa tek taksit açar, ileri tarihli etüt, servis ve kulüp kayıtlarını sonlandırır, planlanmış yenilemeyi iptal eder, iptal edilen burslu yenilemenin burs atamasını arşivleyip açık fonlardan karşılanan payını sistem gerekçesiyle bakiyeye döndürür (K-117) ve iade kaydını oluşturur (DOM-FIN-041, DOM-KAY-024). Paket satışı hesaba giriyorsa iade tutarı yönetici onayından geçer (K-21): önizlemede görülen tutar `approvedRefundCents` ile gelir, yoksa 422 `withdrawal_refund_approval_required`, tutar değiştiyse 409 `withdrawal_refund_changed`; kullanılan saat girilmemişse satır `usedHoursMissing` taşır. Pasif öğrenci 409 `student_already_withdrawn`; tahsilatı olan yenileme 409 `withdrawal_renewal_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Rol: `yonetici`.
+         * @description Tek işlemde öğrenciyi pasifleştirir, açık taksitleri iptal eder, borç kalırsa tek taksit açar, ileri tarihli etüt, servis ve kulüp kayıtlarını sonlandırır, planlanmış yenilemeyi iptal eder, iptal edilen burslu yenilemenin burs atamasını arşivleyip açık fonlardan karşılanan payını sistem gerekçesiyle bakiyeye döndürür (K-117), etkinliği ayrılış gününden sonra olan katılımı etkinliğin kuralıyla iptal eder (iade katılım kaydından ödenir, kesinti farkı etkinlik taksiti olur; K-348) ve iade kaydını oluşturur (DOM-FIN-041, DOM-KAY-024). Etkinlik taksiti ve burs geri isteme alacağı iptal edilmez (K-349, K-351). Paket satışı hesaba giriyorsa iade tutarı yönetici onayından geçer (K-21): önizlemede görülen tutar `approvedRefundCents` ile gelir, yoksa 422 `withdrawal_refund_approval_required`, tutar değiştiyse 409 `withdrawal_refund_changed`; kullanılan saat girilmemişse satır `usedHoursMissing` taşır. Pasif öğrenci 409 `student_already_withdrawn`; tahsilatı olan yenileme 409 `withdrawal_renewal_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Rol: `yonetici`.
          */
         post: operations["withdrawStudent"];
         delete?: never;
@@ -47051,6 +47051,15 @@ export interface operations {
                                     /** @description Pakette kullanılan saat girilmedi; hesap sıfır saate dayanır (K-21) */
                                     usedHoursMissing?: boolean;
                                     scholarshipExempt: boolean;
+                                    /** @description Ayrılış gününde yürürlükteki burs kesmesi ya da iptali: burslu istisnası uygulanmaz (K-350); eski kayıtta yok */
+                                    scholarshipEnd?: {
+                                        /** @enum {string} */
+                                        kind: "terminate" | "revoke";
+                                        /** @description Kesme günü (o gün burslu sayılır) ya da iptal günü */
+                                        effectiveDate: string;
+                                        /** @description Kesme ya da iptalin kaldırdığı burs payı; tabana eklenir */
+                                        reinstatedCents: number;
+                                    };
                                     baseCents: number;
                                     deductionCents: number;
                                     usageCents: number;
@@ -47069,6 +47078,41 @@ export interface operations {
                                 };
                                 /** @description Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok */
                                 refundApprovedCents?: number;
+                                /** @description Geri istenen burs alacağı: iade ve borca girmez, ayrılış iptal etmez (K-351, K-266); yalnız varsa */
+                                scholarshipClawbacks?: {
+                                    awardId: string;
+                                    contractId: string;
+                                    /** @description Geri isteme (iptal) günü */
+                                    effectiveDate: string;
+                                    principalCents: number;
+                                    /** @description Kanuni faiz */
+                                    interestCents: number;
+                                    /** @description Ayrılış anında ödenmemiş kısım */
+                                    openCents: number;
+                                }[];
+                                /** @description Gezi ve etkinlik katılımları (K-348, K-349): iade ve borca girmez; yalnız varsa, eski kayıtta yok */
+                                activities?: {
+                                    participantId: string;
+                                    activityId: string;
+                                    name: string;
+                                    activityDate: string;
+                                    /**
+                                     * @description `cancelled`: etkinlik ayrılıştan sonra, katılım etkinliğin kuralıyla iptal edildi; `held`: gerçekleşti, ödenmemiş kısım borç
+                                     * @enum {string}
+                                     */
+                                    outcome: "cancelled" | "held";
+                                    invoiceId: string;
+                                    amountCents: number;
+                                    paidCents: number;
+                                    /** @description İptalde katılımcıda kalan kesinti */
+                                    retainedCents: number;
+                                    /** @description Katılım kaydından ödenecek iade (K-303) */
+                                    refundCents: number;
+                                    /** @description Ayrılıştan sonra açık kalan etkinlik borcu */
+                                    openCents: number;
+                                    /** @description İptalde kesinti farkı için açılan taksit; yalnız ayrılış kaydında */
+                                    debtInvoiceId?: string;
+                                }[];
                             };
                             /** @description Hesaba giren sözleşmelerin ödeyicileri farklı mı; iade varsa ayrılış yöneticinin kararını ister (K-12) */
                             payersDiffer: boolean;
@@ -47263,6 +47307,15 @@ export interface operations {
                                     /** @description Pakette kullanılan saat girilmedi; hesap sıfır saate dayanır (K-21) */
                                     usedHoursMissing?: boolean;
                                     scholarshipExempt: boolean;
+                                    /** @description Ayrılış gününde yürürlükteki burs kesmesi ya da iptali: burslu istisnası uygulanmaz (K-350); eski kayıtta yok */
+                                    scholarshipEnd?: {
+                                        /** @enum {string} */
+                                        kind: "terminate" | "revoke";
+                                        /** @description Kesme günü (o gün burslu sayılır) ya da iptal günü */
+                                        effectiveDate: string;
+                                        /** @description Kesme ya da iptalin kaldırdığı burs payı; tabana eklenir */
+                                        reinstatedCents: number;
+                                    };
                                     baseCents: number;
                                     deductionCents: number;
                                     usageCents: number;
@@ -47281,6 +47334,41 @@ export interface operations {
                                 };
                                 /** @description Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok */
                                 refundApprovedCents?: number;
+                                /** @description Geri istenen burs alacağı: iade ve borca girmez, ayrılış iptal etmez (K-351, K-266); yalnız varsa */
+                                scholarshipClawbacks?: {
+                                    awardId: string;
+                                    contractId: string;
+                                    /** @description Geri isteme (iptal) günü */
+                                    effectiveDate: string;
+                                    principalCents: number;
+                                    /** @description Kanuni faiz */
+                                    interestCents: number;
+                                    /** @description Ayrılış anında ödenmemiş kısım */
+                                    openCents: number;
+                                }[];
+                                /** @description Gezi ve etkinlik katılımları (K-348, K-349): iade ve borca girmez; yalnız varsa, eski kayıtta yok */
+                                activities?: {
+                                    participantId: string;
+                                    activityId: string;
+                                    name: string;
+                                    activityDate: string;
+                                    /**
+                                     * @description `cancelled`: etkinlik ayrılıştan sonra, katılım etkinliğin kuralıyla iptal edildi; `held`: gerçekleşti, ödenmemiş kısım borç
+                                     * @enum {string}
+                                     */
+                                    outcome: "cancelled" | "held";
+                                    invoiceId: string;
+                                    amountCents: number;
+                                    paidCents: number;
+                                    /** @description İptalde katılımcıda kalan kesinti */
+                                    retainedCents: number;
+                                    /** @description Katılım kaydından ödenecek iade (K-303) */
+                                    refundCents: number;
+                                    /** @description Ayrılıştan sonra açık kalan etkinlik borcu */
+                                    openCents: number;
+                                    /** @description İptalde kesinti farkı için açılan taksit; yalnız ayrılış kaydında */
+                                    debtInvoiceId?: string;
+                                }[];
                             };
                             refundCents: number;
                             debtCents: number;
@@ -47462,6 +47550,15 @@ export interface operations {
                                     /** @description Pakette kullanılan saat girilmedi; hesap sıfır saate dayanır (K-21) */
                                     usedHoursMissing?: boolean;
                                     scholarshipExempt: boolean;
+                                    /** @description Ayrılış gününde yürürlükteki burs kesmesi ya da iptali: burslu istisnası uygulanmaz (K-350); eski kayıtta yok */
+                                    scholarshipEnd?: {
+                                        /** @enum {string} */
+                                        kind: "terminate" | "revoke";
+                                        /** @description Kesme günü (o gün burslu sayılır) ya da iptal günü */
+                                        effectiveDate: string;
+                                        /** @description Kesme ya da iptalin kaldırdığı burs payı; tabana eklenir */
+                                        reinstatedCents: number;
+                                    };
                                     baseCents: number;
                                     deductionCents: number;
                                     usageCents: number;
@@ -47480,6 +47577,41 @@ export interface operations {
                                 };
                                 /** @description Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok */
                                 refundApprovedCents?: number;
+                                /** @description Geri istenen burs alacağı: iade ve borca girmez, ayrılış iptal etmez (K-351, K-266); yalnız varsa */
+                                scholarshipClawbacks?: {
+                                    awardId: string;
+                                    contractId: string;
+                                    /** @description Geri isteme (iptal) günü */
+                                    effectiveDate: string;
+                                    principalCents: number;
+                                    /** @description Kanuni faiz */
+                                    interestCents: number;
+                                    /** @description Ayrılış anında ödenmemiş kısım */
+                                    openCents: number;
+                                }[];
+                                /** @description Gezi ve etkinlik katılımları (K-348, K-349): iade ve borca girmez; yalnız varsa, eski kayıtta yok */
+                                activities?: {
+                                    participantId: string;
+                                    activityId: string;
+                                    name: string;
+                                    activityDate: string;
+                                    /**
+                                     * @description `cancelled`: etkinlik ayrılıştan sonra, katılım etkinliğin kuralıyla iptal edildi; `held`: gerçekleşti, ödenmemiş kısım borç
+                                     * @enum {string}
+                                     */
+                                    outcome: "cancelled" | "held";
+                                    invoiceId: string;
+                                    amountCents: number;
+                                    paidCents: number;
+                                    /** @description İptalde katılımcıda kalan kesinti */
+                                    retainedCents: number;
+                                    /** @description Katılım kaydından ödenecek iade (K-303) */
+                                    refundCents: number;
+                                    /** @description Ayrılıştan sonra açık kalan etkinlik borcu */
+                                    openCents: number;
+                                    /** @description İptalde kesinti farkı için açılan taksit; yalnız ayrılış kaydında */
+                                    debtInvoiceId?: string;
+                                }[];
                             };
                             refundCents: number;
                             debtCents: number;
@@ -47655,6 +47787,15 @@ export interface operations {
                                     /** @description Pakette kullanılan saat girilmedi; hesap sıfır saate dayanır (K-21) */
                                     usedHoursMissing?: boolean;
                                     scholarshipExempt: boolean;
+                                    /** @description Ayrılış gününde yürürlükteki burs kesmesi ya da iptali: burslu istisnası uygulanmaz (K-350); eski kayıtta yok */
+                                    scholarshipEnd?: {
+                                        /** @enum {string} */
+                                        kind: "terminate" | "revoke";
+                                        /** @description Kesme günü (o gün burslu sayılır) ya da iptal günü */
+                                        effectiveDate: string;
+                                        /** @description Kesme ya da iptalin kaldırdığı burs payı; tabana eklenir */
+                                        reinstatedCents: number;
+                                    };
                                     baseCents: number;
                                     deductionCents: number;
                                     usageCents: number;
@@ -47673,6 +47814,41 @@ export interface operations {
                                 };
                                 /** @description Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok */
                                 refundApprovedCents?: number;
+                                /** @description Geri istenen burs alacağı: iade ve borca girmez, ayrılış iptal etmez (K-351, K-266); yalnız varsa */
+                                scholarshipClawbacks?: {
+                                    awardId: string;
+                                    contractId: string;
+                                    /** @description Geri isteme (iptal) günü */
+                                    effectiveDate: string;
+                                    principalCents: number;
+                                    /** @description Kanuni faiz */
+                                    interestCents: number;
+                                    /** @description Ayrılış anında ödenmemiş kısım */
+                                    openCents: number;
+                                }[];
+                                /** @description Gezi ve etkinlik katılımları (K-348, K-349): iade ve borca girmez; yalnız varsa, eski kayıtta yok */
+                                activities?: {
+                                    participantId: string;
+                                    activityId: string;
+                                    name: string;
+                                    activityDate: string;
+                                    /**
+                                     * @description `cancelled`: etkinlik ayrılıştan sonra, katılım etkinliğin kuralıyla iptal edildi; `held`: gerçekleşti, ödenmemiş kısım borç
+                                     * @enum {string}
+                                     */
+                                    outcome: "cancelled" | "held";
+                                    invoiceId: string;
+                                    amountCents: number;
+                                    paidCents: number;
+                                    /** @description İptalde katılımcıda kalan kesinti */
+                                    retainedCents: number;
+                                    /** @description Katılım kaydından ödenecek iade (K-303) */
+                                    refundCents: number;
+                                    /** @description Ayrılıştan sonra açık kalan etkinlik borcu */
+                                    openCents: number;
+                                    /** @description İptalde kesinti farkı için açılan taksit; yalnız ayrılış kaydında */
+                                    debtInvoiceId?: string;
+                                }[];
                             };
                             refundCents: number;
                             debtCents: number;
@@ -47862,6 +48038,15 @@ export interface operations {
                                     /** @description Pakette kullanılan saat girilmedi; hesap sıfır saate dayanır (K-21) */
                                     usedHoursMissing?: boolean;
                                     scholarshipExempt: boolean;
+                                    /** @description Ayrılış gününde yürürlükteki burs kesmesi ya da iptali: burslu istisnası uygulanmaz (K-350); eski kayıtta yok */
+                                    scholarshipEnd?: {
+                                        /** @enum {string} */
+                                        kind: "terminate" | "revoke";
+                                        /** @description Kesme günü (o gün burslu sayılır) ya da iptal günü */
+                                        effectiveDate: string;
+                                        /** @description Kesme ya da iptalin kaldırdığı burs payı; tabana eklenir */
+                                        reinstatedCents: number;
+                                    };
                                     baseCents: number;
                                     deductionCents: number;
                                     usageCents: number;
@@ -47880,6 +48065,41 @@ export interface operations {
                                 };
                                 /** @description Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok */
                                 refundApprovedCents?: number;
+                                /** @description Geri istenen burs alacağı: iade ve borca girmez, ayrılış iptal etmez (K-351, K-266); yalnız varsa */
+                                scholarshipClawbacks?: {
+                                    awardId: string;
+                                    contractId: string;
+                                    /** @description Geri isteme (iptal) günü */
+                                    effectiveDate: string;
+                                    principalCents: number;
+                                    /** @description Kanuni faiz */
+                                    interestCents: number;
+                                    /** @description Ayrılış anında ödenmemiş kısım */
+                                    openCents: number;
+                                }[];
+                                /** @description Gezi ve etkinlik katılımları (K-348, K-349): iade ve borca girmez; yalnız varsa, eski kayıtta yok */
+                                activities?: {
+                                    participantId: string;
+                                    activityId: string;
+                                    name: string;
+                                    activityDate: string;
+                                    /**
+                                     * @description `cancelled`: etkinlik ayrılıştan sonra, katılım etkinliğin kuralıyla iptal edildi; `held`: gerçekleşti, ödenmemiş kısım borç
+                                     * @enum {string}
+                                     */
+                                    outcome: "cancelled" | "held";
+                                    invoiceId: string;
+                                    amountCents: number;
+                                    paidCents: number;
+                                    /** @description İptalde katılımcıda kalan kesinti */
+                                    retainedCents: number;
+                                    /** @description Katılım kaydından ödenecek iade (K-303) */
+                                    refundCents: number;
+                                    /** @description Ayrılıştan sonra açık kalan etkinlik borcu */
+                                    openCents: number;
+                                    /** @description İptalde kesinti farkı için açılan taksit; yalnız ayrılış kaydında */
+                                    debtInvoiceId?: string;
+                                }[];
                             };
                             refundCents: number;
                             debtCents: number;

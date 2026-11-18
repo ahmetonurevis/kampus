@@ -99213,8 +99213,13 @@ export interface operations {
                             to: string;
                             days: number;
                             lines: {
-                                /** @description Satırın kimliği: `rate:<tanım>` ya da `hours:<saat kaydı>` */
+                                /** @description Satırın kimliği: `rate:<tanım>`, `hours:<saat kaydı>`, `deduction:<tür>:<kayıt>` ya da `adjustment:<düzeltme>` */
                                 key: string;
+                                /**
+                                 * @description `rate` ücret tanımı, `lesson_hours` ek ders saati, `deduction` avans ya da kesinti (DOM-FIN-101), `adjustment` kilitli aydan aktarılan düzeltme (DOM-FIN-108)
+                                 * @enum {string}
+                                 */
+                                kind: "rate" | "lesson_hours" | "deduction" | "adjustment";
                                 month: string;
                                 /** @description Personelin kurum üyeliği (dosyada "Personel no") */
                                 membershipId: string;
@@ -99223,28 +99228,46 @@ export interface operations {
                                 role: string;
                                 /** @description Pasifleştirilmiş (ayrılan) personelde `false` */
                                 staffActive: boolean;
-                                /** @enum {string} */
-                                component: "wage" | "lesson" | "benefit";
-                                /** @enum {string} */
-                                rateType: "monthly_gross" | "monthly_net" | "hourly" | "lesson_hour" | "extra" | "duty" | "meal" | "transport" | "child" | "service";
-                                /** @description Kalem kodu `<bileşen>.<tür>`, ör. `wage.monthly_gross` */
+                                /** @description Ücret tanımı ve ek derste bileşen; kesinti ve düzeltmede boş */
+                                component: ("wage" | "lesson" | "benefit") | null;
+                                /** @description Ücret tanımı ve ek derste tür; kesinti ve düzeltmede boş */
+                                rateType: ("monthly_gross" | "monthly_net" | "hourly" | "lesson_hour" | "extra" | "duty" | "meal" | "transport" | "child" | "service") | null;
+                                /** @description Kalem kodu: `<bileşen>.<tür>` (`wage.monthly_gross`), `deduction.<tür>` (`deduction.advance`) ya da `adjustment.<kalem>` (`adjustment.lesson`) */
                                 itemCode: string;
                                 /**
-                                 * @description `earning` kazanç; `deduction` kesinti avans ve kesintiler (ON-199) için ayrılmıştır
+                                 * @description `earning` kazanç; `deduction` kesinti (avans, icra, BES ve eksi düzeltme)
                                  * @enum {string}
                                  */
                                 direction: "earning" | "deduction";
                                 /**
-                                 * @description `month` aylık, `hour` saat, `lesson_hour` ders saati
+                                 * @description `month` aylık, `hour` saat, `lesson_hour` ders saati, `once` tek sefer (düzeltme)
                                  * @enum {string}
                                  */
-                                unit: "month" | "hour" | "lesson_hour";
+                                unit: "month" | "hour" | "lesson_hour" | "once";
                                 /** @description Tanımın tutarı (birim ücret), kuruş; ek ders tanımı yoksa boş */
                                 rateCents: number | null;
                                 /** @description Ek derste saat; diğerlerinde boş */
                                 quantity: number | null;
-                                /** @description Tam ay aylık tutar ya da saat × birim ücret, kuruş; kısmi ay, saatlik ücret ve tanımsız ek derste boş (K-336) */
+                                /** @description Tam ay aylık tutar, saat × birim ücret, avans taksiti ya da düzeltmenin mutlak tutarı, kuruş; kısmi ay, saatlik ücret, tanımsız ek ders, icra ve BES satırında boş (K-336, K-392) */
                                 totalCents: number | null;
+                                /** @description Kesinti türü: `advance` avans taksiti, `garnishment` icra, `pension` BES */
+                                deductionKind: ("advance" | "garnishment" | "pension") | null;
+                                /** @description Personelin ayki kesinti sırası (1’den; avans, nafaka, sıradaki icra, BES) */
+                                deductionOrder: number | null;
+                                /** @description İcra ve BES oranı, onbinde (2500 = %25) */
+                                rateBasisPoints: number | null;
+                                /** @description Oranlı kesintinin matrahı: `net_wage` net ücret (icra), `pension_base` BES matrahı */
+                                deductionBase: ("net_wage" | "pension_base") | null;
+                                /** @description İcrada kalan alacak, kuruş; kesintinin üst sınırı */
+                                capCents: number | null;
+                                /** @description Avans taksitinin sırası */
+                                installmentNo: number | null;
+                                /** @description Avansın taksit sayısı */
+                                installmentCount: number | null;
+                                /** @description Düzeltme kalemi (DOM-FIN-108) */
+                                adjustmentItem: ("wage" | "lesson" | "benefit" | "deduction" | "other") | null;
+                                /** @description Düzeltmenin ait olduğu (kilitli) ay, YYYY-AA */
+                                sourceMonth: string | null;
                                 /** @description Yan hak vergiye tabi mi */
                                 taxable: boolean | null;
                                 benefitForm: ("cash" | "in_kind") | null;
@@ -99263,14 +99286,14 @@ export interface operations {
                                 /** @description Ek ders saati kaydının notu; dosyaya girmez */
                                 note: string | null;
                                 /** @description Satır uyarı kodları */
-                                warnings: ("partial_month" | "net_wage" | "hourly_wage" | "lesson_rate_missing" | "lesson_rate_changed" | "staff_inactive")[];
+                                warnings: ("partial_month" | "net_wage" | "hourly_wage" | "lesson_rate_missing" | "lesson_rate_changed" | "staff_inactive" | "deduction_on_net" | "deduction_on_pension_base" | "prior_month_adjustment")[];
                             }[];
                             totals: {
                                 lineCount: number;
                                 staffCount: number;
                                 /** @description Tutarı olan kazanç satırlarının toplamı, kuruş */
                                 earningCents: number;
-                                /** @description Tutarı olan kesinti satırlarının toplamı, kuruş */
+                                /** @description Tutarı olan kesinti satırlarının (avans taksiti, eksi düzeltme) toplamı, kuruş */
                                 deductionCents: number;
                                 /** @description Tutarı boş satır sayısı */
                                 missingTotalCount: number;

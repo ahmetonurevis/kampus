@@ -19,6 +19,7 @@ import {
 
 const line = (overrides: Partial<PayrollLine> = {}): PayrollLine => ({
   key: 'rate:r1',
+  kind: 'rate',
   month: '2026-10',
   membershipId: 'm1',
   staffName: 'Selin Kaya',
@@ -41,6 +42,15 @@ const line = (overrides: Partial<PayrollLine> = {}): PayrollLine => ({
   lessonHoursId: null,
   lessonHoursVersion: null,
   note: null,
+  deductionKind: null,
+  deductionOrder: null,
+  rateBasisPoints: null,
+  deductionBase: null,
+  capCents: null,
+  installmentNo: null,
+  installmentCount: null,
+  adjustmentItem: null,
+  sourceMonth: null,
   warnings: ['partial_month'],
   ...overrides,
 })

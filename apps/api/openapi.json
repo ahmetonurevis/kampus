@@ -199968,6 +199968,2884 @@
         }
       }
     },
+    "/api/v1/finance/work-permit-teachers": {
+      "get": {
+        "operationId": "listWorkPermitTeachers",
+        "summary": "Öğretmenlerin çalışma onayı takibi",
+        "tags": [
+          "finance-work-permits"
+        ],
+        "description": "Kurumun etkin öğretmenleri ada göre; her satırda geçerli (bitişi en geç) onay, durum (`valid`, `expiring` 30 gün içinde dolacak, `expired`, `missing`), kalan gün, açık başvuru ve `teaching` (önümüzdeki 30 günde ders programında iptal edilmemiş dersi ya da bitmemiş dil grubu) ile `warning` (programda görevli ve onay yok ya da süresi doldu) işaretleri (K-376). Durum her okumada bugüne (Europe/Istanbul) göre hesaplanır. `status` (`attention` geçerli olmayan her durum) ve `warning=true` süzer; `counts` süzgeçten bağımsız rozet sayılarıdır. Rol: yalnız `yonetici` (K-377). Modül `finance`. MEBBİS’e gönderim yoktur (IST-143).",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Öğretmen adında arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "valid",
+                "expiring",
+                "expired",
+                "missing",
+                "attention"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Onay durumu; `attention` geçerli olmayan her durum (dolmak üzere, doldu, yok)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "in": "query",
+            "name": "warning",
+            "required": false,
+            "description": "`true` yalnız programda görevli ve onaysız öğretmenler"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "membershipId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "valid",
+                              "expiring",
+                              "expired",
+                              "missing"
+                            ],
+                            "description": "`valid` geçerli, `expiring` 30 gün içinde dolacak, `expired` süresi doldu, `missing` onay yok (K-376)"
+                          },
+                          "daysLeft": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Geçerlilik bitişine kalan gün (eksi: geçen); süresiz ya da onaysızsa boş"
+                          },
+                          "current": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "permitType": {
+                                    "type": "string",
+                                    "enum": [
+                                      "initial",
+                                      "renewal",
+                                      "branch_change"
+                                    ],
+                                    "description": "`initial` ilk onay, `renewal` yenileme, `branch_change` branş değişikliği"
+                                  },
+                                  "branch": {
+                                    "type": "string"
+                                  },
+                                  "approvalDate": {
+                                    "type": "string"
+                                  },
+                                  "validUntil": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "permitType",
+                                  "branch",
+                                  "approvalDate",
+                                  "validUntil"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Geçerli (bitişi en geç) onay"
+                          },
+                          "openApplication": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "permitType": {
+                                    "type": "string",
+                                    "enum": [
+                                      "initial",
+                                      "renewal",
+                                      "branch_change"
+                                    ],
+                                    "description": "`initial` ilk onay, `renewal` yenileme, `branch_change` branş değişikliği"
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "preparing",
+                                      "applied",
+                                      "approved",
+                                      "rejected"
+                                    ]
+                                  },
+                                  "applicationDate": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "permitType",
+                                  "status",
+                                  "applicationDate"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Hazırlanan ya da başvurulan kayıt"
+                          },
+                          "teaching": {
+                            "type": "boolean",
+                            "description": "Önümüzdeki 30 günde ders programında dersi ya da süren dil grubu var (K-376)"
+                          },
+                          "warning": {
+                            "type": "boolean",
+                            "description": "Programda görevli ve geçerli onayı yok (onay yok ya da süresi doldu)"
+                          }
+                        },
+                        "required": [
+                          "membershipId",
+                          "name",
+                          "status",
+                          "daysLeft",
+                          "current",
+                          "openApplication",
+                          "teaching",
+                          "warning"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    },
+                    "counts": {
+                      "type": "object",
+                      "properties": {
+                        "attention": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geçerli onayı olmayan ya da süresi dolmak üzere olan"
+                        },
+                        "warning": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Programda görevli ve geçerli onayı olmayan"
+                        }
+                      },
+                      "required": [
+                        "attention",
+                        "warning"
+                      ],
+                      "additionalProperties": false,
+                      "description": "Süzgeçten bağımsız rozet sayıları (bütün etkin öğretmenler)"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta",
+                    "counts"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/work-permits": {
+      "get": {
+        "operationId": "listWorkPermits",
+        "summary": "Çalışma onayı kayıtlarını listele",
+        "tags": [
+          "finance-work-permits"
+        ],
+        "description": "İptal edilmemiş kayıtlar, yeni açılan önce. `membershipId` öğretmene, `state` gösterilen duruma (`expired` onaylı ve bitişi bugünden önce; `approved` yalnız süresi geçmemiş onaylar), `q` öğretmen adı ve branşa göre süzer. Rol: yalnız `yonetici` (K-377). Modül `finance`. MEBBİS’e gönderim yoktur (IST-143).",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Öğretmen adında ve branşta arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "membershipId",
+            "required": false,
+            "description": "Öğretmenin üyeliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "preparing",
+                "applied",
+                "approved",
+                "rejected",
+                "expired"
+              ]
+            },
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "description": "Gösterilen durum"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "teacher": {
+                            "type": "object",
+                            "properties": {
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "membershipId",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "permitType": {
+                            "type": "string",
+                            "enum": [
+                              "initial",
+                              "renewal",
+                              "branch_change"
+                            ],
+                            "description": "`initial` ilk onay, `renewal` yenileme, `branch_change` branş değişikliği"
+                          },
+                          "branch": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "preparing",
+                              "applied",
+                              "approved",
+                              "rejected"
+                            ],
+                            "description": "Saklanan durum: `preparing`, `applied`, `approved`, `rejected`"
+                          },
+                          "state": {
+                            "type": "string",
+                            "enum": [
+                              "preparing",
+                              "applied",
+                              "approved",
+                              "rejected",
+                              "expired"
+                            ],
+                            "description": "Gösterilen durum; geçerlilik bitişi bugünden önceki onay `expired` (K-376)"
+                          },
+                          "applicationDate": {
+                            "description": "MEBBİS başvuru günü (YYYY-MM-DD)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "approvalDate": {
+                            "description": "Onay günü",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "approvalNumber": {
+                            "description": "Onay sayısı ya da belge numarası",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "validUntil": {
+                            "description": "Geçerlilik bitişi (dahil); onaylı kayıtta boşsa süresiz",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "rejectionDate": {
+                            "description": "Ret günü",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "documentFileId": {
+                            "description": "Onay belgesi dosyası",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "note": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "teacher",
+                          "permitType",
+                          "branch",
+                          "status",
+                          "state",
+                          "applicationDate",
+                          "approvalDate",
+                          "approvalNumber",
+                          "validUntil",
+                          "rejectionDate",
+                          "documentFileId",
+                          "note",
+                          "createdAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createWorkPermit",
+        "summary": "Çalışma onayı kaydı aç",
+        "tags": [
+          "finance-work-permits"
+        ],
+        "description": "Öğretmen üyeliği, onay türü (`initial`, `renewal`, `branch_change`), branş ve isteğe bağlı başvuru günü ile not. Başvuru günü varsa kayıt `applied`, yoksa `preparing` açılır (K-375). Olmayan üyelik 422 `work_permit_teacher_not_found`, öğretmen olmayan üyelik 422 `work_permit_not_teacher`, pasif öğretmen 422 `work_permit_teacher_inactive`, sürmekte olan başvuru varken 422 `work_permit_open_exists`, onaysız öğretmende yenileme ya da branş değişikliği 422 `work_permit_no_prior_approval`, gelecek gün 422 `work_permit_date_in_future`. Denetim kaydına alan adları yazılır. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (K-377). Modül `finance`. MEBBİS’e gönderim yoktur (IST-143).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "membershipId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Öğretmenin kurum üyeliği"
+                  },
+                  "permitType": {
+                    "type": "string",
+                    "enum": [
+                      "initial",
+                      "renewal",
+                      "branch_change"
+                    ],
+                    "description": "`initial` ilk onay, `renewal` yenileme, `branch_change` branş değişikliği"
+                  },
+                  "branch": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 80,
+                    "description": "Onayın istendiği branş (ör. İngilizce, Matematik), 2–80 karakter"
+                  },
+                  "applicationDate": {
+                    "default": null,
+                    "description": "MEBBİS başvuru günü; boşsa kayıt hazırlanıyor durumundadır",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "note": {
+                    "description": "İsteğe bağlı not, en çok 500 karakter",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "membershipId",
+                  "permitType",
+                  "branch"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "teacher": {
+                          "type": "object",
+                          "properties": {
+                            "membershipId": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "membershipId",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "permitType": {
+                          "type": "string",
+                          "enum": [
+                            "initial",
+                            "renewal",
+                            "branch_change"
+                          ],
+                          "description": "`initial` ilk onay, `renewal` yenileme, `branch_change` branş değişikliği"
+                        },
+                        "branch": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "preparing",
+                            "applied",
+                            "approved",
+                            "rejected"
+                          ],
+                          "description": "Saklanan durum: `preparing`, `applied`, `approved`, `rejected`"
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "preparing",
+                            "applied",
+                            "approved",
+                            "rejected",
+                            "expired"
+                          ],
+                          "description": "Gösterilen durum; geçerlilik bitişi bugünden önceki onay `expired` (K-376)"
+                        },
+                        "applicationDate": {
+                          "description": "MEBBİS başvuru günü (YYYY-MM-DD)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvalDate": {
+                          "description": "Onay günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvalNumber": {
+                          "description": "Onay sayısı ya da belge numarası",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "validUntil": {
+                          "description": "Geçerlilik bitişi (dahil); onaylı kayıtta boşsa süresiz",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionDate": {
+                          "description": "Ret günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "documentFileId": {
+                          "description": "Onay belgesi dosyası",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "documentFile": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "byteSize": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name",
+                                "byteSize"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Onay belgesi; silinmiş ya da reddedilmiş dosyada boş"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "teacher",
+                        "permitType",
+                        "branch",
+                        "status",
+                        "state",
+                        "applicationDate",
+                        "approvalDate",
+                        "approvalNumber",
+                        "validUntil",
+                        "rejectionDate",
+                        "documentFileId",
+                        "note",
+                        "createdAt",
+                        "version",
+                        "rejectionReason",
+                        "documentFile"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/work-permits/{permitId}": {
+      "get": {
+        "operationId": "getWorkPermit",
+        "summary": "Çalışma onayı ayrıntısı",
+        "tags": [
+          "finance-work-permits"
+        ],
+        "description": "Kayıt, hesaplanan durum, ret gerekçesi ve onay belgesinin adı. Olmayan, iptal edilmiş ya da başka kurumun kaydı 404. Rol: yalnız `yonetici` (K-377). Modül `finance`. MEBBİS’e gönderim yoktur (IST-143).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "permitId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "teacher": {
+                          "type": "object",
+                          "properties": {
+                            "membershipId": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "membershipId",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "permitType": {
+                          "type": "string",
+                          "enum": [
+                            "initial",
+                            "renewal",
+                            "branch_change"
+                          ],
+                          "description": "`initial` ilk onay, `renewal` yenileme, `branch_change` branş değişikliği"
+                        },
+                        "branch": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "preparing",
+                            "applied",
+                            "approved",
+                            "rejected"
+                          ],
+                          "description": "Saklanan durum: `preparing`, `applied`, `approved`, `rejected`"
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "preparing",
+                            "applied",
+                            "approved",
+                            "rejected",
+                            "expired"
+                          ],
+                          "description": "Gösterilen durum; geçerlilik bitişi bugünden önceki onay `expired` (K-376)"
+                        },
+                        "applicationDate": {
+                          "description": "MEBBİS başvuru günü (YYYY-MM-DD)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvalDate": {
+                          "description": "Onay günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvalNumber": {
+                          "description": "Onay sayısı ya da belge numarası",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "validUntil": {
+                          "description": "Geçerlilik bitişi (dahil); onaylı kayıtta boşsa süresiz",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionDate": {
+                          "description": "Ret günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "documentFileId": {
+                          "description": "Onay belgesi dosyası",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "documentFile": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "byteSize": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name",
+                                "byteSize"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Onay belgesi; silinmiş ya da reddedilmiş dosyada boş"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "teacher",
+                        "permitType",
+                        "branch",
+                        "status",
+                        "state",
+                        "applicationDate",
+                        "approvalDate",
+                        "approvalNumber",
+                        "validUntil",
+                        "rejectionDate",
+                        "documentFileId",
+                        "note",
+                        "createdAt",
+                        "version",
+                        "rejectionReason",
+                        "documentFile"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateWorkPermit",
+        "summary": "Çalışma onayı kaydını düzelt",
+        "tags": [
+          "finance-work-permits"
+        ],
+        "description": "Verilen alanlar değişir. Sonuçlanmış (onaylanmış ya da reddedilmiş) kayıtta yalnız not ve onay belgesi değişir (422 `work_permit_decided`; yanlış kayıt iptal edilip yeniden açılır). Başvuru günü yalnız başvurulmuş kayıtta (422 `work_permit_not_applied`). Değişiklik yoksa 422 `work_permit_unchanged`. `documentFileId` (`POST /files`, `purpose: document`, PDF; yükleyen yönetici bağlar: başkasının ya da başka kurumun dosyası 422 `file_unavailable`, başka kayda bağlı 409 `file_already_attached`) değişince eski dosyanın bağı kalkar; `null` eki kaldırır. `If-Match` zorunlu. Rol: yalnız `yonetici` (K-377). Modül `finance`. MEBBİS’e gönderim yoktur (IST-143).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "permitType": {
+                    "type": "string",
+                    "enum": [
+                      "initial",
+                      "renewal",
+                      "branch_change"
+                    ],
+                    "description": "`initial` ilk onay, `renewal` yenileme, `branch_change` branş değişikliği"
+                  },
+                  "branch": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 80
+                  },
+                  "applicationDate": {
+                    "description": "Başvuru günü (yalnız başvurulmuş kayıtta)",
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "note": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "documentFileId": {
+                    "description": "Onay belgesi (`POST /files`, `purpose: document`, PDF); `null` eki kaldırır",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "permitId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "teacher": {
+                          "type": "object",
+                          "properties": {
+                            "membershipId": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "membershipId",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "permitType": {
+                          "type": "string",
+                          "enum": [
+                            "initial",
+                            "renewal",
+                            "branch_change"
+                          ],
+                          "description": "`initial` ilk onay, `renewal` yenileme, `branch_change` branş değişikliği"
+                        },
+                        "branch": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "preparing",
+                            "applied",
+                            "approved",
+                            "rejected"
+                          ],
+                          "description": "Saklanan durum: `preparing`, `applied`, `approved`, `rejected`"
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "preparing",
+                            "applied",
+                            "approved",
+                            "rejected",
+                            "expired"
+                          ],
+                          "description": "Gösterilen durum; geçerlilik bitişi bugünden önceki onay `expired` (K-376)"
+                        },
+                        "applicationDate": {
+                          "description": "MEBBİS başvuru günü (YYYY-MM-DD)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvalDate": {
+                          "description": "Onay günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvalNumber": {
+                          "description": "Onay sayısı ya da belge numarası",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "validUntil": {
+                          "description": "Geçerlilik bitişi (dahil); onaylı kayıtta boşsa süresiz",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionDate": {
+                          "description": "Ret günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "documentFileId": {
+                          "description": "Onay belgesi dosyası",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "documentFile": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "byteSize": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name",
+                                "byteSize"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Onay belgesi; silinmiş ya da reddedilmiş dosyada boş"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "teacher",
+                        "permitType",
+                        "branch",
+                        "status",
+                        "state",
+                        "applicationDate",
+                        "approvalDate",
+                        "approvalNumber",
+                        "validUntil",
+                        "rejectionDate",
+                        "documentFileId",
+                        "note",
+                        "createdAt",
+                        "version",
+                        "rejectionReason",
+                        "documentFile"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/work-permits/{permitId}/apply": {
+      "post": {
+        "operationId": "applyWorkPermit",
+        "summary": "Başvuruldu olarak işaretle",
+        "tags": [
+          "finance-work-permits"
+        ],
+        "description": "Hazırlanan kayıt MEBBİS başvuru günüyle `applied` olur (K-375). Hazırlanmayan kayıt 422 `work_permit_not_preparing`, gelecek gün 422 `work_permit_date_in_future`. `If-Match` zorunlu. Başka kurumun ya da iptal edilmiş kaydı 404. Rol: yalnız `yonetici` (K-377). Modül `finance`. MEBBİS’e gönderim yoktur (IST-143).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "applicationDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "MEBBİS başvuru günü"
+                  }
+                },
+                "required": [
+                  "applicationDate"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "permitId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "teacher": {
+                          "type": "object",
+                          "properties": {
+                            "membershipId": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "membershipId",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "permitType": {
+                          "type": "string",
+                          "enum": [
+                            "initial",
+                            "renewal",
+                            "branch_change"
+                          ],
+                          "description": "`initial` ilk onay, `renewal` yenileme, `branch_change` branş değişikliği"
+                        },
+                        "branch": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "preparing",
+                            "applied",
+                            "approved",
+                            "rejected"
+                          ],
+                          "description": "Saklanan durum: `preparing`, `applied`, `approved`, `rejected`"
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "preparing",
+                            "applied",
+                            "approved",
+                            "rejected",
+                            "expired"
+                          ],
+                          "description": "Gösterilen durum; geçerlilik bitişi bugünden önceki onay `expired` (K-376)"
+                        },
+                        "applicationDate": {
+                          "description": "MEBBİS başvuru günü (YYYY-MM-DD)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvalDate": {
+                          "description": "Onay günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvalNumber": {
+                          "description": "Onay sayısı ya da belge numarası",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "validUntil": {
+                          "description": "Geçerlilik bitişi (dahil); onaylı kayıtta boşsa süresiz",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionDate": {
+                          "description": "Ret günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "documentFileId": {
+                          "description": "Onay belgesi dosyası",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "documentFile": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "byteSize": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name",
+                                "byteSize"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Onay belgesi; silinmiş ya da reddedilmiş dosyada boş"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "teacher",
+                        "permitType",
+                        "branch",
+                        "status",
+                        "state",
+                        "applicationDate",
+                        "approvalDate",
+                        "approvalNumber",
+                        "validUntil",
+                        "rejectionDate",
+                        "documentFileId",
+                        "note",
+                        "createdAt",
+                        "version",
+                        "rejectionReason",
+                        "documentFile"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/work-permits/{permitId}/approve": {
+      "post": {
+        "operationId": "approveWorkPermit",
+        "summary": "Onayı kaydet",
+        "tags": [
+          "finance-work-permits"
+        ],
+        "description": "Başvurulmuş kayıt onay günü, onay sayısı ve geçerlilik bitişiyle `approved` olur. `validUntil` verilmezse onay gününün eğitim yılı sonu (kurumun yıl kaydı, yoksa 31 Ağustos; yıl sonuna 60 günden az kala verilen onayda sonraki yılın sonu), `null` süresizdir (K-376). Onay belgesi (`documentFileId`) isteğe bağlıdır. Başvurulmamış kayıt 422 `work_permit_not_applied`, başvurudan önceki gün 422 `work_permit_decision_before_application`, gelecek gün 422 `work_permit_date_in_future`, onaydan önceki bitiş 422 `work_permit_valid_until_before_approval`. `If-Match` zorunlu. Başka kurumun ya da iptal edilmiş kaydı 404. Rol: yalnız `yonetici` (K-377). Modül `finance`. MEBBİS’e gönderim yoktur (IST-143).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "approvalDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Onay günü"
+                  },
+                  "approvalNumber": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60,
+                    "description": "Onay yazısının sayısı ya da belge numarası"
+                  },
+                  "validUntil": {
+                    "description": "Geçerlilik bitişi (dahil). Verilmezse onay gününün eğitim yılı sonu (K-376); `null` süresiz",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "documentFileId": {
+                    "default": null,
+                    "description": "İsteğe bağlı onay belgesi (`POST /files`, `purpose: document`, PDF)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "approvalDate",
+                  "approvalNumber"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "permitId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "teacher": {
+                          "type": "object",
+                          "properties": {
+                            "membershipId": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "membershipId",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "permitType": {
+                          "type": "string",
+                          "enum": [
+                            "initial",
+                            "renewal",
+                            "branch_change"
+                          ],
+                          "description": "`initial` ilk onay, `renewal` yenileme, `branch_change` branş değişikliği"
+                        },
+                        "branch": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "preparing",
+                            "applied",
+                            "approved",
+                            "rejected"
+                          ],
+                          "description": "Saklanan durum: `preparing`, `applied`, `approved`, `rejected`"
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "preparing",
+                            "applied",
+                            "approved",
+                            "rejected",
+                            "expired"
+                          ],
+                          "description": "Gösterilen durum; geçerlilik bitişi bugünden önceki onay `expired` (K-376)"
+                        },
+                        "applicationDate": {
+                          "description": "MEBBİS başvuru günü (YYYY-MM-DD)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvalDate": {
+                          "description": "Onay günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvalNumber": {
+                          "description": "Onay sayısı ya da belge numarası",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "validUntil": {
+                          "description": "Geçerlilik bitişi (dahil); onaylı kayıtta boşsa süresiz",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionDate": {
+                          "description": "Ret günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "documentFileId": {
+                          "description": "Onay belgesi dosyası",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "documentFile": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "byteSize": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name",
+                                "byteSize"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Onay belgesi; silinmiş ya da reddedilmiş dosyada boş"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "teacher",
+                        "permitType",
+                        "branch",
+                        "status",
+                        "state",
+                        "applicationDate",
+                        "approvalDate",
+                        "approvalNumber",
+                        "validUntil",
+                        "rejectionDate",
+                        "documentFileId",
+                        "note",
+                        "createdAt",
+                        "version",
+                        "rejectionReason",
+                        "documentFile"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/work-permits/{permitId}/reject": {
+      "post": {
+        "operationId": "rejectWorkPermit",
+        "summary": "Reddi kaydet",
+        "tags": [
+          "finance-work-permits"
+        ],
+        "description": "Başvurulmuş kayıt ret günü ve gerekçesiyle (5–500 karakter; denetim kaydına yalnız alan adı) `rejected` olur. Başvurulmamış kayıt 422 `work_permit_not_applied`, başvurudan önceki gün 422 `work_permit_decision_before_application`. `If-Match` zorunlu. Başka kurumun ya da iptal edilmiş kaydı 404. Rol: yalnız `yonetici` (K-377). Modül `finance`. MEBBİS’e gönderim yoktur (IST-143).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "decisionDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Ret günü"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500,
+                    "description": "Ret gerekçesi, 5–500 karakter"
+                  }
+                },
+                "required": [
+                  "decisionDate",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "permitId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "teacher": {
+                          "type": "object",
+                          "properties": {
+                            "membershipId": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "membershipId",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "permitType": {
+                          "type": "string",
+                          "enum": [
+                            "initial",
+                            "renewal",
+                            "branch_change"
+                          ],
+                          "description": "`initial` ilk onay, `renewal` yenileme, `branch_change` branş değişikliği"
+                        },
+                        "branch": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "preparing",
+                            "applied",
+                            "approved",
+                            "rejected"
+                          ],
+                          "description": "Saklanan durum: `preparing`, `applied`, `approved`, `rejected`"
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "preparing",
+                            "applied",
+                            "approved",
+                            "rejected",
+                            "expired"
+                          ],
+                          "description": "Gösterilen durum; geçerlilik bitişi bugünden önceki onay `expired` (K-376)"
+                        },
+                        "applicationDate": {
+                          "description": "MEBBİS başvuru günü (YYYY-MM-DD)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvalDate": {
+                          "description": "Onay günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvalNumber": {
+                          "description": "Onay sayısı ya da belge numarası",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "validUntil": {
+                          "description": "Geçerlilik bitişi (dahil); onaylı kayıtta boşsa süresiz",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionDate": {
+                          "description": "Ret günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "documentFileId": {
+                          "description": "Onay belgesi dosyası",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "documentFile": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "byteSize": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name",
+                                "byteSize"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Onay belgesi; silinmiş ya da reddedilmiş dosyada boş"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "teacher",
+                        "permitType",
+                        "branch",
+                        "status",
+                        "state",
+                        "applicationDate",
+                        "approvalDate",
+                        "approvalNumber",
+                        "validUntil",
+                        "rejectionDate",
+                        "documentFileId",
+                        "note",
+                        "createdAt",
+                        "version",
+                        "rejectionReason",
+                        "documentFile"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/work-permits/{permitId}/cancel": {
+      "post": {
+        "operationId": "cancelWorkPermit",
+        "summary": "Yanlış kaydı iptal et",
+        "tags": [
+          "finance-work-permits"
+        ],
+        "description": "Her durumdaki kayıt gerekçeyle (5–500 karakter; denetim kaydına yazılmaz) iptal (arşiv) edilir; listeden ve takipten düşer, bağlı onay belgesinin bağı kalkar. `If-Match` zorunlu. Başka kurumun ya da iptal edilmiş kaydı 404. Rol: yalnız `yonetici` (K-377). Modül `finance`. MEBBİS’e gönderim yoktur (IST-143).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500,
+                    "description": "İptal gerekçesi; denetim kaydına yazılmaz"
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "permitId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "cancelledAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "cancelledAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

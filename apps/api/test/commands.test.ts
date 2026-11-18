@@ -129,6 +129,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/ticketed-events/{eventId}/tickets',
   'POST /api/v1/finance/event-tickets/{ticketId}/pay',
   'POST /api/v1/finance/event-tickets/{ticketId}/cancel',
+  // Çalışma onayı kaydı açılışı; çift tıklama aynı öğretmene ikinci başvuru açmaz
+  // (routes/finance-work-permits.ts; DOM-FIN-114, ON-174).
+  'POST /api/v1/finance/work-permits',
 ]
 // Onur: kayıt ve finans sonu
 

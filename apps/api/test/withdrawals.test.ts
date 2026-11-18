@@ -771,6 +771,7 @@ describe('ayrılış ve iade uçları', () => {
       {
         withdrawalId: id,
         freeTuitionAwardId: null,
+        paidActivityParticipantId: null,
         studentName: STUDENT?.name,
         amountCents: 3_000_000,
         paidDate: today,

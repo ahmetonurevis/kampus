@@ -61,6 +61,7 @@ import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { EnrollmentConsentNotice } from './EnrollmentConsentNotice.tsx'
 import { GuardianAccountAction } from './GuardianAccountPanel.tsx'
 import { EnrollmentCertificateButton } from './EnrollmentCertificateButton.tsx'
+import { EnrollmentAlumniDocumentsSection } from './EnrollmentAlumniDocumentsSection.tsx'
 import { EnrollmentCertificateSection } from './EnrollmentCertificateSection.tsx'
 import { EnrollmentDocumentsSection } from './EnrollmentDocumentsSection.tsx'
 import { GuardianInvitationsSection } from './GuardianInvitationsSection.tsx'
@@ -228,7 +229,11 @@ export function EnrollmentPage({ page }: { page: NavPage }) {
         />
       )}
       <EnrollmentCertificateSection />
+<<<<<<< HEAD
       <EnrollmentDocumentsSection />
+=======
+      <EnrollmentAlumniDocumentsSection />
+>>>>>>> feature/platform-gecisi
       <GuardianInvitationsSection />
       <StudentImportSection />
       <EnrollmentEokulImportSection />

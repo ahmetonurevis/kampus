@@ -690,6 +690,7 @@ export async function freeTuitionRefundsPaidOnDay(
     ...row,
     withdrawalId: null,
     freeTuitionAwardId: id,
+    paidActivityParticipantId: null,
     paidDate: day,
     bankAccountLabel:
       bankName === null || bankIban === null

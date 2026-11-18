@@ -10,6 +10,7 @@ import { useFinanceOverview } from '@kampus/react-shared/use-finance-exports.ts'
 import { useChemicalLots } from '@kampus/react-shared/use-finance-chemicals.ts'
 import { useCriticalStockItems } from '@kampus/react-shared/use-finance-inventory.ts'
 import { useMaintenancePlans } from '@kampus/react-shared/use-finance-maintenance-plans.ts'
+import { useStakeholderAgreements } from '@kampus/react-shared/use-finance-stakeholders.ts'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { useCoreAll, useCoreList } from '@/hooks/use-core-collection.ts'
 import { useEnrollmentLearner } from '@/hooks/use-enrollment-learner.ts'
@@ -221,6 +222,52 @@ function MaintenancePlansCard({ ctx }: { ctx: DashboardCardContext }) {
                 text={MAINTENANCE_PLAN_DUE_VIEW[row.dueStatus].label}
                 tone={MAINTENANCE_PLAN_DUE_VIEW[row.dueStatus].tone}
               />
+            </span>
+          </li>
+        ))}
+      </CardList>
+    </ListCard>
+  )
+}
+
+const RENEWAL_DUE_QUERY = { page: 1, pageSize: 5, renewalDue: 'true' } as const
+
+/**
+ * Sponsor ve iş birliği anlaşmaları (DOM-FIN-102, K-319): yenileme bildirim gününe giren, bitişi
+ * en yakın beş yürürlükteki anlaşma. Anlaşma yoksa kart çizilmez; anlaşmalar kampüse bağlı
+ * olmadığı için kampüs seçiliyken kart gizlenir ve istek atılmaz. Bildirim gönderilmez.
+ */
+function StakeholderRenewalsCard({ ctx }: { ctx: DashboardCardContext }) {
+  const [params] = useSearchParams()
+  const branchSelected = params.has(BRANCH_PARAM)
+  const query = useStakeholderAgreements(RENEWAL_DUE_QUERY, !branchSelected)
+  const total = query.data?.meta.total ?? 0
+  if (branchSelected || (!query.error && total === 0)) return null
+  return (
+    <ListCard
+      title="Sponsor anlaşmaları"
+      description={`${number(total)} anlaşmanın yenileme zamanı geldi`}
+      action={{
+        label: 'Tümünü gör',
+        href: dashboardHref(ctx.role, 'finans', { gorunum: 'paydas', anlasma_bitis: 'renewal' }),
+      }}
+      state={combineStates(query)}
+      isEmpty={false}
+      emptyText="Yenilemesi yaklaşan anlaşma yok."
+    >
+      <CardList label="Sponsor anlaşmaları">
+        {query.data?.data.map((row) => (
+          <li
+            key={row.id}
+            className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2.5 first:pt-0 last:pb-0"
+          >
+            <span className="min-w-0">
+              <span className="block font-medium">{row.subject}</span>
+              <span className="block text-sm text-muted-foreground">{row.stakeholder.name}</span>
+            </span>
+            <span className="flex items-center gap-2 text-sm tabular-nums">
+              {row.daysLeft === 0 ? 'Bugün bitiyor' : `${number(row.daysLeft ?? 0)} gün kaldı`}
+              <StatusBadge text="Yenileme yaklaşıyor" tone="amber" />
             </span>
           </li>
         ))}
@@ -615,6 +662,16 @@ export const FINANCE_CARDS = [
     area: 'side',
     order: 407,
     component: MaintenancePlansCard,
+  }),
+  // --- Yönetici: sponsor anlaşmalarının yenilemesi (DOM-FIN-102; ON-262). Bakımın altında. ---
+  defineCard({
+    id: 'finans.sponsor-anlasmalari',
+    roles: ['yonetici'],
+    module: 'finance',
+    section: (data) => ('finance' in data ? data.finance : null),
+    area: 'side',
+    order: 408,
+    component: StakeholderRenewalsCard,
   }),
 
   // --- Veli: çocuğun bakiyesi (DOM-FIN-052). Öğrencinin özetinde alan yoktur, kart çizilmez. ---

@@ -6,8 +6,9 @@ import { useApiQuery } from './use-api-query.ts'
 import { useFinanceListQuery } from './use-finance-list-query.ts'
 
 // Etkinlik bileti ve oturma kancaları (`/finance/ticketed-events`, `/finance/event-tickets`;
-// DOM-FIN-103, ON-159). Her yazma etkinlik anahtarının tamamını tazeler: bilet ayırma, ödeme,
-// iptal ve giriş etkinlik özetini ve koltuk haritasını da değiştirir. Komutlar `exclusive`.
+// DOM-FIN-103, ON-159, ON-345). Her yazma etkinlik anahtarının tamamını tazeler: bilet ayırma,
+// ödeme, iptal, iade, giriş ve girişi geri alma etkinlik özetini ve koltuk haritasını da değiştirir.
+// Komutlar `exclusive`.
 
 type JsonBody<TOperation extends keyof operations> =
   NonNullable<operations[TOperation]['requestBody']> extends {
@@ -25,6 +26,8 @@ export type CreateTicketedEventBody = JsonBody<'createTicketedEvent'>
 export type UpdateTicketedEventBody = JsonBody<'updateTicketedEvent'>
 export type AllocateEventTicketsBody = JsonBody<'allocateEventTickets'>
 export type PayEventTicketBody = JsonBody<'payEventTicket'>
+export type CancelEventTicketBody = JsonBody<'cancelEventTicket'>
+export type RefundEventTicketBody = JsonBody<'refundEventTicket'>
 export type TicketedEventRow =
   operations['listTicketedEvents']['responses'][200]['content']['application/json']['data'][number]
 export type EventTicketRow =
@@ -192,10 +195,46 @@ export function useCancelEventTicket() {
   return useApiCommand({
     request: (
       client,
-      input: { ticketId: string; reason: string | null },
+      input: { ticketId: string; body: CancelEventTicketBody },
       headers: CommandHeaders,
     ) =>
       client.POST('/api/v1/finance/event-tickets/{ticketId}/cancel', {
+        params: {
+          path: { ticketId: input.ticketId },
+          header: { 'idempotency-key': headers['idempotency-key'] },
+        },
+        body: input.body,
+      }),
+    invalidates: [EVENT_TICKETS_KEY],
+    exclusive: true,
+  })
+}
+
+/** İadenin ödendiği işareti (K-380); taze oturum ister. */
+export function useRefundEventTicket() {
+  return useApiCommand({
+    request: (
+      client,
+      input: { ticketId: string; body: RefundEventTicketBody },
+      headers: CommandHeaders,
+    ) =>
+      client.POST('/api/v1/finance/event-tickets/{ticketId}/refund', {
+        params: {
+          path: { ticketId: input.ticketId },
+          header: { 'idempotency-key': headers['idempotency-key'] },
+        },
+        body: input.body,
+      }),
+    invalidates: [EVENT_TICKETS_KEY],
+    exclusive: true,
+  })
+}
+
+/** Yanlış okutulan girişi gerekçeyle geri alma (K-378). */
+export function useUndoEventTicketCheckIn() {
+  return useApiCommand({
+    request: (client, input: { ticketId: string; reason: string }, headers: CommandHeaders) =>
+      client.POST('/api/v1/finance/event-tickets/{ticketId}/undo-check-in', {
         params: {
           path: { ticketId: input.ticketId },
           header: { 'idempotency-key': headers['idempotency-key'] },

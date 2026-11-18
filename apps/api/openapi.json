@@ -155638,7 +155638,15 @@
                                 "type": "null"
                               }
                             ],
-                            "description": "Öğrenci başına üst sınır; boşsa sınırsız"
+                            "description": "Öğrenci ya da aile başına üst sınır; boşsa sınırsız"
+                          },
+                          "limitScope": {
+                            "type": "string",
+                            "enum": [
+                              "student",
+                              "family"
+                            ],
+                            "description": "`student` öğrenci başına, `family` aile başına (kardeşler birlikte sayılır; K-379)"
                           },
                           "salesOpen": {
                             "type": "boolean"
@@ -155683,7 +155691,19 @@
                             "type": "integer",
                             "minimum": -9007199254740991,
                             "maximum": 9007199254740991,
-                            "description": "Ödenmiş etkin biletlerin toplamı, kuruş (iade düşer)"
+                            "description": "Ödenmiş biletlerin net toplamı, kuruş: iptalde yazılan iade düşer, kesinti kalır"
+                          },
+                          "pendingRefundCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Ödendiği işaretlenmemiş iade sayısı (K-380)"
+                          },
+                          "pendingRefundCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Ödenmesi bekleyen iade toplamı, kuruş"
                           },
                           "takenSeats": {
                             "type": "array",
@@ -155713,6 +155733,7 @@
                           "capacity",
                           "ticketTypes",
                           "perStudentLimit",
+                          "limitScope",
                           "salesOpen",
                           "totalCapacity",
                           "activeCount",
@@ -155721,6 +155742,8 @@
                           "usedCount",
                           "unpaidCount",
                           "collectedCents",
+                          "pendingRefundCount",
+                          "pendingRefundCents",
                           "takenSeats",
                           "version"
                         ],
@@ -155828,7 +155851,7 @@
         "tags": [
           "finance-event-tickets"
         ],
-        "description": "Gösteri ya da tören için etkinlik açar (DOM-FIN-103, K-325): Ad (2–120), başlangıç anı (ISO 8601, gelecekte; 422 `event_starts_in_past`), salon (2–120), isteğe bağlı okul takvimi etkinliği (`schoolEventId`; kurumda yoksa 422 `event_school_event_not_found`), oturma düzeni: `seated` sıra sayısı (1–26, A–Z) × sıra başına koltuk (1–60) ve kapalı koltuklar (`A1` biçimi) ya da `general` kontenjan (1–5000); bilet türleri (1–5; `invitation` fiyat 0, `paid` fiyat > 0 kuruş, ad tekil) ve öğrenci başına üst sınır (1–20, boşsa sınırsız). Satış açık başlar. Rol: `yonetici` (K-324). Modül `finance`.",
+        "description": "Gösteri ya da tören için etkinlik açar (DOM-FIN-103, K-325): Ad (2–120), başlangıç anı (ISO 8601, gelecekte; 422 `event_starts_in_past`), salon (2–120), isteğe bağlı okul takvimi etkinliği (`schoolEventId`; kurumda yoksa 422 `event_school_event_not_found`), oturma düzeni: `seated` sıra sayısı (1–26, A–Z) × sıra başına koltuk (1–60) ve kapalı koltuklar (`A1` biçimi) ya da `general` kontenjan (1–5000); bilet türleri (1–5; `invitation` fiyat 0, `paid` fiyat > 0 kuruş, ad tekil) ve öğrenci ya da aile başına üst sınır (1–20, boşsa sınırsız; `limitScope` `student` ya da `family`, K-379). Satış açık başlar. Rol: `yonetici` (K-324). Modül `finance`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -155974,7 +155997,16 @@
                         "type": "null"
                       }
                     ],
-                    "description": "Öğrenci (aile) başına etkin bilet üst sınırı; boşsa sınırsız"
+                    "description": "Öğrenci ya da aile başına etkin bilet üst sınırı; boşsa sınırsız"
+                  },
+                  "limitScope": {
+                    "default": "student",
+                    "type": "string",
+                    "enum": [
+                      "student",
+                      "family"
+                    ],
+                    "description": "`student` öğrenci başına, `family` aile başına (aynı veliye bağlı kardeşlerin biletleri birlikte sayılır); sınır boşsa etkisiz"
                   }
                 },
                 "required": [
@@ -156138,7 +156170,15 @@
                               "type": "null"
                             }
                           ],
-                          "description": "Öğrenci başına üst sınır; boşsa sınırsız"
+                          "description": "Öğrenci ya da aile başına üst sınır; boşsa sınırsız"
+                        },
+                        "limitScope": {
+                          "type": "string",
+                          "enum": [
+                            "student",
+                            "family"
+                          ],
+                          "description": "`student` öğrenci başına, `family` aile başına (kardeşler birlikte sayılır; K-379)"
                         },
                         "salesOpen": {
                           "type": "boolean"
@@ -156183,7 +156223,19 @@
                           "type": "integer",
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991,
-                          "description": "Ödenmiş etkin biletlerin toplamı, kuruş (iade düşer)"
+                          "description": "Ödenmiş biletlerin net toplamı, kuruş: iptalde yazılan iade düşer, kesinti kalır"
+                        },
+                        "pendingRefundCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Ödendiği işaretlenmemiş iade sayısı (K-380)"
+                        },
+                        "pendingRefundCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Ödenmesi bekleyen iade toplamı, kuruş"
                         },
                         "takenSeats": {
                           "type": "array",
@@ -156213,6 +156265,7 @@
                         "capacity",
                         "ticketTypes",
                         "perStudentLimit",
+                        "limitScope",
                         "salesOpen",
                         "totalCapacity",
                         "activeCount",
@@ -156221,6 +156274,8 @@
                         "usedCount",
                         "unpaidCount",
                         "collectedCents",
+                        "pendingRefundCount",
+                        "pendingRefundCents",
                         "takenSeats",
                         "version"
                       ],
@@ -156475,7 +156530,15 @@
                               "type": "null"
                             }
                           ],
-                          "description": "Öğrenci başına üst sınır; boşsa sınırsız"
+                          "description": "Öğrenci ya da aile başına üst sınır; boşsa sınırsız"
+                        },
+                        "limitScope": {
+                          "type": "string",
+                          "enum": [
+                            "student",
+                            "family"
+                          ],
+                          "description": "`student` öğrenci başına, `family` aile başına (kardeşler birlikte sayılır; K-379)"
                         },
                         "salesOpen": {
                           "type": "boolean"
@@ -156520,7 +156583,19 @@
                           "type": "integer",
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991,
-                          "description": "Ödenmiş etkin biletlerin toplamı, kuruş (iade düşer)"
+                          "description": "Ödenmiş biletlerin net toplamı, kuruş: iptalde yazılan iade düşer, kesinti kalır"
+                        },
+                        "pendingRefundCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Ödendiği işaretlenmemiş iade sayısı (K-380)"
+                        },
+                        "pendingRefundCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Ödenmesi bekleyen iade toplamı, kuruş"
                         },
                         "takenSeats": {
                           "type": "array",
@@ -156550,6 +156625,7 @@
                         "capacity",
                         "ticketTypes",
                         "perStudentLimit",
+                        "limitScope",
                         "salesOpen",
                         "totalCapacity",
                         "activeCount",
@@ -156558,6 +156634,8 @@
                         "usedCount",
                         "unpaidCount",
                         "collectedCents",
+                        "pendingRefundCount",
+                        "pendingRefundCents",
                         "takenSeats",
                         "version"
                       ],
@@ -156801,7 +156879,15 @@
                         "type": "null"
                       }
                     ],
-                    "description": "Öğrenci (aile) başına etkin bilet üst sınırı; boşsa sınırsız"
+                    "description": "Öğrenci ya da aile başına etkin bilet üst sınırı; boşsa sınırsız"
+                  },
+                  "limitScope": {
+                    "type": "string",
+                    "enum": [
+                      "student",
+                      "family"
+                    ],
+                    "description": "`student` öğrenci başına, `family` aile başına (aynı veliye bağlı kardeşlerin biletleri birlikte sayılır); sınır boşsa etkisiz"
                   },
                   "salesOpen": {
                     "description": "Bilet ayırma açık mı",
@@ -156982,7 +157068,15 @@
                               "type": "null"
                             }
                           ],
-                          "description": "Öğrenci başına üst sınır; boşsa sınırsız"
+                          "description": "Öğrenci ya da aile başına üst sınır; boşsa sınırsız"
+                        },
+                        "limitScope": {
+                          "type": "string",
+                          "enum": [
+                            "student",
+                            "family"
+                          ],
+                          "description": "`student` öğrenci başına, `family` aile başına (kardeşler birlikte sayılır; K-379)"
                         },
                         "salesOpen": {
                           "type": "boolean"
@@ -157027,7 +157121,19 @@
                           "type": "integer",
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991,
-                          "description": "Ödenmiş etkin biletlerin toplamı, kuruş (iade düşer)"
+                          "description": "Ödenmiş biletlerin net toplamı, kuruş: iptalde yazılan iade düşer, kesinti kalır"
+                        },
+                        "pendingRefundCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Ödendiği işaretlenmemiş iade sayısı (K-380)"
+                        },
+                        "pendingRefundCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Ödenmesi bekleyen iade toplamı, kuruş"
                         },
                         "takenSeats": {
                           "type": "array",
@@ -157057,6 +157163,7 @@
                         "capacity",
                         "ticketTypes",
                         "perStudentLimit",
+                        "limitScope",
                         "salesOpen",
                         "totalCapacity",
                         "activeCount",
@@ -157065,6 +157172,8 @@
                         "usedCount",
                         "unpaidCount",
                         "collectedCents",
+                        "pendingRefundCount",
+                        "pendingRefundCents",
                         "takenSeats",
                         "version"
                       ],
@@ -157494,12 +157603,49 @@
                               "null"
                             ]
                           },
+                          "refundCents": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "İptal edilen ödenmiş bilette iade tutarı, kuruş (0…bedel; K-380); diğerlerinde boş"
+                          },
+                          "refundMethod": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "cash",
+                                  "transfer"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "İadenin yöntemi"
+                          },
                           "refundedAt": {
-                            "description": "Ödenmiş biletin iptalinde bedelin iade edildiği an",
+                            "description": "İadenin ödendiğinin işaretlendiği an",
                             "type": [
                               "string",
                               "null"
                             ]
+                          },
+                          "refundStatus": {
+                            "type": "string",
+                            "enum": [
+                              "none",
+                              "pending",
+                              "paid"
+                            ],
+                            "description": "`none` iade yok, `pending` iade bekliyor, `paid` iade ödendi"
                           },
                           "usedAt": {
                             "type": [
@@ -157529,6 +157675,16 @@
                             ],
                             "description": "`valid` girişe hazır, `unpaid` ödeme bekliyor, `used` kullanıldı, `cancelled` iptal"
                           },
+                          "checkInUndoCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Geri alınmış giriş sayısı (K-378)"
+                          },
+                          "canUndoCheckIn": {
+                            "type": "boolean",
+                            "description": "İsteği yapan bu biletin girişini şimdi geri alabilir mi (kullanılmış, yönetici ya da okutan, etkinlik günü bitmemiş)"
+                          },
                           "createdAt": {
                             "type": "string"
                           },
@@ -157555,11 +157711,16 @@
                           "paymentStatus",
                           "paymentMethod",
                           "paidAt",
+                          "refundCents",
+                          "refundMethod",
                           "refundedAt",
+                          "refundStatus",
                           "usedAt",
                           "cancelledAt",
                           "cancelReason",
                           "state",
+                          "checkInUndoCount",
+                          "canUndoCheckIn",
                           "createdAt",
                           "version"
                         ],
@@ -157667,7 +157828,7 @@
         "tags": [
           "finance-event-tickets"
         ],
-        "description": "Bir öğrencinin ailesine 1–10 bilet ayırır (K-325): bilet başına tür, bilet sahibinin adı (veli ya da misafir) ve numaralı salonda koltuk. Satış kapalıysa 422 `event_sales_closed`; öğrenci kurumda yoksa 422 `event_ticket_student_not_found` (başka kurumun öğrencisi de), etkin değilse `event_ticket_student_inactive`. Koltuk: eksik `event_seat_required`, salonda yok `event_seat_unknown`, kapalı `event_seat_blocked`, istekte iki kez `event_seat_duplicate`, başka bilette 409 `event_seat_taken` (eşzamanlı ayırma kurum kilidiyle sıraya girer; kısmi tekil indeks son güvencedir). Numarasızda koltuk 422 `event_seat_not_allowed`, kontenjan aşımı `event_sold_out`; öğrenci başına üst sınır `event_ticket_limit_exceeded` (iptal edilen bilet sayılmaz). Ücretli bilet ödenmemiş başlar. Her bilete tahmin edilemez kod verilir (K-326). `Idempotency-Key` zorunlu. Roller: `yonetici`, `onburo` (K-324). Modül `finance`.",
+        "description": "Bir öğrencinin ailesine 1–10 bilet ayırır (K-325): bilet başına tür, bilet sahibinin adı (veli ya da misafir) ve numaralı salonda koltuk. Satış kapalıysa 422 `event_sales_closed`; öğrenci kurumda yoksa 422 `event_ticket_student_not_found` (başka kurumun öğrencisi de), etkin değilse `event_ticket_student_inactive`. Koltuk: eksik `event_seat_required`, salonda yok `event_seat_unknown`, kapalı `event_seat_blocked`, istekte iki kez `event_seat_duplicate`, başka bilette 409 `event_seat_taken` (eşzamanlı ayırma kurum kilidiyle sıraya girer; kısmi tekil indeks son güvencedir). Numarasızda koltuk 422 `event_seat_not_allowed`, kontenjan aşımı `event_sold_out`; üst sınır aşımı `event_ticket_limit_exceeded` (iptal edilen bilet sayılmaz; aile kapsamında aynı veliye bağlı kardeşlerin biletleri birlikte sayılır ve kardeş kümesi kurum kilidi altında okunur, K-379). Ücretli bilet ödenmemiş başlar. Her bilete tahmin edilemez kod verilir (K-326). `Idempotency-Key` zorunlu. Roller: `yonetici`, `onburo` (K-324). Modül `finance`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -157679,7 +157840,7 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 64,
-                    "description": "Biletin ayrıldığı öğrenci (ailesi); üst sınır öğrenci başınadır"
+                    "description": "Biletin ayrıldığı öğrenci (ailesi); üst sınır öğrenci ya da aile başınadır"
                   },
                   "items": {
                     "minItems": 1,
@@ -157843,12 +158004,49 @@
                               "null"
                             ]
                           },
+                          "refundCents": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "İptal edilen ödenmiş bilette iade tutarı, kuruş (0…bedel; K-380); diğerlerinde boş"
+                          },
+                          "refundMethod": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "cash",
+                                  "transfer"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "İadenin yöntemi"
+                          },
                           "refundedAt": {
-                            "description": "Ödenmiş biletin iptalinde bedelin iade edildiği an",
+                            "description": "İadenin ödendiğinin işaretlendiği an",
                             "type": [
                               "string",
                               "null"
                             ]
+                          },
+                          "refundStatus": {
+                            "type": "string",
+                            "enum": [
+                              "none",
+                              "pending",
+                              "paid"
+                            ],
+                            "description": "`none` iade yok, `pending` iade bekliyor, `paid` iade ödendi"
                           },
                           "usedAt": {
                             "type": [
@@ -157878,6 +158076,16 @@
                             ],
                             "description": "`valid` girişe hazır, `unpaid` ödeme bekliyor, `used` kullanıldı, `cancelled` iptal"
                           },
+                          "checkInUndoCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Geri alınmış giriş sayısı (K-378)"
+                          },
+                          "canUndoCheckIn": {
+                            "type": "boolean",
+                            "description": "İsteği yapan bu biletin girişini şimdi geri alabilir mi (kullanılmış, yönetici ya da okutan, etkinlik günü bitmemiş)"
+                          },
                           "createdAt": {
                             "type": "string"
                           },
@@ -157904,11 +158112,16 @@
                           "paymentStatus",
                           "paymentMethod",
                           "paidAt",
+                          "refundCents",
+                          "refundMethod",
                           "refundedAt",
+                          "refundStatus",
                           "usedAt",
                           "cancelledAt",
                           "cancelReason",
                           "state",
+                          "checkInUndoCount",
+                          "canUndoCheckIn",
                           "createdAt",
                           "version"
                         ],
@@ -158154,12 +158367,49 @@
                             "null"
                           ]
                         },
+                        "refundCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "İptal edilen ödenmiş bilette iade tutarı, kuruş (0…bedel; K-380); diğerlerinde boş"
+                        },
+                        "refundMethod": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "cash",
+                                "transfer"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "İadenin yöntemi"
+                        },
                         "refundedAt": {
-                          "description": "Ödenmiş biletin iptalinde bedelin iade edildiği an",
+                          "description": "İadenin ödendiğinin işaretlendiği an",
                           "type": [
                             "string",
                             "null"
                           ]
+                        },
+                        "refundStatus": {
+                          "type": "string",
+                          "enum": [
+                            "none",
+                            "pending",
+                            "paid"
+                          ],
+                          "description": "`none` iade yok, `pending` iade bekliyor, `paid` iade ödendi"
                         },
                         "usedAt": {
                           "type": [
@@ -158189,6 +158439,16 @@
                           ],
                           "description": "`valid` girişe hazır, `unpaid` ödeme bekliyor, `used` kullanıldı, `cancelled` iptal"
                         },
+                        "checkInUndoCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geri alınmış giriş sayısı (K-378)"
+                        },
+                        "canUndoCheckIn": {
+                          "type": "boolean",
+                          "description": "İsteği yapan bu biletin girişini şimdi geri alabilir mi (kullanılmış, yönetici ya da okutan, etkinlik günü bitmemiş)"
+                        },
                         "createdAt": {
                           "type": "string"
                         },
@@ -158215,11 +158475,16 @@
                         "paymentStatus",
                         "paymentMethod",
                         "paidAt",
+                        "refundCents",
+                        "refundMethod",
                         "refundedAt",
+                        "refundStatus",
                         "usedAt",
                         "cancelledAt",
                         "cancelReason",
                         "state",
+                        "checkInUndoCount",
+                        "canUndoCheckIn",
                         "createdAt",
                         "version"
                       ],
@@ -158475,12 +158740,49 @@
                             "null"
                           ]
                         },
+                        "refundCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "İptal edilen ödenmiş bilette iade tutarı, kuruş (0…bedel; K-380); diğerlerinde boş"
+                        },
+                        "refundMethod": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "cash",
+                                "transfer"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "İadenin yöntemi"
+                        },
                         "refundedAt": {
-                          "description": "Ödenmiş biletin iptalinde bedelin iade edildiği an",
+                          "description": "İadenin ödendiğinin işaretlendiği an",
                           "type": [
                             "string",
                             "null"
                           ]
+                        },
+                        "refundStatus": {
+                          "type": "string",
+                          "enum": [
+                            "none",
+                            "pending",
+                            "paid"
+                          ],
+                          "description": "`none` iade yok, `pending` iade bekliyor, `paid` iade ödendi"
                         },
                         "usedAt": {
                           "type": [
@@ -158510,6 +158812,16 @@
                           ],
                           "description": "`valid` girişe hazır, `unpaid` ödeme bekliyor, `used` kullanıldı, `cancelled` iptal"
                         },
+                        "checkInUndoCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geri alınmış giriş sayısı (K-378)"
+                        },
+                        "canUndoCheckIn": {
+                          "type": "boolean",
+                          "description": "İsteği yapan bu biletin girişini şimdi geri alabilir mi (kullanılmış, yönetici ya da okutan, etkinlik günü bitmemiş)"
+                        },
                         "createdAt": {
                           "type": "string"
                         },
@@ -158536,11 +158848,16 @@
                         "paymentStatus",
                         "paymentMethod",
                         "paidAt",
+                        "refundCents",
+                        "refundMethod",
                         "refundedAt",
+                        "refundStatus",
                         "usedAt",
                         "cancelledAt",
                         "cancelReason",
                         "state",
+                        "checkInUndoCount",
+                        "canUndoCheckIn",
                         "createdAt",
                         "version"
                       ],
@@ -158645,7 +158962,7 @@
         "tags": [
           "finance-event-tickets"
         ],
-        "description": "Bileti iptal eder; koltuk boşa çıkar ve yeniden ayrılabilir (K-326). Ödenmiş biletin bedeli iptalle elle iade edilmiş sayılır (`refundedAt`; kısmi iade yok), bu yüzden taze oturum ister (eskiyse 403 `reauthentication_required`). Kullanılmış bilet 422 `event_ticket_used`, iptal edilmiş 409 `event_ticket_already_cancelled`. İsteğe bağlı not (≤ 200) denetime yazılmaz. Başka kurumun bileti 404. `Idempotency-Key` zorunlu; `If-Match` verilirse biletin sürümüdür. Roller: `yonetici`, `onburo` (K-324). Modül `finance`.",
+        "description": "Bileti iptal eder; koltuk boşa çıkar ve yeniden ayrılabilir (K-326). Ödenmiş bilette iade tutarı yazılır (`refundCents`, K-380): verilmezse kural, İstanbul günüyle etkinliğe 7+ gün kala tam, 1–6 gün kala %50, etkinlik günü ve sonrası 0. Kuraldan farklı tutarı yalnız yönetici yazar (ön büroya 403 `event_ticket_refund_override_forbidden`), not zorunludur (422 `event_ticket_refund_reason_required`), bedeli aşamaz (422 `event_ticket_refund_exceeds_price`); ödenmemiş bilette tutar 422 `event_ticket_refund_not_applicable`. İadenin ödendiği ayrıca işaretlenir (`…/refund`). İade para çıkışı olduğu için taze oturum ister (eskiyse 403 `reauthentication_required`). Kullanılmış bilet 422 `event_ticket_used`, iptal edilmiş 409 `event_ticket_already_cancelled`. Not (≤ 200) ve tutar denetime yazılmaz. Başka kurumun bileti 404. `Idempotency-Key` zorunlu; `If-Match` verilirse biletin sürümüdür. Roller: `yonetici`, `onburo` (K-324). Modül `finance`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -158654,12 +158971,26 @@
                 "type": "object",
                 "properties": {
                   "reason": {
-                    "description": "İsteğe bağlı iptal notu",
+                    "description": "İsteğe bağlı iptal notu; iade tutarı kuraldan farklıysa zorunlu",
                     "default": null,
                     "anyOf": [
                       {
                         "type": "string",
                         "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "refundCents": {
+                    "default": null,
+                    "description": "Ödenmiş bilette iade tutarı, kuruş; boşsa kural (K-380). Kuraldan farklı tutarı yalnız yönetici yazar",
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 10000000
                       },
                       {
                         "type": "null"
@@ -158799,12 +159130,49 @@
                             "null"
                           ]
                         },
+                        "refundCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "İptal edilen ödenmiş bilette iade tutarı, kuruş (0…bedel; K-380); diğerlerinde boş"
+                        },
+                        "refundMethod": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "cash",
+                                "transfer"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "İadenin yöntemi"
+                        },
                         "refundedAt": {
-                          "description": "Ödenmiş biletin iptalinde bedelin iade edildiği an",
+                          "description": "İadenin ödendiğinin işaretlendiği an",
                           "type": [
                             "string",
                             "null"
                           ]
+                        },
+                        "refundStatus": {
+                          "type": "string",
+                          "enum": [
+                            "none",
+                            "pending",
+                            "paid"
+                          ],
+                          "description": "`none` iade yok, `pending` iade bekliyor, `paid` iade ödendi"
                         },
                         "usedAt": {
                           "type": [
@@ -158834,6 +159202,16 @@
                           ],
                           "description": "`valid` girişe hazır, `unpaid` ödeme bekliyor, `used` kullanıldı, `cancelled` iptal"
                         },
+                        "checkInUndoCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geri alınmış giriş sayısı (K-378)"
+                        },
+                        "canUndoCheckIn": {
+                          "type": "boolean",
+                          "description": "İsteği yapan bu biletin girişini şimdi geri alabilir mi (kullanılmış, yönetici ya da okutan, etkinlik günü bitmemiş)"
+                        },
                         "createdAt": {
                           "type": "string"
                         },
@@ -158860,11 +159238,761 @@
                         "paymentStatus",
                         "paymentMethod",
                         "paidAt",
+                        "refundCents",
+                        "refundMethod",
                         "refundedAt",
+                        "refundStatus",
                         "usedAt",
                         "cancelledAt",
                         "cancelReason",
                         "state",
+                        "checkInUndoCount",
+                        "canUndoCheckIn",
+                        "createdAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/event-tickets/{ticketId}/refund": {
+      "post": {
+        "operationId": "refundEventTicket",
+        "summary": "Bilet iadesinin ödendiğini işaretle",
+        "tags": [
+          "finance-event-tickets"
+        ],
+        "description": "İptal edilen biletin iade tutarının veliye elle (`cash` nakit, `transfer` havale/EFT) ödendiğini işaretler (K-380). Gün sonuna ve muhasebe aktarımına girmez (M-49, M-72). İptal edilmemiş bilet 422 `event_ticket_not_cancelled`, iade tutarı 0 ya da yok 422 `event_ticket_no_refund`, ikinci işaret 409 `event_ticket_already_refunded`. Para çıkışı olduğu için taze oturum ister (eskiyse 403 `reauthentication_required`). Başka kurumun bileti 404. `Idempotency-Key` zorunlu; `If-Match` verilirse biletin sürümüdür. Roller: `yonetici`, `onburo` (K-324). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "method": {
+                    "type": "string",
+                    "enum": [
+                      "cash",
+                      "transfer"
+                    ]
+                  }
+                },
+                "required": [
+                  "method"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "ticketId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": false,
+            "description": "İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`). Tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "eventId": {
+                          "type": "string"
+                        },
+                        "code": {
+                          "type": "string",
+                          "description": "Bilet kodu (`XXXX-XXXX-XXXX`); PDF ve girişte kullanılır"
+                        },
+                        "ticketTypeKey": {
+                          "type": "string"
+                        },
+                        "ticketTypeName": {
+                          "type": "string",
+                          "description": "Ayırma anındaki tür adı"
+                        },
+                        "ticketKind": {
+                          "type": "string",
+                          "enum": [
+                            "invitation",
+                            "paid"
+                          ]
+                        },
+                        "priceCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Ayırma anındaki fiyat, kuruş"
+                        },
+                        "seat": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "holderName": {
+                          "type": "string",
+                          "description": "Bileti kullanacak veli ya da misafir"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "cancelled"
+                          ]
+                        },
+                        "paymentStatus": {
+                          "type": "string",
+                          "enum": [
+                            "not_required",
+                            "unpaid",
+                            "paid"
+                          ]
+                        },
+                        "paymentMethod": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "cash",
+                                "transfer"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "paidAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "refundCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "İptal edilen ödenmiş bilette iade tutarı, kuruş (0…bedel; K-380); diğerlerinde boş"
+                        },
+                        "refundMethod": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "cash",
+                                "transfer"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "İadenin yöntemi"
+                        },
+                        "refundedAt": {
+                          "description": "İadenin ödendiğinin işaretlendiği an",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "refundStatus": {
+                          "type": "string",
+                          "enum": [
+                            "none",
+                            "pending",
+                            "paid"
+                          ],
+                          "description": "`none` iade yok, `pending` iade bekliyor, `paid` iade ödendi"
+                        },
+                        "usedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "valid",
+                            "unpaid",
+                            "used",
+                            "cancelled"
+                          ],
+                          "description": "`valid` girişe hazır, `unpaid` ödeme bekliyor, `used` kullanıldı, `cancelled` iptal"
+                        },
+                        "checkInUndoCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geri alınmış giriş sayısı (K-378)"
+                        },
+                        "canUndoCheckIn": {
+                          "type": "boolean",
+                          "description": "İsteği yapan bu biletin girişini şimdi geri alabilir mi (kullanılmış, yönetici ya da okutan, etkinlik günü bitmemiş)"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için biletin sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "eventId",
+                        "code",
+                        "ticketTypeKey",
+                        "ticketTypeName",
+                        "ticketKind",
+                        "priceCents",
+                        "seat",
+                        "studentId",
+                        "studentName",
+                        "holderName",
+                        "status",
+                        "paymentStatus",
+                        "paymentMethod",
+                        "paidAt",
+                        "refundCents",
+                        "refundMethod",
+                        "refundedAt",
+                        "refundStatus",
+                        "usedAt",
+                        "cancelledAt",
+                        "cancelReason",
+                        "state",
+                        "checkInUndoCount",
+                        "canUndoCheckIn",
+                        "createdAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/event-tickets/{ticketId}/undo-check-in": {
+      "post": {
+        "operationId": "undoEventTicketCheckIn",
+        "summary": "Yanlış okutulan girişi geri al",
+        "tags": [
+          "finance-event-tickets"
+        ],
+        "description": "Biletin \"kullanıldı\" işaretini gerekçeyle (5–200) kaldırır; bilet yeniden geçerli olur ve yeniden okutulabilir (K-378). Eski kullanımın anı, okutanı, gerekçesi ve geri alan ayrı kayıtta kalır (`checkInUndoCount`); denetim `event_ticket.undo_check_in`, gerekçe denetime yazılmaz. Yönetici her girişi, ön büro yalnız kendi okuttuğu girişi geri alır (403 `event_ticket_check_in_not_owner`); etkinlik günü (Europe/Istanbul) bitince 422 `event_ticket_check_in_undo_expired`. Kullanılmamış bilet 409 `event_ticket_not_used`. Başka kurumun bileti 404. `Idempotency-Key` zorunlu; `If-Match` verilirse biletin sürümüdür. Roller: `yonetici`, `onburo` (K-324). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 200,
+                    "description": "Girişin neden geri alındığı (ör. yanlış bilet okutuldu); denetim kaydına yazılmaz"
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "ticketId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": false,
+            "description": "İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`). Tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "eventId": {
+                          "type": "string"
+                        },
+                        "code": {
+                          "type": "string",
+                          "description": "Bilet kodu (`XXXX-XXXX-XXXX`); PDF ve girişte kullanılır"
+                        },
+                        "ticketTypeKey": {
+                          "type": "string"
+                        },
+                        "ticketTypeName": {
+                          "type": "string",
+                          "description": "Ayırma anındaki tür adı"
+                        },
+                        "ticketKind": {
+                          "type": "string",
+                          "enum": [
+                            "invitation",
+                            "paid"
+                          ]
+                        },
+                        "priceCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Ayırma anındaki fiyat, kuruş"
+                        },
+                        "seat": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "holderName": {
+                          "type": "string",
+                          "description": "Bileti kullanacak veli ya da misafir"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "cancelled"
+                          ]
+                        },
+                        "paymentStatus": {
+                          "type": "string",
+                          "enum": [
+                            "not_required",
+                            "unpaid",
+                            "paid"
+                          ]
+                        },
+                        "paymentMethod": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "cash",
+                                "transfer"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "paidAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "refundCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "İptal edilen ödenmiş bilette iade tutarı, kuruş (0…bedel; K-380); diğerlerinde boş"
+                        },
+                        "refundMethod": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "cash",
+                                "transfer"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "İadenin yöntemi"
+                        },
+                        "refundedAt": {
+                          "description": "İadenin ödendiğinin işaretlendiği an",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "refundStatus": {
+                          "type": "string",
+                          "enum": [
+                            "none",
+                            "pending",
+                            "paid"
+                          ],
+                          "description": "`none` iade yok, `pending` iade bekliyor, `paid` iade ödendi"
+                        },
+                        "usedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "valid",
+                            "unpaid",
+                            "used",
+                            "cancelled"
+                          ],
+                          "description": "`valid` girişe hazır, `unpaid` ödeme bekliyor, `used` kullanıldı, `cancelled` iptal"
+                        },
+                        "checkInUndoCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geri alınmış giriş sayısı (K-378)"
+                        },
+                        "canUndoCheckIn": {
+                          "type": "boolean",
+                          "description": "İsteği yapan bu biletin girişini şimdi geri alabilir mi (kullanılmış, yönetici ya da okutan, etkinlik günü bitmemiş)"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için biletin sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "eventId",
+                        "code",
+                        "ticketTypeKey",
+                        "ticketTypeName",
+                        "ticketKind",
+                        "priceCents",
+                        "seat",
+                        "studentId",
+                        "studentName",
+                        "holderName",
+                        "status",
+                        "paymentStatus",
+                        "paymentMethod",
+                        "paidAt",
+                        "refundCents",
+                        "refundMethod",
+                        "refundedAt",
+                        "refundStatus",
+                        "usedAt",
+                        "cancelledAt",
+                        "cancelReason",
+                        "state",
+                        "checkInUndoCount",
+                        "canUndoCheckIn",
                         "createdAt",
                         "version"
                       ],

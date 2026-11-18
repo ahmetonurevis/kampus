@@ -129,6 +129,10 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/ticketed-events/{eventId}/tickets',
   'POST /api/v1/finance/event-tickets/{ticketId}/pay',
   'POST /api/v1/finance/event-tickets/{ticketId}/cancel',
+  // Etkinlik bileti iadesinin ödendiği işareti ve girişi geri alma; çift tıklama ikinci iade ya da
+  // ikinci geri alma izi yazmaz (routes/finance-event-tickets.ts; DOM-FIN-103, ON-345).
+  'POST /api/v1/finance/event-tickets/{ticketId}/refund',
+  'POST /api/v1/finance/event-tickets/{ticketId}/undo-check-in',
 ]
 // Onur: kayıt ve finans sonu
 

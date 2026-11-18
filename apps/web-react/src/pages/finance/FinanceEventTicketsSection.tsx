@@ -710,7 +710,10 @@ function CancelModal({
   const paid = ticket.paymentStatus === 'paid'
   const submit = async () => {
     const outcome = await run(() =>
-      cancel.submit({ ticketId: ticket.id, reason: reason.trim() === '' ? null : reason.trim() }),
+      cancel.submit({
+        ticketId: ticket.id,
+        body: { reason: reason.trim() === '' ? null : reason.trim() },
+      }),
     )
     if (outcome.status === 'done' && outcome.result.status === 'success') {
       notify.success(paid ? 'Bilet iptal edildi; bedel iade edildi.' : 'Bilet iptal edildi.')

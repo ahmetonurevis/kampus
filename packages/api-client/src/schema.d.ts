@@ -6715,7 +6715,7 @@ export interface paths {
         put?: never;
         /**
          * Biletli etkinlik aç
-         * @description Gösteri ya da tören için etkinlik açar (DOM-FIN-103, K-325): Ad (2–120), başlangıç anı (ISO 8601, gelecekte; 422 `event_starts_in_past`), salon (2–120), isteğe bağlı okul takvimi etkinliği (`schoolEventId`; kurumda yoksa 422 `event_school_event_not_found`), oturma düzeni: `seated` sıra sayısı (1–26, A–Z) × sıra başına koltuk (1–60) ve kapalı koltuklar (`A1` biçimi) ya da `general` kontenjan (1–5000); bilet türleri (1–5; `invitation` fiyat 0, `paid` fiyat > 0 kuruş, ad tekil) ve öğrenci başına üst sınır (1–20, boşsa sınırsız). Satış açık başlar. Rol: `yonetici` (K-324). Modül `finance`.
+         * @description Gösteri ya da tören için etkinlik açar (DOM-FIN-103, K-325): Ad (2–120), başlangıç anı (ISO 8601, gelecekte; 422 `event_starts_in_past`), salon (2–120), isteğe bağlı okul takvimi etkinliği (`schoolEventId`; kurumda yoksa 422 `event_school_event_not_found`), oturma düzeni: `seated` sıra sayısı (1–26, A–Z) × sıra başına koltuk (1–60) ve kapalı koltuklar (`A1` biçimi) ya da `general` kontenjan (1–5000); bilet türleri (1–5; `invitation` fiyat 0, `paid` fiyat > 0 kuruş, ad tekil) ve öğrenci ya da aile başına üst sınır (1–20, boşsa sınırsız; `limitScope` `student` ya da `family`, K-379). Satış açık başlar. Rol: `yonetici` (K-324). Modül `finance`.
          */
         post: operations["createTicketedEvent"];
         delete?: never;
@@ -6767,7 +6767,7 @@ export interface paths {
         put?: never;
         /**
          * Öğrenci ailesine bilet ayır
-         * @description Bir öğrencinin ailesine 1–10 bilet ayırır (K-325): bilet başına tür, bilet sahibinin adı (veli ya da misafir) ve numaralı salonda koltuk. Satış kapalıysa 422 `event_sales_closed`; öğrenci kurumda yoksa 422 `event_ticket_student_not_found` (başka kurumun öğrencisi de), etkin değilse `event_ticket_student_inactive`. Koltuk: eksik `event_seat_required`, salonda yok `event_seat_unknown`, kapalı `event_seat_blocked`, istekte iki kez `event_seat_duplicate`, başka bilette 409 `event_seat_taken` (eşzamanlı ayırma kurum kilidiyle sıraya girer; kısmi tekil indeks son güvencedir). Numarasızda koltuk 422 `event_seat_not_allowed`, kontenjan aşımı `event_sold_out`; öğrenci başına üst sınır `event_ticket_limit_exceeded` (iptal edilen bilet sayılmaz). Ücretli bilet ödenmemiş başlar. Her bilete tahmin edilemez kod verilir (K-326). `Idempotency-Key` zorunlu. Roller: `yonetici`, `onburo` (K-324). Modül `finance`.
+         * @description Bir öğrencinin ailesine 1–10 bilet ayırır (K-325): bilet başına tür, bilet sahibinin adı (veli ya da misafir) ve numaralı salonda koltuk. Satış kapalıysa 422 `event_sales_closed`; öğrenci kurumda yoksa 422 `event_ticket_student_not_found` (başka kurumun öğrencisi de), etkin değilse `event_ticket_student_inactive`. Koltuk: eksik `event_seat_required`, salonda yok `event_seat_unknown`, kapalı `event_seat_blocked`, istekte iki kez `event_seat_duplicate`, başka bilette 409 `event_seat_taken` (eşzamanlı ayırma kurum kilidiyle sıraya girer; kısmi tekil indeks son güvencedir). Numarasızda koltuk 422 `event_seat_not_allowed`, kontenjan aşımı `event_sold_out`; üst sınır aşımı `event_ticket_limit_exceeded` (iptal edilen bilet sayılmaz; aile kapsamında aynı veliye bağlı kardeşlerin biletleri birlikte sayılır ve kardeş kümesi kurum kilidi altında okunur, K-379). Ücretli bilet ödenmemiş başlar. Her bilete tahmin edilemez kod verilir (K-326). `Idempotency-Key` zorunlu. Roller: `yonetici`, `onburo` (K-324). Modül `finance`.
          */
         post: operations["allocateEventTickets"];
         delete?: never;
@@ -6827,9 +6827,49 @@ export interface paths {
         put?: never;
         /**
          * Bileti iptal et
-         * @description Bileti iptal eder; koltuk boşa çıkar ve yeniden ayrılabilir (K-326). Ödenmiş biletin bedeli iptalle elle iade edilmiş sayılır (`refundedAt`; kısmi iade yok), bu yüzden taze oturum ister (eskiyse 403 `reauthentication_required`). Kullanılmış bilet 422 `event_ticket_used`, iptal edilmiş 409 `event_ticket_already_cancelled`. İsteğe bağlı not (≤ 200) denetime yazılmaz. Başka kurumun bileti 404. `Idempotency-Key` zorunlu; `If-Match` verilirse biletin sürümüdür. Roller: `yonetici`, `onburo` (K-324). Modül `finance`.
+         * @description Bileti iptal eder; koltuk boşa çıkar ve yeniden ayrılabilir (K-326). Ödenmiş bilette iade tutarı yazılır (`refundCents`, K-380): verilmezse kural, İstanbul günüyle etkinliğe 7+ gün kala tam, 1–6 gün kala %50, etkinlik günü ve sonrası 0. Kuraldan farklı tutarı yalnız yönetici yazar (ön büroya 403 `event_ticket_refund_override_forbidden`), not zorunludur (422 `event_ticket_refund_reason_required`), bedeli aşamaz (422 `event_ticket_refund_exceeds_price`); ödenmemiş bilette tutar 422 `event_ticket_refund_not_applicable`. İadenin ödendiği ayrıca işaretlenir (`…/refund`). İade para çıkışı olduğu için taze oturum ister (eskiyse 403 `reauthentication_required`). Kullanılmış bilet 422 `event_ticket_used`, iptal edilmiş 409 `event_ticket_already_cancelled`. Not (≤ 200) ve tutar denetime yazılmaz. Başka kurumun bileti 404. `Idempotency-Key` zorunlu; `If-Match` verilirse biletin sürümüdür. Roller: `yonetici`, `onburo` (K-324). Modül `finance`.
          */
         post: operations["cancelEventTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/event-tickets/{ticketId}/refund": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bilet iadesinin ödendiğini işaretle
+         * @description İptal edilen biletin iade tutarının veliye elle (`cash` nakit, `transfer` havale/EFT) ödendiğini işaretler (K-380). Gün sonuna ve muhasebe aktarımına girmez (M-49, M-72). İptal edilmemiş bilet 422 `event_ticket_not_cancelled`, iade tutarı 0 ya da yok 422 `event_ticket_no_refund`, ikinci işaret 409 `event_ticket_already_refunded`. Para çıkışı olduğu için taze oturum ister (eskiyse 403 `reauthentication_required`). Başka kurumun bileti 404. `Idempotency-Key` zorunlu; `If-Match` verilirse biletin sürümüdür. Roller: `yonetici`, `onburo` (K-324). Modül `finance`.
+         */
+        post: operations["refundEventTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/event-tickets/{ticketId}/undo-check-in": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Yanlış okutulan girişi geri al
+         * @description Biletin "kullanıldı" işaretini gerekçeyle (5–200) kaldırır; bilet yeniden geçerli olur ve yeniden okutulabilir (K-378). Eski kullanımın anı, okutanı, gerekçesi ve geri alan ayrı kayıtta kalır (`checkInUndoCount`); denetim `event_ticket.undo_check_in`, gerekçe denetime yazılmaz. Yönetici her girişi, ön büro yalnız kendi okuttuğu girişi geri alır (403 `event_ticket_check_in_not_owner`); etkinlik günü (Europe/Istanbul) bitince 422 `event_ticket_check_in_undo_expired`. Kullanılmamış bilet 409 `event_ticket_not_used`. Başka kurumun bileti 404. `Idempotency-Key` zorunlu; `If-Match` verilirse biletin sürümüdür. Roller: `yonetici`, `onburo` (K-324). Modül `finance`.
+         */
+        post: operations["undoEventTicketCheckIn"];
         delete?: never;
         options?: never;
         head?: never;
@@ -72467,8 +72507,13 @@ export interface operations {
                                 /** @description Fiyat, kuruş; davetiyede 0 */
                                 priceCents: number;
                             }[];
-                            /** @description Öğrenci başına üst sınır; boşsa sınırsız */
+                            /** @description Öğrenci ya da aile başına üst sınır; boşsa sınırsız */
                             perStudentLimit: number | null;
+                            /**
+                             * @description `student` öğrenci başına, `family` aile başına (kardeşler birlikte sayılır; K-379)
+                             * @enum {string}
+                             */
+                            limitScope: "student" | "family";
                             salesOpen: boolean;
                             /** @description Satışa açık koltuk ya da kontenjan */
                             totalCapacity: number;
@@ -72482,8 +72527,12 @@ export interface operations {
                             usedCount: number;
                             /** @description Ödemesi beklenen ücretli bilet */
                             unpaidCount: number;
-                            /** @description Ödenmiş etkin biletlerin toplamı, kuruş (iade düşer) */
+                            /** @description Ödenmiş biletlerin net toplamı, kuruş: iptalde yazılan iade düşer, kesinti kalır */
                             collectedCents: number;
+                            /** @description Ödendiği işaretlenmemiş iade sayısı (K-380) */
+                            pendingRefundCount: number;
+                            /** @description Ödenmesi bekleyen iade toplamı, kuruş */
+                            pendingRefundCents: number;
                             /** @description Etkin bileti olan koltuklar (koltuk haritası) */
                             takenSeats: string[];
                             /** @description `If-Match` için etkinliğin sürümü */
@@ -72621,10 +72670,16 @@ export interface operations {
                         priceCents: number;
                     }[];
                     /**
-                     * @description Öğrenci (aile) başına etkin bilet üst sınırı; boşsa sınırsız
+                     * @description Öğrenci ya da aile başına etkin bilet üst sınırı; boşsa sınırsız
                      * @default null
                      */
                     perStudentLimit?: number | null;
+                    /**
+                     * @description `student` öğrenci başına, `family` aile başına (aynı veliye bağlı kardeşlerin biletleri birlikte sayılır); sınır boşsa etkisiz
+                     * @default student
+                     * @enum {string}
+                     */
+                    limitScope?: "student" | "family";
                 };
             };
         };
@@ -72669,8 +72724,13 @@ export interface operations {
                                 /** @description Fiyat, kuruş; davetiyede 0 */
                                 priceCents: number;
                             }[];
-                            /** @description Öğrenci başına üst sınır; boşsa sınırsız */
+                            /** @description Öğrenci ya da aile başına üst sınır; boşsa sınırsız */
                             perStudentLimit: number | null;
+                            /**
+                             * @description `student` öğrenci başına, `family` aile başına (kardeşler birlikte sayılır; K-379)
+                             * @enum {string}
+                             */
+                            limitScope: "student" | "family";
                             salesOpen: boolean;
                             /** @description Satışa açık koltuk ya da kontenjan */
                             totalCapacity: number;
@@ -72684,8 +72744,12 @@ export interface operations {
                             usedCount: number;
                             /** @description Ödemesi beklenen ücretli bilet */
                             unpaidCount: number;
-                            /** @description Ödenmiş etkin biletlerin toplamı, kuruş (iade düşer) */
+                            /** @description Ödenmiş biletlerin net toplamı, kuruş: iptalde yazılan iade düşer, kesinti kalır */
                             collectedCents: number;
+                            /** @description Ödendiği işaretlenmemiş iade sayısı (K-380) */
+                            pendingRefundCount: number;
+                            /** @description Ödenmesi bekleyen iade toplamı, kuruş */
+                            pendingRefundCents: number;
                             /** @description Etkin bileti olan koltuklar (koltuk haritası) */
                             takenSeats: string[];
                             /** @description `If-Match` için etkinliğin sürümü */
@@ -72819,8 +72883,13 @@ export interface operations {
                                 /** @description Fiyat, kuruş; davetiyede 0 */
                                 priceCents: number;
                             }[];
-                            /** @description Öğrenci başına üst sınır; boşsa sınırsız */
+                            /** @description Öğrenci ya da aile başına üst sınır; boşsa sınırsız */
                             perStudentLimit: number | null;
+                            /**
+                             * @description `student` öğrenci başına, `family` aile başına (kardeşler birlikte sayılır; K-379)
+                             * @enum {string}
+                             */
+                            limitScope: "student" | "family";
                             salesOpen: boolean;
                             /** @description Satışa açık koltuk ya da kontenjan */
                             totalCapacity: number;
@@ -72834,8 +72903,12 @@ export interface operations {
                             usedCount: number;
                             /** @description Ödemesi beklenen ücretli bilet */
                             unpaidCount: number;
-                            /** @description Ödenmiş etkin biletlerin toplamı, kuruş (iade düşer) */
+                            /** @description Ödenmiş biletlerin net toplamı, kuruş: iptalde yazılan iade düşer, kesinti kalır */
                             collectedCents: number;
+                            /** @description Ödendiği işaretlenmemiş iade sayısı (K-380) */
+                            pendingRefundCount: number;
+                            /** @description Ödenmesi bekleyen iade toplamı, kuruş */
+                            pendingRefundCents: number;
                             /** @description Etkin bileti olan koltuklar (koltuk haritası) */
                             takenSeats: string[];
                             /** @description `If-Match` için etkinliğin sürümü */
@@ -73067,8 +73140,13 @@ export interface operations {
                         /** @description Kuruş; davetiyede 0, ücretlide 0’dan büyük */
                         priceCents: number;
                     }[];
-                    /** @description Öğrenci (aile) başına etkin bilet üst sınırı; boşsa sınırsız */
+                    /** @description Öğrenci ya da aile başına etkin bilet üst sınırı; boşsa sınırsız */
                     perStudentLimit?: number | null;
+                    /**
+                     * @description `student` öğrenci başına, `family` aile başına (aynı veliye bağlı kardeşlerin biletleri birlikte sayılır); sınır boşsa etkisiz
+                     * @enum {string}
+                     */
+                    limitScope?: "student" | "family";
                     /** @description Bilet ayırma açık mı */
                     salesOpen?: boolean;
                 };
@@ -73115,8 +73193,13 @@ export interface operations {
                                 /** @description Fiyat, kuruş; davetiyede 0 */
                                 priceCents: number;
                             }[];
-                            /** @description Öğrenci başına üst sınır; boşsa sınırsız */
+                            /** @description Öğrenci ya da aile başına üst sınır; boşsa sınırsız */
                             perStudentLimit: number | null;
+                            /**
+                             * @description `student` öğrenci başına, `family` aile başına (kardeşler birlikte sayılır; K-379)
+                             * @enum {string}
+                             */
+                            limitScope: "student" | "family";
                             salesOpen: boolean;
                             /** @description Satışa açık koltuk ya da kontenjan */
                             totalCapacity: number;
@@ -73130,8 +73213,12 @@ export interface operations {
                             usedCount: number;
                             /** @description Ödemesi beklenen ücretli bilet */
                             unpaidCount: number;
-                            /** @description Ödenmiş etkin biletlerin toplamı, kuruş (iade düşer) */
+                            /** @description Ödenmiş biletlerin net toplamı, kuruş: iptalde yazılan iade düşer, kesinti kalır */
                             collectedCents: number;
+                            /** @description Ödendiği işaretlenmemiş iade sayısı (K-380) */
+                            pendingRefundCount: number;
+                            /** @description Ödenmesi bekleyen iade toplamı, kuruş */
+                            pendingRefundCents: number;
                             /** @description Etkin bileti olan koltuklar (koltuk haritası) */
                             takenSeats: string[];
                             /** @description `If-Match` için etkinliğin sürümü */
@@ -73266,8 +73353,17 @@ export interface operations {
                             paymentStatus: "not_required" | "unpaid" | "paid";
                             paymentMethod: ("cash" | "transfer") | null;
                             paidAt: string | null;
-                            /** @description Ödenmiş biletin iptalinde bedelin iade edildiği an */
+                            /** @description İptal edilen ödenmiş bilette iade tutarı, kuruş (0…bedel; K-380); diğerlerinde boş */
+                            refundCents: number | null;
+                            /** @description İadenin yöntemi */
+                            refundMethod: ("cash" | "transfer") | null;
+                            /** @description İadenin ödendiğinin işaretlendiği an */
                             refundedAt: string | null;
+                            /**
+                             * @description `none` iade yok, `pending` iade bekliyor, `paid` iade ödendi
+                             * @enum {string}
+                             */
+                            refundStatus: "none" | "pending" | "paid";
                             usedAt: string | null;
                             cancelledAt: string | null;
                             cancelReason: string | null;
@@ -73276,6 +73372,10 @@ export interface operations {
                              * @enum {string}
                              */
                             state: "valid" | "unpaid" | "used" | "cancelled";
+                            /** @description Geri alınmış giriş sayısı (K-378) */
+                            checkInUndoCount: number;
+                            /** @description İsteği yapan bu biletin girişini şimdi geri alabilir mi (kullanılmış, yönetici ya da okutan, etkinlik günü bitmemiş) */
+                            canUndoCheckIn: boolean;
                             createdAt: string;
                             /** @description `If-Match` için biletin sürümü */
                             version: number;
@@ -73373,7 +73473,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    /** @description Biletin ayrıldığı öğrenci (ailesi); üst sınır öğrenci başınadır */
+                    /** @description Biletin ayrıldığı öğrenci (ailesi); üst sınır öğrenci ya da aile başınadır */
                     studentId: string;
                     items: {
                         ticketTypeKey: string;
@@ -73416,8 +73516,17 @@ export interface operations {
                             paymentStatus: "not_required" | "unpaid" | "paid";
                             paymentMethod: ("cash" | "transfer") | null;
                             paidAt: string | null;
-                            /** @description Ödenmiş biletin iptalinde bedelin iade edildiği an */
+                            /** @description İptal edilen ödenmiş bilette iade tutarı, kuruş (0…bedel; K-380); diğerlerinde boş */
+                            refundCents: number | null;
+                            /** @description İadenin yöntemi */
+                            refundMethod: ("cash" | "transfer") | null;
+                            /** @description İadenin ödendiğinin işaretlendiği an */
                             refundedAt: string | null;
+                            /**
+                             * @description `none` iade yok, `pending` iade bekliyor, `paid` iade ödendi
+                             * @enum {string}
+                             */
+                            refundStatus: "none" | "pending" | "paid";
                             usedAt: string | null;
                             cancelledAt: string | null;
                             cancelReason: string | null;
@@ -73426,6 +73535,10 @@ export interface operations {
                              * @enum {string}
                              */
                             state: "valid" | "unpaid" | "used" | "cancelled";
+                            /** @description Geri alınmış giriş sayısı (K-378) */
+                            checkInUndoCount: number;
+                            /** @description İsteği yapan bu biletin girişini şimdi geri alabilir mi (kullanılmış, yönetici ya da okutan, etkinlik günü bitmemiş) */
+                            canUndoCheckIn: boolean;
                             createdAt: string;
                             /** @description `If-Match` için biletin sürümü */
                             version: number;
@@ -73558,8 +73671,17 @@ export interface operations {
                             paymentStatus: "not_required" | "unpaid" | "paid";
                             paymentMethod: ("cash" | "transfer") | null;
                             paidAt: string | null;
-                            /** @description Ödenmiş biletin iptalinde bedelin iade edildiği an */
+                            /** @description İptal edilen ödenmiş bilette iade tutarı, kuruş (0…bedel; K-380); diğerlerinde boş */
+                            refundCents: number | null;
+                            /** @description İadenin yöntemi */
+                            refundMethod: ("cash" | "transfer") | null;
+                            /** @description İadenin ödendiğinin işaretlendiği an */
                             refundedAt: string | null;
+                            /**
+                             * @description `none` iade yok, `pending` iade bekliyor, `paid` iade ödendi
+                             * @enum {string}
+                             */
+                            refundStatus: "none" | "pending" | "paid";
                             usedAt: string | null;
                             cancelledAt: string | null;
                             cancelReason: string | null;
@@ -73568,6 +73690,10 @@ export interface operations {
                              * @enum {string}
                              */
                             state: "valid" | "unpaid" | "used" | "cancelled";
+                            /** @description Geri alınmış giriş sayısı (K-378) */
+                            checkInUndoCount: number;
+                            /** @description İsteği yapan bu biletin girişini şimdi geri alabilir mi (kullanılmış, yönetici ya da okutan, etkinlik günü bitmemiş) */
+                            canUndoCheckIn: boolean;
                             createdAt: string;
                             /** @description `If-Match` için biletin sürümü */
                             version: number;
@@ -73702,8 +73828,17 @@ export interface operations {
                             paymentStatus: "not_required" | "unpaid" | "paid";
                             paymentMethod: ("cash" | "transfer") | null;
                             paidAt: string | null;
-                            /** @description Ödenmiş biletin iptalinde bedelin iade edildiği an */
+                            /** @description İptal edilen ödenmiş bilette iade tutarı, kuruş (0…bedel; K-380); diğerlerinde boş */
+                            refundCents: number | null;
+                            /** @description İadenin yöntemi */
+                            refundMethod: ("cash" | "transfer") | null;
+                            /** @description İadenin ödendiğinin işaretlendiği an */
                             refundedAt: string | null;
+                            /**
+                             * @description `none` iade yok, `pending` iade bekliyor, `paid` iade ödendi
+                             * @enum {string}
+                             */
+                            refundStatus: "none" | "pending" | "paid";
                             usedAt: string | null;
                             cancelledAt: string | null;
                             cancelReason: string | null;
@@ -73712,6 +73847,10 @@ export interface operations {
                              * @enum {string}
                              */
                             state: "valid" | "unpaid" | "used" | "cancelled";
+                            /** @description Geri alınmış giriş sayısı (K-378) */
+                            checkInUndoCount: number;
+                            /** @description İsteği yapan bu biletin girişini şimdi geri alabilir mi (kullanılmış, yönetici ya da okutan, etkinlik günü bitmemiş) */
+                            canUndoCheckIn: boolean;
                             createdAt: string;
                             /** @description `If-Match` için biletin sürümü */
                             version: number;
@@ -73811,10 +73950,15 @@ export interface operations {
             content: {
                 "application/json": {
                     /**
-                     * @description İsteğe bağlı iptal notu
+                     * @description İsteğe bağlı iptal notu; iade tutarı kuraldan farklıysa zorunlu
                      * @default null
                      */
                     reason?: string | null;
+                    /**
+                     * @description Ödenmiş bilette iade tutarı, kuruş; boşsa kural (K-380). Kuraldan farklı tutarı yalnız yönetici yazar
+                     * @default null
+                     */
+                    refundCents?: number | null;
                 };
             };
         };
@@ -73849,8 +73993,17 @@ export interface operations {
                             paymentStatus: "not_required" | "unpaid" | "paid";
                             paymentMethod: ("cash" | "transfer") | null;
                             paidAt: string | null;
-                            /** @description Ödenmiş biletin iptalinde bedelin iade edildiği an */
+                            /** @description İptal edilen ödenmiş bilette iade tutarı, kuruş (0…bedel; K-380); diğerlerinde boş */
+                            refundCents: number | null;
+                            /** @description İadenin yöntemi */
+                            refundMethod: ("cash" | "transfer") | null;
+                            /** @description İadenin ödendiğinin işaretlendiği an */
                             refundedAt: string | null;
+                            /**
+                             * @description `none` iade yok, `pending` iade bekliyor, `paid` iade ödendi
+                             * @enum {string}
+                             */
+                            refundStatus: "none" | "pending" | "paid";
                             usedAt: string | null;
                             cancelledAt: string | null;
                             cancelReason: string | null;
@@ -73859,6 +74012,324 @@ export interface operations {
                              * @enum {string}
                              */
                             state: "valid" | "unpaid" | "used" | "cancelled";
+                            /** @description Geri alınmış giriş sayısı (K-378) */
+                            checkInUndoCount: number;
+                            /** @description İsteği yapan bu biletin girişini şimdi geri alabilir mi (kullanılmış, yönetici ya da okutan, etkinlik günü bitmemiş) */
+                            canUndoCheckIn: boolean;
+                            createdAt: string;
+                            /** @description `If-Match` için biletin sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    refundEventTicket: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
+                "if-match"?: string;
+            };
+            path: {
+                ticketId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    method: "cash" | "transfer";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            eventId: string;
+                            /** @description Bilet kodu (`XXXX-XXXX-XXXX`); PDF ve girişte kullanılır */
+                            code: string;
+                            ticketTypeKey: string;
+                            /** @description Ayırma anındaki tür adı */
+                            ticketTypeName: string;
+                            /** @enum {string} */
+                            ticketKind: "invitation" | "paid";
+                            /** @description Ayırma anındaki fiyat, kuruş */
+                            priceCents: number;
+                            seat: string | null;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @description Bileti kullanacak veli ya da misafir */
+                            holderName: string;
+                            /** @enum {string} */
+                            status: "active" | "cancelled";
+                            /** @enum {string} */
+                            paymentStatus: "not_required" | "unpaid" | "paid";
+                            paymentMethod: ("cash" | "transfer") | null;
+                            paidAt: string | null;
+                            /** @description İptal edilen ödenmiş bilette iade tutarı, kuruş (0…bedel; K-380); diğerlerinde boş */
+                            refundCents: number | null;
+                            /** @description İadenin yöntemi */
+                            refundMethod: ("cash" | "transfer") | null;
+                            /** @description İadenin ödendiğinin işaretlendiği an */
+                            refundedAt: string | null;
+                            /**
+                             * @description `none` iade yok, `pending` iade bekliyor, `paid` iade ödendi
+                             * @enum {string}
+                             */
+                            refundStatus: "none" | "pending" | "paid";
+                            usedAt: string | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /**
+                             * @description `valid` girişe hazır, `unpaid` ödeme bekliyor, `used` kullanıldı, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            state: "valid" | "unpaid" | "used" | "cancelled";
+                            /** @description Geri alınmış giriş sayısı (K-378) */
+                            checkInUndoCount: number;
+                            /** @description İsteği yapan bu biletin girişini şimdi geri alabilir mi (kullanılmış, yönetici ya da okutan, etkinlik günü bitmemiş) */
+                            canUndoCheckIn: boolean;
+                            createdAt: string;
+                            /** @description `If-Match` için biletin sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    undoEventTicketCheckIn: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
+                "if-match"?: string;
+            };
+            path: {
+                ticketId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Girişin neden geri alındığı (ör. yanlış bilet okutuldu); denetim kaydına yazılmaz */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            eventId: string;
+                            /** @description Bilet kodu (`XXXX-XXXX-XXXX`); PDF ve girişte kullanılır */
+                            code: string;
+                            ticketTypeKey: string;
+                            /** @description Ayırma anındaki tür adı */
+                            ticketTypeName: string;
+                            /** @enum {string} */
+                            ticketKind: "invitation" | "paid";
+                            /** @description Ayırma anındaki fiyat, kuruş */
+                            priceCents: number;
+                            seat: string | null;
+                            studentId: string;
+                            studentName: string | null;
+                            /** @description Bileti kullanacak veli ya da misafir */
+                            holderName: string;
+                            /** @enum {string} */
+                            status: "active" | "cancelled";
+                            /** @enum {string} */
+                            paymentStatus: "not_required" | "unpaid" | "paid";
+                            paymentMethod: ("cash" | "transfer") | null;
+                            paidAt: string | null;
+                            /** @description İptal edilen ödenmiş bilette iade tutarı, kuruş (0…bedel; K-380); diğerlerinde boş */
+                            refundCents: number | null;
+                            /** @description İadenin yöntemi */
+                            refundMethod: ("cash" | "transfer") | null;
+                            /** @description İadenin ödendiğinin işaretlendiği an */
+                            refundedAt: string | null;
+                            /**
+                             * @description `none` iade yok, `pending` iade bekliyor, `paid` iade ödendi
+                             * @enum {string}
+                             */
+                            refundStatus: "none" | "pending" | "paid";
+                            usedAt: string | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /**
+                             * @description `valid` girişe hazır, `unpaid` ödeme bekliyor, `used` kullanıldı, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            state: "valid" | "unpaid" | "used" | "cancelled";
+                            /** @description Geri alınmış giriş sayısı (K-378) */
+                            checkInUndoCount: number;
+                            /** @description İsteği yapan bu biletin girişini şimdi geri alabilir mi (kullanılmış, yönetici ya da okutan, etkinlik günü bitmemiş) */
+                            canUndoCheckIn: boolean;
                             createdAt: string;
                             /** @description `If-Match` için biletin sürümü */
                             version: number;

@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { learnerWords } from '@kampus/school-core/lib/enrollment-learner.ts'
+import { useDocumentGaps } from '@kampus/react-shared/use-prospect-documents.ts'
 import { useAuth } from '@/auth/use-auth.ts'
 import { Avatar } from '@/components/Avatar.tsx'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
@@ -32,6 +33,8 @@ import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { ProspectCampaignFunnelSection } from './ProspectCampaignFunnelSection.tsx'
 import { ProspectCampaignsSection } from './ProspectCampaignsSection.tsx'
+import { ProspectDocumentGapsSection } from './ProspectDocumentGapsSection.tsx'
+import { gapBadgeLabel, gapCounts } from './prospect-documents.ts'
 import { campaignCodeFromParam } from './prospect-campaign-forms.ts'
 import { NEW_PROSPECT, ProspectFormPanel } from './ProspectFormPanel.tsx'
 import {
@@ -66,6 +69,8 @@ const ALL = 'all'
 const STAGE_COUNTS = { groupBy: 'stage' } as const
 const VIEW_PARAM = 'gorunum'
 const CAMPAIGN_VIEW = 'kampanya'
+/** `?gorunum=eksik-belge`: eksik zorunlu belgesi olan açık adaylar (DOM-KAY-043). */
+const GAPS_VIEW = 'eksik-belge'
 /** `?kampanya=KOD`: yeni aday formunu kampanya koduyla açar (DOM-KAY-041). */
 const CAMPAIGN_PARAM = 'kampanya'
 const FORM_CLEARS = [CAMPAIGN_PARAM]
@@ -80,6 +85,9 @@ const FORM_CLEARS = [CAMPAIGN_PARAM]
  * (`?aday-form=yeni`). CSV tüm filtrelenmiş sonucu içerir. `?kampanya=KOD` formu kampanya koduyla
  * açar; "Kampanya kodları" görünümü (`?gorunum=kampanya`) kodları ve kampanya kırılımını gösterir
  * (DOM-KAY-041, ON-134).
+ * "Belgeler" sütunu görünen sayfadaki adayların eksik zorunlu belge sayısını rozetle gösterir;
+ * "Eksik belgesi olanlar" görünümü (`?gorunum=eksik-belge`) yalnız eksik belgesi olan açık adayları
+ * listeler (DOM-KAY-043, ON-263).
  */
 export function ProspectsPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
@@ -109,14 +117,16 @@ export function ProspectsPage({ page }: { page: NavPage }) {
   )
   const form = useDetailPanel('aday-form', FORM_CLEARS)
   const [params, setParams] = useSearchParams()
-  const campaignView = params.get(VIEW_PARAM) === CAMPAIGN_VIEW
+  const view = params.get(VIEW_PARAM)
+  const campaignView = view === CAMPAIGN_VIEW
+  const gapsView = view === GAPS_VIEW
   const campaignParam = params.get(CAMPAIGN_PARAM)
   const formOpen = form.selectedId !== '' || campaignParam !== null
-  const setView = (campaigns: boolean) =>
+  const setView = (target: string | null) =>
     setParams(
       (current) => {
         const next = new URLSearchParams(current)
-        if (campaigns) next.set(VIEW_PARAM, CAMPAIGN_VIEW)
+        if (target !== null) next.set(VIEW_PARAM, target)
         else next.delete(VIEW_PARAM)
         return next
       },
@@ -136,6 +146,16 @@ export function ProspectsPage({ page }: { page: NavPage }) {
       { replace: true, preventScrollReset: true },
     )
   }
+  // Görünen sayfadaki adayların eksik belge rozeti (en çok 100 aday; sayfa boyutu sınırı).
+  const pageIds = useMemo(
+    () => (prospects.data?.rows ?? []).map((item) => item.record.id).slice(0, 100),
+    [prospects.data],
+  )
+  const gaps = useDocumentGaps(
+    { page: 1, pageSize: 100, prospectId: pageIds },
+    { enabled: pageIds.length > 0 && !campaignView && !gapsView },
+  )
+  const missingByProspect = useMemo(() => gapCounts(gaps.data?.data ?? []), [gaps.data])
   const fetchAll = useCoreFetchAll('prospects')
   const csv = useCsvExport()
   const filters = useMemo(() => [stageFilter(type), SOURCE_FILTER, CREATED_FILTER], [type])
@@ -186,6 +206,14 @@ export function ProspectsPage({ page }: { page: NavPage }) {
       },
       { key: 'createdLabel', label: 'Kayıt tarihi' },
       {
+        key: 'documents',
+        label: 'Belgeler',
+        cell: (row) => {
+          const label = gapBadgeLabel(missingByProspect.get(row.id) ?? 0)
+          return label ? <StatusBadge text={label} tone="amber" /> : null
+        },
+      },
+      {
         key: ACTIONS_KEY,
         label: 'İşlemler',
         cell: (row) => (
@@ -201,14 +229,14 @@ export function ProspectsPage({ page }: { page: NavPage }) {
         ),
       },
     ],
-    [role, type],
+    [role, type, missingByProspect],
   )
 
   function download() {
     const query = withCreatedRange(exportQueryFromList(list.state, LIST, search), createdRange)
     void csv.download(
       page.title,
-      columns.filter((column) => column.key !== ACTIONS_KEY),
+      columns.filter((column) => column.key !== ACTIONS_KEY && column.key !== 'documents'),
       async () =>
         (await fetchAll(query)).map((item) => prospectCsvRow(prospectRow(item, type, lookups))),
     )
@@ -221,7 +249,18 @@ export function ProspectsPage({ page }: { page: NavPage }) {
         description={page.description}
         actions={
           <>
-            <Button variant="secondary" onClick={() => setView(!campaignView)}>
+            <Button
+              variant="secondary"
+              onClick={() => setView(gapsView ? null : GAPS_VIEW)}
+              aria-pressed={gapsView}
+            >
+              <Icon name={gapsView ? 'UsersRound' : 'FileText'} size={17} aria-hidden="true" />
+              {gapsView ? 'Aday listesi' : 'Eksik belgesi olanlar'}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={() => setView(campaignView ? null : CAMPAIGN_VIEW)}
+            >
               <Icon name={campaignView ? 'UsersRound' : 'Megaphone'} size={17} aria-hidden="true" />
               {campaignView ? 'Aday listesi' : 'Kampanya kodları'}
             </Button>
@@ -246,6 +285,8 @@ export function ProspectsPage({ page }: { page: NavPage }) {
           <ProspectCampaignsSection />
           <ProspectCampaignFunnelSection />
         </>
+      ) : gapsView ? (
+        <ProspectDocumentGapsSection role={role} type={type} />
       ) : (
         <section
           aria-labelledby="aday-tablosu"

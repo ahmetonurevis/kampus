@@ -156,6 +156,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // Çalışma onayı kaydı açılışı; çift tıklama aynı öğretmene ikinci başvuru açmaz
   // (routes/finance-work-permits.ts; DOM-FIN-114, ON-174).
   'POST /api/v1/finance/work-permits',
+  // Gezi planı taslağı numaralı plan açar; çift tıklama ikinci planı açmaz
+  // (routes/finance-trip-plans.ts; DOM-FIN-111, ON-155).
+  'POST /api/v1/finance/trip-plans',
 ]
 // Onur: kayıt ve finans sonu
 

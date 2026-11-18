@@ -876,6 +876,13 @@
       "when": 1795033042897,
       "tag": "0124_create_teacher_work_permits",
       "breakpoints": true
+    },
+    {
+      "idx": 125,
+      "version": "7",
+      "when": 1795033089311,
+      "tag": "0125_create_trip_plans",
+      "breakpoints": true
     }
   ]
 }

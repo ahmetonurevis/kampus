@@ -9884,6 +9884,194 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/trip-plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Gezi planlarını listele
+         * @description Süren planlar önce, çıkışı yakın olan önce; tamamlanan ve iptal edilenler sonda, yeni çıkış önce (DOM-FIN-111). `q` adda ya da plan numarasında (`GZ-0007`) arar; `status` ve `state` (`active`/`done`) süzer. Satır sürücü ve acil iletişim bilgisi taşımaz. Rol: `yonetici`, `onburo` (K-367). Modül `finance`.
+         */
+        get: operations["listTripPlans"];
+        put?: never;
+        /**
+         * Gezi planı taslağı aç
+         * @description Plan taslak olarak ve `GZ-<sıra>` numarasıyla açılır (K-366): ad, amaç ve kazanım, çıkış ve dönüş anı (çıkış geçmişte 422 `trip_plan_departure_past`, dönüş çıkıştan önce 422 `trip_plan_return_before_departure`, 30 günden uzun 422 `trip_plan_too_long`), beklenen öğrenci sayısı, güzergâh (1–30 durak), görevliler (kurumun etkin öğretmen ya da yönetici üyeliği; en az bir `lead`; olmayan 422 `trip_plan_staff_not_found`, öğretmen ya da yönetici olmayan 422 `trip_plan_staff_not_teacher`, pasif 422 `trip_plan_staff_inactive`), ulaşım (tür, firma, plaka, sürücü ve isteğe bağlı belge dosyası: `POST /files`, `purpose: document`; başkasının ya da başka kurumun dosyası 422 `file_unavailable`), risk değerlendirmesi ve acil iletişim (taslakta boş olabilir) ve isteğe bağlı ücretli etkinlik (olmayan 422 `trip_plan_activity_not_found`, iptal edilmiş 422 `trip_plan_activity_cancelled`, başka plana bağlı 409 `trip_plan_activity_linked`, günü gezi günleri dışında 422 `trip_plan_activity_date_mismatch`). Görevli oranı uyarıdır, kaydı engellemez. Gövdedeki `institutionId` 400. `Idempotency-Key` zorunlu. Rol: `yonetici`, `onburo` (K-367). Modül `finance`.
+         */
+        post: operations["createTripPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/trip-plan-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Gezi planı form seçenekleri
+         * @description Görevli olabilecek etkin öğretmen ve yöneticiler (ada göre, en çok 500) ve bağlanabilecek ücretli etkinlikler (iptal edilmemiş, günü bugün ya da sonra; bağlı plan kimliğiyle; DOM-FIN-098). Rol: `yonetici`, `onburo` (K-367). Modül `finance`.
+         */
+        get: operations["getTripPlanOptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/trip-plans/{planId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Gezi planı ayrıntısı
+         * @description Planın bütün alanları, görevliler, ulaşım belgesi, öğrenci başına görevli oranı (K-366), onay ve bildirim bilgisi ve plan geçmişi; onay dosyası PDF'inin verisi. Olmayan ya da başka kurumun planı 404. Rol: `yonetici`, `onburo` (K-367). Modül `finance`.
+         */
+        get: operations["getTripPlan"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Gezi planını düzelt
+         * @description Verilen alanlar değişir; güzergâh, görevliler, ulaşım, riskler ve acil iletişim bütün olarak yazılır, birleşik plan yeni plan kurallarıyla denetlenir (çıkış yalnız değiştiyse geçmiş olamaz; değişmeyen görevli ve etkinlik yeniden denetlenmez). Onay bekleyen, onaylanmış ya da reddedilmiş plan düzeltilince taslağa döner: onay, ret ve bildirim işareti düşer, plan yeniden onaya gönderilmelidir (K-367). Tamamlanmış ya da iptal edilmiş plan 422 `trip_plan_status_invalid`; değişiklik yoksa 422 `trip_plan_unchanged`; sürüm tutmazsa 409. `If-Match` zorunlu. Rol: `yonetici`, `onburo` (K-367). Modül `finance`.
+         */
+        patch: operations["updateTripPlan"];
+        trace?: never;
+    };
+    "/api/v1/finance/trip-plans/{planId}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Gezi planını onaya gönder
+         * @description Taslak `submitted` olur (K-367). Çıkış geçmişse 422 `trip_plan_departure_past`; risk değerlendirmesi boşsa 422 `trip_plan_risks_required`; acil iletişim boşsa 422 `trip_plan_emergency_contact_required`; otobüs ve minibüste firma, plaka ya da sürücü eksikse 422 `trip_plan_transport_incomplete`. İsteğe bağlı not. Rol: `yonetici`, `onburo` (K-367). Modül `finance`. Geçersiz geçiş 422 `trip_plan_status_invalid`; başka kurumun planı 404; `If-Match` zorunlu, sürüm tutmazsa 409.
+         */
+        post: operations["submitTripPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/trip-plans/{planId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Gezi planını onayla
+         * @description Onay bekleyen plan `approved` olur; onaylayan ve an kaydedilir (K-367). Çıkış geçmişse 422 `trip_plan_departure_past`. İl/ilçe millî eğitim bildirimi otomatik yapılmaz (K-368). Rol: `yonetici` (K-367). Modül `finance`. Geçersiz geçiş 422 `trip_plan_status_invalid`; başka kurumun planı 404; `If-Match` zorunlu, sürüm tutmazsa 409.
+         */
+        post: operations["approveTripPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/trip-plans/{planId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Gezi planını reddet
+         * @description Onay bekleyen plan gerekçeyle `rejected` olur (K-367); düzeltilince taslağa döner. Rol: `yonetici` (K-367). Modül `finance`. Geçersiz geçiş 422 `trip_plan_status_invalid`; başka kurumun planı 404; `If-Match` zorunlu, sürüm tutmazsa 409.
+         */
+        post: operations["rejectTripPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/trip-plans/{planId}/authority-notice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Millî eğitim bildirimini işaretle
+         * @description Onaylanmış planda il/ilçe millî eğitim bildiriminin yapıldığı gün ve isteğe bağlı evrak sayısı (K-368); yeniden işaretleme günü değiştirir, durum değişmez. Gün bugünden sonra 422 `trip_plan_notice_date_future`, onay gününden önce 422 `trip_plan_notice_before_approval`. Rol: `yonetici`, `onburo` (K-367). Modül `finance`. Geçersiz geçiş 422 `trip_plan_status_invalid`; başka kurumun planı 404; `If-Match` zorunlu, sürüm tutmazsa 409.
+         */
+        post: operations["recordTripPlanAuthorityNotice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/trip-plans/{planId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Gezi planını tamamla
+         * @description Onaylanmış plan dönüş anından sonra `completed` olur (önce 422 `trip_plan_not_returned`; K-367). İsteğe bağlı not. Rol: `yonetici` (K-367). Modül `finance`. Geçersiz geçiş 422 `trip_plan_status_invalid`; başka kurumun planı 404; `If-Match` zorunlu, sürüm tutmazsa 409.
+         */
+        post: operations["completeTripPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/trip-plans/{planId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Gezi planını iptal et
+         * @description Gerekçeyle `cancelled` (K-367). Yönetici taslak, onay bekleyen, onaylanmış ve reddedilmiş planı iptal eder; ön büro yalnız taslak ve reddedilmiş planı (403 `trip_plan_cancel_forbidden`). Bağlı ücretli etkinlik iptal edilmez; iptal edilen planın etkinliği başka plana bağlanabilir. Rol: `yonetici`, `onburo` (K-367). Modül `finance`. Geçersiz geçiş 422 `trip_plan_status_invalid`; başka kurumun planı 404; `If-Match` zorunlu, sürüm tutmazsa 409.
+         */
+        post: operations["cancelTripPlan"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -103173,6 +103361,2345 @@ export interface operations {
                         data: {
                             id: string;
                             cancelledAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listTripPlans: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Ad ya da plan numarasında arama */
+                q?: string;
+                /** @description Durum */
+                status?: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                /** @description `active` sürenler, `done` tamamlanan ya da iptal edilenler */
+                state?: "active" | "done";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Plan numarası (`GZ-0007`) */
+                            number: string;
+                            name: string;
+                            departureAt: string;
+                            returnAt: string;
+                            expectedStudentCount: number;
+                            /** @description Görevli sayısı */
+                            staffCount: number;
+                            /** @description Sorumlu öğretmenlerin adları */
+                            leadNames: string[];
+                            /** @description Görevli sayısı her 15 öğrenciye bir görevli önerisinin altında (K-366) */
+                            ratioWarning: boolean;
+                            /** @description Bağlı ücretli etkinlik (DOM-FIN-098) */
+                            paidActivity: {
+                                id: string;
+                                name: string;
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                            /** @description Millî eğitim bildiriminin işaretlendiği gün (YYYY-MM-DD) */
+                            authorityNotifiedOn: string | null;
+                            /** @description Oturumdaki rolün bu planda yapabileceği işlemler (ekran düğmeleri) */
+                            actions: {
+                                edit: boolean;
+                                submit: boolean;
+                                approve: boolean;
+                                reject: boolean;
+                                complete: boolean;
+                                cancel: boolean;
+                                notify: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createTripPlan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    /** @description Amaç ve kazanım (ders, kazanım ya da etkinlik ilişkisi) */
+                    purpose: string;
+                    /**
+                     * Format: date-time
+                     * @description Çıkış anı (ISO 8601); gösterim Europe/Istanbul
+                     */
+                    departureAt: string;
+                    /**
+                     * Format: date-time
+                     * @description Dönüş anı (ISO 8601); çıkıştan sonra, en çok 30 gün
+                     */
+                    returnAt: string;
+                    /** @description Beklenen öğrenci sayısı; görevli oranı uyarısı buna göre hesaplanır */
+                    expectedStudentCount: number;
+                    /** @description Güzergâh, sırayla */
+                    stops: {
+                        place: string;
+                        /** @description Durakta yapılacak etkinlik ya da saat notu */
+                        note?: string | null;
+                    }[];
+                    /** @description Görevli öğretmenler; en az bir sorumlu */
+                    staff: {
+                        /** @description Görevlinin kurum üyeliği (öğretmen ya da yönetici) */
+                        membershipId: string;
+                        /**
+                         * @description `lead` sorumlu, `assistant` görevli
+                         * @enum {string}
+                         */
+                        role: "lead" | "assistant";
+                    }[];
+                    transport: {
+                        /**
+                         * @description Araç türü; otobüs ve minibüste onaya gönderirken firma, plaka ve sürücü zorunlu
+                         * @enum {string}
+                         */
+                        type: "bus" | "minibus" | "train" | "plane" | "ship" | "walking" | "other";
+                        /** @description Taşıma firması */
+                        company?: string | null;
+                        /** @description Araç plakası; boşluksuz büyük harfle saklanır */
+                        plate?: string | null;
+                        /** @description Sürücü adı soyadı */
+                        driverName?: string | null;
+                        /** @description Sürücü telefonu (0XXXXXXXXXX) */
+                        driverPhone?: string | null;
+                        /**
+                         * @description Ulaşım belgesi (araç ruhsatı, sözleşme, sigorta; `POST /files`, `purpose: document`)
+                         * @default null
+                         */
+                        documentFileId?: string | null;
+                    };
+                    /**
+                     * @description Risk değerlendirmesi; onaya gönderirken en az bir madde
+                     * @default []
+                     */
+                    risks?: {
+                        risk: string;
+                        measure: string;
+                    }[];
+                    /** @description Acil iletişim; onaya gönderirken en az bir kişi */
+                    emergencyContacts?: {
+                        name: string;
+                        phone: string;
+                        /** @description Görevi ya da yakınlığı (ör. okul müdürü) */
+                        relation?: string | null;
+                    }[];
+                    /**
+                     * @description İsteğe bağlı ücretli etkinlik (DOM-FIN-098); ücretsiz gezide boş
+                     * @default null
+                     */
+                    paidActivityId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Plan numarası (`GZ-0007`) */
+                            number: string;
+                            name: string;
+                            departureAt: string;
+                            returnAt: string;
+                            expectedStudentCount: number;
+                            /** @description Görevli sayısı */
+                            staffCount: number;
+                            /** @description Sorumlu öğretmenlerin adları */
+                            leadNames: string[];
+                            /** @description Görevli sayısı her 15 öğrenciye bir görevli önerisinin altında (K-366) */
+                            ratioWarning: boolean;
+                            /** @description Bağlı ücretli etkinlik (DOM-FIN-098) */
+                            paidActivity: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "trip" | "event";
+                                activityDate: string;
+                                /** @enum {string} */
+                                status: "open" | "cancelled";
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                            /** @description Millî eğitim bildiriminin işaretlendiği gün (YYYY-MM-DD) */
+                            authorityNotifiedOn: string | null;
+                            /** @description Oturumdaki rolün bu planda yapabileceği işlemler (ekran düğmeleri) */
+                            actions: {
+                                edit: boolean;
+                                submit: boolean;
+                                approve: boolean;
+                                reject: boolean;
+                                complete: boolean;
+                                cancel: boolean;
+                                notify: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            purpose: string;
+                            /** @description Güzergâh, sırayla */
+                            stops: {
+                                place: string;
+                                note: string | null;
+                            }[];
+                            /** @description Görevliler; sorumlu önce */
+                            staff: {
+                                membershipId: string;
+                                name: string | null;
+                                /** @enum {string} */
+                                role: "lead" | "assistant";
+                            }[];
+                            transport: {
+                                /** @enum {string} */
+                                type: "bus" | "minibus" | "train" | "plane" | "ship" | "walking" | "other";
+                                company: string | null;
+                                /** @description Boşluksuz büyük harfle (`34ABC123`) */
+                                plate: string | null;
+                                driverName: string | null;
+                                driverPhone: string | null;
+                                documentFileId: string | null;
+                                /** @description Ulaşım belgesi; silinmiş dosyada boş */
+                                documentFile: {
+                                    id: string;
+                                    name: string;
+                                    byteSize: number;
+                                } | null;
+                            };
+                            /** @description Risk değerlendirmesi */
+                            risks: {
+                                risk: string;
+                                measure: string;
+                            }[];
+                            /** @description Acil iletişim kişileri */
+                            emergencyContacts: {
+                                name: string;
+                                phone: string;
+                                relation: string | null;
+                            }[];
+                            /** @description Öğrenci başına görevli oranı (K-366); uyarıdır, kaydı engellemez */
+                            ratio: {
+                                studentsPerStaff: number;
+                                recommendedStaff: number;
+                                warning: boolean;
+                            };
+                            submittedAt: string | null;
+                            approvedAt: string | null;
+                            approvedByName: string | null;
+                            rejectedAt: string | null;
+                            rejectionReason: string | null;
+                            /** @description Bildirimin evrak sayısı */
+                            authorityReference: string | null;
+                            completedAt: string | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            createdByName: string | null;
+                            createdAt: string;
+                            /** @description Plan geçmişi, eskiden yeniye (K-367) */
+                            events: {
+                                id: string;
+                                /** @enum {string} */
+                                event: "created" | "submitted" | "approved" | "rejected" | "reopened" | "authority_notified" | "completed" | "cancelled";
+                                fromStatus: ("draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled") | null;
+                                /** @enum {string} */
+                                toStatus: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                                /** @description Adımın notu; retta ve iptalde gerekçe */
+                                note: string | null;
+                                actorName: string | null;
+                                occurredAt: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getTripPlanOptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Kurumun etkin öğretmen ve yöneticileri, ada göre */
+                            staff: {
+                                membershipId: string;
+                                name: string;
+                                role: string;
+                            }[];
+                            /** @description İptal edilmemiş, günü bugün ya da sonra olan ücretli etkinlikler */
+                            activities: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "trip" | "event";
+                                activityDate: string;
+                                /** @description Etkinliğe bağlı iptal edilmemiş plan */
+                                linkedPlanId: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getTripPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Plan numarası (`GZ-0007`) */
+                            number: string;
+                            name: string;
+                            departureAt: string;
+                            returnAt: string;
+                            expectedStudentCount: number;
+                            /** @description Görevli sayısı */
+                            staffCount: number;
+                            /** @description Sorumlu öğretmenlerin adları */
+                            leadNames: string[];
+                            /** @description Görevli sayısı her 15 öğrenciye bir görevli önerisinin altında (K-366) */
+                            ratioWarning: boolean;
+                            /** @description Bağlı ücretli etkinlik (DOM-FIN-098) */
+                            paidActivity: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "trip" | "event";
+                                activityDate: string;
+                                /** @enum {string} */
+                                status: "open" | "cancelled";
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                            /** @description Millî eğitim bildiriminin işaretlendiği gün (YYYY-MM-DD) */
+                            authorityNotifiedOn: string | null;
+                            /** @description Oturumdaki rolün bu planda yapabileceği işlemler (ekran düğmeleri) */
+                            actions: {
+                                edit: boolean;
+                                submit: boolean;
+                                approve: boolean;
+                                reject: boolean;
+                                complete: boolean;
+                                cancel: boolean;
+                                notify: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            purpose: string;
+                            /** @description Güzergâh, sırayla */
+                            stops: {
+                                place: string;
+                                note: string | null;
+                            }[];
+                            /** @description Görevliler; sorumlu önce */
+                            staff: {
+                                membershipId: string;
+                                name: string | null;
+                                /** @enum {string} */
+                                role: "lead" | "assistant";
+                            }[];
+                            transport: {
+                                /** @enum {string} */
+                                type: "bus" | "minibus" | "train" | "plane" | "ship" | "walking" | "other";
+                                company: string | null;
+                                /** @description Boşluksuz büyük harfle (`34ABC123`) */
+                                plate: string | null;
+                                driverName: string | null;
+                                driverPhone: string | null;
+                                documentFileId: string | null;
+                                /** @description Ulaşım belgesi; silinmiş dosyada boş */
+                                documentFile: {
+                                    id: string;
+                                    name: string;
+                                    byteSize: number;
+                                } | null;
+                            };
+                            /** @description Risk değerlendirmesi */
+                            risks: {
+                                risk: string;
+                                measure: string;
+                            }[];
+                            /** @description Acil iletişim kişileri */
+                            emergencyContacts: {
+                                name: string;
+                                phone: string;
+                                relation: string | null;
+                            }[];
+                            /** @description Öğrenci başına görevli oranı (K-366); uyarıdır, kaydı engellemez */
+                            ratio: {
+                                studentsPerStaff: number;
+                                recommendedStaff: number;
+                                warning: boolean;
+                            };
+                            submittedAt: string | null;
+                            approvedAt: string | null;
+                            approvedByName: string | null;
+                            rejectedAt: string | null;
+                            rejectionReason: string | null;
+                            /** @description Bildirimin evrak sayısı */
+                            authorityReference: string | null;
+                            completedAt: string | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            createdByName: string | null;
+                            createdAt: string;
+                            /** @description Plan geçmişi, eskiden yeniye (K-367) */
+                            events: {
+                                id: string;
+                                /** @enum {string} */
+                                event: "created" | "submitted" | "approved" | "rejected" | "reopened" | "authority_notified" | "completed" | "cancelled";
+                                fromStatus: ("draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled") | null;
+                                /** @enum {string} */
+                                toStatus: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                                /** @description Adımın notu; retta ve iptalde gerekçe */
+                                note: string | null;
+                                actorName: string | null;
+                                occurredAt: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateTripPlan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    /** @description Amaç ve kazanım (ders, kazanım ya da etkinlik ilişkisi) */
+                    purpose?: string;
+                    /**
+                     * Format: date-time
+                     * @description Çıkış anı (ISO 8601); gösterim Europe/Istanbul
+                     */
+                    departureAt?: string;
+                    /**
+                     * Format: date-time
+                     * @description Dönüş anı (ISO 8601); çıkıştan sonra, en çok 30 gün
+                     */
+                    returnAt?: string;
+                    /** @description Beklenen öğrenci sayısı; görevli oranı uyarısı buna göre hesaplanır */
+                    expectedStudentCount?: number;
+                    /** @description Güzergâh, sırayla */
+                    stops?: {
+                        place: string;
+                        /** @description Durakta yapılacak etkinlik ya da saat notu */
+                        note?: string | null;
+                    }[];
+                    /** @description Görevli öğretmenler; en az bir sorumlu */
+                    staff?: {
+                        /** @description Görevlinin kurum üyeliği (öğretmen ya da yönetici) */
+                        membershipId: string;
+                        /**
+                         * @description `lead` sorumlu, `assistant` görevli
+                         * @enum {string}
+                         */
+                        role: "lead" | "assistant";
+                    }[];
+                    transport?: {
+                        /**
+                         * @description Araç türü; otobüs ve minibüste onaya gönderirken firma, plaka ve sürücü zorunlu
+                         * @enum {string}
+                         */
+                        type: "bus" | "minibus" | "train" | "plane" | "ship" | "walking" | "other";
+                        /** @description Taşıma firması */
+                        company?: string | null;
+                        /** @description Araç plakası; boşluksuz büyük harfle saklanır */
+                        plate?: string | null;
+                        /** @description Sürücü adı soyadı */
+                        driverName?: string | null;
+                        /** @description Sürücü telefonu (0XXXXXXXXXX) */
+                        driverPhone?: string | null;
+                        /**
+                         * @description Ulaşım belgesi (araç ruhsatı, sözleşme, sigorta; `POST /files`, `purpose: document`)
+                         * @default null
+                         */
+                        documentFileId?: string | null;
+                    };
+                    /** @description Risk değerlendirmesi; onaya gönderirken en az bir madde */
+                    risks?: {
+                        risk: string;
+                        measure: string;
+                    }[];
+                    /** @description Acil iletişim; onaya gönderirken en az bir kişi */
+                    emergencyContacts?: {
+                        name: string;
+                        phone: string;
+                        /** @description Görevi ya da yakınlığı (ör. okul müdürü) */
+                        relation?: string | null;
+                    }[];
+                    /** @description İsteğe bağlı ücretli etkinlik (DOM-FIN-098); ücretsiz gezide boş */
+                    paidActivityId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Plan numarası (`GZ-0007`) */
+                            number: string;
+                            name: string;
+                            departureAt: string;
+                            returnAt: string;
+                            expectedStudentCount: number;
+                            /** @description Görevli sayısı */
+                            staffCount: number;
+                            /** @description Sorumlu öğretmenlerin adları */
+                            leadNames: string[];
+                            /** @description Görevli sayısı her 15 öğrenciye bir görevli önerisinin altında (K-366) */
+                            ratioWarning: boolean;
+                            /** @description Bağlı ücretli etkinlik (DOM-FIN-098) */
+                            paidActivity: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "trip" | "event";
+                                activityDate: string;
+                                /** @enum {string} */
+                                status: "open" | "cancelled";
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                            /** @description Millî eğitim bildiriminin işaretlendiği gün (YYYY-MM-DD) */
+                            authorityNotifiedOn: string | null;
+                            /** @description Oturumdaki rolün bu planda yapabileceği işlemler (ekran düğmeleri) */
+                            actions: {
+                                edit: boolean;
+                                submit: boolean;
+                                approve: boolean;
+                                reject: boolean;
+                                complete: boolean;
+                                cancel: boolean;
+                                notify: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            purpose: string;
+                            /** @description Güzergâh, sırayla */
+                            stops: {
+                                place: string;
+                                note: string | null;
+                            }[];
+                            /** @description Görevliler; sorumlu önce */
+                            staff: {
+                                membershipId: string;
+                                name: string | null;
+                                /** @enum {string} */
+                                role: "lead" | "assistant";
+                            }[];
+                            transport: {
+                                /** @enum {string} */
+                                type: "bus" | "minibus" | "train" | "plane" | "ship" | "walking" | "other";
+                                company: string | null;
+                                /** @description Boşluksuz büyük harfle (`34ABC123`) */
+                                plate: string | null;
+                                driverName: string | null;
+                                driverPhone: string | null;
+                                documentFileId: string | null;
+                                /** @description Ulaşım belgesi; silinmiş dosyada boş */
+                                documentFile: {
+                                    id: string;
+                                    name: string;
+                                    byteSize: number;
+                                } | null;
+                            };
+                            /** @description Risk değerlendirmesi */
+                            risks: {
+                                risk: string;
+                                measure: string;
+                            }[];
+                            /** @description Acil iletişim kişileri */
+                            emergencyContacts: {
+                                name: string;
+                                phone: string;
+                                relation: string | null;
+                            }[];
+                            /** @description Öğrenci başına görevli oranı (K-366); uyarıdır, kaydı engellemez */
+                            ratio: {
+                                studentsPerStaff: number;
+                                recommendedStaff: number;
+                                warning: boolean;
+                            };
+                            submittedAt: string | null;
+                            approvedAt: string | null;
+                            approvedByName: string | null;
+                            rejectedAt: string | null;
+                            rejectionReason: string | null;
+                            /** @description Bildirimin evrak sayısı */
+                            authorityReference: string | null;
+                            completedAt: string | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            createdByName: string | null;
+                            createdAt: string;
+                            /** @description Plan geçmişi, eskiden yeniye (K-367) */
+                            events: {
+                                id: string;
+                                /** @enum {string} */
+                                event: "created" | "submitted" | "approved" | "rejected" | "reopened" | "authority_notified" | "completed" | "cancelled";
+                                fromStatus: ("draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled") | null;
+                                /** @enum {string} */
+                                toStatus: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                                /** @description Adımın notu; retta ve iptalde gerekçe */
+                                note: string | null;
+                                actorName: string | null;
+                                occurredAt: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    submitTripPlan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description İsteğe bağlı not, en çok 500 karakter */
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Plan numarası (`GZ-0007`) */
+                            number: string;
+                            name: string;
+                            departureAt: string;
+                            returnAt: string;
+                            expectedStudentCount: number;
+                            /** @description Görevli sayısı */
+                            staffCount: number;
+                            /** @description Sorumlu öğretmenlerin adları */
+                            leadNames: string[];
+                            /** @description Görevli sayısı her 15 öğrenciye bir görevli önerisinin altında (K-366) */
+                            ratioWarning: boolean;
+                            /** @description Bağlı ücretli etkinlik (DOM-FIN-098) */
+                            paidActivity: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "trip" | "event";
+                                activityDate: string;
+                                /** @enum {string} */
+                                status: "open" | "cancelled";
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                            /** @description Millî eğitim bildiriminin işaretlendiği gün (YYYY-MM-DD) */
+                            authorityNotifiedOn: string | null;
+                            /** @description Oturumdaki rolün bu planda yapabileceği işlemler (ekran düğmeleri) */
+                            actions: {
+                                edit: boolean;
+                                submit: boolean;
+                                approve: boolean;
+                                reject: boolean;
+                                complete: boolean;
+                                cancel: boolean;
+                                notify: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            purpose: string;
+                            /** @description Güzergâh, sırayla */
+                            stops: {
+                                place: string;
+                                note: string | null;
+                            }[];
+                            /** @description Görevliler; sorumlu önce */
+                            staff: {
+                                membershipId: string;
+                                name: string | null;
+                                /** @enum {string} */
+                                role: "lead" | "assistant";
+                            }[];
+                            transport: {
+                                /** @enum {string} */
+                                type: "bus" | "minibus" | "train" | "plane" | "ship" | "walking" | "other";
+                                company: string | null;
+                                /** @description Boşluksuz büyük harfle (`34ABC123`) */
+                                plate: string | null;
+                                driverName: string | null;
+                                driverPhone: string | null;
+                                documentFileId: string | null;
+                                /** @description Ulaşım belgesi; silinmiş dosyada boş */
+                                documentFile: {
+                                    id: string;
+                                    name: string;
+                                    byteSize: number;
+                                } | null;
+                            };
+                            /** @description Risk değerlendirmesi */
+                            risks: {
+                                risk: string;
+                                measure: string;
+                            }[];
+                            /** @description Acil iletişim kişileri */
+                            emergencyContacts: {
+                                name: string;
+                                phone: string;
+                                relation: string | null;
+                            }[];
+                            /** @description Öğrenci başına görevli oranı (K-366); uyarıdır, kaydı engellemez */
+                            ratio: {
+                                studentsPerStaff: number;
+                                recommendedStaff: number;
+                                warning: boolean;
+                            };
+                            submittedAt: string | null;
+                            approvedAt: string | null;
+                            approvedByName: string | null;
+                            rejectedAt: string | null;
+                            rejectionReason: string | null;
+                            /** @description Bildirimin evrak sayısı */
+                            authorityReference: string | null;
+                            completedAt: string | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            createdByName: string | null;
+                            createdAt: string;
+                            /** @description Plan geçmişi, eskiden yeniye (K-367) */
+                            events: {
+                                id: string;
+                                /** @enum {string} */
+                                event: "created" | "submitted" | "approved" | "rejected" | "reopened" | "authority_notified" | "completed" | "cancelled";
+                                fromStatus: ("draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled") | null;
+                                /** @enum {string} */
+                                toStatus: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                                /** @description Adımın notu; retta ve iptalde gerekçe */
+                                note: string | null;
+                                actorName: string | null;
+                                occurredAt: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    approveTripPlan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description İsteğe bağlı not, en çok 500 karakter */
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Plan numarası (`GZ-0007`) */
+                            number: string;
+                            name: string;
+                            departureAt: string;
+                            returnAt: string;
+                            expectedStudentCount: number;
+                            /** @description Görevli sayısı */
+                            staffCount: number;
+                            /** @description Sorumlu öğretmenlerin adları */
+                            leadNames: string[];
+                            /** @description Görevli sayısı her 15 öğrenciye bir görevli önerisinin altında (K-366) */
+                            ratioWarning: boolean;
+                            /** @description Bağlı ücretli etkinlik (DOM-FIN-098) */
+                            paidActivity: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "trip" | "event";
+                                activityDate: string;
+                                /** @enum {string} */
+                                status: "open" | "cancelled";
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                            /** @description Millî eğitim bildiriminin işaretlendiği gün (YYYY-MM-DD) */
+                            authorityNotifiedOn: string | null;
+                            /** @description Oturumdaki rolün bu planda yapabileceği işlemler (ekran düğmeleri) */
+                            actions: {
+                                edit: boolean;
+                                submit: boolean;
+                                approve: boolean;
+                                reject: boolean;
+                                complete: boolean;
+                                cancel: boolean;
+                                notify: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            purpose: string;
+                            /** @description Güzergâh, sırayla */
+                            stops: {
+                                place: string;
+                                note: string | null;
+                            }[];
+                            /** @description Görevliler; sorumlu önce */
+                            staff: {
+                                membershipId: string;
+                                name: string | null;
+                                /** @enum {string} */
+                                role: "lead" | "assistant";
+                            }[];
+                            transport: {
+                                /** @enum {string} */
+                                type: "bus" | "minibus" | "train" | "plane" | "ship" | "walking" | "other";
+                                company: string | null;
+                                /** @description Boşluksuz büyük harfle (`34ABC123`) */
+                                plate: string | null;
+                                driverName: string | null;
+                                driverPhone: string | null;
+                                documentFileId: string | null;
+                                /** @description Ulaşım belgesi; silinmiş dosyada boş */
+                                documentFile: {
+                                    id: string;
+                                    name: string;
+                                    byteSize: number;
+                                } | null;
+                            };
+                            /** @description Risk değerlendirmesi */
+                            risks: {
+                                risk: string;
+                                measure: string;
+                            }[];
+                            /** @description Acil iletişim kişileri */
+                            emergencyContacts: {
+                                name: string;
+                                phone: string;
+                                relation: string | null;
+                            }[];
+                            /** @description Öğrenci başına görevli oranı (K-366); uyarıdır, kaydı engellemez */
+                            ratio: {
+                                studentsPerStaff: number;
+                                recommendedStaff: number;
+                                warning: boolean;
+                            };
+                            submittedAt: string | null;
+                            approvedAt: string | null;
+                            approvedByName: string | null;
+                            rejectedAt: string | null;
+                            rejectionReason: string | null;
+                            /** @description Bildirimin evrak sayısı */
+                            authorityReference: string | null;
+                            completedAt: string | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            createdByName: string | null;
+                            createdAt: string;
+                            /** @description Plan geçmişi, eskiden yeniye (K-367) */
+                            events: {
+                                id: string;
+                                /** @enum {string} */
+                                event: "created" | "submitted" | "approved" | "rejected" | "reopened" | "authority_notified" | "completed" | "cancelled";
+                                fromStatus: ("draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled") | null;
+                                /** @enum {string} */
+                                toStatus: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                                /** @description Adımın notu; retta ve iptalde gerekçe */
+                                note: string | null;
+                                actorName: string | null;
+                                occurredAt: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rejectTripPlan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Plan numarası (`GZ-0007`) */
+                            number: string;
+                            name: string;
+                            departureAt: string;
+                            returnAt: string;
+                            expectedStudentCount: number;
+                            /** @description Görevli sayısı */
+                            staffCount: number;
+                            /** @description Sorumlu öğretmenlerin adları */
+                            leadNames: string[];
+                            /** @description Görevli sayısı her 15 öğrenciye bir görevli önerisinin altında (K-366) */
+                            ratioWarning: boolean;
+                            /** @description Bağlı ücretli etkinlik (DOM-FIN-098) */
+                            paidActivity: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "trip" | "event";
+                                activityDate: string;
+                                /** @enum {string} */
+                                status: "open" | "cancelled";
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                            /** @description Millî eğitim bildiriminin işaretlendiği gün (YYYY-MM-DD) */
+                            authorityNotifiedOn: string | null;
+                            /** @description Oturumdaki rolün bu planda yapabileceği işlemler (ekran düğmeleri) */
+                            actions: {
+                                edit: boolean;
+                                submit: boolean;
+                                approve: boolean;
+                                reject: boolean;
+                                complete: boolean;
+                                cancel: boolean;
+                                notify: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            purpose: string;
+                            /** @description Güzergâh, sırayla */
+                            stops: {
+                                place: string;
+                                note: string | null;
+                            }[];
+                            /** @description Görevliler; sorumlu önce */
+                            staff: {
+                                membershipId: string;
+                                name: string | null;
+                                /** @enum {string} */
+                                role: "lead" | "assistant";
+                            }[];
+                            transport: {
+                                /** @enum {string} */
+                                type: "bus" | "minibus" | "train" | "plane" | "ship" | "walking" | "other";
+                                company: string | null;
+                                /** @description Boşluksuz büyük harfle (`34ABC123`) */
+                                plate: string | null;
+                                driverName: string | null;
+                                driverPhone: string | null;
+                                documentFileId: string | null;
+                                /** @description Ulaşım belgesi; silinmiş dosyada boş */
+                                documentFile: {
+                                    id: string;
+                                    name: string;
+                                    byteSize: number;
+                                } | null;
+                            };
+                            /** @description Risk değerlendirmesi */
+                            risks: {
+                                risk: string;
+                                measure: string;
+                            }[];
+                            /** @description Acil iletişim kişileri */
+                            emergencyContacts: {
+                                name: string;
+                                phone: string;
+                                relation: string | null;
+                            }[];
+                            /** @description Öğrenci başına görevli oranı (K-366); uyarıdır, kaydı engellemez */
+                            ratio: {
+                                studentsPerStaff: number;
+                                recommendedStaff: number;
+                                warning: boolean;
+                            };
+                            submittedAt: string | null;
+                            approvedAt: string | null;
+                            approvedByName: string | null;
+                            rejectedAt: string | null;
+                            rejectionReason: string | null;
+                            /** @description Bildirimin evrak sayısı */
+                            authorityReference: string | null;
+                            completedAt: string | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            createdByName: string | null;
+                            createdAt: string;
+                            /** @description Plan geçmişi, eskiden yeniye (K-367) */
+                            events: {
+                                id: string;
+                                /** @enum {string} */
+                                event: "created" | "submitted" | "approved" | "rejected" | "reopened" | "authority_notified" | "completed" | "cancelled";
+                                fromStatus: ("draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled") | null;
+                                /** @enum {string} */
+                                toStatus: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                                /** @description Adımın notu; retta ve iptalde gerekçe */
+                                note: string | null;
+                                actorName: string | null;
+                                occurredAt: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    recordTripPlanAuthorityNotice: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Bildirimin yapıldığı gün (YYYY-MM-DD); bugünden sonra, onay gününden önce olamaz */
+                    notifiedOn: string;
+                    /** @description İsteğe bağlı evrak sayısı ya da DYS numarası */
+                    reference?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Plan numarası (`GZ-0007`) */
+                            number: string;
+                            name: string;
+                            departureAt: string;
+                            returnAt: string;
+                            expectedStudentCount: number;
+                            /** @description Görevli sayısı */
+                            staffCount: number;
+                            /** @description Sorumlu öğretmenlerin adları */
+                            leadNames: string[];
+                            /** @description Görevli sayısı her 15 öğrenciye bir görevli önerisinin altında (K-366) */
+                            ratioWarning: boolean;
+                            /** @description Bağlı ücretli etkinlik (DOM-FIN-098) */
+                            paidActivity: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "trip" | "event";
+                                activityDate: string;
+                                /** @enum {string} */
+                                status: "open" | "cancelled";
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                            /** @description Millî eğitim bildiriminin işaretlendiği gün (YYYY-MM-DD) */
+                            authorityNotifiedOn: string | null;
+                            /** @description Oturumdaki rolün bu planda yapabileceği işlemler (ekran düğmeleri) */
+                            actions: {
+                                edit: boolean;
+                                submit: boolean;
+                                approve: boolean;
+                                reject: boolean;
+                                complete: boolean;
+                                cancel: boolean;
+                                notify: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            purpose: string;
+                            /** @description Güzergâh, sırayla */
+                            stops: {
+                                place: string;
+                                note: string | null;
+                            }[];
+                            /** @description Görevliler; sorumlu önce */
+                            staff: {
+                                membershipId: string;
+                                name: string | null;
+                                /** @enum {string} */
+                                role: "lead" | "assistant";
+                            }[];
+                            transport: {
+                                /** @enum {string} */
+                                type: "bus" | "minibus" | "train" | "plane" | "ship" | "walking" | "other";
+                                company: string | null;
+                                /** @description Boşluksuz büyük harfle (`34ABC123`) */
+                                plate: string | null;
+                                driverName: string | null;
+                                driverPhone: string | null;
+                                documentFileId: string | null;
+                                /** @description Ulaşım belgesi; silinmiş dosyada boş */
+                                documentFile: {
+                                    id: string;
+                                    name: string;
+                                    byteSize: number;
+                                } | null;
+                            };
+                            /** @description Risk değerlendirmesi */
+                            risks: {
+                                risk: string;
+                                measure: string;
+                            }[];
+                            /** @description Acil iletişim kişileri */
+                            emergencyContacts: {
+                                name: string;
+                                phone: string;
+                                relation: string | null;
+                            }[];
+                            /** @description Öğrenci başına görevli oranı (K-366); uyarıdır, kaydı engellemez */
+                            ratio: {
+                                studentsPerStaff: number;
+                                recommendedStaff: number;
+                                warning: boolean;
+                            };
+                            submittedAt: string | null;
+                            approvedAt: string | null;
+                            approvedByName: string | null;
+                            rejectedAt: string | null;
+                            rejectionReason: string | null;
+                            /** @description Bildirimin evrak sayısı */
+                            authorityReference: string | null;
+                            completedAt: string | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            createdByName: string | null;
+                            createdAt: string;
+                            /** @description Plan geçmişi, eskiden yeniye (K-367) */
+                            events: {
+                                id: string;
+                                /** @enum {string} */
+                                event: "created" | "submitted" | "approved" | "rejected" | "reopened" | "authority_notified" | "completed" | "cancelled";
+                                fromStatus: ("draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled") | null;
+                                /** @enum {string} */
+                                toStatus: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                                /** @description Adımın notu; retta ve iptalde gerekçe */
+                                note: string | null;
+                                actorName: string | null;
+                                occurredAt: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    completeTripPlan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description İsteğe bağlı not, en çok 500 karakter */
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Plan numarası (`GZ-0007`) */
+                            number: string;
+                            name: string;
+                            departureAt: string;
+                            returnAt: string;
+                            expectedStudentCount: number;
+                            /** @description Görevli sayısı */
+                            staffCount: number;
+                            /** @description Sorumlu öğretmenlerin adları */
+                            leadNames: string[];
+                            /** @description Görevli sayısı her 15 öğrenciye bir görevli önerisinin altında (K-366) */
+                            ratioWarning: boolean;
+                            /** @description Bağlı ücretli etkinlik (DOM-FIN-098) */
+                            paidActivity: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "trip" | "event";
+                                activityDate: string;
+                                /** @enum {string} */
+                                status: "open" | "cancelled";
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                            /** @description Millî eğitim bildiriminin işaretlendiği gün (YYYY-MM-DD) */
+                            authorityNotifiedOn: string | null;
+                            /** @description Oturumdaki rolün bu planda yapabileceği işlemler (ekran düğmeleri) */
+                            actions: {
+                                edit: boolean;
+                                submit: boolean;
+                                approve: boolean;
+                                reject: boolean;
+                                complete: boolean;
+                                cancel: boolean;
+                                notify: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            purpose: string;
+                            /** @description Güzergâh, sırayla */
+                            stops: {
+                                place: string;
+                                note: string | null;
+                            }[];
+                            /** @description Görevliler; sorumlu önce */
+                            staff: {
+                                membershipId: string;
+                                name: string | null;
+                                /** @enum {string} */
+                                role: "lead" | "assistant";
+                            }[];
+                            transport: {
+                                /** @enum {string} */
+                                type: "bus" | "minibus" | "train" | "plane" | "ship" | "walking" | "other";
+                                company: string | null;
+                                /** @description Boşluksuz büyük harfle (`34ABC123`) */
+                                plate: string | null;
+                                driverName: string | null;
+                                driverPhone: string | null;
+                                documentFileId: string | null;
+                                /** @description Ulaşım belgesi; silinmiş dosyada boş */
+                                documentFile: {
+                                    id: string;
+                                    name: string;
+                                    byteSize: number;
+                                } | null;
+                            };
+                            /** @description Risk değerlendirmesi */
+                            risks: {
+                                risk: string;
+                                measure: string;
+                            }[];
+                            /** @description Acil iletişim kişileri */
+                            emergencyContacts: {
+                                name: string;
+                                phone: string;
+                                relation: string | null;
+                            }[];
+                            /** @description Öğrenci başına görevli oranı (K-366); uyarıdır, kaydı engellemez */
+                            ratio: {
+                                studentsPerStaff: number;
+                                recommendedStaff: number;
+                                warning: boolean;
+                            };
+                            submittedAt: string | null;
+                            approvedAt: string | null;
+                            approvedByName: string | null;
+                            rejectedAt: string | null;
+                            rejectionReason: string | null;
+                            /** @description Bildirimin evrak sayısı */
+                            authorityReference: string | null;
+                            completedAt: string | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            createdByName: string | null;
+                            createdAt: string;
+                            /** @description Plan geçmişi, eskiden yeniye (K-367) */
+                            events: {
+                                id: string;
+                                /** @enum {string} */
+                                event: "created" | "submitted" | "approved" | "rejected" | "reopened" | "authority_notified" | "completed" | "cancelled";
+                                fromStatus: ("draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled") | null;
+                                /** @enum {string} */
+                                toStatus: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                                /** @description Adımın notu; retta ve iptalde gerekçe */
+                                note: string | null;
+                                actorName: string | null;
+                                occurredAt: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelTripPlan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Plan numarası (`GZ-0007`) */
+                            number: string;
+                            name: string;
+                            departureAt: string;
+                            returnAt: string;
+                            expectedStudentCount: number;
+                            /** @description Görevli sayısı */
+                            staffCount: number;
+                            /** @description Sorumlu öğretmenlerin adları */
+                            leadNames: string[];
+                            /** @description Görevli sayısı her 15 öğrenciye bir görevli önerisinin altında (K-366) */
+                            ratioWarning: boolean;
+                            /** @description Bağlı ücretli etkinlik (DOM-FIN-098) */
+                            paidActivity: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                kind: "trip" | "event";
+                                activityDate: string;
+                                /** @enum {string} */
+                                status: "open" | "cancelled";
+                            } | null;
+                            /** @enum {string} */
+                            status: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                            /** @description Millî eğitim bildiriminin işaretlendiği gün (YYYY-MM-DD) */
+                            authorityNotifiedOn: string | null;
+                            /** @description Oturumdaki rolün bu planda yapabileceği işlemler (ekran düğmeleri) */
+                            actions: {
+                                edit: boolean;
+                                submit: boolean;
+                                approve: boolean;
+                                reject: boolean;
+                                complete: boolean;
+                                cancel: boolean;
+                                notify: boolean;
+                            };
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            purpose: string;
+                            /** @description Güzergâh, sırayla */
+                            stops: {
+                                place: string;
+                                note: string | null;
+                            }[];
+                            /** @description Görevliler; sorumlu önce */
+                            staff: {
+                                membershipId: string;
+                                name: string | null;
+                                /** @enum {string} */
+                                role: "lead" | "assistant";
+                            }[];
+                            transport: {
+                                /** @enum {string} */
+                                type: "bus" | "minibus" | "train" | "plane" | "ship" | "walking" | "other";
+                                company: string | null;
+                                /** @description Boşluksuz büyük harfle (`34ABC123`) */
+                                plate: string | null;
+                                driverName: string | null;
+                                driverPhone: string | null;
+                                documentFileId: string | null;
+                                /** @description Ulaşım belgesi; silinmiş dosyada boş */
+                                documentFile: {
+                                    id: string;
+                                    name: string;
+                                    byteSize: number;
+                                } | null;
+                            };
+                            /** @description Risk değerlendirmesi */
+                            risks: {
+                                risk: string;
+                                measure: string;
+                            }[];
+                            /** @description Acil iletişim kişileri */
+                            emergencyContacts: {
+                                name: string;
+                                phone: string;
+                                relation: string | null;
+                            }[];
+                            /** @description Öğrenci başına görevli oranı (K-366); uyarıdır, kaydı engellemez */
+                            ratio: {
+                                studentsPerStaff: number;
+                                recommendedStaff: number;
+                                warning: boolean;
+                            };
+                            submittedAt: string | null;
+                            approvedAt: string | null;
+                            approvedByName: string | null;
+                            rejectedAt: string | null;
+                            rejectionReason: string | null;
+                            /** @description Bildirimin evrak sayısı */
+                            authorityReference: string | null;
+                            completedAt: string | null;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            createdByName: string | null;
+                            createdAt: string;
+                            /** @description Plan geçmişi, eskiden yeniye (K-367) */
+                            events: {
+                                id: string;
+                                /** @enum {string} */
+                                event: "created" | "submitted" | "approved" | "rejected" | "reopened" | "authority_notified" | "completed" | "cancelled";
+                                fromStatus: ("draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled") | null;
+                                /** @enum {string} */
+                                toStatus: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                                /** @description Adımın notu; retta ve iptalde gerekçe */
+                                note: string | null;
+                                actorName: string | null;
+                                occurredAt: string;
+                            }[];
                         };
                     };
                 };

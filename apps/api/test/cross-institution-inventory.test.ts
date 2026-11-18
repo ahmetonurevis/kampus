@@ -2766,6 +2766,31 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: gezi planı ve onay dosyası (ON-155; DOM-FIN-111).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/trip-plans', 'get(URL, a.admin)'],
+        ['liste', 'GET /api/v1/finance/trip-plan-options', 'get(OPTIONS, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/trip-plans', 'membershipId: bLead'],
+        ['kayıt', 'GET /api/v1/finance/trip-plans/:planId', 'get(urlOf(bPlan), a.admin)'],
+        ['kayıt', 'PATCH /api/v1/finance/trip-plans/:planId', 'patch(a.admin, bPlan'],
+        ['kayıt', 'POST /api/v1/finance/trip-plans/:planId/submit', 'step(a.admin, bPlan, verb'],
+        ['kayıt', 'POST /api/v1/finance/trip-plans/:planId/approve', 'step(a.admin, bPlan, verb'],
+        ['kayıt', 'POST /api/v1/finance/trip-plans/:planId/reject', 'step(a.admin, bPlan, verb'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/trip-plans/:planId/authority-notice',
+          'step(a.admin, bPlan, verb',
+        ],
+        ['kayıt', 'POST /api/v1/finance/trip-plans/:planId/complete', 'step(a.admin, bPlan, verb'],
+        ['kayıt', 'POST /api/v1/finance/trip-plans/:planId/cancel', 'step(a.admin, bPlan, verb'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)('finance-trip-plans.test.ts', 'DOM-FIN-111: başka kurumun planı 404', marker),
+    ]),
+  ),
 }
 
 /**

@@ -170,6 +170,9 @@ const FinanceSgkPreparationSection = lazy(async () => ({
 const FinanceWorkPermitsSection = lazy(async () => ({
   default: (await import('./FinanceWorkPermitsSection.tsx')).FinanceWorkPermitsSection,
 }))
+const FinanceTripPlansSection = lazy(async () => ({
+  default: (await import('./FinanceTripPlansSection.tsx')).FinanceTripPlansSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -226,6 +229,7 @@ const VIEWS = {
   staffLeave: { label: 'Personel izinleri', param: 'personel-izin' },
   sgkPreparation: { label: 'SGK hazırlık listesi', param: 'sgk-hazirlik' },
   workPermits: { label: 'Çalışma onayları', param: 'calisma-onayi' },
+  tripPlans: { label: 'Gezi planları', param: 'gezi-plani' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -269,6 +273,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Personel izinleri (DOM-FIN-109) yalnız yöneticidedir; personel kişisel verisidir.
  * SGK hazırlık listesi (DOM-FIN-107) yalnız yöneticidedir; liste ücret taşır (K-355).
  * Çalışma onayları (DOM-FIN-114) yalnız yöneticidedir; öğretmen özlük verisidir (K-377).
+ * Gezi planları (DOM-FIN-111) ikisine açıktır; ön büro taslak yazar, yönetici onaylar (K-367).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -494,6 +499,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'staffLeave' ? <FinanceStaffLeaveSection /> : null}
         {tab === 'sgkPreparation' ? <FinanceSgkPreparationSection /> : null}
         {tab === 'workPermits' ? <FinanceWorkPermitsSection /> : null}
+        {tab === 'tripPlans' ? <FinanceTripPlansSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

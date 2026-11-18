@@ -173,6 +173,9 @@ const FinanceWorkPermitsSection = lazy(async () => ({
 const FinanceTripPlansSection = lazy(async () => ({
   default: (await import('./FinanceTripPlansSection.tsx')).FinanceTripPlansSection,
 }))
+const FinanceStaffDocumentsSection = lazy(async () => ({
+  default: (await import('./FinanceStaffDocumentsSection.tsx')).FinanceStaffDocumentsSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -230,6 +233,7 @@ const VIEWS = {
   sgkPreparation: { label: 'SGK hazırlık listesi', param: 'sgk-hazirlik' },
   workPermits: { label: 'Çalışma onayları', param: 'calisma-onayi' },
   tripPlans: { label: 'Gezi planları', param: 'gezi-plani' },
+  staffDocuments: { label: 'Özlük belgeleri', param: 'ozluk-belgeleri' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -274,6 +278,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * SGK hazırlık listesi (DOM-FIN-107) yalnız yöneticidedir; liste ücret taşır (K-355).
  * Çalışma onayları (DOM-FIN-114) yalnız yöneticidedir; öğretmen özlük verisidir (K-377).
  * Gezi planları (DOM-FIN-111) ikisine açıktır; ön büro taslak yazar, yönetici onaylar (K-367).
+ * Özlük belgeleri (DOM-FIN-113) ikisine açıktır; tür ayarı ve özel nitelikli belge yöneticide (K-374).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -500,6 +505,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'sgkPreparation' ? <FinanceSgkPreparationSection /> : null}
         {tab === 'workPermits' ? <FinanceWorkPermitsSection /> : null}
         {tab === 'tripPlans' ? <FinanceTripPlansSection /> : null}
+        {tab === 'staffDocuments' ? <FinanceStaffDocumentsSection isManager={isManager} /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

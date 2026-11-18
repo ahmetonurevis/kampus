@@ -232607,6 +232607,2413 @@
         }
       }
     },
+    "/api/v1/finance/staff-document-types": {
+      "get": {
+        "operationId": "getStaffDocumentTypes",
+        "summary": "Özlük belgesi tür ayarları",
+        "tags": [
+          "finance-staff-documents"
+        ],
+        "description": "Altı belge türünün (diploma, sağlık raporu, adli sicil kaydı, sertifika, kimlik fotokopisi, diğer) zorunluluğu, geçerlilik süresi (ay) ve özel nitelikli işareti; ayarlanmamış tür platform varsayılanıdır (`customized: false`; K-372). Rol: `yonetici` ve `onburo`; özel nitelikli belgenin (adli sicil, sağlık raporu ve kurumca işaretlenen tür) dosyası ve ayrıntısı yalnız yöneticide (K-374). Modül `finance`.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "documentType": {
+                            "type": "string",
+                            "enum": [
+                              "diploma",
+                              "health_report",
+                              "criminal_record",
+                              "certificate",
+                              "id_copy",
+                              "other"
+                            ],
+                            "description": "`diploma`, `health_report` sağlık raporu, `criminal_record` adli sicil kaydı, `certificate` sertifika/kurs belgesi, `id_copy` kimlik fotokopisi, `other` diğer"
+                          },
+                          "required": {
+                            "type": "boolean",
+                            "description": "Her etkin personelde bulunmalı mı"
+                          },
+                          "validityMonths": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Geçerlilik süresi (ay); `null` süresiz"
+                          },
+                          "sensitive": {
+                            "type": "boolean",
+                            "description": "Özel nitelikli (KVKK md. 6)"
+                          },
+                          "sensitiveLocked": {
+                            "type": "boolean",
+                            "description": "Kanunen özel nitelikli tür (adli sicil, sağlık raporu): işaret kaldırılamaz"
+                          },
+                          "customized": {
+                            "type": "boolean",
+                            "description": "Kurum ayarı mı (`false` ise platform varsayılanı)"
+                          },
+                          "updatedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "documentType",
+                          "required",
+                          "validityMonths",
+                          "sensitive",
+                          "sensitiveLocked",
+                          "customized",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateStaffDocumentTypes",
+        "summary": "Özlük belgesi tür ayarlarını değiştir",
+        "tags": [
+          "finance-staff-documents"
+        ],
+        "description": "Gönderilen türlerin ayarı bütünüyle yazılır (zorunlu, geçerlilik süresi 1–120 ay ya da `null` süresiz, özel nitelikli). Adli sicil ve sağlık raporunun özel nitelikli işareti kaldırılamaz (400). Kayıtlı belgelerin bitişi değişmez (K-372). Denetim `finance.staff_document_type.update` (tür adları). Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "diploma": {
+                    "description": "Diploma / mezuniyet belgesi",
+                    "type": "object",
+                    "properties": {
+                      "required": {
+                        "type": "boolean",
+                        "description": "Her personelde bulunmalı mı"
+                      },
+                      "validityMonths": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 120
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "Belge tarihinden itibaren geçerlilik süresi (ay); `null` süresiz"
+                      },
+                      "sensitive": {
+                        "type": "boolean",
+                        "description": "Özel nitelikli kişisel veri (KVKK md. 6): dosyayı yalnız yönetici açar, listede yalnız tür ve tarih"
+                      }
+                    },
+                    "required": [
+                      "required",
+                      "validityMonths",
+                      "sensitive"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "health_report": {
+                    "description": "Sağlık raporu",
+                    "type": "object",
+                    "properties": {
+                      "required": {
+                        "type": "boolean",
+                        "description": "Her personelde bulunmalı mı"
+                      },
+                      "validityMonths": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 120
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "Belge tarihinden itibaren geçerlilik süresi (ay); `null` süresiz"
+                      },
+                      "sensitive": {
+                        "type": "boolean",
+                        "description": "Özel nitelikli kişisel veri (KVKK md. 6): dosyayı yalnız yönetici açar, listede yalnız tür ve tarih"
+                      }
+                    },
+                    "required": [
+                      "required",
+                      "validityMonths",
+                      "sensitive"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "criminal_record": {
+                    "description": "Adli sicil kaydı",
+                    "type": "object",
+                    "properties": {
+                      "required": {
+                        "type": "boolean",
+                        "description": "Her personelde bulunmalı mı"
+                      },
+                      "validityMonths": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 120
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "Belge tarihinden itibaren geçerlilik süresi (ay); `null` süresiz"
+                      },
+                      "sensitive": {
+                        "type": "boolean",
+                        "description": "Özel nitelikli kişisel veri (KVKK md. 6): dosyayı yalnız yönetici açar, listede yalnız tür ve tarih"
+                      }
+                    },
+                    "required": [
+                      "required",
+                      "validityMonths",
+                      "sensitive"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "certificate": {
+                    "description": "Sertifika / kurs belgesi",
+                    "type": "object",
+                    "properties": {
+                      "required": {
+                        "type": "boolean",
+                        "description": "Her personelde bulunmalı mı"
+                      },
+                      "validityMonths": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 120
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "Belge tarihinden itibaren geçerlilik süresi (ay); `null` süresiz"
+                      },
+                      "sensitive": {
+                        "type": "boolean",
+                        "description": "Özel nitelikli kişisel veri (KVKK md. 6): dosyayı yalnız yönetici açar, listede yalnız tür ve tarih"
+                      }
+                    },
+                    "required": [
+                      "required",
+                      "validityMonths",
+                      "sensitive"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "id_copy": {
+                    "description": "Kimlik fotokopisi",
+                    "type": "object",
+                    "properties": {
+                      "required": {
+                        "type": "boolean",
+                        "description": "Her personelde bulunmalı mı"
+                      },
+                      "validityMonths": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 120
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "Belge tarihinden itibaren geçerlilik süresi (ay); `null` süresiz"
+                      },
+                      "sensitive": {
+                        "type": "boolean",
+                        "description": "Özel nitelikli kişisel veri (KVKK md. 6): dosyayı yalnız yönetici açar, listede yalnız tür ve tarih"
+                      }
+                    },
+                    "required": [
+                      "required",
+                      "validityMonths",
+                      "sensitive"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "other": {
+                    "description": "Diğer",
+                    "type": "object",
+                    "properties": {
+                      "required": {
+                        "type": "boolean",
+                        "description": "Her personelde bulunmalı mı"
+                      },
+                      "validityMonths": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 120
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "Belge tarihinden itibaren geçerlilik süresi (ay); `null` süresiz"
+                      },
+                      "sensitive": {
+                        "type": "boolean",
+                        "description": "Özel nitelikli kişisel veri (KVKK md. 6): dosyayı yalnız yönetici açar, listede yalnız tür ve tarih"
+                      }
+                    },
+                    "required": [
+                      "required",
+                      "validityMonths",
+                      "sensitive"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "documentType": {
+                            "type": "string",
+                            "enum": [
+                              "diploma",
+                              "health_report",
+                              "criminal_record",
+                              "certificate",
+                              "id_copy",
+                              "other"
+                            ],
+                            "description": "`diploma`, `health_report` sağlık raporu, `criminal_record` adli sicil kaydı, `certificate` sertifika/kurs belgesi, `id_copy` kimlik fotokopisi, `other` diğer"
+                          },
+                          "required": {
+                            "type": "boolean",
+                            "description": "Her etkin personelde bulunmalı mı"
+                          },
+                          "validityMonths": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Geçerlilik süresi (ay); `null` süresiz"
+                          },
+                          "sensitive": {
+                            "type": "boolean",
+                            "description": "Özel nitelikli (KVKK md. 6)"
+                          },
+                          "sensitiveLocked": {
+                            "type": "boolean",
+                            "description": "Kanunen özel nitelikli tür (adli sicil, sağlık raporu): işaret kaldırılamaz"
+                          },
+                          "customized": {
+                            "type": "boolean",
+                            "description": "Kurum ayarı mı (`false` ise platform varsayılanı)"
+                          },
+                          "updatedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "documentType",
+                          "required",
+                          "validityMonths",
+                          "sensitive",
+                          "sensitiveLocked",
+                          "customized",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/staff-document-alerts": {
+      "get": {
+        "operationId": "getStaffDocumentAlerts",
+        "summary": "Özlük belgesi uyarı sayıları",
+        "tags": [
+          "finance-staff-documents"
+        ],
+        "description": "Etkin personelde süresi geçen ve `withinDays` gün (varsayılan 30) içinde bitecek belge sayısı ile zorunlu belgesi eksik personel sayısı (pano ve sekme rozeti). Bildirim gönderilmez. Rol: `yonetici` ve `onburo`; özel nitelikli belgenin (adli sicil, sağlık raporu ve kurumca işaretlenen tür) dosyası ve ayrıntısı yalnız yöneticide (K-374). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 365
+            },
+            "in": "query",
+            "name": "withinDays",
+            "required": false,
+            "description": "Yaklaşan bitiş penceresi, gün (0–365; varsayılan 30)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "withinDays": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "expiredCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Etkin personelde süresi geçen belge"
+                        },
+                        "expiringCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Etkin personelde `withinDays` gün içinde biten belge"
+                        },
+                        "staffMissingCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Zorunlu belgesi eksik etkin personel"
+                        }
+                      },
+                      "required": [
+                        "withinDays",
+                        "expiredCount",
+                        "expiringCount",
+                        "staffMissingCount"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/staff-documents": {
+      "get": {
+        "operationId": "listStaffDocuments",
+        "summary": "Geçerlilik takibi",
+        "tags": [
+          "finance-staff-documents"
+        ],
+        "description": "Etkin personelin yerine geçilmemiş belgeleri, bitişi en yakın önce (süresiz en sonda). `due`: süresi geçen, `withinDays` gün içinde biten, ikisi (`attention`) ya da geçerli; tür ve personel adıyla süzülür, sayfalıdır. Özel nitelikli belgede listede **yalnız tür ve tarihler** döner (`restricted: true`, dosya ve not `null`; K-374). Rol: `yonetici` ve `onburo`; özel nitelikli belgenin (adli sicil, sağlık raporu ve kurumca işaretlenen tür) dosyası ve ayrıntısı yalnız yöneticide (K-374). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Personel adında arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "diploma",
+                "health_report",
+                "criminal_record",
+                "certificate",
+                "id_copy",
+                "other"
+              ]
+            },
+            "in": "query",
+            "name": "documentType",
+            "required": false,
+            "description": "`diploma`, `health_report` sağlık raporu, `criminal_record` adli sicil kaydı, `certificate` sertifika/kurs belgesi, `id_copy` kimlik fotokopisi, `other` diğer"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "expired",
+                "expiring",
+                "attention",
+                "valid"
+              ]
+            },
+            "in": "query",
+            "name": "due",
+            "required": false,
+            "description": "`expired` süresi geçen, `expiring` `withinDays` gün içinde biten, `attention` ikisi, `valid` geçerli ya da süresiz"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 365
+            },
+            "in": "query",
+            "name": "withinDays",
+            "required": false,
+            "description": "Yaklaşan bitiş penceresi, gün (0–365; varsayılan 30)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "membershipId": {
+                            "type": "string"
+                          },
+                          "documentType": {
+                            "type": "string",
+                            "enum": [
+                              "diploma",
+                              "health_report",
+                              "criminal_record",
+                              "certificate",
+                              "id_copy",
+                              "other"
+                            ],
+                            "description": "`diploma`, `health_report` sağlık raporu, `criminal_record` adli sicil kaydı, `certificate` sertifika/kurs belgesi, `id_copy` kimlik fotokopisi, `other` diğer"
+                          },
+                          "healthReportKind": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "pre_employment",
+                                  "periodic"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Sağlık raporunda `pre_employment` işe giriş, `periodic` periyodik"
+                          },
+                          "documentDate": {
+                            "type": "string",
+                            "description": "Belge tarihi (YYYY-MM-DD)"
+                          },
+                          "validUntil": {
+                            "description": "Geçerlilik bitişi (dahil); boşsa süresiz",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "validUntilSource": {
+                            "type": "string",
+                            "enum": [
+                              "type",
+                              "manual"
+                            ],
+                            "description": "`type` türün süresinden hesaplandı, `manual` elle girildi"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "valid",
+                              "expiring",
+                              "expired",
+                              "superseded"
+                            ],
+                            "description": "Bugüne göre: `valid`, `expiring` (bitişi `withinDays` gün içinde), `expired`, `superseded` (yerine yenisi geçti)"
+                          },
+                          "daysLeft": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Bitişe kalan gün (bugün biten 0, geçen eksi); süresizde `null`"
+                          },
+                          "sensitive": {
+                            "type": "boolean",
+                            "description": "Türü özel nitelikli mi"
+                          },
+                          "restricted": {
+                            "type": "boolean",
+                            "description": "Gizli görünüm (K-374): yalnız tür, tarihler ve durum; dosya bilgisi ve not `null`"
+                          },
+                          "hasFile": {
+                            "description": "Dosya eklenmiş mi; gizli görünümde `null`",
+                            "type": [
+                              "boolean",
+                              "null"
+                            ]
+                          },
+                          "file": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "byteSize": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": [
+                                  "name",
+                                  "byteSize"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Dosyanın adı ve boyutu; dosya yoksa ya da gizli görünümde `null`"
+                          },
+                          "note": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "replacesId": {
+                            "description": "Bu belgenin yerine geçtiği belge",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "supersededAt": {
+                            "description": "Yerine yeni belge geçtiği an",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "staff": {
+                            "type": "object",
+                            "properties": {
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "role": {
+                                "type": "string",
+                                "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                              },
+                              "active": {
+                                "type": "boolean",
+                                "description": "Pasifleştirilmiş (ayrılan) personelde `false`"
+                              }
+                            },
+                            "required": [
+                              "membershipId",
+                              "name",
+                              "role",
+                              "active"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "membershipId",
+                          "documentType",
+                          "healthReportKind",
+                          "documentDate",
+                          "validUntil",
+                          "validUntilSource",
+                          "status",
+                          "daysLeft",
+                          "sensitive",
+                          "restricted",
+                          "hasFile",
+                          "file",
+                          "note",
+                          "replacesId",
+                          "supersededAt",
+                          "createdAt",
+                          "staff"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createStaffDocument",
+        "summary": "Özlük belgesi kaydet",
+        "tags": [
+          "finance-staff-documents"
+        ],
+        "description": "Personel, tür (sağlık raporunda işe giriş/periyodik), belge tarihi (bugünden sonra olamaz, 422 `staff_document_date_in_future`), isteğe bağlı elle geçerlilik bitişi (verilmezse türün süresinden), isteğe bağlı dosya (`POST /files` amaç `document`; yükleyenin, hazır ve bağsız olmalı) ve not. Tekil türde (sağlık raporu, adli sicil, kimlik) yeni belge geçerli belgenin yerine kendiliğinden geçer; diploma, sertifika ve diğerde yalnız `replacesDocumentId` verilirse (422 `staff_document_replace_not_found`). Yerine geçtiği belgeden eski tarih 422 `staff_document_older_than_current`. Yerine geçilen belge yanıtta `superseded` olarak döner (K-373). Özel nitelikli türü ön büro kaydedemez (403 `staff_document_sensitive_forbidden`) ve bu türe not yazılmaz (422 `staff_document_sensitive_note`). Olmayan üyelik 422 `staff_document_staff_not_found`, öğrenci/veli 422 `staff_document_not_staff`, pasif personel 422 `staff_document_staff_inactive`. Belge silinmez. Denetim kaydına alan adları yazılır. `Idempotency-Key` isteğe bağlı. Rol: `yonetici` ve `onburo`; özel nitelikli belgenin (adli sicil, sağlık raporu ve kurumca işaretlenen tür) dosyası ve ayrıntısı yalnız yöneticide (K-374). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "membershipId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Belgenin ait olduğu personelin kurum üyeliği"
+                  },
+                  "documentType": {
+                    "type": "string",
+                    "enum": [
+                      "diploma",
+                      "health_report",
+                      "criminal_record",
+                      "certificate",
+                      "id_copy",
+                      "other"
+                    ],
+                    "description": "`diploma`, `health_report` sağlık raporu, `criminal_record` adli sicil kaydı, `certificate` sertifika/kurs belgesi, `id_copy` kimlik fotokopisi, `other` diğer"
+                  },
+                  "healthReportKind": {
+                    "default": null,
+                    "description": "Yalnız sağlık raporunda ve orada zorunlu: `pre_employment` işe giriş, `periodic`",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "pre_employment",
+                          "periodic"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "documentDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Belgenin düzenlendiği gün; bugünden sonra olamaz"
+                  },
+                  "validUntil": {
+                    "default": null,
+                    "description": "Geçerlilik bitişi (dahil), elle; `null` ise türün geçerlilik süresinden hesaplanır (süresiz türde boş kalır)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "fileId": {
+                    "default": null,
+                    "description": "Yüklenmiş `document` amaçlı dosya (`POST /files`); isteğe bağlı",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "note": {
+                    "description": "İsteğe bağlı not, en çok 300 karakter; denetim kaydına yazılmaz",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 300
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "replacesDocumentId": {
+                    "default": null,
+                    "description": "Yerine geçilen belge: diploma, sertifika ve diğerde isteğe bağlı; tekil türlerde verilirse geçerli belge olmalıdır",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "membershipId",
+                  "documentType",
+                  "documentDate"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "document": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "membershipId": {
+                              "type": "string"
+                            },
+                            "documentType": {
+                              "type": "string",
+                              "enum": [
+                                "diploma",
+                                "health_report",
+                                "criminal_record",
+                                "certificate",
+                                "id_copy",
+                                "other"
+                              ],
+                              "description": "`diploma`, `health_report` sağlık raporu, `criminal_record` adli sicil kaydı, `certificate` sertifika/kurs belgesi, `id_copy` kimlik fotokopisi, `other` diğer"
+                            },
+                            "healthReportKind": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "pre_employment",
+                                    "periodic"
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Sağlık raporunda `pre_employment` işe giriş, `periodic` periyodik"
+                            },
+                            "documentDate": {
+                              "type": "string",
+                              "description": "Belge tarihi (YYYY-MM-DD)"
+                            },
+                            "validUntil": {
+                              "description": "Geçerlilik bitişi (dahil); boşsa süresiz",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "validUntilSource": {
+                              "type": "string",
+                              "enum": [
+                                "type",
+                                "manual"
+                              ],
+                              "description": "`type` türün süresinden hesaplandı, `manual` elle girildi"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "valid",
+                                "expiring",
+                                "expired",
+                                "superseded"
+                              ],
+                              "description": "Bugüne göre: `valid`, `expiring` (bitişi `withinDays` gün içinde), `expired`, `superseded` (yerine yenisi geçti)"
+                            },
+                            "daysLeft": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Bitişe kalan gün (bugün biten 0, geçen eksi); süresizde `null`"
+                            },
+                            "sensitive": {
+                              "type": "boolean",
+                              "description": "Türü özel nitelikli mi"
+                            },
+                            "restricted": {
+                              "type": "boolean",
+                              "description": "Gizli görünüm (K-374): yalnız tür, tarihler ve durum; dosya bilgisi ve not `null`"
+                            },
+                            "hasFile": {
+                              "description": "Dosya eklenmiş mi; gizli görünümde `null`",
+                              "type": [
+                                "boolean",
+                                "null"
+                              ]
+                            },
+                            "file": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "name": {
+                                      "type": "string"
+                                    },
+                                    "byteSize": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    }
+                                  },
+                                  "required": [
+                                    "name",
+                                    "byteSize"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Dosyanın adı ve boyutu; dosya yoksa ya da gizli görünümde `null`"
+                            },
+                            "note": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "replacesId": {
+                              "description": "Bu belgenin yerine geçtiği belge",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "supersededAt": {
+                              "description": "Yerine yeni belge geçtiği an",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "createdAt": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "membershipId",
+                            "documentType",
+                            "healthReportKind",
+                            "documentDate",
+                            "validUntil",
+                            "validUntilSource",
+                            "status",
+                            "daysLeft",
+                            "sensitive",
+                            "restricted",
+                            "hasFile",
+                            "file",
+                            "note",
+                            "replacesId",
+                            "supersededAt",
+                            "createdAt"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "superseded": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "membershipId": {
+                                  "type": "string"
+                                },
+                                "documentType": {
+                                  "type": "string",
+                                  "enum": [
+                                    "diploma",
+                                    "health_report",
+                                    "criminal_record",
+                                    "certificate",
+                                    "id_copy",
+                                    "other"
+                                  ],
+                                  "description": "`diploma`, `health_report` sağlık raporu, `criminal_record` adli sicil kaydı, `certificate` sertifika/kurs belgesi, `id_copy` kimlik fotokopisi, `other` diğer"
+                                },
+                                "healthReportKind": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "pre_employment",
+                                        "periodic"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Sağlık raporunda `pre_employment` işe giriş, `periodic` periyodik"
+                                },
+                                "documentDate": {
+                                  "type": "string",
+                                  "description": "Belge tarihi (YYYY-MM-DD)"
+                                },
+                                "validUntil": {
+                                  "description": "Geçerlilik bitişi (dahil); boşsa süresiz",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "validUntilSource": {
+                                  "type": "string",
+                                  "enum": [
+                                    "type",
+                                    "manual"
+                                  ],
+                                  "description": "`type` türün süresinden hesaplandı, `manual` elle girildi"
+                                },
+                                "status": {
+                                  "type": "string",
+                                  "enum": [
+                                    "valid",
+                                    "expiring",
+                                    "expired",
+                                    "superseded"
+                                  ],
+                                  "description": "Bugüne göre: `valid`, `expiring` (bitişi `withinDays` gün içinde), `expired`, `superseded` (yerine yenisi geçti)"
+                                },
+                                "daysLeft": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Bitişe kalan gün (bugün biten 0, geçen eksi); süresizde `null`"
+                                },
+                                "sensitive": {
+                                  "type": "boolean",
+                                  "description": "Türü özel nitelikli mi"
+                                },
+                                "restricted": {
+                                  "type": "boolean",
+                                  "description": "Gizli görünüm (K-374): yalnız tür, tarihler ve durum; dosya bilgisi ve not `null`"
+                                },
+                                "hasFile": {
+                                  "description": "Dosya eklenmiş mi; gizli görünümde `null`",
+                                  "type": [
+                                    "boolean",
+                                    "null"
+                                  ]
+                                },
+                                "file": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "name": {
+                                          "type": "string"
+                                        },
+                                        "byteSize": {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        }
+                                      },
+                                      "required": [
+                                        "name",
+                                        "byteSize"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Dosyanın adı ve boyutu; dosya yoksa ya da gizli görünümde `null`"
+                                },
+                                "note": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "replacesId": {
+                                  "description": "Bu belgenin yerine geçtiği belge",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "supersededAt": {
+                                  "description": "Yerine yeni belge geçtiği an",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "createdAt": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "membershipId",
+                                "documentType",
+                                "healthReportKind",
+                                "documentDate",
+                                "validUntil",
+                                "validUntilSource",
+                                "status",
+                                "daysLeft",
+                                "sensitive",
+                                "restricted",
+                                "hasFile",
+                                "file",
+                                "note",
+                                "replacesId",
+                                "supersededAt",
+                                "createdAt"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Yerine geçilen (artık geçmiş) belge"
+                        }
+                      },
+                      "required": [
+                        "document",
+                        "superseded"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/staff-document-staff": {
+      "get": {
+        "operationId": "listStaffDocumentStaff",
+        "summary": "Personel ve özlük belgesi özeti",
+        "tags": [
+          "finance-staff-documents"
+        ],
+        "description": "Kurumun yönetici, öğretmen ve ön büro üyelikleri ada göre; her satırda yerine geçilmemiş belge sayısı, eksik zorunlu türler, süresi geçen ve `withinDays` gün içinde biten belge sayısı (pasif personelde eksik ve uyarı yok). `missing=true` yalnız zorunlu belgesi eksik etkin personeli verir. Rol: `yonetici` ve `onburo`; özel nitelikli belgenin (adli sicil, sağlık raporu ve kurumca işaretlenen tür) dosyası ve ayrıntısı yalnız yöneticide (K-374). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Personel adında arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "passive"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "`active` etkin, `passive` pasifleştirilmiş (ayrılan) personel"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "in": "query",
+            "name": "missing",
+            "required": false,
+            "description": "`true` yalnız zorunlu belgesi eksik etkin personel"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 365
+            },
+            "in": "query",
+            "name": "withinDays",
+            "required": false,
+            "description": "Yaklaşan bitiş penceresi, gün (0–365; varsayılan 30)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "membershipId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "role": {
+                            "type": "string",
+                            "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                          },
+                          "active": {
+                            "type": "boolean",
+                            "description": "Pasifleştirilmiş (ayrılan) personelde `false`"
+                          },
+                          "documentCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Yerine geçilmemiş belge sayısı"
+                          },
+                          "missingTypes": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "diploma",
+                                "health_report",
+                                "criminal_record",
+                                "certificate",
+                                "id_copy",
+                                "other"
+                              ],
+                              "description": "`diploma`, `health_report` sağlık raporu, `criminal_record` adli sicil kaydı, `certificate` sertifika/kurs belgesi, `id_copy` kimlik fotokopisi, `other` diğer"
+                            },
+                            "description": "Eksik zorunlu türler (pasif personelde boş)"
+                          },
+                          "expiredCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Süresi geçen belge sayısı"
+                          },
+                          "expiringCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`withinDays` gün içinde bitecek belge sayısı"
+                          }
+                        },
+                        "required": [
+                          "membershipId",
+                          "name",
+                          "role",
+                          "active",
+                          "documentCount",
+                          "missingTypes",
+                          "expiredCount",
+                          "expiringCount"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/staff-document-staff/{membershipId}": {
+      "get": {
+        "operationId": "getStaffDocuments",
+        "summary": "Personelin özlük belgeleri",
+        "tags": [
+          "finance-staff-documents"
+        ],
+        "description": "Bütün belgeler (yerine geçilenler dahil) ve eksik zorunlu türler. Özel nitelikli belgenin dosya bilgisi yalnız yöneticiye döner; ön büroda yalnız tür ve tarihler (K-374). Olmayan, başka kurumun ya da personel olmayan (öğrenci, veli) üyelik 404. Rol: `yonetici` ve `onburo`; özel nitelikli belgenin (adli sicil, sağlık raporu ve kurumca işaretlenen tür) dosyası ve ayrıntısı yalnız yöneticide (K-374). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "path",
+            "name": "membershipId",
+            "required": true,
+            "description": "Personelin kurum üyeliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "membershipId": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "type": "string",
+                          "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                        },
+                        "active": {
+                          "type": "boolean",
+                          "description": "Pasifleştirilmiş (ayrılan) personelde `false`"
+                        },
+                        "missingTypes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "diploma",
+                              "health_report",
+                              "criminal_record",
+                              "certificate",
+                              "id_copy",
+                              "other"
+                            ],
+                            "description": "`diploma`, `health_report` sağlık raporu, `criminal_record` adli sicil kaydı, `certificate` sertifika/kurs belgesi, `id_copy` kimlik fotokopisi, `other` diğer"
+                          },
+                          "description": "Eksik zorunlu türler (pasif personelde boş)"
+                        },
+                        "documents": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "documentType": {
+                                "type": "string",
+                                "enum": [
+                                  "diploma",
+                                  "health_report",
+                                  "criminal_record",
+                                  "certificate",
+                                  "id_copy",
+                                  "other"
+                                ],
+                                "description": "`diploma`, `health_report` sağlık raporu, `criminal_record` adli sicil kaydı, `certificate` sertifika/kurs belgesi, `id_copy` kimlik fotokopisi, `other` diğer"
+                              },
+                              "healthReportKind": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "pre_employment",
+                                      "periodic"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Sağlık raporunda `pre_employment` işe giriş, `periodic` periyodik"
+                              },
+                              "documentDate": {
+                                "type": "string",
+                                "description": "Belge tarihi (YYYY-MM-DD)"
+                              },
+                              "validUntil": {
+                                "description": "Geçerlilik bitişi (dahil); boşsa süresiz",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "validUntilSource": {
+                                "type": "string",
+                                "enum": [
+                                  "type",
+                                  "manual"
+                                ],
+                                "description": "`type` türün süresinden hesaplandı, `manual` elle girildi"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "valid",
+                                  "expiring",
+                                  "expired",
+                                  "superseded"
+                                ],
+                                "description": "Bugüne göre: `valid`, `expiring` (bitişi `withinDays` gün içinde), `expired`, `superseded` (yerine yenisi geçti)"
+                              },
+                              "daysLeft": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Bitişe kalan gün (bugün biten 0, geçen eksi); süresizde `null`"
+                              },
+                              "sensitive": {
+                                "type": "boolean",
+                                "description": "Türü özel nitelikli mi"
+                              },
+                              "restricted": {
+                                "type": "boolean",
+                                "description": "Gizli görünüm (K-374): yalnız tür, tarihler ve durum; dosya bilgisi ve not `null`"
+                              },
+                              "hasFile": {
+                                "description": "Dosya eklenmiş mi; gizli görünümde `null`",
+                                "type": [
+                                  "boolean",
+                                  "null"
+                                ]
+                              },
+                              "file": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "name": {
+                                        "type": "string"
+                                      },
+                                      "byteSize": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": [
+                                      "name",
+                                      "byteSize"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Dosyanın adı ve boyutu; dosya yoksa ya da gizli görünümde `null`"
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "replacesId": {
+                                "description": "Bu belgenin yerine geçtiği belge",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "supersededAt": {
+                                "description": "Yerine yeni belge geçtiği an",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "membershipId",
+                              "documentType",
+                              "healthReportKind",
+                              "documentDate",
+                              "validUntil",
+                              "validUntilSource",
+                              "status",
+                              "daysLeft",
+                              "sensitive",
+                              "restricted",
+                              "hasFile",
+                              "file",
+                              "note",
+                              "replacesId",
+                              "supersededAt",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Bütün belgeler (yerine geçilenler dahil), tür ve belge tarihine göre"
+                        }
+                      },
+                      "required": [
+                        "membershipId",
+                        "name",
+                        "role",
+                        "active",
+                        "missingTypes",
+                        "documents"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/staff-documents/{documentId}/file-url": {
+      "get": {
+        "operationId": "getStaffDocumentFileUrl",
+        "summary": "Özlük belgesinin dosyasını aç",
+        "tags": [
+          "finance-staff-documents"
+        ],
+        "description": "Belgenin dosyası için kısa ömürlü imzalı bağlantı (5 dk). Her üretim denetim kaydına `finance.staff_document.file_open` olarak yazılır; denetim yazılamazsa bağlantı dönmez. Özel nitelikli belgenin dosyasını yalnız yönetici açar (ön büro 403 `staff_document_sensitive_forbidden`; K-374). Dosyasız belge 422 `staff_document_no_file`; dosya işlenirken 409 `file_processing`. Belge dosyası `GET /files/{fileId}/url` yolundan açılmaz (404). Başka kurumun belgesi 404. Rol: `yonetici` ve `onburo`; özel nitelikli belgenin (adli sicil, sağlık raporu ve kurumca işaretlenen tür) dosyası ve ayrıntısı yalnız yöneticide (K-374). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "documentId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "description": "Kısa ömürlü imzalı GET bağlantısı"
+                        },
+                        "expiresAt": {
+                          "type": "string",
+                          "description": "Bağlantının geçerlilik sonu"
+                        }
+                      },
+                      "required": [
+                        "url",
+                        "expiresAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

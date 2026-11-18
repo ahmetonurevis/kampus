@@ -2791,6 +2791,36 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       proof(kind)('finance-trip-plans.test.ts', 'DOM-FIN-111: başka kurumun planı 404', marker),
     ]),
   ),
+  // Onur: personel özlük belgeleri (ON-173; DOM-FIN-113).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/staff-document-types', 'get(TYPES, a.admin)'],
+        ['gövde', 'PATCH /api/v1/finance/staff-document-types', "call('PATCH', TYPES, a.admin"],
+        ['liste', 'GET /api/v1/finance/staff-document-alerts', 'get(ALERTS, a.admin)'],
+        ['liste', 'GET /api/v1/finance/staff-documents', 'listOf(a.admin, DOCS)'],
+        ['gövde', 'POST /api/v1/finance/staff-documents', 'institutionId: b.id'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/staff-documents/:documentId/file-url',
+          '/file-url`, a.admin',
+        ],
+        ['liste', 'GET /api/v1/finance/staff-document-staff', 'listOf(a.admin, STAFF)'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/staff-document-staff/:membershipId',
+          '`${STAFF}/${bStaff}`, a.admin',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-staff-documents.test.ts',
+        'başka kurumun personeli ve belgesi 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

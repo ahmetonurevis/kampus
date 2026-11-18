@@ -10072,6 +10072,134 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/staff-document-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Özlük belgesi tür ayarları
+         * @description Altı belge türünün (diploma, sağlık raporu, adli sicil kaydı, sertifika, kimlik fotokopisi, diğer) zorunluluğu, geçerlilik süresi (ay) ve özel nitelikli işareti; ayarlanmamış tür platform varsayılanıdır (`customized: false`; K-372). Rol: `yonetici` ve `onburo`; özel nitelikli belgenin (adli sicil, sağlık raporu ve kurumca işaretlenen tür) dosyası ve ayrıntısı yalnız yöneticide (K-374). Modül `finance`.
+         */
+        get: operations["getStaffDocumentTypes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Özlük belgesi tür ayarlarını değiştir
+         * @description Gönderilen türlerin ayarı bütünüyle yazılır (zorunlu, geçerlilik süresi 1–120 ay ya da `null` süresiz, özel nitelikli). Adli sicil ve sağlık raporunun özel nitelikli işareti kaldırılamaz (400). Kayıtlı belgelerin bitişi değişmez (K-372). Denetim `finance.staff_document_type.update` (tür adları). Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.
+         */
+        patch: operations["updateStaffDocumentTypes"];
+        trace?: never;
+    };
+    "/api/v1/finance/staff-document-alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Özlük belgesi uyarı sayıları
+         * @description Etkin personelde süresi geçen ve `withinDays` gün (varsayılan 30) içinde bitecek belge sayısı ile zorunlu belgesi eksik personel sayısı (pano ve sekme rozeti). Bildirim gönderilmez. Rol: `yonetici` ve `onburo`; özel nitelikli belgenin (adli sicil, sağlık raporu ve kurumca işaretlenen tür) dosyası ve ayrıntısı yalnız yöneticide (K-374). Modül `finance`.
+         */
+        get: operations["getStaffDocumentAlerts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staff-documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Geçerlilik takibi
+         * @description Etkin personelin yerine geçilmemiş belgeleri, bitişi en yakın önce (süresiz en sonda). `due`: süresi geçen, `withinDays` gün içinde biten, ikisi (`attention`) ya da geçerli; tür ve personel adıyla süzülür, sayfalıdır. Özel nitelikli belgede listede **yalnız tür ve tarihler** döner (`restricted: true`, dosya ve not `null`; K-374). Rol: `yonetici` ve `onburo`; özel nitelikli belgenin (adli sicil, sağlık raporu ve kurumca işaretlenen tür) dosyası ve ayrıntısı yalnız yöneticide (K-374). Modül `finance`.
+         */
+        get: operations["listStaffDocuments"];
+        put?: never;
+        /**
+         * Özlük belgesi kaydet
+         * @description Personel, tür (sağlık raporunda işe giriş/periyodik), belge tarihi (bugünden sonra olamaz, 422 `staff_document_date_in_future`), isteğe bağlı elle geçerlilik bitişi (verilmezse türün süresinden), isteğe bağlı dosya (`POST /files` amaç `document`; yükleyenin, hazır ve bağsız olmalı) ve not. Tekil türde (sağlık raporu, adli sicil, kimlik) yeni belge geçerli belgenin yerine kendiliğinden geçer; diploma, sertifika ve diğerde yalnız `replacesDocumentId` verilirse (422 `staff_document_replace_not_found`). Yerine geçtiği belgeden eski tarih 422 `staff_document_older_than_current`. Yerine geçilen belge yanıtta `superseded` olarak döner (K-373). Özel nitelikli türü ön büro kaydedemez (403 `staff_document_sensitive_forbidden`) ve bu türe not yazılmaz (422 `staff_document_sensitive_note`). Olmayan üyelik 422 `staff_document_staff_not_found`, öğrenci/veli 422 `staff_document_not_staff`, pasif personel 422 `staff_document_staff_inactive`. Belge silinmez. Denetim kaydına alan adları yazılır. `Idempotency-Key` isteğe bağlı. Rol: `yonetici` ve `onburo`; özel nitelikli belgenin (adli sicil, sağlık raporu ve kurumca işaretlenen tür) dosyası ve ayrıntısı yalnız yöneticide (K-374). Modül `finance`.
+         */
+        post: operations["createStaffDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staff-document-staff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Personel ve özlük belgesi özeti
+         * @description Kurumun yönetici, öğretmen ve ön büro üyelikleri ada göre; her satırda yerine geçilmemiş belge sayısı, eksik zorunlu türler, süresi geçen ve `withinDays` gün içinde biten belge sayısı (pasif personelde eksik ve uyarı yok). `missing=true` yalnız zorunlu belgesi eksik etkin personeli verir. Rol: `yonetici` ve `onburo`; özel nitelikli belgenin (adli sicil, sağlık raporu ve kurumca işaretlenen tür) dosyası ve ayrıntısı yalnız yöneticide (K-374). Modül `finance`.
+         */
+        get: operations["listStaffDocumentStaff"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staff-document-staff/{membershipId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Personelin özlük belgeleri
+         * @description Bütün belgeler (yerine geçilenler dahil) ve eksik zorunlu türler. Özel nitelikli belgenin dosya bilgisi yalnız yöneticiye döner; ön büroda yalnız tür ve tarihler (K-374). Olmayan, başka kurumun ya da personel olmayan (öğrenci, veli) üyelik 404. Rol: `yonetici` ve `onburo`; özel nitelikli belgenin (adli sicil, sağlık raporu ve kurumca işaretlenen tür) dosyası ve ayrıntısı yalnız yöneticide (K-374). Modül `finance`.
+         */
+        get: operations["getStaffDocuments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staff-documents/{documentId}/file-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Özlük belgesinin dosyasını aç
+         * @description Belgenin dosyası için kısa ömürlü imzalı bağlantı (5 dk). Her üretim denetim kaydına `finance.staff_document.file_open` olarak yazılır; denetim yazılamazsa bağlantı dönmez. Özel nitelikli belgenin dosyasını yalnız yönetici açar (ön büro 403 `staff_document_sensitive_forbidden`; K-374). Dosyasız belge 422 `staff_document_no_file`; dosya işlenirken 409 `file_processing`. Belge dosyası `GET /files/{fileId}/url` yolundan açılmaz (404). Başka kurumun belgesi 404. Rol: `yonetici` ve `onburo`; özel nitelikli belgenin (adli sicil, sağlık raporu ve kurumca işaretlenen tür) dosyası ve ayrıntısı yalnız yöneticide (K-374). Modül `finance`.
+         */
+        get: operations["getStaffDocumentFileUrl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -105700,6 +105828,1152 @@ export interface operations {
                                 actorName: string | null;
                                 occurredAt: string;
                             }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getStaffDocumentTypes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /**
+                             * @description `diploma`, `health_report` sağlık raporu, `criminal_record` adli sicil kaydı, `certificate` sertifika/kurs belgesi, `id_copy` kimlik fotokopisi, `other` diğer
+                             * @enum {string}
+                             */
+                            documentType: "diploma" | "health_report" | "criminal_record" | "certificate" | "id_copy" | "other";
+                            /** @description Her etkin personelde bulunmalı mı */
+                            required: boolean;
+                            /** @description Geçerlilik süresi (ay); `null` süresiz */
+                            validityMonths: number | null;
+                            /** @description Özel nitelikli (KVKK md. 6) */
+                            sensitive: boolean;
+                            /** @description Kanunen özel nitelikli tür (adli sicil, sağlık raporu): işaret kaldırılamaz */
+                            sensitiveLocked: boolean;
+                            /** @description Kurum ayarı mı (`false` ise platform varsayılanı) */
+                            customized: boolean;
+                            updatedAt: string | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateStaffDocumentTypes: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Diploma / mezuniyet belgesi */
+                    diploma?: {
+                        /** @description Her personelde bulunmalı mı */
+                        required: boolean;
+                        /** @description Belge tarihinden itibaren geçerlilik süresi (ay); `null` süresiz */
+                        validityMonths: number | null;
+                        /** @description Özel nitelikli kişisel veri (KVKK md. 6): dosyayı yalnız yönetici açar, listede yalnız tür ve tarih */
+                        sensitive: boolean;
+                    };
+                    /** @description Sağlık raporu */
+                    health_report?: {
+                        /** @description Her personelde bulunmalı mı */
+                        required: boolean;
+                        /** @description Belge tarihinden itibaren geçerlilik süresi (ay); `null` süresiz */
+                        validityMonths: number | null;
+                        /** @description Özel nitelikli kişisel veri (KVKK md. 6): dosyayı yalnız yönetici açar, listede yalnız tür ve tarih */
+                        sensitive: boolean;
+                    };
+                    /** @description Adli sicil kaydı */
+                    criminal_record?: {
+                        /** @description Her personelde bulunmalı mı */
+                        required: boolean;
+                        /** @description Belge tarihinden itibaren geçerlilik süresi (ay); `null` süresiz */
+                        validityMonths: number | null;
+                        /** @description Özel nitelikli kişisel veri (KVKK md. 6): dosyayı yalnız yönetici açar, listede yalnız tür ve tarih */
+                        sensitive: boolean;
+                    };
+                    /** @description Sertifika / kurs belgesi */
+                    certificate?: {
+                        /** @description Her personelde bulunmalı mı */
+                        required: boolean;
+                        /** @description Belge tarihinden itibaren geçerlilik süresi (ay); `null` süresiz */
+                        validityMonths: number | null;
+                        /** @description Özel nitelikli kişisel veri (KVKK md. 6): dosyayı yalnız yönetici açar, listede yalnız tür ve tarih */
+                        sensitive: boolean;
+                    };
+                    /** @description Kimlik fotokopisi */
+                    id_copy?: {
+                        /** @description Her personelde bulunmalı mı */
+                        required: boolean;
+                        /** @description Belge tarihinden itibaren geçerlilik süresi (ay); `null` süresiz */
+                        validityMonths: number | null;
+                        /** @description Özel nitelikli kişisel veri (KVKK md. 6): dosyayı yalnız yönetici açar, listede yalnız tür ve tarih */
+                        sensitive: boolean;
+                    };
+                    /** @description Diğer */
+                    other?: {
+                        /** @description Her personelde bulunmalı mı */
+                        required: boolean;
+                        /** @description Belge tarihinden itibaren geçerlilik süresi (ay); `null` süresiz */
+                        validityMonths: number | null;
+                        /** @description Özel nitelikli kişisel veri (KVKK md. 6): dosyayı yalnız yönetici açar, listede yalnız tür ve tarih */
+                        sensitive: boolean;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /**
+                             * @description `diploma`, `health_report` sağlık raporu, `criminal_record` adli sicil kaydı, `certificate` sertifika/kurs belgesi, `id_copy` kimlik fotokopisi, `other` diğer
+                             * @enum {string}
+                             */
+                            documentType: "diploma" | "health_report" | "criminal_record" | "certificate" | "id_copy" | "other";
+                            /** @description Her etkin personelde bulunmalı mı */
+                            required: boolean;
+                            /** @description Geçerlilik süresi (ay); `null` süresiz */
+                            validityMonths: number | null;
+                            /** @description Özel nitelikli (KVKK md. 6) */
+                            sensitive: boolean;
+                            /** @description Kanunen özel nitelikli tür (adli sicil, sağlık raporu): işaret kaldırılamaz */
+                            sensitiveLocked: boolean;
+                            /** @description Kurum ayarı mı (`false` ise platform varsayılanı) */
+                            customized: boolean;
+                            updatedAt: string | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getStaffDocumentAlerts: {
+        parameters: {
+            query?: {
+                /** @description Yaklaşan bitiş penceresi, gün (0–365; varsayılan 30) */
+                withinDays?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            withinDays: number;
+                            /** @description Etkin personelde süresi geçen belge */
+                            expiredCount: number;
+                            /** @description Etkin personelde `withinDays` gün içinde biten belge */
+                            expiringCount: number;
+                            /** @description Zorunlu belgesi eksik etkin personel */
+                            staffMissingCount: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listStaffDocuments: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Personel adında arama */
+                q?: string;
+                /** @description `diploma`, `health_report` sağlık raporu, `criminal_record` adli sicil kaydı, `certificate` sertifika/kurs belgesi, `id_copy` kimlik fotokopisi, `other` diğer */
+                documentType?: "diploma" | "health_report" | "criminal_record" | "certificate" | "id_copy" | "other";
+                /** @description `expired` süresi geçen, `expiring` `withinDays` gün içinde biten, `attention` ikisi, `valid` geçerli ya da süresiz */
+                due?: "expired" | "expiring" | "attention" | "valid";
+                /** @description Yaklaşan bitiş penceresi, gün (0–365; varsayılan 30) */
+                withinDays?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            membershipId: string;
+                            /**
+                             * @description `diploma`, `health_report` sağlık raporu, `criminal_record` adli sicil kaydı, `certificate` sertifika/kurs belgesi, `id_copy` kimlik fotokopisi, `other` diğer
+                             * @enum {string}
+                             */
+                            documentType: "diploma" | "health_report" | "criminal_record" | "certificate" | "id_copy" | "other";
+                            /** @description Sağlık raporunda `pre_employment` işe giriş, `periodic` periyodik */
+                            healthReportKind: ("pre_employment" | "periodic") | null;
+                            /** @description Belge tarihi (YYYY-MM-DD) */
+                            documentDate: string;
+                            /** @description Geçerlilik bitişi (dahil); boşsa süresiz */
+                            validUntil: string | null;
+                            /**
+                             * @description `type` türün süresinden hesaplandı, `manual` elle girildi
+                             * @enum {string}
+                             */
+                            validUntilSource: "type" | "manual";
+                            /**
+                             * @description Bugüne göre: `valid`, `expiring` (bitişi `withinDays` gün içinde), `expired`, `superseded` (yerine yenisi geçti)
+                             * @enum {string}
+                             */
+                            status: "valid" | "expiring" | "expired" | "superseded";
+                            /** @description Bitişe kalan gün (bugün biten 0, geçen eksi); süresizde `null` */
+                            daysLeft: number | null;
+                            /** @description Türü özel nitelikli mi */
+                            sensitive: boolean;
+                            /** @description Gizli görünüm (K-374): yalnız tür, tarihler ve durum; dosya bilgisi ve not `null` */
+                            restricted: boolean;
+                            /** @description Dosya eklenmiş mi; gizli görünümde `null` */
+                            hasFile: boolean | null;
+                            /** @description Dosyanın adı ve boyutu; dosya yoksa ya da gizli görünümde `null` */
+                            file: {
+                                name: string;
+                                byteSize: number;
+                            } | null;
+                            note: string | null;
+                            /** @description Bu belgenin yerine geçtiği belge */
+                            replacesId: string | null;
+                            /** @description Yerine yeni belge geçtiği an */
+                            supersededAt: string | null;
+                            createdAt: string;
+                            staff: {
+                                membershipId: string;
+                                name: string;
+                                /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                                role: string;
+                                /** @description Pasifleştirilmiş (ayrılan) personelde `false` */
+                                active: boolean;
+                            };
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createStaffDocument: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Belgenin ait olduğu personelin kurum üyeliği */
+                    membershipId: string;
+                    /**
+                     * @description `diploma`, `health_report` sağlık raporu, `criminal_record` adli sicil kaydı, `certificate` sertifika/kurs belgesi, `id_copy` kimlik fotokopisi, `other` diğer
+                     * @enum {string}
+                     */
+                    documentType: "diploma" | "health_report" | "criminal_record" | "certificate" | "id_copy" | "other";
+                    /**
+                     * @description Yalnız sağlık raporunda ve orada zorunlu: `pre_employment` işe giriş, `periodic`
+                     * @default null
+                     */
+                    healthReportKind?: ("pre_employment" | "periodic") | null;
+                    /** @description Belgenin düzenlendiği gün; bugünden sonra olamaz */
+                    documentDate: string;
+                    /**
+                     * @description Geçerlilik bitişi (dahil), elle; `null` ise türün geçerlilik süresinden hesaplanır (süresiz türde boş kalır)
+                     * @default null
+                     */
+                    validUntil?: string | null;
+                    /**
+                     * @description Yüklenmiş `document` amaçlı dosya (`POST /files`); isteğe bağlı
+                     * @default null
+                     */
+                    fileId?: string | null;
+                    /** @description İsteğe bağlı not, en çok 300 karakter; denetim kaydına yazılmaz */
+                    note?: string | null;
+                    /**
+                     * @description Yerine geçilen belge: diploma, sertifika ve diğerde isteğe bağlı; tekil türlerde verilirse geçerli belge olmalıdır
+                     * @default null
+                     */
+                    replacesDocumentId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            document: {
+                                id: string;
+                                membershipId: string;
+                                /**
+                                 * @description `diploma`, `health_report` sağlık raporu, `criminal_record` adli sicil kaydı, `certificate` sertifika/kurs belgesi, `id_copy` kimlik fotokopisi, `other` diğer
+                                 * @enum {string}
+                                 */
+                                documentType: "diploma" | "health_report" | "criminal_record" | "certificate" | "id_copy" | "other";
+                                /** @description Sağlık raporunda `pre_employment` işe giriş, `periodic` periyodik */
+                                healthReportKind: ("pre_employment" | "periodic") | null;
+                                /** @description Belge tarihi (YYYY-MM-DD) */
+                                documentDate: string;
+                                /** @description Geçerlilik bitişi (dahil); boşsa süresiz */
+                                validUntil: string | null;
+                                /**
+                                 * @description `type` türün süresinden hesaplandı, `manual` elle girildi
+                                 * @enum {string}
+                                 */
+                                validUntilSource: "type" | "manual";
+                                /**
+                                 * @description Bugüne göre: `valid`, `expiring` (bitişi `withinDays` gün içinde), `expired`, `superseded` (yerine yenisi geçti)
+                                 * @enum {string}
+                                 */
+                                status: "valid" | "expiring" | "expired" | "superseded";
+                                /** @description Bitişe kalan gün (bugün biten 0, geçen eksi); süresizde `null` */
+                                daysLeft: number | null;
+                                /** @description Türü özel nitelikli mi */
+                                sensitive: boolean;
+                                /** @description Gizli görünüm (K-374): yalnız tür, tarihler ve durum; dosya bilgisi ve not `null` */
+                                restricted: boolean;
+                                /** @description Dosya eklenmiş mi; gizli görünümde `null` */
+                                hasFile: boolean | null;
+                                /** @description Dosyanın adı ve boyutu; dosya yoksa ya da gizli görünümde `null` */
+                                file: {
+                                    name: string;
+                                    byteSize: number;
+                                } | null;
+                                note: string | null;
+                                /** @description Bu belgenin yerine geçtiği belge */
+                                replacesId: string | null;
+                                /** @description Yerine yeni belge geçtiği an */
+                                supersededAt: string | null;
+                                createdAt: string;
+                            };
+                            /** @description Yerine geçilen (artık geçmiş) belge */
+                            superseded: {
+                                id: string;
+                                membershipId: string;
+                                /**
+                                 * @description `diploma`, `health_report` sağlık raporu, `criminal_record` adli sicil kaydı, `certificate` sertifika/kurs belgesi, `id_copy` kimlik fotokopisi, `other` diğer
+                                 * @enum {string}
+                                 */
+                                documentType: "diploma" | "health_report" | "criminal_record" | "certificate" | "id_copy" | "other";
+                                /** @description Sağlık raporunda `pre_employment` işe giriş, `periodic` periyodik */
+                                healthReportKind: ("pre_employment" | "periodic") | null;
+                                /** @description Belge tarihi (YYYY-MM-DD) */
+                                documentDate: string;
+                                /** @description Geçerlilik bitişi (dahil); boşsa süresiz */
+                                validUntil: string | null;
+                                /**
+                                 * @description `type` türün süresinden hesaplandı, `manual` elle girildi
+                                 * @enum {string}
+                                 */
+                                validUntilSource: "type" | "manual";
+                                /**
+                                 * @description Bugüne göre: `valid`, `expiring` (bitişi `withinDays` gün içinde), `expired`, `superseded` (yerine yenisi geçti)
+                                 * @enum {string}
+                                 */
+                                status: "valid" | "expiring" | "expired" | "superseded";
+                                /** @description Bitişe kalan gün (bugün biten 0, geçen eksi); süresizde `null` */
+                                daysLeft: number | null;
+                                /** @description Türü özel nitelikli mi */
+                                sensitive: boolean;
+                                /** @description Gizli görünüm (K-374): yalnız tür, tarihler ve durum; dosya bilgisi ve not `null` */
+                                restricted: boolean;
+                                /** @description Dosya eklenmiş mi; gizli görünümde `null` */
+                                hasFile: boolean | null;
+                                /** @description Dosyanın adı ve boyutu; dosya yoksa ya da gizli görünümde `null` */
+                                file: {
+                                    name: string;
+                                    byteSize: number;
+                                } | null;
+                                note: string | null;
+                                /** @description Bu belgenin yerine geçtiği belge */
+                                replacesId: string | null;
+                                /** @description Yerine yeni belge geçtiği an */
+                                supersededAt: string | null;
+                                createdAt: string;
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listStaffDocumentStaff: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Personel adında arama */
+                q?: string;
+                /** @description `active` etkin, `passive` pasifleştirilmiş (ayrılan) personel */
+                status?: "active" | "passive";
+                /** @description `true` yalnız zorunlu belgesi eksik etkin personel */
+                missing?: "true" | "false";
+                /** @description Yaklaşan bitiş penceresi, gün (0–365; varsayılan 30) */
+                withinDays?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            membershipId: string;
+                            name: string;
+                            /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                            role: string;
+                            /** @description Pasifleştirilmiş (ayrılan) personelde `false` */
+                            active: boolean;
+                            /** @description Yerine geçilmemiş belge sayısı */
+                            documentCount: number;
+                            /** @description Eksik zorunlu türler (pasif personelde boş) */
+                            missingTypes: ("diploma" | "health_report" | "criminal_record" | "certificate" | "id_copy" | "other")[];
+                            /** @description Süresi geçen belge sayısı */
+                            expiredCount: number;
+                            /** @description `withinDays` gün içinde bitecek belge sayısı */
+                            expiringCount: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getStaffDocuments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Personelin kurum üyeliği */
+                membershipId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            membershipId: string;
+                            name: string;
+                            /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                            role: string;
+                            /** @description Pasifleştirilmiş (ayrılan) personelde `false` */
+                            active: boolean;
+                            /** @description Eksik zorunlu türler (pasif personelde boş) */
+                            missingTypes: ("diploma" | "health_report" | "criminal_record" | "certificate" | "id_copy" | "other")[];
+                            /** @description Bütün belgeler (yerine geçilenler dahil), tür ve belge tarihine göre */
+                            documents: {
+                                id: string;
+                                membershipId: string;
+                                /**
+                                 * @description `diploma`, `health_report` sağlık raporu, `criminal_record` adli sicil kaydı, `certificate` sertifika/kurs belgesi, `id_copy` kimlik fotokopisi, `other` diğer
+                                 * @enum {string}
+                                 */
+                                documentType: "diploma" | "health_report" | "criminal_record" | "certificate" | "id_copy" | "other";
+                                /** @description Sağlık raporunda `pre_employment` işe giriş, `periodic` periyodik */
+                                healthReportKind: ("pre_employment" | "periodic") | null;
+                                /** @description Belge tarihi (YYYY-MM-DD) */
+                                documentDate: string;
+                                /** @description Geçerlilik bitişi (dahil); boşsa süresiz */
+                                validUntil: string | null;
+                                /**
+                                 * @description `type` türün süresinden hesaplandı, `manual` elle girildi
+                                 * @enum {string}
+                                 */
+                                validUntilSource: "type" | "manual";
+                                /**
+                                 * @description Bugüne göre: `valid`, `expiring` (bitişi `withinDays` gün içinde), `expired`, `superseded` (yerine yenisi geçti)
+                                 * @enum {string}
+                                 */
+                                status: "valid" | "expiring" | "expired" | "superseded";
+                                /** @description Bitişe kalan gün (bugün biten 0, geçen eksi); süresizde `null` */
+                                daysLeft: number | null;
+                                /** @description Türü özel nitelikli mi */
+                                sensitive: boolean;
+                                /** @description Gizli görünüm (K-374): yalnız tür, tarihler ve durum; dosya bilgisi ve not `null` */
+                                restricted: boolean;
+                                /** @description Dosya eklenmiş mi; gizli görünümde `null` */
+                                hasFile: boolean | null;
+                                /** @description Dosyanın adı ve boyutu; dosya yoksa ya da gizli görünümde `null` */
+                                file: {
+                                    name: string;
+                                    byteSize: number;
+                                } | null;
+                                note: string | null;
+                                /** @description Bu belgenin yerine geçtiği belge */
+                                replacesId: string | null;
+                                /** @description Yerine yeni belge geçtiği an */
+                                supersededAt: string | null;
+                                createdAt: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getStaffDocumentFileUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Kısa ömürlü imzalı GET bağlantısı */
+                            url: string;
+                            /** @description Bağlantının geçerlilik sonu */
+                            expiresAt: string;
                         };
                     };
                 };

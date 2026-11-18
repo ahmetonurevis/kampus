@@ -1,15 +1,19 @@
 import { randomUUID } from 'node:crypto'
 
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
+import { assertPayrollDaysUnlocked } from '@kampus/school-core/lib/finance-payroll-periods.ts'
 import {
   advanceClosedRemainder,
   advanceInstallmentPlan,
+  advanceLockRange,
   advanceOutstanding,
+  fromDayLockRange,
   garnishmentQueue,
   monthlyDeductionRequestSchema,
   monthlyDeductions,
   monthOf,
   pensionOptOutKind,
+  pensionPauseLockRange,
   pensionStateIn,
   planStaffAdvance,
   planStaffAdvanceCancel,
@@ -33,6 +37,7 @@ import {
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 
 import type { Database } from '../db/client.ts'
+import { lockedPayrollMonths } from '../db/finance-payroll-periods.ts'
 import {
   cancelAdvance,
   closeAdvance,
@@ -67,6 +72,11 @@ import { auditWork } from './task-work.ts'
  * servis kurum kilidi altında personel üyeliğini ve kaydı yükler, aynı transaction'da yazar.
  * İcra bilgisi hassastır (K-315): icra dönen her okuma denetim kaydına alan adlarıyla yazılır;
  * daire, dosya, tutar ve gerekçe metni denetime ve loga yazılmaz. Rol ve modül denetimi rotadadır.
+ *
+ * Dönem kilidi (DOM-FIN-108, K-394): kesinti ayını değiştiren yazma kurum kilidi altında onaylı
+ * ayları okur ve kendi etki aralığıyla core `assertPayrollDaysUnlocked`'u çağırır; kilitli aya
+ * değen değişiklik 409 `payroll_period_locked`. Kalan alacak güncellemesi tarihsiz bakiyedir,
+ * denetlenmez.
  */
 
 const ADVANCES = 'staff_advances'
@@ -250,7 +260,12 @@ export function createAdvanceCommand(
       load: async (tx) => {
         const parsed = staffAdvanceSchema.parse(input)
         const staff = await findDeductionStaff(tx, ctx.institutionId, parsed.membershipId)
-        return () => planStaffAdvance(parsed, { today: dayKey(ctx.now), staff })
+        const locked = await lockedPayrollMonths(tx, ctx.institutionId)
+        return () => {
+          const planned = planStaffAdvance(parsed, { today: dayKey(ctx.now), staff })
+          assertPayrollDaysUnlocked(locked, [advanceLockRange(planned)], 'firstMonth')
+          return planned
+        }
       },
       write: async (tx, planned) => {
         await insertAdvance(tx, ctx.institutionId, {
@@ -284,8 +299,14 @@ export function closeAdvanceCommand(
       load: async (tx) => {
         const parsed = staffAdvanceCloseSchema.parse(input)
         const current = await advanceFor(tx, ctx, id, expectedVersion)
+        const locked = await lockedPayrollMonths(tx, ctx.institutionId)
         return () => {
           planStaffAdvanceClose(current, parsed, dayKey(ctx.now))
+          assertPayrollDaysUnlocked(
+            locked,
+            [advanceLockRange(current, parsed.fromMonth)],
+            'fromMonth',
+          )
           return parsed
         }
       },
@@ -323,8 +344,10 @@ export function cancelAdvanceCommand(
       load: async (tx) => {
         const parsed = staffDeductionCancelSchema.parse(input)
         const current = await advanceFor(tx, ctx, id, expectedVersion)
+        const locked = await lockedPayrollMonths(tx, ctx.institutionId)
         return () => {
           planStaffAdvanceCancel(current)
+          assertPayrollDaysUnlocked(locked, [advanceLockRange(current)], 'reason')
           return parsed
         }
       },
@@ -379,6 +402,7 @@ export function createGarnishmentCommand(
         const parsed = staffGarnishmentSchema.parse(input)
         const staff = await findDeductionStaff(tx, ctx.institutionId, parsed.membershipId)
         const state = await loadGarnishmentState(tx, ctx.institutionId, parsed)
+        const locked = await lockedPayrollMonths(tx, ctx.institutionId)
         sequence = state.nextSequence
         return () => {
           const planned = planStaffGarnishment(parsed, { today: dayKey(ctx.now), staff })
@@ -388,6 +412,11 @@ export function createGarnishmentCommand(
               'Bu icra dosyası bu personele zaten kayıtlı.',
               { kind: 'conflict', path: ['fileNumber'] },
             )
+          assertPayrollDaysUnlocked(
+            locked,
+            [fromDayLockRange(planned.receivedDate)],
+            'receivedDate',
+          )
           return planned
         }
       },
@@ -462,8 +491,10 @@ export function closeGarnishmentCommand(
       load: async (tx) => {
         const parsed = staffGarnishmentCloseSchema.parse(input)
         const current = await garnishmentFor(tx, ctx, id, expectedVersion)
+        const locked = await lockedPayrollMonths(tx, ctx.institutionId)
         return () => {
           planStaffGarnishmentClose(current, parsed, dayKey(ctx.now))
+          assertPayrollDaysUnlocked(locked, [fromDayLockRange(parsed.closedDate)], 'closedDate')
           return parsed
         }
       },
@@ -514,7 +545,12 @@ export function createPensionCommand(
         const parsed = staffPensionSchema.parse(input)
         const staff = await findDeductionStaff(tx, ctx.institutionId, parsed.membershipId)
         const hasOpenEnrollment = await hasOpenPension(tx, ctx.institutionId, parsed.membershipId)
-        return () => planStaffPension(parsed, { staff, hasOpenEnrollment })
+        const locked = await lockedPayrollMonths(tx, ctx.institutionId)
+        return () => {
+          const planned = planStaffPension(parsed, { staff, hasOpenEnrollment })
+          assertPayrollDaysUnlocked(locked, [fromDayLockRange(planned.startDate)], 'startDate')
+          return planned
+        }
       },
       write: async (tx, planned) => {
         await insertPension(tx, ctx.institutionId, {
@@ -548,8 +584,10 @@ export function pausePensionCommand(
       load: async (tx) => {
         const parsed = staffPensionPauseSchema.parse(input)
         const current = await pensionFor(tx, ctx, id, expectedVersion)
+        const locked = await lockedPayrollMonths(tx, ctx.institutionId)
         return () => {
           planStaffPensionPause(current, parsed)
+          assertPayrollDaysUnlocked(locked, [pensionPauseLockRange(parsed)], 'fromMonth')
           return [...current.pauses, parsed].sort((a, b) => a.fromMonth.localeCompare(b.fromMonth))
         }
       },
@@ -586,8 +624,10 @@ export function optOutPensionCommand(
       load: async (tx) => {
         const parsed = staffPensionOptOutSchema.parse(input)
         const current = await pensionFor(tx, ctx, id, expectedVersion)
+        const locked = await lockedPayrollMonths(tx, ctx.institutionId)
         return () => {
           planStaffPensionOptOut(current, parsed.optOutDate, dayKey(ctx.now))
+          assertPayrollDaysUnlocked(locked, [fromDayLockRange(parsed.optOutDate)], 'optOutDate')
           return parsed
         }
       },

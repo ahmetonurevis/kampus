@@ -233,19 +233,26 @@ export async function loadRatesBetween(
 const adjustmentsOf = (institutionId: string) =>
   and(eq(payrollAdjustments.institutionId, institutionId), isNull(payrollAdjustments.archivedAt))
 
-/** Hedef ayı aralıkta olan, iptal edilmemiş düzeltmeler (özet için). */
+/** Hedef ayı aralıkta olan, iptal edilmemiş düzeltmeler (dönem özeti ve bordro aktarımı). */
 export async function loadAdjustmentsTargeting(
   db: Database,
   institutionId: string,
   fromMonth: string,
   toMonth: string,
-): Promise<(PayrollSummaryAdjustment & { targetMonth: string })[]> {
+): Promise<
+  (PayrollSummaryAdjustment & {
+    item: PayrollAdjustmentItem
+    sourceMonth: string
+    targetMonth: string
+  })[]
+> {
   return db
     .select({
       id: payrollAdjustments.id,
       membershipId: payrollAdjustments.membershipId,
       item: payrollAdjustments.item,
       amountCents: payrollAdjustments.amountCents,
+      sourceMonth: payrollAdjustments.sourceMonth,
       targetMonth: payrollAdjustments.targetMonth,
     })
     .from(payrollAdjustments)

@@ -1,9 +1,14 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
+import { assertPayrollDaysUnlocked } from '../packages/school-core/src/lib/finance-payroll-periods.ts'
 import {
   addMonths,
   advanceClosedRemainder,
+  advanceLockRange,
+  deductionMonthsRange,
+  fromDayLockRange,
+  pensionPauseLockRange,
   advanceInstallmentPlan,
   advanceOutstanding,
   garnishmentQueue,
@@ -498,4 +503,38 @@ test('DOM-FIN-101 K-315: yürürlükte olmayan kayıtlar listeye girmez', () => 
     [['closed', 250_000]],
   )
   assert.deepEqual(monthlyDeductions(request('2026-11'), NONE).lines, [])
+})
+
+test('DOM-FIN-101: kesinti yazmalarının dönem kilidi aralıkları (DOM-FIN-108, K-394)', () => {
+  assert.deepEqual(deductionMonthsRange('2026-02', '2026-02'), {
+    from: '2026-02-01',
+    to: '2026-02-28',
+  })
+  assert.deepEqual(deductionMonthsRange('2026-11', null), { from: '2026-11-01', to: null })
+  // Avans: bütün taksit ayları; erken kapamada kesilmeyecek ilk aydan planın sonuna.
+  const terms = { firstMonth: '2026-11', installmentCount: 3 }
+  assert.deepEqual(advanceLockRange(terms), { from: '2026-11-01', to: '2027-01-31' })
+  assert.deepEqual(advanceLockRange(terms, '2026-12'), { from: '2026-12-01', to: '2027-01-31' })
+  // İcra, BES başlangıcı ve ayrılma: günün ayından itibaren süresiz; ara verme iki uç dahil.
+  assert.deepEqual(fromDayLockRange('2026-10-15'), { from: '2026-10-01', to: null })
+  assert.deepEqual(pensionPauseLockRange({ fromMonth: '2026-12', toMonth: '2027-02' }), {
+    from: '2026-12-01',
+    to: '2027-02-28',
+  })
+  // Genel denetimle: kilitli ay aralığa değerse 409 `payroll_period_locked`, değmezse geçer.
+  assert.throws(
+    () => assertPayrollDaysUnlocked(['2026-10'], [fromDayLockRange('2026-09-20')], 'receivedDate'),
+    isDomainError('payroll_period_locked', 'conflict'),
+  )
+  assert.doesNotThrow(() =>
+    assertPayrollDaysUnlocked(['2026-10'], [advanceLockRange(terms)], 'firstMonth'),
+  )
+  assert.throws(
+    () =>
+      assertPayrollDaysUnlocked(
+        ['2026-11'],
+        [advanceLockRange({ firstMonth: '2026-10', installmentCount: 2 })],
+      ),
+    isDomainError('payroll_period_locked', 'conflict'),
+  )
 })

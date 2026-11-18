@@ -129,6 +129,13 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/ticketed-events/{eventId}/tickets',
   'POST /api/v1/finance/event-tickets/{ticketId}/pay',
   'POST /api/v1/finance/event-tickets/{ticketId}/cancel',
+  // Bordro ayının onayı ve yeniden açılması kilidi değiştirir; düzeltme kaydı sonraki aya bordro
+  // girdisi yazar, iptali onu geri alır; çift tıklama ikinci kaydı açmaz
+  // (routes/finance-payroll-periods.ts; DOM-FIN-108, ON-200).
+  'POST /api/v1/finance/payroll-periods/{month}/approve',
+  'POST /api/v1/finance/payroll-periods/{month}/reopen',
+  'POST /api/v1/finance/payroll-periods/{month}/adjustments',
+  'POST /api/v1/finance/payroll-adjustments/{adjustmentId}/cancel',
 ]
 // Onur: kayıt ve finans sonu
 

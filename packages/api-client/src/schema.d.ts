@@ -8476,6 +8476,110 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/payroll-periods": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bordro dönemleri (yılın ayları)
+         * @description Yılın 12 ayı: durum (`open` açık, `approved` onaylı ve kilitli, `reopened` yeniden açılmış), son onaylayan ve zaman, onay anının girdi özeti (personel ve tanım sayısı, aylık brüt toplamı, aya aktarılan düzeltmeler, geçerli parametre seti, SHA-256 damgası), son yeniden açma ve aydan çıkan düzeltme sayısı. Onaylanmamış, başlamış ayda güncel özet `current` döner; onay isteği onun damgasını taşır. `lockedMonths` kurumun bütün kilitli aylarıdır (ücret tanımı formundaki uyarı için). Özet kurum toplamıdır, kişi tutarı yoktur; okuma denetime düşmez. Rol: yalnız `yonetici` (K-359). Modül `finance`.
+         */
+        get: operations["listPayrollPeriods"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/payroll-periods/{month}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bordro ayını onayla (kilitle)
+         * @description Ayın bordro girdilerini onaylar ve ayı kilitler (DOM-FIN-108, K-356, K-357): onaydan sonra yürürlüğü bu aya düşen ücret tanımı yazmaları (yeni tanım, bitiş, iptal) ve bu ayda geçerli seti değiştiren bordro parametresi yazmaları 409 `payroll_period_locked` olur. Girdi özeti ve damgası kurum kilidi altında yeniden hesaplanır; `inputsHash` listedeki `current.inputsHash` ile aynı değilse 409 `payroll_inputs_changed`. Başlamamış ay 422 `payroll_period_in_future`, onaylı ay 409 `payroll_period_already_approved`. İlk onay 201, yeniden açılmış ayın onayı 200. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (K-359). Modül `finance`.
+         */
+        post: operations["approvePayrollPeriod"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/payroll-periods/{month}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Onaylı bordro ayını yeniden aç
+         * @description Onaylı ay gerekçeyle (5–500 karakter) yeniden açılır; kilit kalkar, ay yeniden onaylanabilir (K-356). Onaylı olmayan ay 409 `payroll_period_not_approved`; aydan çıkan iptal edilmemiş düzeltme kaydı varsa 422 `payroll_period_has_adjustments`. Gerekçe dönem kaydında kalır, denetim kaydına yazılmaz. `If-Match` dönem sürümüdür; `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (K-359). Modül `finance`.
+         */
+        post: operations["reopenPayrollPeriod"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/payroll-periods/{month}/adjustments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ayın düzeltme kayıtları
+         * @description Ayın (kaynak) iptal edilmemiş düzeltme kayıtları, yeniden eskiye. Kişi başı fark tutarı içerdiği için her okuma denetim kaydına `finance.payroll_adjustment.read` olarak düşer (alan adı; K-359); kaydı olmayan ayda boş liste döner. Rol: yalnız `yonetici` (K-359). Modül `finance`.
+         */
+        get: operations["listPayrollAdjustments"];
+        put?: never;
+        /**
+         * Kilitli aya düzeltme kaydı yaz
+         * @description Onaylı (kilitli) ayın farkı: personel, kalem (ana ücret, ek ders, yan hak, kesinti, diğer), işaretli fark tutarı (artı ek ödeme, eksi geri alınacak; sıfır değil, en çok 10.000.000 ₺) ve gerekçe (K-358). Asıl dönem değişmez; fark ayın ardından gelen ilk kilitsiz aya (`targetMonth`) aktarılacak girdi olarak saklanır. Açık ay 422 `payroll_period_not_locked`; olmayan üyelik 422 `payroll_adjustment_staff_not_found`, öğrenci ya da veli 422 `payroll_adjustment_not_staff`. Denetim kaydına alan adları yazılır. `Idempotency-Key` zorunlu. 201. Rol: yalnız `yonetici` (K-359). Modül `finance`.
+         */
+        post: operations["createPayrollAdjustment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/payroll-adjustments/{adjustmentId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Düzeltme kaydını iptal et
+         * @description Düzeltme gerekçeyle (5–500 karakter) iptal edilir; düzeltilmez. Aktarılacağı ay onaylandıysa düzeltme o ayın girdisidir, 409 `payroll_period_locked` (K-358). Gerekçe denetim kaydına yazılmaz. `If-Match` zorunlu; `Idempotency-Key` zorunlu. Başka kurumun ya da iptal edilmiş kayıt 404. Rol: yalnız `yonetici` (K-359). Modül `finance`.
+         */
+        post: operations["cancelPayrollAdjustment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -90079,6 +90183,946 @@ export interface operations {
                             actions: ("start" | "ready" | "deliver" | "reject")[];
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listPayrollPeriods: {
+        parameters: {
+            query?: {
+                /** @description Yıl; varsayılan bu yıl (Europe/Istanbul) */
+                year?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            year: number;
+                            /** @description Bugünün ayı (Europe/Istanbul) */
+                            currentMonth: string;
+                            /** @description Kurumun bütün onaylı (kilitli) ayları, artan */
+                            lockedMonths: string[];
+                            /** @description Yılın 12 ayı */
+                            months: {
+                                /** @description Bordro ayı (YYYY-AA) */
+                                month: string;
+                                /**
+                                 * @description `open` açık, `approved` onaylı (kilitli), `reopened` yeniden açılmış
+                                 * @enum {string}
+                                 */
+                                state: "open" | "approved" | "reopened";
+                                /** @description Dönem kaydının sürümü (yeniden açmada `If-Match`); açık ayda boş */
+                                version: number | null;
+                                /** @description Son onay anı */
+                                approvedAt: string | null;
+                                /** @description Son onaylayan */
+                                approvedByName: string | null;
+                                /** @description Onay sayısı (yeniden açıp onaylamada artar) */
+                                approvalCount: number;
+                                /** @description Son onay anının girdi özeti */
+                                approved: {
+                                    /** @description Ayda en az bir günü yürürlükte tanımı olan personel */
+                                    staffCount: number;
+                                    /** @description Ayla kesişen ücret tanımı sayısı */
+                                    rateCount: number;
+                                    /** @description Personel başına ayda son başlayan aylık brüt ana ücretin toplamı, kuruş */
+                                    monthlyGrossTotalCents: number;
+                                    /** @description Bu aya aktarılan düzeltme sayısı */
+                                    adjustmentCount: number;
+                                    /** @description Bu aya aktarılan düzeltmelerin toplamı, kuruş */
+                                    adjustmentTotalCents: number;
+                                    /** @description Ayın ilk günü geçerli bordro parametre seti */
+                                    parameterSetId: string | null;
+                                    /** @description Geçerli setin yürürlük başlangıcı */
+                                    parameterEffectiveFrom: string | null;
+                                    /** @description Girdi damgası (SHA-256, onaltılık) */
+                                    inputsHash: string;
+                                } | null;
+                                /** @description Onaylanmamış, başlamış ayın güncel girdi özeti; onay isteği `current.inputsHash` taşır */
+                                current: {
+                                    /** @description Ayda en az bir günü yürürlükte tanımı olan personel */
+                                    staffCount: number;
+                                    /** @description Ayla kesişen ücret tanımı sayısı */
+                                    rateCount: number;
+                                    /** @description Personel başına ayda son başlayan aylık brüt ana ücretin toplamı, kuruş */
+                                    monthlyGrossTotalCents: number;
+                                    /** @description Bu aya aktarılan düzeltme sayısı */
+                                    adjustmentCount: number;
+                                    /** @description Bu aya aktarılan düzeltmelerin toplamı, kuruş */
+                                    adjustmentTotalCents: number;
+                                    /** @description Ayın ilk günü geçerli bordro parametre seti */
+                                    parameterSetId: string | null;
+                                    /** @description Geçerli setin yürürlük başlangıcı */
+                                    parameterEffectiveFrom: string | null;
+                                    /** @description Girdi damgası (SHA-256, onaltılık) */
+                                    inputsHash: string;
+                                } | null;
+                                reopenedAt: string | null;
+                                reopenedByName: string | null;
+                                /** @description Son yeniden açma gerekçesi */
+                                reopenReason: string | null;
+                                /** @description Bu aydan çıkan iptal edilmemiş düzeltme sayısı */
+                                adjustmentCount: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    approvePayrollPeriod: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                /** @description Bordro ayı (YYYY-AA) */
+                month: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Ay listesinin `current.inputsHash` değeri; onaylanan girdiler bunlardır */
+                    inputsHash: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Bordro ayı (YYYY-AA) */
+                            month: string;
+                            /**
+                             * @description `open` açık, `approved` onaylı (kilitli), `reopened` yeniden açılmış
+                             * @enum {string}
+                             */
+                            state: "open" | "approved" | "reopened";
+                            /** @description Dönem kaydının sürümü (yeniden açmada `If-Match`); açık ayda boş */
+                            version: number | null;
+                            /** @description Son onay anı */
+                            approvedAt: string | null;
+                            /** @description Son onaylayan */
+                            approvedByName: string | null;
+                            /** @description Onay sayısı (yeniden açıp onaylamada artar) */
+                            approvalCount: number;
+                            /** @description Son onay anının girdi özeti */
+                            approved: {
+                                /** @description Ayda en az bir günü yürürlükte tanımı olan personel */
+                                staffCount: number;
+                                /** @description Ayla kesişen ücret tanımı sayısı */
+                                rateCount: number;
+                                /** @description Personel başına ayda son başlayan aylık brüt ana ücretin toplamı, kuruş */
+                                monthlyGrossTotalCents: number;
+                                /** @description Bu aya aktarılan düzeltme sayısı */
+                                adjustmentCount: number;
+                                /** @description Bu aya aktarılan düzeltmelerin toplamı, kuruş */
+                                adjustmentTotalCents: number;
+                                /** @description Ayın ilk günü geçerli bordro parametre seti */
+                                parameterSetId: string | null;
+                                /** @description Geçerli setin yürürlük başlangıcı */
+                                parameterEffectiveFrom: string | null;
+                                /** @description Girdi damgası (SHA-256, onaltılık) */
+                                inputsHash: string;
+                            } | null;
+                            /** @description Onaylanmamış, başlamış ayın güncel girdi özeti; onay isteği `current.inputsHash` taşır */
+                            current: {
+                                /** @description Ayda en az bir günü yürürlükte tanımı olan personel */
+                                staffCount: number;
+                                /** @description Ayla kesişen ücret tanımı sayısı */
+                                rateCount: number;
+                                /** @description Personel başına ayda son başlayan aylık brüt ana ücretin toplamı, kuruş */
+                                monthlyGrossTotalCents: number;
+                                /** @description Bu aya aktarılan düzeltme sayısı */
+                                adjustmentCount: number;
+                                /** @description Bu aya aktarılan düzeltmelerin toplamı, kuruş */
+                                adjustmentTotalCents: number;
+                                /** @description Ayın ilk günü geçerli bordro parametre seti */
+                                parameterSetId: string | null;
+                                /** @description Geçerli setin yürürlük başlangıcı */
+                                parameterEffectiveFrom: string | null;
+                                /** @description Girdi damgası (SHA-256, onaltılık) */
+                                inputsHash: string;
+                            } | null;
+                            reopenedAt: string | null;
+                            reopenedByName: string | null;
+                            /** @description Son yeniden açma gerekçesi */
+                            reopenReason: string | null;
+                            /** @description Bu aydan çıkan iptal edilmemiş düzeltme sayısı */
+                            adjustmentCount: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Bordro ayı (YYYY-AA) */
+                            month: string;
+                            /**
+                             * @description `open` açık, `approved` onaylı (kilitli), `reopened` yeniden açılmış
+                             * @enum {string}
+                             */
+                            state: "open" | "approved" | "reopened";
+                            /** @description Dönem kaydının sürümü (yeniden açmada `If-Match`); açık ayda boş */
+                            version: number | null;
+                            /** @description Son onay anı */
+                            approvedAt: string | null;
+                            /** @description Son onaylayan */
+                            approvedByName: string | null;
+                            /** @description Onay sayısı (yeniden açıp onaylamada artar) */
+                            approvalCount: number;
+                            /** @description Son onay anının girdi özeti */
+                            approved: {
+                                /** @description Ayda en az bir günü yürürlükte tanımı olan personel */
+                                staffCount: number;
+                                /** @description Ayla kesişen ücret tanımı sayısı */
+                                rateCount: number;
+                                /** @description Personel başına ayda son başlayan aylık brüt ana ücretin toplamı, kuruş */
+                                monthlyGrossTotalCents: number;
+                                /** @description Bu aya aktarılan düzeltme sayısı */
+                                adjustmentCount: number;
+                                /** @description Bu aya aktarılan düzeltmelerin toplamı, kuruş */
+                                adjustmentTotalCents: number;
+                                /** @description Ayın ilk günü geçerli bordro parametre seti */
+                                parameterSetId: string | null;
+                                /** @description Geçerli setin yürürlük başlangıcı */
+                                parameterEffectiveFrom: string | null;
+                                /** @description Girdi damgası (SHA-256, onaltılık) */
+                                inputsHash: string;
+                            } | null;
+                            /** @description Onaylanmamış, başlamış ayın güncel girdi özeti; onay isteği `current.inputsHash` taşır */
+                            current: {
+                                /** @description Ayda en az bir günü yürürlükte tanımı olan personel */
+                                staffCount: number;
+                                /** @description Ayla kesişen ücret tanımı sayısı */
+                                rateCount: number;
+                                /** @description Personel başına ayda son başlayan aylık brüt ana ücretin toplamı, kuruş */
+                                monthlyGrossTotalCents: number;
+                                /** @description Bu aya aktarılan düzeltme sayısı */
+                                adjustmentCount: number;
+                                /** @description Bu aya aktarılan düzeltmelerin toplamı, kuruş */
+                                adjustmentTotalCents: number;
+                                /** @description Ayın ilk günü geçerli bordro parametre seti */
+                                parameterSetId: string | null;
+                                /** @description Geçerli setin yürürlük başlangıcı */
+                                parameterEffectiveFrom: string | null;
+                                /** @description Girdi damgası (SHA-256, onaltılık) */
+                                inputsHash: string;
+                            } | null;
+                            reopenedAt: string | null;
+                            reopenedByName: string | null;
+                            /** @description Son yeniden açma gerekçesi */
+                            reopenReason: string | null;
+                            /** @description Bu aydan çıkan iptal edilmemiş düzeltme sayısı */
+                            adjustmentCount: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reopenPayrollPeriod: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Bordro ayı (YYYY-AA) */
+                month: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Yeniden açma gerekçesi; dönem kaydında kalır, denetim kaydına yazılmaz */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Bordro ayı (YYYY-AA) */
+                            month: string;
+                            /**
+                             * @description `open` açık, `approved` onaylı (kilitli), `reopened` yeniden açılmış
+                             * @enum {string}
+                             */
+                            state: "open" | "approved" | "reopened";
+                            /** @description Dönem kaydının sürümü (yeniden açmada `If-Match`); açık ayda boş */
+                            version: number | null;
+                            /** @description Son onay anı */
+                            approvedAt: string | null;
+                            /** @description Son onaylayan */
+                            approvedByName: string | null;
+                            /** @description Onay sayısı (yeniden açıp onaylamada artar) */
+                            approvalCount: number;
+                            /** @description Son onay anının girdi özeti */
+                            approved: {
+                                /** @description Ayda en az bir günü yürürlükte tanımı olan personel */
+                                staffCount: number;
+                                /** @description Ayla kesişen ücret tanımı sayısı */
+                                rateCount: number;
+                                /** @description Personel başına ayda son başlayan aylık brüt ana ücretin toplamı, kuruş */
+                                monthlyGrossTotalCents: number;
+                                /** @description Bu aya aktarılan düzeltme sayısı */
+                                adjustmentCount: number;
+                                /** @description Bu aya aktarılan düzeltmelerin toplamı, kuruş */
+                                adjustmentTotalCents: number;
+                                /** @description Ayın ilk günü geçerli bordro parametre seti */
+                                parameterSetId: string | null;
+                                /** @description Geçerli setin yürürlük başlangıcı */
+                                parameterEffectiveFrom: string | null;
+                                /** @description Girdi damgası (SHA-256, onaltılık) */
+                                inputsHash: string;
+                            } | null;
+                            /** @description Onaylanmamış, başlamış ayın güncel girdi özeti; onay isteği `current.inputsHash` taşır */
+                            current: {
+                                /** @description Ayda en az bir günü yürürlükte tanımı olan personel */
+                                staffCount: number;
+                                /** @description Ayla kesişen ücret tanımı sayısı */
+                                rateCount: number;
+                                /** @description Personel başına ayda son başlayan aylık brüt ana ücretin toplamı, kuruş */
+                                monthlyGrossTotalCents: number;
+                                /** @description Bu aya aktarılan düzeltme sayısı */
+                                adjustmentCount: number;
+                                /** @description Bu aya aktarılan düzeltmelerin toplamı, kuruş */
+                                adjustmentTotalCents: number;
+                                /** @description Ayın ilk günü geçerli bordro parametre seti */
+                                parameterSetId: string | null;
+                                /** @description Geçerli setin yürürlük başlangıcı */
+                                parameterEffectiveFrom: string | null;
+                                /** @description Girdi damgası (SHA-256, onaltılık) */
+                                inputsHash: string;
+                            } | null;
+                            reopenedAt: string | null;
+                            reopenedByName: string | null;
+                            /** @description Son yeniden açma gerekçesi */
+                            reopenReason: string | null;
+                            /** @description Bu aydan çıkan iptal edilmemiş düzeltme sayısı */
+                            adjustmentCount: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listPayrollAdjustments: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+            };
+            header?: never;
+            path: {
+                /** @description Bordro ayı (YYYY-AA) */
+                month: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Düzeltilen (kilitli) ay */
+                            sourceMonth: string;
+                            /** @description Farkın aktarılacağı ilk kilitsiz ay */
+                            targetMonth: string;
+                            membershipId: string;
+                            staffName: string;
+                            /** @enum {string} */
+                            item: "wage" | "lesson" | "benefit" | "deduction" | "other";
+                            /** @description İşaretli fark, kuruş */
+                            amountCents: number;
+                            /** @enum {string} */
+                            currency: "TRY";
+                            reason: string;
+                            createdByName: string | null;
+                            createdAt: string;
+                            /** @description İptalde `If-Match` için sürüm */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createPayrollAdjustment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                /** @description Bordro ayı (YYYY-AA) */
+                month: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Düzeltmenin yapıldığı personelin kurum üyeliği */
+                    membershipId: string;
+                    /**
+                     * @description `wage` ana ücret, `lesson` ek ders, `benefit` yan hak, `deduction` kesinti, `other`
+                     * @enum {string}
+                     */
+                    item: "wage" | "lesson" | "benefit" | "deduction" | "other";
+                    /** @description İşaretli fark, kuruş: artı personele ek ödeme, eksi fazla ödenenin geri alınması */
+                    amountCents: number;
+                    /** @description Düzeltme gerekçesi; denetim kaydına yazılmaz */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Düzeltilen (kilitli) ay */
+                            sourceMonth: string;
+                            /** @description Farkın aktarılacağı ilk kilitsiz ay */
+                            targetMonth: string;
+                            membershipId: string;
+                            staffName: string;
+                            /** @enum {string} */
+                            item: "wage" | "lesson" | "benefit" | "deduction" | "other";
+                            /** @description İşaretli fark, kuruş */
+                            amountCents: number;
+                            /** @enum {string} */
+                            currency: "TRY";
+                            reason: string;
+                            createdByName: string | null;
+                            createdAt: string;
+                            /** @description İptalde `If-Match` için sürüm */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelPayrollAdjustment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                adjustmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description İptal gerekçesi; denetim kaydına yazılmaz */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            archivedAt: string;
                         };
                     };
                 };

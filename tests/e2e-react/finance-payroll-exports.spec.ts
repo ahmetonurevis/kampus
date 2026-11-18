@@ -8,14 +8,16 @@ import { expectNoHorizontalOverflow } from './support/ui.ts'
 // Bordro programına aktarım (ON-202, ON-343; DOM-FIN-105). Kural dalları birim ve API
 // testlerindedir (`tests/finance-payroll-exports.test.ts`, `apps/api/test/finance-payroll-exports.test.ts`);
 // burada yönetici bu ayın önizlemesinde öğretmenin ana ücretini ve avans taksitini (DOM-FIN-101,
-// K-392) görür, ek ders saati girer, saat × ücret satırını görür ve CSV'yi indirir (K-336…K-338);
-// ön büro sekmeyi görmez. Ay İstanbul gününe göre seçilir.
+// K-392) görür, ek ders saati girer; saat "onay bekliyor"dur, çizelgeyi öğretmen kontrolüne
+// gönderir, öğretmen teyidini kaydeder ve müdür onayı verir (DOM-FIN-120, K-409…K-411); onaydan
+// sonra saat × ücret satırını görür, saat eklenemez ve CSV'yi indirir (K-336…K-338); ön büro
+// sekmeyi görmez. Ay İstanbul gününe göre seçilir.
 
 const ADMIN = '/yonetici/finans'
 const DESK = '/onburo/tahsilat-takip'
 
 test.describe('DOM-FIN-105: bordro aktarımı', () => {
-  test('DOM-FIN-105: yönetici ek ders saati girer, avans kesintisini ve önizlemeyi görür, CSV indirir; ön büro sekmeyi görmez', async ({
+  test('DOM-FIN-105: DOM-FIN-120: yönetici ek ders saati girer, çizelgeyi onaylatır, avans kesintisini ve önizlemeyi görür, CSV indirir; ön büro sekmeyi görmez', async ({
     api,
     loginAs,
     tenant,
@@ -80,6 +82,29 @@ test.describe('DOM-FIN-105: bordro aktarımı', () => {
 
     const lesson = section.getByRole('row', { name: /Ek ders ücreti · Ek ders/ })
     await expect(lesson).toContainText('12 saat')
+    await expect(lesson).toContainText('Onay bekliyor')
+
+    // Çizelge onayı (DOM-FIN-120): gönder, öğretmen adına teyit, müdür onayı.
+    const sheet = section.getByRole('region', { name: 'Ek ders çizelgesi onayı' })
+    await expect(sheet).toContainText('Taslak')
+    await sheet.getByRole('button', { name: 'Öğretmen kontrolüne gönder' }).click()
+    await expect(sheet).toContainText('Öğretmen kontrolünde')
+    await expect(sheet.getByRole('button', { name: 'Müdür onayı ver' })).toBeDisabled()
+    await sheet.getByRole('button', { name: `${teacher} teyidini kaydet` }).click()
+    const confirmDialog = page.getByRole('dialog', { name: 'Öğretmen teyidi' })
+    await confirmDialog.getByLabel('Kanal').selectOption({ label: 'Telefon' })
+    await confirmDialog.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(confirmDialog).toBeHidden()
+    const teachers = sheet.getByRole('list', { name: 'Öğretmen teyitleri' })
+    await expect(teachers).toContainText('Teyit edildi')
+    await expect(teachers).toContainText('Telefon')
+    await sheet.getByRole('button', { name: 'Müdür onayı ver' }).click()
+    const approveDialog = page.getByRole('dialog', { name: /ek ders çizelgesini onayla/ })
+    await approveDialog.getByRole('button', { name: 'Onayla ve kilitle' }).click()
+    await expect(approveDialog).toBeHidden()
+    await expect(sheet).toContainText('Müdür onaylı (kilitli)')
+    await expect(sheet.getByRole('button', { name: 'Çizelgeyi yeniden aç' })).toBeVisible()
+    await expect(section.getByRole('button', { name: 'Ek ders saati ekle' })).toBeDisabled()
     await expect(lesson).toContainText('4.200,00 ₺')
     await expect(section.getByText('49.200,00 ₺')).toBeVisible()
 

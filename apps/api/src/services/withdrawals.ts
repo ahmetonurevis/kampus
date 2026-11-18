@@ -2,15 +2,19 @@ import { randomUUID } from 'node:crypto'
 
 import { requireAuthorized } from '@kampus/school-core/lib/authorize.ts'
 import { cancelledRenewalContractIds } from '@kampus/school-core/lib/finance-referrals.ts'
+import { scholarshipEndClawbackInvoiceIds } from '@kampus/school-core/lib/finance-scholarship-revocation.ts'
 import { cancelledRenewalScholarshipYears } from '@kampus/school-core/lib/finance-scholarships.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 import {
+  quoteWithdrawalWithFollowups,
+  withdrawStudentWithFollowups,
+  type WithdrawalActivityCancel,
+  type WithdrawalFollowupContext,
+} from '@kampus/school-core/lib/withdrawal-followups.ts'
+import {
   planRefundPayment,
-  quoteWithdrawal,
   refundPayerName,
-  withdrawStudent,
   type WithdrawalBreakdown,
-  type WithdrawalContext,
 } from '@kampus/school-core/lib/withdrawals.ts'
 import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
@@ -18,6 +22,11 @@ import type { Database } from '../db/client.ts'
 import { isFinanceDayClosed } from '../db/finance-day-closings.ts'
 import { studentFreeTuitionCoverage } from '../db/finance-free-tuition.ts'
 import { insertPackageHourEntry, loadWithdrawalPackageSales } from '../db/finance-packages.ts'
+import {
+  markParticipantCancelled,
+  withdrawalParticipations,
+} from '../db/finance-paid-activities.ts'
+import { listStudentScholarshipEnds } from '../db/finance-scholarships.ts'
 import { allocatedByInvoice, listBankAccounts, paymentTotal } from '../db/payments.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
 import {
@@ -47,8 +56,9 @@ import { auditWork } from './task-work.ts'
 
 /**
  * Ayrılış ve iade servisi (ADR 0006 karar 10; docs/domain/finans.md DOM-FIN-040, -041; IST-110).
- * Kural core `lib/withdrawals.ts`'tedir. Öğrenci, taksit, bağlı kayıt, kalan paket saatinin iade
- * hareketi, iade kaydı, kimlik arşivi ve iptal edilen burslu yenilemenin burs ve fon payı (K-117)
+ * Kural core `lib/withdrawals.ts` ve `lib/withdrawal-followups.ts`'tedir. Öğrenci, taksit, bağlı
+ * kayıt, kalan paket saatinin iade hareketi, iade kaydı, kimlik arşivi, iptal edilen burslu
+ * yenilemenin burs ve fon payı (K-117) ve ayrılışla iptal edilen etkinlik katılımları (K-348)
  * tek transaction'dadır. Döküm, IBAN ve gerekçe loglanmaz;
  * denetime yalnız alan adları düşer. İade ödendi bildirimi (`refund_paid`) ödemeyle aynı
  * transaction'dadır, yalnız ayrılış kimliğini taşır.
@@ -144,13 +154,24 @@ async function audit(
   })
 }
 
-/** Dağılım, dağıtılmamış tahsilat ve paket satışları; kurum kilidi altında veya tek görüntüden okunur. */
+/**
+ * Dağılım, dağıtılmamış tahsilat, paket satışları, burs kesme ve iptal kayıtları ve etkinlik
+ * katılımları; kurum kilidi altında veya tek görüntüden okunur.
+ */
 async function accountContext(
   tx: Database,
   ctx: ServiceContext,
   studentId: string,
 ): Promise<
-  Pick<WithdrawalContext, 'allocated' | 'creditCents' | 'packageSales' | 'freeTuitionContractIds'>
+  Pick<
+    WithdrawalFollowupContext,
+    | 'allocated'
+    | 'creditCents'
+    | 'packageSales'
+    | 'freeTuitionContractIds'
+    | 'scholarshipEnds'
+    | 'participations'
+  >
 > {
   const allocated = await allocatedByInvoice(tx, ctx.institutionId, studentId)
   const total = await paymentTotal(tx, ctx.institutionId, studentId)
@@ -158,11 +179,80 @@ async function accountContext(
   const packageSales = await loadWithdrawalPackageSales(tx, ctx.institutionId, studentId)
   // Ücretsiz okutmalı sözleşmede öğrenim ücreti istenmez, iadesi hakkın kendisindedir (K-270).
   const { contractIds } = await studentFreeTuitionCoverage(tx, ctx.institutionId, studentId)
+  // Kesilen ya da iptal edilen burs tabanı ve istisnayı değiştirir, geri isteme ayrı satırdır
+  // (K-350, K-351); etkinlik katılımı ayrılışla iptal edilir ya da borcu kalır (K-348).
+  const ends = await listStudentScholarshipEnds(tx, ctx.institutionId, studentId)
+  const participations = await withdrawalParticipations(tx, ctx.institutionId, studentId)
   return {
     allocated,
     creditCents: Math.max(total - distributed, 0),
     packageSales,
     freeTuitionContractIds: contractIds,
+    scholarshipEnds: ends.map((end) => ({
+      awardId: end.awardId,
+      contractId: end.contractId,
+      kind: end.kind,
+      effectiveDate: end.effectiveDate,
+      reinstatedCents: end.reinstatedCents,
+      principalCents: end.principalCents,
+      interestCents: end.interestCents,
+      clawbackInvoiceIds: scholarshipEndClawbackInvoiceIds(end),
+    })),
+    participations: participations.map((row) => ({
+      participantId: row.id,
+      activityId: row.activityId,
+      studentId: row.studentId,
+      name: row.name,
+      status: row.status,
+      invoiceId: row.invoiceId,
+      feeCents: row.feeCents,
+      debtInvoiceId: row.debtInvoiceId,
+      activity: {
+        activityDate: row.activityDate,
+        cancelDeadline: row.cancelDeadline,
+        lateRefundRule: row.lateRefundRule,
+        lateRefundPercent: row.lateRefundPercent,
+        lateCostCents: row.lateCostCents,
+        feeCents: row.activityFeeCents,
+      },
+    })),
+  }
+}
+
+/**
+ * Ayrılışla iptal edilen etkinlik katılımlarını yazar (K-348): katılımcı iptaliyle aynı alanlar,
+ * iade katılım kaydından ödenir (K-303). Kurum kilidi altında okunduğu için sürüm beklenmez.
+ */
+async function cancelActivityParticipations(
+  tx: Database,
+  ctx: ServiceContext,
+  cancels: readonly WithdrawalActivityCancel[],
+): Promise<void> {
+  for (const { participantId, plan } of cancels) {
+    const saved = await markParticipantCancelled(tx, ctx.institutionId, {
+      id: participantId,
+      expectedVersion: null,
+      ...plan,
+      userId: ctx.actor.userId,
+      now: ctx.now,
+    })
+    if (!saved) throw new ConflictError()
+    await auditWork(
+      tx,
+      ctx,
+      'paid_activity.participant_cancel',
+      { type: 'paid_activity_participants', id: participantId },
+      [
+        'status',
+        'cancelKind',
+        'cancelledDate',
+        'paidCents',
+        'retainedCents',
+        'refundCents',
+        ...(plan.closedInvoiceId === null ? [] : ['closedInvoiceId']),
+        ...(plan.debtInvoiceId === null ? [] : ['debtInvoiceId']),
+      ],
+    )
   }
 }
 
@@ -211,7 +301,11 @@ export function quoteWithdrawalFor(ctx: ServiceContext, studentId: string, input
       return {
         scalars,
         run: (state, { now }) =>
-          quoteWithdrawal(state, studentId, input, { institutionType, ...account, now }),
+          quoteWithdrawalWithFollowups(state, studentId, input, {
+            institutionType,
+            ...account,
+            now,
+          }),
       }
     },
   })
@@ -245,7 +339,7 @@ export function withdrawStudentCommand(
           scalars,
           run: (state, { now, makeId }) => {
             requireAuthorized(actor, 'student.withdraw', {}, state, { now, institutionType })
-            const plan = withdrawStudent(state, studentId, input, makeId, {
+            const plan = withdrawStudentWithFollowups(state, studentId, input, makeId, {
               institutionType,
               ...account,
               now,
@@ -279,6 +373,7 @@ export function withdrawStudentCommand(
         await archiveStudentIdentity(tx, ctx.institutionId, plan.studentId, ctx.now)
         await applyWithdrawalToReferralRewards(tx, ctx, plan)
         await archiveCancelledRenewalAwards(tx, ctx, plan.studentId, plan.cancelledScholarshipYears)
+        await cancelActivityParticipations(tx, ctx, plan.activityCancels)
         await audit(tx, ctx, 'student.withdraw', id, [
           'withdrawalDate',
           'reason',
@@ -286,6 +381,8 @@ export function withdrawStudentCommand(
           'breakdown',
           ...(plan.breakdown.payerDecision ? ['payerDecision'] : []),
           ...(plan.breakdown.refundApprovedCents === undefined ? [] : ['refundApprovedCents']),
+          ...(plan.breakdown.scholarshipClawbacks ? ['scholarshipClawbacks'] : []),
+          ...(plan.breakdown.activities ? ['activities'] : []),
         ])
         const row = await findWithdrawal(tx, ctx.institutionId, id)
         if (row === null) throw new NotFoundError()

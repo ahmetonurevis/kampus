@@ -3,6 +3,8 @@ import { randomBytes, randomUUID } from 'node:crypto'
 import {
   assertEventArchivable,
   EVENT_TICKET_CODE_BYTES,
+  eventTicketCheckInUndoBlocker,
+  eventTicketRefundStatus,
   eventTicketState,
   eventTicketsCsv,
   eventTicketSummary,
@@ -11,10 +13,13 @@ import {
   planEventTicketAllocation,
   planEventTicketCancel,
   planEventTicketCheckIn,
+  planEventTicketCheckInUndo,
   planEventTicketPayment,
+  planEventTicketRefund,
   planEventUpdate,
   ticketCodeFromBytes,
   type EventDraft,
+  type EventTicketFacts,
   type EventTicketState,
 } from '@kampus/school-core/lib/finance-event-tickets.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
@@ -25,10 +30,12 @@ import {
   activeEventTickets,
   archiveTicketedEvent,
   changeEventTicket,
+  countCheckInReversals,
   findEventTicket,
   findEventTicketByCode,
   findTicketedEvent,
   findTicketStudent,
+  insertCheckInReversal,
   insertEventTickets,
   insertTicketedEvent,
   listEventTickets,
@@ -39,6 +46,7 @@ import {
   type StoredEventTicket,
   type StoredTicketedEvent,
 } from '../db/finance-event-tickets.ts'
+import { loadStudentFamilies } from '../db/finance-renewal-candidates.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
 import { foldSearch } from '../db/text-search.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
@@ -47,11 +55,13 @@ import { runCommand, type CommandResponse, type IdempotencyRequest } from './ope
 import { auditWork } from './task-work.ts'
 
 /**
- * Etkinlik bileti ve oturma servisi (docs/domain/finans.md DOM-FIN-103; ON-159; K-324…K-327). Kural
- * core `lib/finance-event-tickets.ts`'tedir. Her yazma kurum kilidi altında tek transaction'dadır:
- * aynı koltuğa eşzamanlı iki ayırma sıraya girer, ikincisi 409 `event_seat_taken` alır; kısmi tekil
- * indeks (`event_tickets_event_seat_key`) son güvencedir. Rol ve modül denetimi rotadadır. Bilet
- * kodu, bilet sahibi adı ve iptal notu loglanmaz; denetime yalnız alan adları düşer.
+ * Etkinlik bileti ve oturma servisi (docs/domain/finans.md DOM-FIN-103; ON-159, ON-345;
+ * K-324…K-327, K-378…K-380). Kural core `lib/finance-event-tickets.ts`'tedir. Her yazma kurum kilidi
+ * altında tek transaction'dadır: aynı koltuğa eşzamanlı iki ayırma sıraya girer, ikincisi 409
+ * `event_seat_taken` alır; kısmi tekil indeks (`event_tickets_event_seat_key`) son güvencedir. Aile
+ * sınırında kardeş kümesi ve etkin biletler aynı kilit altında okunur; iki kardeşe eşzamanlı ayırma
+ * sınırı aşamaz. Rol ve modül denetimi rotadadır. Bilet kodu, bilet sahibi adı, iptal notu ve girişi
+ * geri alma gerekçesi loglanmaz; denetime yalnız alan adları düşer.
  */
 
 const EVENT = 'ticketed_events'
@@ -80,6 +90,7 @@ function draftOf(event: StoredTicketedEvent): EventDraft {
     capacity: event.capacity,
     ticketTypes: event.ticketTypes,
     perStudentLimit: event.perStudentLimit,
+    limitScope: event.limitScope,
     salesOpen: event.salesOpen,
   }
 }
@@ -129,6 +140,8 @@ async function eventViews(db: Database, ctx: ServiceContext, events: StoredTicke
       usedCount: summary.usedCount,
       unpaidCount: summary.unpaidCount,
       collectedCents: summary.collectedCents,
+      pendingRefundCount: summary.pendingRefundCount,
+      pendingRefundCents: summary.pendingRefundCents,
       takenSeats: own.flatMap((ticket) =>
         ticket.status === 'active' && ticket.seat !== null ? [ticket.seat] : [],
       ),
@@ -187,28 +200,16 @@ async function ticketRows(
   const event = await findTicketedEvent(ctx.db, ctx.institutionId, eventId)
   if (event === null) throw new NotFoundError()
   const tickets = await listEventTickets(ctx.db, ctx.institutionId, [eventId])
-  const names = await loadTicketRecordNames(
-    ctx.db,
-    ctx.institutionId,
-    'students',
-    tickets.map((ticket) => ticket.studentId),
-  )
   const search = query.q === undefined ? undefined : foldSearch(query.q)
-  const rows = tickets
-    .map((ticket) => ({
-      ...ticket,
-      studentName: names.get(ticket.studentId) ?? null,
-      state: eventTicketState(ticket),
-    }))
-    .filter(
-      (row) =>
-        (query.state === undefined || row.state === query.state) &&
-        (query.studentId === undefined || row.studentId === query.studentId) &&
-        (search === undefined ||
-          [row.holderName, row.studentName ?? '', row.seat ?? '', row.code].some((value) =>
-            foldSearch(value).includes(search),
-          )),
-    )
+  const rows = (await ticketViews(ctx.db, ctx, event, tickets)).filter(
+    (row) =>
+      (query.state === undefined || row.state === query.state) &&
+      (query.studentId === undefined || row.studentId === query.studentId) &&
+      (search === undefined ||
+        [row.holderName, row.studentName ?? '', row.seat ?? '', row.code].some((value) =>
+          foldSearch(value).includes(search),
+        )),
+  )
   return { event, rows }
 }
 
@@ -364,25 +365,56 @@ export function archiveTicketedEventCommand(
 
 // --- Bilet komutları -----------------------------------------------------------------------------
 
-async function ticketView(tx: Database, ctx: ServiceContext, ticket: StoredEventTicket) {
-  const names = await loadTicketRecordNames(tx, ctx.institutionId, 'students', [ticket.studentId])
-  return {
+/**
+ * Biletlerin yanıt görünümü: öğrenci adı, durum, iade durumu, geri alınmış giriş sayısı ve isteği
+ * yapanın girişi geri alıp alamayacağı (K-378; düğme yalnız alınabilecekse görünür). Okutan
+ * personelin kimliği yanıta girmez.
+ */
+async function ticketViews(
+  db: Database,
+  ctx: ServiceContext,
+  event: Pick<StoredTicketedEvent, 'startsAt'> | null,
+  tickets: readonly StoredEventTicket[],
+) {
+  const ids = tickets.map((ticket) => ticket.id)
+  const [names, undos] = await Promise.all([
+    loadTicketRecordNames(
+      db,
+      ctx.institutionId,
+      'students',
+      tickets.map((ticket) => ticket.studentId),
+    ),
+    countCheckInReversals(db, ctx.institutionId, ids),
+  ])
+  return tickets.map(({ usedByUserId, ...ticket }) => ({
     ...ticket,
     studentName: names.get(ticket.studentId) ?? null,
     state: eventTicketState(ticket),
-  }
+    refundStatus: eventTicketRefundStatus(ticket),
+    checkInUndoCount: undos.get(ticket.id) ?? 0,
+    canUndoCheckIn:
+      event !== null &&
+      eventTicketCheckInUndoBlocker(
+        { status: ticket.status, usedAt: ticket.usedAt, usedByUserId },
+        { startsAt: event.startsAt, now: ctx.now, actor: ctx.actor },
+      ) === null,
+  }))
 }
-export type EventTicketView = Awaited<ReturnType<typeof ticketView>>
+export type EventTicketView = Awaited<ReturnType<typeof ticketViews>>[number]
 
 async function reloadTicket(tx: Database, ctx: ServiceContext, id: string) {
   const ticket = await findEventTicket(tx, ctx.institutionId, id)
   if (ticket === null) throw new NotFoundError()
-  return ticketView(tx, ctx, ticket)
+  const event = await findTicketedEvent(tx, ctx.institutionId, ticket.eventId)
+  const [view] = await ticketViews(tx, ctx, event, [ticket])
+  if (view === undefined) throw new NotFoundError()
+  return view
 }
 
 /**
- * Bilet ayırma (K-325, K-326): öğrencinin ailesine 1–10 bilet; her bilete kriptografik rastgele kod
- * verilir. 201; yanıt yeni biletlerdir.
+ * Bilet ayırma (K-325, K-326, K-379): öğrencinin ailesine 1–10 bilet; her bilete kriptografik
+ * rastgele kod verilir. Aile sınırında aynı veliye bağlı kardeşlerin etkin biletleri birlikte
+ * sayılır. 201; yanıt yeni biletlerdir.
  */
 export function allocateEventTicketsCommand(
   ctx: ServiceContext,
@@ -408,7 +440,15 @@ export function allocateEventTicketsCommand(
             : ''
         const student =
           studentId === '' ? null : await findTicketStudent(tx, ctx.institutionId, studentId)
-        return { run: () => planEventTicketAllocation(input, { event, active, student }) }
+        // Aile sınırında kardeş kümesi kurum kilidi altında okunur (K-379): aynı aileye eşzamanlı
+        // iki ayırma sıraya girer, ikincisi birincinin biletlerini sayar.
+        const family =
+          student !== null && event.limitScope === 'family' && event.perStudentLimit !== null
+            ? await loadStudentFamilies(tx, ctx.institutionId, [studentId])
+            : [studentId]
+        return {
+          run: () => planEventTicketAllocation(input, { event, active, student, family }),
+        }
       },
       after: async (tx, plan) => {
         const tickets = plan.tickets.map((ticket) => ({
@@ -441,9 +481,43 @@ export function allocateEventTicketsCommand(
   )
 }
 
-type TicketCommand = 'pay' | 'cancel'
+type TicketCommand = 'pay' | 'cancel' | 'refund' | 'undo-check-in'
 
-/** Ödeme işareti (nakit/havale) ya da iptal (K-326); `If-Match` verilirse biletin sürümüdür. */
+const TICKET_ACTIONS = {
+  pay: 'event_ticket.pay',
+  cancel: 'event_ticket.cancel',
+  refund: 'event_ticket.refund',
+  'undo-check-in': 'event_ticket.undo_check_in',
+} as const satisfies Record<TicketCommand, string>
+
+type TicketPlan =
+  | { kind: 'pay'; method: 'cash' | 'transfer' }
+  | { kind: 'cancel'; reason: string | null; refundCents: number | null }
+  | { kind: 'refund'; method: 'cash' | 'transfer' }
+  | { kind: 'undo'; reason: string; usedAt: string; usedByUserId: string }
+
+/** Denetime düşen alan adları; tutar, not ve gerekçe yazılmaz. */
+function auditFields(plan: TicketPlan): string[] {
+  switch (plan.kind) {
+    case 'pay':
+      return ['paymentStatus', 'paymentMethod', 'paidAt']
+    case 'cancel':
+      return ['status', 'cancelledAt', ...(plan.refundCents === null ? [] : ['refundCents'])]
+    case 'refund':
+      return ['refundMethod', 'refundedAt']
+    case 'undo':
+      return ['usedAt', 'checkInReversal']
+    default:
+      return plan satisfies never
+  }
+}
+
+/**
+ * Bilet komutları: ödeme işareti (nakit/havale), iptal ve iade tutarı (K-326, K-380), iadenin
+ * ödendiği işareti (K-380) ve girişi geri alma (K-378). İptal ve geri alma etkinliğin başlangıcını
+ * okur (iade kuralı, etkinlik günü); geri almada eski kullanım `event_ticket_check_in_reversals`
+ * satırına taşınır. `If-Match` verilirse biletin sürümüdür.
+ */
 export function changeEventTicketCommand(
   ctx: ServiceContext,
   command: TicketCommand,
@@ -453,7 +527,7 @@ export function changeEventTicketCommand(
   idempotency: IdempotencyRequest | null,
 ): Promise<CommandResponse> {
   const entity = { type: TICKET, id: ticketId }
-  const action = command === 'pay' ? 'event_ticket.pay' : 'event_ticket.cancel'
+  const action = TICKET_ACTIONS[command]
   let body: unknown
   return runCommand(
     ctx,
@@ -466,37 +540,75 @@ export function changeEventTicketCommand(
         if (ticket === null) throw new NotFoundError()
         if (expectedVersion !== null && ticket.version !== expectedVersion)
           throw new ConflictError()
-        return {
-          run: () =>
-            command === 'pay'
-              ? {
-                  ticket,
-                  change: { kind: 'pay' as const, ...planEventTicketPayment(input, ticket) },
-                }
-              : {
-                  ticket,
-                  change: { kind: 'cancel' as const, ...planEventTicketCancel(input, ticket) },
+        const facts: EventTicketFacts = ticket
+        const startsAt = async () => {
+          const event = await findTicketedEvent(tx, ctx.institutionId, ticket.eventId)
+          if (event === null) throw new NotFoundError()
+          return event.startsAt
+        }
+        switch (command) {
+          case 'pay':
+            return {
+              run: () => ({
+                ticket,
+                plan: { kind: 'pay' as const, ...planEventTicketPayment(input, facts) },
+              }),
+            }
+          case 'refund':
+            return {
+              run: () => ({
+                ticket,
+                plan: { kind: 'refund' as const, ...planEventTicketRefund(input, facts) },
+              }),
+            }
+          case 'cancel': {
+            const context = { startsAt: await startsAt(), now: ctx.now, role: ctx.actor.role }
+            return {
+              run: () => ({
+                ticket,
+                plan: {
+                  kind: 'cancel' as const,
+                  ...planEventTicketCancel(input, facts, context),
                 },
+              }),
+            }
+          }
+          case 'undo-check-in': {
+            const context = { startsAt: await startsAt(), now: ctx.now, actor: ctx.actor }
+            return {
+              run: () => ({
+                ticket,
+                plan: {
+                  kind: 'undo' as const,
+                  ...planEventTicketCheckInUndo(input, facts, context),
+                },
+              }),
+            }
+          }
+          default:
+            return command satisfies never
         }
       },
-      after: async (tx, { ticket, change }) => {
+      after: async (tx, { ticket, plan }: { ticket: StoredEventTicket; plan: TicketPlan }) => {
+        if (plan.kind === 'undo')
+          await insertCheckInReversal(tx, ctx.institutionId, {
+            id: randomUUID(),
+            ticketId,
+            usedAt: plan.usedAt,
+            usedByUserId: plan.usedByUserId,
+            reason: plan.reason,
+            userId: ctx.actor.userId,
+            now: ctx.now,
+          })
         const saved = await changeEventTicket(tx, ctx.institutionId, {
           id: ticketId,
           expectedVersion: ticket.version,
           userId: ctx.actor.userId,
           now: ctx.now,
-          change,
+          change: plan.kind === 'undo' ? { kind: 'undo_use' } : plan,
         })
         if (!saved) throw new ConflictError()
-        await auditWork(
-          tx,
-          ctx,
-          action,
-          entity,
-          change.kind === 'pay'
-            ? ['paymentStatus', 'paymentMethod', 'paidAt']
-            : ['status', 'cancelledAt', ...(change.refunded ? ['refundedAt'] : [])],
-        )
+        await auditWork(tx, ctx, action, entity, auditFields(plan))
         body = { data: await reloadTicket(tx, ctx, ticketId) }
       },
     },

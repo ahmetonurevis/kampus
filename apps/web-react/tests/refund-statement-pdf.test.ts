@@ -184,3 +184,66 @@ test('ON-322, DOM-KAY-012: okul dışı kurumda iade dökümü "Gittiği kurum" 
     }
   }
 })
+
+test('ON-342, K-348…K-351: belge burs ve etkinlik bölümlerini notuyla yazar; eski kayıtta bölüm yok', () => {
+  const texts = allTexts(
+    refundStatementDocument(
+      measurer,
+      {
+        ...WITHDRAWAL,
+        breakdown: {
+          ...WITHDRAWAL.breakdown,
+          contracts: [
+            {
+              ...CONTRACT_LINE,
+              scholarshipEnd: {
+                kind: 'revoke',
+                effectiveDate: '2026-10-01',
+                reinstatedCents: 75_000,
+              },
+            },
+          ],
+          scholarshipClawbacks: [
+            {
+              awardId: 'a1',
+              contractId: 'c1',
+              effectiveDate: '2026-10-01',
+              principalCents: 25_000,
+              interestCents: 300,
+              openCents: 25_300,
+            },
+          ],
+          activities: [
+            {
+              participantId: 'p1',
+              activityId: 'e1',
+              name: 'Müze gezisi',
+              activityDate: '2026-10-20',
+              outcome: 'cancelled',
+              invoiceId: 'i1',
+              amountCents: 3_000,
+              paidCents: 3_000,
+              retainedCents: 0,
+              refundCents: 3_000,
+              openCents: 0,
+            },
+          ],
+        },
+      },
+      OPTIONS,
+    ),
+  )
+  for (const text of [
+    'Burs',
+    'Geri istenen burs',
+    'Kanuni faiz',
+    'Geri isteme alacağında açık',
+    'Gezi ve etkinlik',
+  ])
+    assert.ok(texts.includes(text), text)
+  assert.ok(texts.some((text) => text.startsWith('Burs iptal edildi')))
+  assert.ok(texts.some((text) => text.startsWith('Müze gezisi')))
+  const legacy = allTexts(refundStatementDocument(measurer, WITHDRAWAL, OPTIONS))
+  assert.equal(legacy.includes('Gezi ve etkinlik'), false)
+  assert.equal(legacy.includes('Geri istenen burs'), false)
+})

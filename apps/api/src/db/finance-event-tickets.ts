@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm'
+import { and, asc, count, eq, inArray, isNull, sql } from 'drizzle-orm'
 
 import type {
   ActiveEventTicket,
@@ -9,10 +9,14 @@ import type {
 
 import type { Database } from './client.ts'
 import { records } from './schema/records.ts'
-import { eventTickets, ticketedEvents } from './schema/finance-event-tickets.ts'
+import {
+  eventTicketCheckInReversals,
+  eventTickets,
+  ticketedEvents,
+} from './schema/finance-event-tickets.ts'
 
 /**
- * Etkinlik bileti deposu (DOM-FIN-103; ON-159). Kurum kapsamlıdır: ilk parametre `institutionId`.
+ * Etkinlik bileti deposu (DOM-FIN-103; ON-159, ON-345). Kurum kapsamlıdır: ilk parametre `institutionId`.
  * Etkinlik arşivlenir, bilet arşivlenmez (iptal edilir). Güncellemeler sürümle yazılır; 0 satır
  * döndüren güncelleme çağırana `false` olur (409).
  */
@@ -35,6 +39,7 @@ const EVENT_COLUMNS = {
   capacity: ticketedEvents.capacity,
   ticketTypes: ticketedEvents.ticketTypes,
   perStudentLimit: ticketedEvents.perStudentLimit,
+  limitScope: ticketedEvents.limitScope,
   salesOpen: ticketedEvents.salesOpen,
   version: ticketedEvents.version,
 }
@@ -151,8 +156,11 @@ export interface StoredEventTicket {
   paymentStatus: PlannedEventTicket['paymentStatus']
   paymentMethod: EventTicketPaymentMethod | null
   paidAt: string | null
+  refundCents: number | null
+  refundMethod: EventTicketPaymentMethod | null
   refundedAt: string | null
   usedAt: string | null
+  usedByUserId: string | null
   cancelledAt: string | null
   cancelReason: string | null
   createdAt: string
@@ -174,8 +182,11 @@ const TICKET_COLUMNS = {
   paymentStatus: eventTickets.paymentStatus,
   paymentMethod: eventTickets.paymentMethod,
   paidAt: eventTickets.paidAt,
+  refundCents: eventTickets.refundCents,
+  refundMethod: eventTickets.refundMethod,
   refundedAt: eventTickets.refundedAt,
   usedAt: eventTickets.usedAt,
+  usedByUserId: eventTickets.usedByUserId,
   cancelledAt: eventTickets.cancelledAt,
   cancelReason: eventTickets.cancelReason,
   createdAt: eventTickets.createdAt,
@@ -289,36 +300,53 @@ export async function insertEventTickets(
 
 type TicketChange =
   | { kind: 'pay'; method: EventTicketPaymentMethod }
-  | { kind: 'cancel'; reason: string | null; refunded: boolean }
+  | { kind: 'cancel'; reason: string | null; refundCents: number | null }
+  | { kind: 'refund'; method: EventTicketPaymentMethod }
   | { kind: 'use' }
+  | { kind: 'undo_use' }
 
-/** Biletin ödeme, iptal ya da giriş işareti; sürüm tutmazsa `false`. */
+function changeFields(change: TicketChange, now: Date, userId: string) {
+  switch (change.kind) {
+    case 'pay':
+      return {
+        paymentStatus: 'paid' as const,
+        paymentMethod: change.method,
+        paidAt: now,
+        paidByUserId: userId,
+      }
+    case 'cancel':
+      return {
+        status: 'cancelled' as const,
+        cancelledAt: now,
+        cancelledByUserId: userId,
+        cancelReason: change.reason,
+        refundCents: change.refundCents,
+      }
+    case 'refund':
+      return { refundMethod: change.method, refundedAt: now, refundedByUserId: userId }
+    case 'use':
+      return { usedAt: now, usedByUserId: userId }
+    case 'undo_use':
+      return { usedAt: null, usedByUserId: null }
+    default:
+      return change satisfies never
+  }
+}
+
+/** Biletin ödeme, iptal, iade, giriş ya da girişi geri alma işareti; sürüm tutmazsa `false`. */
 export async function changeEventTicket(
   tx: Database,
   institutionId: string,
   input: { id: string; expectedVersion: number; userId: string; now: Date; change: TicketChange },
 ): Promise<boolean> {
-  const { change, now, userId } = input
-  const fields =
-    change.kind === 'pay'
-      ? {
-          paymentStatus: 'paid' as const,
-          paymentMethod: change.method,
-          paidAt: now,
-          paidByUserId: userId,
-        }
-      : change.kind === 'cancel'
-        ? {
-            status: 'cancelled' as const,
-            cancelledAt: now,
-            cancelledByUserId: userId,
-            cancelReason: change.reason,
-            refundedAt: change.refunded ? now : null,
-          }
-        : { usedAt: now, usedByUserId: userId }
+  const { now } = input
   const rows = await tx
     .update(eventTickets)
-    .set({ ...fields, updatedAt: now, version: input.expectedVersion + 1 })
+    .set({
+      ...changeFields(input.change, now, input.userId),
+      updatedAt: now,
+      version: input.expectedVersion + 1,
+    })
     .where(
       and(
         ticketsOf(institutionId),
@@ -328,6 +356,53 @@ export async function changeEventTicket(
     )
     .returning({ id: eventTickets.id })
   return rows.length === 1
+}
+
+/** Geri alınan girişin izi (K-378): eski kullanım anı, okutan, gerekçe ve geri alan. */
+export async function insertCheckInReversal(
+  tx: Database,
+  institutionId: string,
+  input: {
+    id: string
+    ticketId: string
+    usedAt: string
+    usedByUserId: string
+    reason: string
+    userId: string
+    now: Date
+  },
+): Promise<void> {
+  await tx.insert(eventTicketCheckInReversals).values({
+    institutionId,
+    id: input.id,
+    ticketId: input.ticketId,
+    usedAt: new Date(input.usedAt),
+    usedByUserId: input.usedByUserId,
+    reason: input.reason,
+    createdByUserId: input.userId,
+    createdAt: input.now,
+    updatedAt: input.now,
+  })
+}
+
+/** Biletlerin geri alınmış giriş sayısı; satırı olmayan bilet haritada yoktur. */
+export async function countCheckInReversals(
+  db: Database,
+  institutionId: string,
+  ticketIds: readonly string[],
+): Promise<Map<string, number>> {
+  if (ticketIds.length === 0) return new Map()
+  const rows = await db
+    .select({ ticketId: eventTicketCheckInReversals.ticketId, total: count() })
+    .from(eventTicketCheckInReversals)
+    .where(
+      and(
+        eq(eventTicketCheckInReversals.institutionId, institutionId),
+        inArray(eventTicketCheckInReversals.ticketId, [...new Set(ticketIds)]),
+      ),
+    )
+    .groupBy(eventTicketCheckInReversals.ticketId)
+  return new Map(rows.map((row) => [row.ticketId, row.total]))
 }
 
 // --- Bağlı kayıtlar ------------------------------------------------------------------------------

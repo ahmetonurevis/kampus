@@ -1,5 +1,5 @@
 {
-  "id": "fc7d3f48-4863-439f-bffe-396da6ddd76e",
+  "id": "dcec7c6e-2e9f-4240-aae4-1551d9ea52ab",
   "prevId": "523f5a8e-fdd4-4ca6-b533-12f9fda0e91d",
   "version": "7",
   "dialect": "postgresql",
@@ -22880,8 +22880,8 @@
       },
       "isRLSEnabled": false
     },
-    "public.sgk_employment_dates": {
-      "name": "sgk_employment_dates",
+    "public.staff_advances": {
+      "name": "staff_advances",
       "schema": "",
       "columns": {
         "institution_id": {
@@ -22902,26 +22902,88 @@
           "primaryKey": false,
           "notNull": true
         },
-        "month": {
-          "name": "month",
+        "amount_cents": {
+          "name": "amount_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'TRY'"
+        },
+        "given_date": {
+          "name": "given_date",
           "type": "date",
           "primaryKey": false,
           "notNull": true
         },
-        "entry_date": {
-          "name": "entry_date",
+        "payment_method": {
+          "name": "payment_method",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "installment_count": {
+          "name": "installment_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "first_month": {
+          "name": "first_month",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        },
+        "closed_date": {
+          "name": "closed_date",
           "type": "date",
           "primaryKey": false,
           "notNull": false
         },
-        "exit_date": {
-          "name": "exit_date",
-          "type": "date",
+        "closed_from_month": {
+          "name": "closed_from_month",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "note": {
-          "name": "note",
+        "close_method": {
+          "name": "close_method",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closed_by_user_id": {
+          "name": "closed_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancelled_at": {
+          "name": "cancelled_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancel_reason": {
+          "name": "cancel_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancelled_by_user_id": {
+          "name": "cancelled_by_user_id",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -22931,12 +22993,6 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
-        },
-        "archived_by_user_id": {
-          "name": "archived_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -22967,8 +23023,8 @@
         }
       },
       "indexes": {
-        "sgk_employment_dates_member_month_key": {
-          "name": "sgk_employment_dates_member_month_key",
+        "staff_advances_membership_idx": {
+          "name": "staff_advances_membership_idx",
           "columns": [
             {
               "expression": "institution_id",
@@ -22983,20 +23039,261 @@
               "nulls": "last"
             },
             {
-              "expression": "month",
+              "expression": "given_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "staff_advances_institution_id_institutions_id_fk": {
+          "name": "staff_advances_institution_id_institutions_id_fk",
+          "tableFrom": "staff_advances",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "staff_advances_membership_fkey": {
+          "name": "staff_advances_membership_fkey",
+          "tableFrom": "staff_advances",
+          "tableTo": "memberships",
+          "columnsFrom": [
+            "institution_id",
+            "membership_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "staff_advances_pkey": {
+          "name": "staff_advances_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "staff_advances_amount_check": {
+          "name": "staff_advances_amount_check",
+          "value": "\"staff_advances\".\"amount_cents\" between \"staff_advances\".\"installment_count\" and 100000000\n        and \"staff_advances\".\"currency\" = 'TRY'"
+        },
+        "staff_advances_installment_check": {
+          "name": "staff_advances_installment_check",
+          "value": "\"staff_advances\".\"installment_count\" between 1 and 24\n        and \"staff_advances\".\"first_month\" ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'"
+        },
+        "staff_advances_payment_method_check": {
+          "name": "staff_advances_payment_method_check",
+          "value": "\"staff_advances\".\"payment_method\" in ('cash', 'bank_transfer')"
+        },
+        "staff_advances_status_check": {
+          "name": "staff_advances_status_check",
+          "value": "\"staff_advances\".\"status\" in ('active', 'closed', 'cancelled')"
+        },
+        "staff_advances_close_check": {
+          "name": "staff_advances_close_check",
+          "value": "(\"staff_advances\".\"status\" = 'closed') = (\"staff_advances\".\"closed_date\" is not null)\n        and (\"staff_advances\".\"status\" = 'closed') = (\"staff_advances\".\"closed_from_month\" is not null)\n        and (\"staff_advances\".\"status\" = 'closed') = (\"staff_advances\".\"close_method\" is not null)\n        and (\"staff_advances\".\"status\" = 'closed') = (\"staff_advances\".\"closed_by_user_id\" is not null)\n        and (\"staff_advances\".\"closed_from_month\" is null or \"staff_advances\".\"closed_from_month\" ~ '^[0-9]{4}-(0[1-9]|1[0-2])$')\n        and (\"staff_advances\".\"close_method\" is null or \"staff_advances\".\"close_method\" in ('cash', 'bank_transfer'))"
+        },
+        "staff_advances_cancel_check": {
+          "name": "staff_advances_cancel_check",
+          "value": "(\"staff_advances\".\"status\" = 'cancelled') = (\"staff_advances\".\"cancelled_at\" is not null)\n        and (\"staff_advances\".\"status\" = 'cancelled') = (\"staff_advances\".\"cancel_reason\" is not null)\n        and (\"staff_advances\".\"status\" = 'cancelled') = (\"staff_advances\".\"cancelled_by_user_id\" is not null)\n        and (\"staff_advances\".\"cancel_reason\" is null or char_length(\"staff_advances\".\"cancel_reason\")\n          between 5 and 500)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.staff_garnishments": {
+      "name": "staff_garnishments",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "membership_id": {
+          "name": "membership_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "office": {
+          "name": "office",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "file_number": {
+          "name": "file_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "claim_cents": {
+          "name": "claim_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "remaining_cents": {
+          "name": "remaining_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'TRY'"
+        },
+        "rate_basis_points": {
+          "name": "rate_basis_points",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_alimony": {
+          "name": "is_alimony",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "received_date": {
+          "name": "received_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sequence": {
+          "name": "sequence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        },
+        "closed_date": {
+          "name": "closed_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "close_reason": {
+          "name": "close_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closed_by_user_id": {
+          "name": "closed_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "staff_garnishments_file_key": {
+          "name": "staff_garnishments_file_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "office",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "file_number",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             }
           ],
           "isUnique": true,
-          "where": "\"sgk_employment_dates\".\"archived_at\" is null",
+          "where": "\"staff_garnishments\".\"archived_at\" is null",
           "concurrently": false,
           "method": "btree",
           "with": {}
         },
-        "sgk_employment_dates_membership_idx": {
-          "name": "sgk_employment_dates_membership_idx",
+        "staff_garnishments_sequence_key": {
+          "name": "staff_garnishments_sequence_key",
           "columns": [
             {
               "expression": "institution_id",
@@ -23011,43 +23308,22 @@
               "nulls": "last"
             },
             {
-              "expression": "month",
+              "expression": "sequence",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             }
           ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "sgk_employment_dates_month_idx": {
-          "name": "sgk_employment_dates_month_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "month",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
+          "isUnique": true,
           "concurrently": false,
           "method": "btree",
           "with": {}
         }
       },
       "foreignKeys": {
-        "sgk_employment_dates_institution_id_institutions_id_fk": {
-          "name": "sgk_employment_dates_institution_id_institutions_id_fk",
-          "tableFrom": "sgk_employment_dates",
+        "staff_garnishments_institution_id_institutions_id_fk": {
+          "name": "staff_garnishments_institution_id_institutions_id_fk",
+          "tableFrom": "staff_garnishments",
           "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
@@ -23058,9 +23334,9 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "sgk_employment_dates_membership_fkey": {
-          "name": "sgk_employment_dates_membership_fkey",
-          "tableFrom": "sgk_employment_dates",
+        "staff_garnishments_membership_fkey": {
+          "name": "staff_garnishments_membership_fkey",
+          "tableFrom": "staff_garnishments",
           "tableTo": "memberships",
           "columnsFrom": [
             "institution_id",
@@ -23075,8 +23351,8 @@
         }
       },
       "compositePrimaryKeys": {
-        "sgk_employment_dates_pkey": {
-          "name": "sgk_employment_dates_pkey",
+        "staff_garnishments_pkey": {
+          "name": "staff_garnishments_pkey",
           "columns": [
             "institution_id",
             "id"
@@ -23086,27 +23362,27 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "sgk_employment_dates_month_check": {
-          "name": "sgk_employment_dates_month_check",
-          "value": "extract(day from \"sgk_employment_dates\".\"month\") = 1"
+        "staff_garnishments_text_check": {
+          "name": "staff_garnishments_text_check",
+          "value": "char_length(\"staff_garnishments\".\"office\") between 3 and 120\n        and char_length(\"staff_garnishments\".\"file_number\") between 3 and 40"
         },
-        "sgk_employment_dates_days_check": {
-          "name": "sgk_employment_dates_days_check",
-          "value": "(\"sgk_employment_dates\".\"entry_date\" is not null or \"sgk_employment_dates\".\"exit_date\" is not null)\n        and (\"sgk_employment_dates\".\"entry_date\" is null or date_trunc('month', \"sgk_employment_dates\".\"entry_date\")::date = \"sgk_employment_dates\".\"month\")\n        and (\"sgk_employment_dates\".\"exit_date\" is null or date_trunc('month', \"sgk_employment_dates\".\"exit_date\")::date = \"sgk_employment_dates\".\"month\")\n        and (\"sgk_employment_dates\".\"entry_date\" is null or \"sgk_employment_dates\".\"exit_date\" is null or \"sgk_employment_dates\".\"exit_date\" >= \"sgk_employment_dates\".\"entry_date\")"
+        "staff_garnishments_amount_check": {
+          "name": "staff_garnishments_amount_check",
+          "value": "\"staff_garnishments\".\"claim_cents\" > 0 and \"staff_garnishments\".\"remaining_cents\" between 0 and \"staff_garnishments\".\"claim_cents\"\n        and \"staff_garnishments\".\"currency\" = 'TRY'\n        and \"staff_garnishments\".\"rate_basis_points\" between 1 and 10000 and \"staff_garnishments\".\"sequence\" > 0"
         },
-        "sgk_employment_dates_note_check": {
-          "name": "sgk_employment_dates_note_check",
-          "value": "\"sgk_employment_dates\".\"note\" is null or char_length(\"sgk_employment_dates\".\"note\") between 1 and 200"
+        "staff_garnishments_status_check": {
+          "name": "staff_garnishments_status_check",
+          "value": "\"staff_garnishments\".\"status\" in ('active', 'closed')"
         },
-        "sgk_employment_dates_archive_check": {
-          "name": "sgk_employment_dates_archive_check",
-          "value": "(\"sgk_employment_dates\".\"archived_at\" is null) = (\"sgk_employment_dates\".\"archived_by_user_id\" is null)"
+        "staff_garnishments_close_check": {
+          "name": "staff_garnishments_close_check",
+          "value": "(\"staff_garnishments\".\"status\" = 'closed') = (\"staff_garnishments\".\"closed_date\" is not null)\n        and (\"staff_garnishments\".\"status\" = 'closed') = (\"staff_garnishments\".\"close_reason\" is not null)\n        and (\"staff_garnishments\".\"status\" = 'closed') = (\"staff_garnishments\".\"closed_by_user_id\" is not null)\n        and (\"staff_garnishments\".\"closed_date\" is null or \"staff_garnishments\".\"closed_date\" >= \"staff_garnishments\".\"received_date\")\n        and (\"staff_garnishments\".\"close_reason\" is null or \"staff_garnishments\".\"close_reason\" in ('paid_off', 'lifted', 'other'))"
         }
       },
       "isRLSEnabled": false
     },
-    "public.sgk_missing_days": {
-      "name": "sgk_missing_days",
+    "public.staff_pension_enrollments": {
+      "name": "staff_pension_enrollments",
       "schema": "",
       "columns": {
         "institution_id": {
@@ -23127,26 +23403,33 @@
           "primaryKey": false,
           "notNull": true
         },
-        "month": {
-          "name": "month",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "days": {
-          "name": "days",
+        "rate_basis_points": {
+          "name": "rate_basis_points",
           "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
-        "reason_code": {
-          "name": "reason_code",
-          "type": "text",
+        "start_date": {
+          "name": "start_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pauses": {
+          "name": "pauses",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "opt_out_date": {
+          "name": "opt_out_date",
+          "type": "date",
           "primaryKey": false,
           "notNull": false
         },
-        "note": {
-          "name": "note",
+        "opted_out_by_user_id": {
+          "name": "opted_out_by_user_id",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -23156,12 +23439,6 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
-        },
-        "archived_by_user_id": {
-          "name": "archived_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -23192,17 +23469,11 @@
         }
       },
       "indexes": {
-        "sgk_missing_days_month_idx": {
-          "name": "sgk_missing_days_month_idx",
+        "staff_pension_enrollments_open_key": {
+          "name": "staff_pension_enrollments_open_key",
           "columns": [
             {
               "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "month",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -23214,13 +23485,14 @@
               "nulls": "last"
             }
           ],
-          "isUnique": false,
+          "isUnique": true,
+          "where": "\"staff_pension_enrollments\".\"opt_out_date\" is null and \"staff_pension_enrollments\".\"archived_at\" is null",
           "concurrently": false,
           "method": "btree",
           "with": {}
         },
-        "sgk_missing_days_membership_idx": {
-          "name": "sgk_missing_days_membership_idx",
+        "staff_pension_enrollments_membership_idx": {
+          "name": "staff_pension_enrollments_membership_idx",
           "columns": [
             {
               "expression": "institution_id",
@@ -23230,12 +23502,6 @@
             },
             {
               "expression": "membership_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "month",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -23248,9 +23514,9 @@
         }
       },
       "foreignKeys": {
-        "sgk_missing_days_institution_id_institutions_id_fk": {
-          "name": "sgk_missing_days_institution_id_institutions_id_fk",
-          "tableFrom": "sgk_missing_days",
+        "staff_pension_enrollments_institution_id_institutions_id_fk": {
+          "name": "staff_pension_enrollments_institution_id_institutions_id_fk",
+          "tableFrom": "staff_pension_enrollments",
           "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
@@ -23261,9 +23527,9 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "sgk_missing_days_membership_fkey": {
-          "name": "sgk_missing_days_membership_fkey",
-          "tableFrom": "sgk_missing_days",
+        "staff_pension_enrollments_membership_fkey": {
+          "name": "staff_pension_enrollments_membership_fkey",
+          "tableFrom": "staff_pension_enrollments",
           "tableTo": "memberships",
           "columnsFrom": [
             "institution_id",
@@ -23278,8 +23544,8 @@
         }
       },
       "compositePrimaryKeys": {
-        "sgk_missing_days_pkey": {
-          "name": "sgk_missing_days_pkey",
+        "staff_pension_enrollments_pkey": {
+          "name": "staff_pension_enrollments_pkey",
           "columns": [
             "institution_id",
             "id"
@@ -23289,25 +23555,17 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "sgk_missing_days_month_check": {
-          "name": "sgk_missing_days_month_check",
-          "value": "extract(day from \"sgk_missing_days\".\"month\") = 1"
+        "staff_pension_enrollments_rate_check": {
+          "name": "staff_pension_enrollments_rate_check",
+          "value": "\"staff_pension_enrollments\".\"rate_basis_points\" between 300 and 10000"
         },
-        "sgk_missing_days_days_check": {
-          "name": "sgk_missing_days_days_check",
-          "value": "\"sgk_missing_days\".\"days\" between 1 and 30"
+        "staff_pension_enrollments_pauses_check": {
+          "name": "staff_pension_enrollments_pauses_check",
+          "value": "jsonb_typeof(\"staff_pension_enrollments\".\"pauses\") = 'array'"
         },
-        "sgk_missing_days_reason_check": {
-          "name": "sgk_missing_days_reason_check",
-          "value": "\"sgk_missing_days\".\"reason_code\" is null or \"sgk_missing_days\".\"reason_code\" in ('01', '03', '04', '05', '06', '07', '08', '09', '10', '11', '13', '15', '16', '18', '19', '20', '21', '23', '25')"
-        },
-        "sgk_missing_days_note_check": {
-          "name": "sgk_missing_days_note_check",
-          "value": "\"sgk_missing_days\".\"note\" is null or char_length(\"sgk_missing_days\".\"note\") between 1 and 200"
-        },
-        "sgk_missing_days_archive_check": {
-          "name": "sgk_missing_days_archive_check",
-          "value": "(\"sgk_missing_days\".\"archived_at\" is null) = (\"sgk_missing_days\".\"archived_by_user_id\" is null)"
+        "staff_pension_enrollments_opt_out_check": {
+          "name": "staff_pension_enrollments_opt_out_check",
+          "value": "(\"staff_pension_enrollments\".\"opt_out_date\" is null) = (\"staff_pension_enrollments\".\"opted_out_by_user_id\" is null)\n        and (\"staff_pension_enrollments\".\"opt_out_date\" is null or \"staff_pension_enrollments\".\"opt_out_date\" >= \"staff_pension_enrollments\".\"start_date\")"
         }
       },
       "isRLSEnabled": false

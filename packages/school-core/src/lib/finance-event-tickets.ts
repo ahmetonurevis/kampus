@@ -4,13 +4,15 @@ import { csvAmount, csvCell, CSV_SEPARATOR } from './csv.ts'
 import { DomainError } from './errors.ts'
 
 /**
- * Etkinlik bileti ve oturma düzeni (docs/domain/finans.md DOM-FIN-103; ON-159; K-324…K-327).
- * Gösteri ve tören gibi etkinlikler için salon düzeni (sıra harfi × koltuk, kapalı koltuklar) ya da
- * numarasız kontenjan, bilet türleri (ücretsiz davetiye, ücretli) ve öğrenci başına üst sınır
- * tanımlanır. Bilet öğrencinin ailesine (veli ya da misafir adıyla) ayrılır; numaralı salonda koltuk
- * seçilir, aynı koltuk iki etkin bilete verilemez (veritabanında kısmi tekil indeks de vardır).
- * Ücretli biletin ödemesi elle (nakit ya da havale) işaretlenir; çevrim içi ödeme yoktur. Bilet
- * kodu tahmin edilemez rastgele baytlardan üretilir; girişte kodla bir kez "kullanıldı" işaretlenir.
+ * Etkinlik bileti ve oturma düzeni (docs/domain/finans.md DOM-FIN-103; ON-159, ON-345;
+ * K-324…K-327, K-378…K-380). Gösteri ve tören gibi etkinlikler için salon düzeni (sıra harfi ×
+ * koltuk, kapalı koltuklar) ya da numarasız kontenjan, bilet türleri (ücretsiz davetiye, ücretli) ve
+ * öğrenci ya da aile (kardeşler birlikte) başına üst sınır tanımlanır. Bilet öğrencinin ailesine
+ * (veli ya da misafir adıyla) ayrılır; numaralı salonda koltuk seçilir, aynı koltuk iki etkin bilete
+ * verilemez (veritabanında kısmi tekil indeks de vardır). Ücretli biletin ödemesi elle (nakit ya da
+ * havale) işaretlenir; çevrim içi ödeme yoktur. İptalde iade tutarı etkinliğe kalan güne göre
+ * hesaplanır, iadenin ödendiği ayrıca işaretlenir. Bilet kodu tahmin edilemez rastgele baytlardan
+ * üretilir; girişte kodla bir kez "kullanıldı" işaretlenir, yanlış okutma gerekçeyle geri alınır.
  *
  * Fonksiyonlar saftır: zaman `now`, rastgelelik `bytes` ve yeni anahtar `newKey` dışarıdan gelir.
  */
@@ -39,6 +41,14 @@ export const EVENT_TICKET_KIND_LABELS = {
   invitation: 'Ücretsiz davetiye',
   paid: 'Ücretli',
 } as const satisfies Record<EventTicketKind, string>
+
+/** Üst sınırın kapsamı (K-379): öğrenci başına ya da aile (aynı veliye bağlı kardeşler) başına. */
+export const EVENT_LIMIT_SCOPES = ['student', 'family'] as const
+export type EventLimitScope = (typeof EVENT_LIMIT_SCOPES)[number]
+export const EVENT_LIMIT_SCOPE_LABELS = {
+  student: 'Öğrenci başına',
+  family: 'Aile başına (kardeşler birlikte)',
+} as const satisfies Record<EventLimitScope, string>
 
 export const EVENT_TICKET_STATUSES = ['active', 'cancelled'] as const
 export type EventTicketStatus = (typeof EVENT_TICKET_STATUSES)[number]
@@ -71,6 +81,18 @@ export const EVENT_TICKET_STATE_LABELS = {
   cancelled: 'İptal',
 } as const satisfies Record<EventTicketState, string>
 
+/**
+ * İptal edilen ödenmiş biletin iadesi (saklanmaz, K-380): iade yok (ücretsiz, ödenmemiş ya da
+ * kesintiyle sıfır), iade bekliyor (tutar yazıldı, ödendiği işaretlenmedi) ya da iade ödendi.
+ */
+export const EVENT_TICKET_REFUND_STATUSES = ['none', 'pending', 'paid'] as const
+export type EventTicketRefundStatus = (typeof EVENT_TICKET_REFUND_STATUSES)[number]
+export const EVENT_TICKET_REFUND_STATUS_LABELS = {
+  none: 'İade yok',
+  pending: 'İade bekliyor',
+  paid: 'İade ödendi',
+} as const satisfies Record<EventTicketRefundStatus, string>
+
 export const EVENT_NAME_MAX = 120
 export const EVENT_VENUE_MAX = 120
 /** Sıra harfi A–Z (K-325). */
@@ -87,6 +109,12 @@ export const EVENT_TICKETS_PER_REQUEST_MAX = 10
 export const EVENT_HOLDER_NAME_MAX = 120
 export const EVENT_CANCEL_REASON_MAX = 200
 export const EVENT_SCHOOL_EVENT_ID_MAX = 64
+/** Etkinliğe en az bu kadar gün kala iptalde bedelin tamamı iade edilir (K-380). */
+export const EVENT_FULL_REFUND_DAYS = 7
+/** Etkinlikten 1–6 gün önceki iptalde iade edilen yüzde (K-380); etkinlik günü ve sonrasında iade yok. */
+export const EVENT_LATE_REFUND_PERCENT = 50
+export const EVENT_UNDO_REASON_MIN = 5
+export const EVENT_UNDO_REASON_MAX = 200
 
 // --- Koltuk --------------------------------------------------------------------------------------
 
@@ -241,7 +269,12 @@ const eventFields = {
     .min(1, 'Üst sınır en az 1 olmalıdır.')
     .max(EVENT_PER_STUDENT_LIMIT_MAX, 'Üst sınır en çok 20 olabilir.')
     .nullable()
-    .describe('Öğrenci (aile) başına etkin bilet üst sınırı; boşsa sınırsız'),
+    .describe('Öğrenci ya da aile başına etkin bilet üst sınırı; boşsa sınırsız'),
+  limitScope: z
+    .enum(EVENT_LIMIT_SCOPES, 'Sınır kapsamını seçin.')
+    .describe(
+      '`student` öğrenci başına, `family` aile başına (aynı veliye bağlı kardeşlerin biletleri birlikte sayılır); sınır boşsa etkisiz',
+    ),
 }
 
 type EventShape = {
@@ -304,6 +337,7 @@ export const createEventSchema = z
     blockedSeats: eventFields.blockedSeats.default([]),
     capacity: eventFields.capacity.default(null),
     perStudentLimit: eventFields.perStudentLimit.default(null),
+    limitScope: eventFields.limitScope.default('student'),
   })
   .superRefine(checkShape)
 export type CreateEventInput = z.input<typeof createEventSchema>
@@ -321,6 +355,7 @@ export const updateEventSchema = z.strictObject({
   capacity: eventFields.capacity.optional(),
   ticketTypes: eventFields.ticketTypes.optional(),
   perStudentLimit: eventFields.perStudentLimit.optional(),
+  limitScope: eventFields.limitScope.optional(),
   salesOpen: z.boolean('Satış durumunu seçin.').optional().describe('Bilet ayırma açık mı'),
 })
 export type UpdateEventInput = z.input<typeof updateEventSchema>
@@ -338,6 +373,7 @@ export type EventDraft = {
   capacity: number | null
   ticketTypes: EventTicketType[]
   perStudentLimit: number | null
+  limitScope: EventLimitScope
   salesOpen: boolean
 }
 export type EventField = keyof EventDraft
@@ -349,7 +385,7 @@ export const allocateEventTicketsSchema = z.strictObject({
     .trim()
     .min(1, 'Öğrenciyi seçin.')
     .max(64, 'Öğrenci geçersiz.')
-    .describe('Biletin ayrıldığı öğrenci (ailesi); üst sınır öğrenci başınadır'),
+    .describe('Biletin ayrıldığı öğrenci (ailesi); üst sınır öğrenci ya da aile başınadır'),
   items: z
     .array(
       z.strictObject({
@@ -382,7 +418,16 @@ export const cancelEventTicketSchema = z.strictObject({
     .nullable()
     .default(null)
     .transform((value) => (value === '' ? null : value))
-    .describe('İsteğe bağlı iptal notu'),
+    .describe('İsteğe bağlı iptal notu; iade tutarı kuraldan farklıysa zorunlu'),
+  refundCents: z
+    .int('İade tutarı kuruş cinsinden tam sayı olmalıdır.')
+    .min(0, 'İade tutarı eksi olamaz.')
+    .max(EVENT_TICKET_PRICE_MAX, 'İade tutarı en çok 100.000 TL olabilir.')
+    .nullable()
+    .default(null)
+    .describe(
+      'Ödenmiş bilette iade tutarı, kuruş; boşsa kural (K-380). Kuraldan farklı tutarı yalnız yönetici yazar',
+    ),
 })
 export type CancelEventTicketInput = z.input<typeof cancelEventTicketSchema>
 
@@ -395,6 +440,20 @@ export const checkInEventTicketSchema = z.strictObject({
     .describe('Biletteki kod (`XXXX-XXXX-XXXX`); boşluk, tire ve küçük harf fark etmez'),
 })
 export type CheckInEventTicketInput = z.input<typeof checkInEventTicketSchema>
+
+/** İadenin ödendiği işareti (K-380): iade nakit ya da havaleyle elle yapılır. */
+export const refundEventTicketSchema = z.strictObject({
+  method: z.enum(EVENT_TICKET_PAYMENT_METHODS, 'İade yöntemini seçin.'),
+})
+export type RefundEventTicketInput = z.input<typeof refundEventTicketSchema>
+
+/** Girişi geri alma gövdesi (K-378): gerekçe zorunlu. */
+export const undoEventTicketCheckInSchema = z.strictObject({
+  reason: textField('Gerekçe', EVENT_UNDO_REASON_MIN, EVENT_UNDO_REASON_MAX).describe(
+    'Girişin neden geri alındığı (ör. yanlış bilet okutuldu); denetim kaydına yazılmaz',
+  ),
+})
+export type UndoEventTicketCheckInInput = z.input<typeof undoEventTicketCheckInSchema>
 
 // --- Kurallar ------------------------------------------------------------------------------------
 
@@ -470,6 +529,7 @@ export function planEvent(input: unknown, tools: { now: Date; newKey: () => stri
       tools.newKey,
     ),
     perStudentLimit: parsed.perStudentLimit,
+    limitScope: parsed.limitScope,
     salesOpen: true,
   }
 }
@@ -512,6 +572,7 @@ export function planEventUpdate(
     ticketTypes: parsed.ticketTypes ?? current.ticketTypes,
     perStudentLimit:
       parsed.perStudentLimit === undefined ? current.perStudentLimit : parsed.perStudentLimit,
+    limitScope: parsed.limitScope ?? current.limitScope,
   }
   // Birleşik kayıt açılış şemasıyla yeniden denetlenir: alan hataları aynı yol ve iletiyle döner.
   const checked = createEventSchema.parse(merged)
@@ -588,10 +649,12 @@ export type PlannedEventTicket = {
 }
 
 /**
- * Bilet ayırma (K-325): satış açık olmalı; öğrenci kurumda etkin olmalı. Numaralı salonda her
+ * Bilet ayırma (K-325, K-379): satış açık olmalı; öğrenci kurumda etkin olmalı. Numaralı salonda her
  * bilet salon düzeninde var olan, kapalı olmayan, bu istekte ve etkin biletlerde tekrar etmeyen bir
  * koltuk ister (alınmış koltuk 409 `event_seat_taken`); numarasızda koltuk girilmez ve kontenjan
- * aşılamaz. Öğrenci başına üst sınır etkin biletleri sayar (iptal edilen sayılmaz). Ücretli bilet
+ * aşılamaz. Üst sınır etkin biletleri sayar (iptal edilen sayılmaz): öğrenci kapsamında yalnız bu
+ * öğrencininkileri, aile kapsamında `family` kümesindeki (aynı veliye bağlı kardeşler, öğrencinin
+ * kendisi dahil) bütün öğrencilerinkileri. Küme verilmezse aile öğrencinin kendisidir. Ücretli bilet
  * ödenmemiş başlar.
  */
 export function planEventTicketAllocation(
@@ -600,6 +663,8 @@ export function planEventTicketAllocation(
     event: EventDraft
     active: readonly ActiveEventTicket[]
     student: { isActive: boolean } | null
+    /** Aile kapsamında öğrencinin kardeş kümesi (kendisi dahil); API kurum kilidi altında okur. */
+    family?: readonly string[]
   },
 ): { studentId: string; tickets: PlannedEventTicket[] } {
   const parsed = allocateEventTicketsSchema.parse(input)
@@ -662,11 +727,18 @@ export function planEventTicketAllocation(
       ['items'],
     )
   if (event.perStudentLimit !== null) {
-    const owned = active.filter((ticket) => ticket.studentId === parsed.studentId).length
+    const limit = String(event.perStudentLimit)
+    const family = new Set([parsed.studentId, ...(context.family ?? [])])
+    const byFamily = event.limitScope === 'family'
+    const owned = active.filter((ticket) =>
+      byFamily ? family.has(ticket.studentId) : ticket.studentId === parsed.studentId,
+    ).length
     if (owned + tickets.length > event.perStudentLimit)
       throw ruleError(
         'event_ticket_limit_exceeded',
-        `Öğrenci başına en çok ${String(event.perStudentLimit)} bilet ayrılabilir; bu öğrencinin ${String(owned)} bileti var.`,
+        byFamily
+          ? `Aile başına en çok ${limit} bilet ayrılabilir; bu ailenin kardeşlerle birlikte ${String(owned)} bileti var.`
+          : `Öğrenci başına en çok ${limit} bilet ayrılabilir; bu öğrencinin ${String(owned)} bileti var.`,
         ['items'],
       )
   }
@@ -678,8 +750,12 @@ export type EventTicketFacts = {
   eventId: string
   status: EventTicketStatus
   ticketKind: EventTicketKind
+  priceCents: number
   paymentStatus: EventTicketPaymentStatus
   usedAt: string | null
+  usedByUserId: string | null
+  refundCents: number | null
+  refundedAt: string | null
 }
 
 export function eventTicketState(ticket: {
@@ -692,7 +768,16 @@ export function eventTicketState(ticket: {
   return ticket.paymentStatus === 'unpaid' ? 'unpaid' : 'valid'
 }
 
-const assertActive = (ticket: EventTicketFacts) => {
+/** İadenin durumu (K-380): tutar yazılmış ve sıfırdan büyükse ödenene dek bekler. */
+export function eventTicketRefundStatus(ticket: {
+  refundCents: number | null
+  refundedAt: string | null
+}): EventTicketRefundStatus {
+  if (ticket.refundedAt !== null) return 'paid'
+  return (ticket.refundCents ?? 0) > 0 ? 'pending' : 'none'
+}
+
+const assertActive = (ticket: Pick<EventTicketFacts, 'status'>) => {
   if (ticket.status === 'cancelled')
     throw ruleError('event_ticket_cancelled', 'Bilet iptal edilmiş.')
 }
@@ -708,17 +793,107 @@ export function planEventTicketPayment(input: unknown, ticket: EventTicketFacts)
   return { method: parsed.method }
 }
 
+const DAY_MS = 86_400_000
+const istanbulDay = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Europe/Istanbul',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
+/** Europe/Istanbul günü `YYYY-MM-DD`. */
+export const eventDayOf = (value: Date | string) => istanbulDay.format(new Date(value))
+/** İstanbul günleri arasındaki gün farkı (`to - from`); saatten bağımsız. */
+const dayGap = (from: string, to: string) =>
+  Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / DAY_MS)
+
+export type EventRefundRule = 'full' | 'partial' | 'none'
+
 /**
- * Bilet iptali (K-326): kullanılmış bilet iptal edilmez; koltuk boşa çıkar. Ödenmiş biletin bedeli
- * iptalle elle iade edilmiş sayılır (`refunded`); kısmi iade yoktur.
+ * İade kuralı (K-380), İstanbul günleriyle: etkinliğe en az 7 gün kala tam iade; 1–6 gün kala
+ * bedelin %50'si (kuruşa yuvarlanır); etkinlik günü ve sonrasında iade yok. `daysBefore` iptal
+ * gününden etkinlik gününe kalan gündür.
  */
-export function planEventTicketCancel(input: unknown, ticket: EventTicketFacts) {
+export function eventRefundQuote(
+  priceCents: number,
+  startsAt: string,
+  now: Date,
+): { rule: EventRefundRule; refundCents: number; daysBefore: number } {
+  const daysBefore = dayGap(eventDayOf(now), eventDayOf(startsAt))
+  if (daysBefore >= EVENT_FULL_REFUND_DAYS)
+    return { rule: 'full', refundCents: priceCents, daysBefore }
+  if (daysBefore >= 1)
+    return {
+      rule: 'partial',
+      refundCents: Math.round((priceCents * EVENT_LATE_REFUND_PERCENT) / 100),
+      daysBefore,
+    }
+  return { rule: 'none', refundCents: 0, daysBefore }
+}
+
+/** İptalin kural dışı tutar yazabilen rolü (K-380). */
+export const canOverrideEventRefund = (role: string) => canManageEvents(role)
+
+/**
+ * Bilet iptali (K-326, K-380): kullanılmış bilet iptal edilmez; koltuk boşa çıkar. Ödenmiş bilette
+ * iade tutarı yazılır: verilmezse kural (`eventRefundQuote`); kuraldan farklı tutarı (ör. kurum
+ * etkinliği iptal etti) yalnız yönetici yazar (403 `event_ticket_refund_override_forbidden`) ve not
+ * zorunludur; tutar bilet bedelini aşamaz. Ödenmemiş ya da ücretsiz bilette iade tutarı girilmez.
+ * İadenin ödendiği ayrıca işaretlenir (`planEventTicketRefund`).
+ */
+export function planEventTicketCancel(
+  input: unknown,
+  ticket: EventTicketFacts,
+  context: { startsAt: string; now: Date; role: string },
+): { reason: string | null; refundCents: number | null } {
   const parsed = cancelEventTicketSchema.parse(input)
   if (ticket.status === 'cancelled')
     throw conflictError('event_ticket_already_cancelled', 'Bilet zaten iptal edilmiş.')
   if (ticket.usedAt !== null)
     throw ruleError('event_ticket_used', 'Girişte kullanılmış bilet iptal edilemez.')
-  return { reason: parsed.reason, refunded: ticket.paymentStatus === 'paid' }
+  if (ticket.paymentStatus !== 'paid') {
+    if (parsed.refundCents !== null)
+      throw ruleError(
+        'event_ticket_refund_not_applicable',
+        'Ödemesi alınmamış bilette iade tutarı girilmez.',
+        ['refundCents'],
+      )
+    return { reason: parsed.reason, refundCents: null }
+  }
+  const quote = eventRefundQuote(ticket.priceCents, context.startsAt, context.now)
+  if (parsed.refundCents === null || parsed.refundCents === quote.refundCents)
+    return { reason: parsed.reason, refundCents: quote.refundCents }
+  if (parsed.refundCents > ticket.priceCents)
+    throw ruleError('event_ticket_refund_exceeds_price', 'İade tutarı bilet bedelini aşamaz.', [
+      'refundCents',
+    ])
+  if (!canOverrideEventRefund(context.role))
+    throw new DomainError(
+      'event_ticket_refund_override_forbidden',
+      'Kuraldan farklı iade tutarını yalnız yönetici yazabilir.',
+      { kind: 'forbidden', path: ['refundCents'] },
+    )
+  if (parsed.reason === null)
+    throw ruleError(
+      'event_ticket_refund_reason_required',
+      'İade tutarı kuraldan farklıysa iptal notu yazın.',
+      ['reason'],
+    )
+  return { reason: parsed.reason, refundCents: parsed.refundCents }
+}
+
+/**
+ * İadenin ödendiği işareti (K-380): iptal edilmiş, iade tutarı sıfırdan büyük bilette bir kez;
+ * yöntem nakit ya da havale. Gün sonuna ve muhasebeye bağlanmaz (M-49, M-72).
+ */
+export function planEventTicketRefund(input: unknown, ticket: EventTicketFacts) {
+  const parsed = refundEventTicketSchema.parse(input)
+  if (ticket.status !== 'cancelled')
+    throw ruleError('event_ticket_not_cancelled', 'İade yalnız iptal edilmiş bilette ödenir.')
+  if ((ticket.refundCents ?? 0) === 0)
+    throw ruleError('event_ticket_no_refund', 'Bu bilet için ödenecek iade yok.')
+  if (ticket.refundedAt !== null)
+    throw conflictError('event_ticket_already_refunded', 'Biletin iadesi zaten ödenmiş.')
+  return { method: parsed.method }
 }
 
 /**
@@ -739,6 +914,59 @@ export function planEventTicketCheckIn(ticket: EventTicketFacts, eventId: string
     ])
 }
 
+type CheckInUndoContext = {
+  startsAt: string
+  now: Date
+  actor: { role: string; userId: string }
+}
+
+/**
+ * Girişi geri almanın engeli (K-378); engel yoksa `null`. Bilet etkin ve kullanılmış olmalı (değilse
+ * 409 `event_ticket_not_used`); ön büro yalnız kendi okuttuğu girişi geri alır (403
+ * `event_ticket_check_in_not_owner`), yönetici her girişi; etkinlik günü (Europe/Istanbul) bitince
+ * geri alınmaz (422 `event_ticket_check_in_undo_expired`).
+ */
+export function eventTicketCheckInUndoBlocker(
+  ticket: Pick<EventTicketFacts, 'status' | 'usedAt' | 'usedByUserId'>,
+  context: CheckInUndoContext,
+): DomainError | null {
+  if (ticket.status === 'cancelled')
+    return ruleError('event_ticket_cancelled', 'Bilet iptal edilmiş.')
+  if (ticket.usedAt === null)
+    return conflictError('event_ticket_not_used', 'Bilet girişte kullanılmamış.')
+  if (!canManageEvents(context.actor.role) && ticket.usedByUserId !== context.actor.userId)
+    return new DomainError(
+      'event_ticket_check_in_not_owner',
+      'Girişi yalnız okutan görevli ya da yönetici geri alabilir.',
+      { kind: 'forbidden' },
+    )
+  if (eventDayOf(context.now) > eventDayOf(context.startsAt))
+    return ruleError(
+      'event_ticket_check_in_undo_expired',
+      'Giriş yalnız etkinlik günü bitene kadar geri alınabilir.',
+    )
+  return null
+}
+
+/**
+ * Girişi geri alma (K-378): gerekçe 5–200 karakter. Bilet yeniden "geçerli" olur ve yeniden
+ * okutulabilir; geri alınan kullanımın izi (an, okutan, gerekçe) ayrı satırda saklanır.
+ */
+export function planEventTicketCheckInUndo(
+  input: unknown,
+  ticket: EventTicketFacts,
+  context: CheckInUndoContext,
+): { reason: string; usedAt: string; usedByUserId: string } {
+  const parsed = undoEventTicketCheckInSchema.parse(input)
+  const blocker = eventTicketCheckInUndoBlocker(ticket, context)
+  if (blocker !== null) throw blocker
+  return {
+    reason: parsed.reason,
+    usedAt: ticket.usedAt ?? '',
+    usedByUserId: ticket.usedByUserId ?? '',
+  }
+}
+
 // --- Özet ve CSV ---------------------------------------------------------------------------------
 
 export type EventTicketSummaryRow = {
@@ -747,15 +975,21 @@ export type EventTicketSummaryRow = {
   priceCents: number
   paymentStatus: EventTicketPaymentStatus
   usedAt: string | null
+  refundCents: number | null
+  refundedAt: string | null
 }
 
-/** Etkinlik özeti: etkin, kullanılan, ödeme bekleyen bilet ve tahsil edilen tutar (iade düşer). */
+/**
+ * Etkinlik özeti: etkin, kullanılan, ödeme bekleyen bilet; tahsil edilen net tutar (ödenmiş
+ * biletlerin bedelinden iptalde yazılan iade düşer, kesinti kalır; K-380) ve ödenmesi bekleyen iade.
+ */
 export function eventTicketSummary(
   event: Parameters<typeof eventCapacity>[0],
   tickets: readonly EventTicketSummaryRow[],
 ) {
   const active = tickets.filter((ticket) => ticket.status === 'active')
   const capacity = eventCapacity(event)
+  const pending = tickets.filter((ticket) => eventTicketRefundStatus(ticket) === 'pending')
   return {
     capacity,
     activeCount: active.length,
@@ -763,9 +997,17 @@ export function eventTicketSummary(
     invitationCount: active.filter((ticket) => ticket.ticketKind === 'invitation').length,
     usedCount: active.filter((ticket) => ticket.usedAt !== null).length,
     unpaidCount: active.filter((ticket) => ticket.paymentStatus === 'unpaid').length,
-    collectedCents: active
+    collectedCents: tickets
       .filter((ticket) => ticket.paymentStatus === 'paid')
-      .reduce((total, ticket) => total + ticket.priceCents, 0),
+      .reduce(
+        (total, ticket) =>
+          total +
+          ticket.priceCents -
+          (ticket.status === 'cancelled' ? (ticket.refundCents ?? 0) : 0),
+        0,
+      ),
+    pendingRefundCount: pending.length,
+    pendingRefundCents: pending.reduce((total, ticket) => total + (ticket.refundCents ?? 0), 0),
   }
 }
 
@@ -793,11 +1035,13 @@ export type EventTicketCsvRow = {
   status: EventTicketStatus
   usedAt: string | null
   cancelledAt: string | null
+  refundCents: number | null
   refundedAt: string | null
 }
 
 /**
- * Satış listesi CSV'si (K-327): bilet başına bir satır, zamanlar Europe/Istanbul. Bilet kodu yazılmaz
+ * Satış listesi CSV'si (K-327, K-380): bilet başına bir satır, zamanlar Europe/Istanbul; iptal edilen
+ * ödenmiş bilette iade tutarı, durumu ve ödendiği an. Bilet kodu yazılmaz
  * (kod girişte bilet yerine geçer; dosya dolaşırsa bilet kopyalanmış olur).
  */
 export function eventTicketsCsv(rows: readonly EventTicketCsvRow[]): string {
@@ -814,7 +1058,9 @@ export function eventTicketsCsv(rows: readonly EventTicketCsvRow[]): string {
     'Durum',
     'Giriş zamanı',
     'İptal zamanı',
+    'İade tutarı',
     'İade',
+    'İade zamanı',
   ]
   const lines = [header.map(csvCell).join(CSV_SEPARATOR)]
   for (const row of rows)
@@ -834,7 +1080,13 @@ export function eventTicketsCsv(rows: readonly EventTicketCsvRow[]): string {
         csvCell(EVENT_TICKET_STATE_LABELS[eventTicketState(row)]),
         csvCell(timeText(row.usedAt)),
         csvCell(timeText(row.cancelledAt)),
-        csvCell(row.refundedAt === null ? '' : 'Bedel iade edildi'),
+        row.refundCents === null ? csvCell('') : csvAmount(row.refundCents),
+        csvCell(
+          row.refundCents === null
+            ? ''
+            : EVENT_TICKET_REFUND_STATUS_LABELS[eventTicketRefundStatus(row)],
+        ),
+        csvCell(timeText(row.refundedAt)),
       ].join(CSV_SEPARATOR),
     )
   return lines.join('\r\n')

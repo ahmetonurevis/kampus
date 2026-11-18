@@ -12,7 +12,7 @@ import { dataResponse, pageMetaSchema, pageQuerySchema } from './common.schemas.
 
 /** Personel ücret tanımı şemaları (DOM-FIN-099; ON-194). Yalnız yöneticiye döner (K-306). */
 
-const payRateSchema = z.object({
+export const payRateSchema = z.object({
   id: z.string(),
   membershipId: z.string(),
   component: z

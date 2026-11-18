@@ -11,10 +11,15 @@ import {
   planPayRate,
   planPayRateCancel,
   planPayRateEnd,
-  severancePaySuggestion,
   wageOn,
   type PayRateTarget,
 } from '@kampus/school-core/lib/finance-pay-rates.ts'
+import {
+  assertPayrollDaysUnlocked,
+  payRateCancelRange,
+  payRateCreateRange,
+  payRateEndRange,
+} from '@kampus/school-core/lib/finance-payroll-periods.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 import { isStaffRole } from '@kampus/school-core/lib/staff-accounts.ts'
 
@@ -35,6 +40,7 @@ import {
   type StaffQuery,
   type StoredPayRate,
 } from '../db/finance-pay-rates.ts'
+import { lockedPayrollMonths } from '../db/finance-payroll-periods.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
@@ -46,7 +52,8 @@ import { auditWork } from './task-work.ts'
  * kurum kilidi altında üyeliği ve yuvanın tanımlarını yükler, aynı transaction'da yazar. Ücret
  * kişisel veridir (K-306): denetim kaydına alan adları yazılır, tutar, not ve gerekçe yazılmaz.
  * Tutar içeren her okuma (`finance.pay_rate.read`) okumayla aynı transaction'da denetime düşer;
- * maskeli liste okuması düşmez (K-307). Rol ve modül denetimi rotadadır (yalnız yönetici).
+ * maskeli liste okuması düşmez (K-307). Onaylı bordro ayına düşen yazma 409 `payroll_period_locked`
+ * olur (DOM-FIN-108, K-357). Rol ve modül denetimi rotadadır (yalnız yönetici).
  */
 
 const ENTITY = 'staff_pay_rates'
@@ -163,16 +170,19 @@ export async function getStaffPayRatesFor(
 }
 
 /**
- * Yalnız okuma (ON-205 kıdem hesaplayıcısının "güncel ücret" önerisi için): `day` gününde geçerli
- * tanımlar ve aylık brüt + yan hak önerisi. Denetim kaydını çağıran uç yazar (K-307).
+ * Personelin iptal edilmemiş bütün tanımları, denetimli okuma (kıdem önerisi, DOM-FIN-094, K-347):
+ * üyelik kurumun personeli değilse 404; okuma aynı transaction'da `finance.pay_rate.read` denetimi
+ * yazar (K-307). Rol denetimi (`FINANCE_PAY_RATE_ROLES`) çağıran uçtadır.
  */
-export async function payRatesInEffectFor(
-  ctx: Pick<ServiceContext, 'db' | 'institutionId'>,
+export async function loadAuditedStaffPayRates(
+  tx: Database,
+  ctx: ServiceContext,
   membershipId: string,
-  day: string,
 ) {
-  const rates = await loadStaffPayRates(ctx.db, ctx.institutionId, [membershipId])
-  return { effective: payRatesOn(rates, day), severance: severancePaySuggestion(rates, day) }
+  const member = await staffOf(tx, ctx, membershipId)
+  const rates = await loadStaffPayRates(tx, ctx.institutionId, [membershipId])
+  await auditRead(tx, ctx, membershipId)
+  return { member, rates }
 }
 
 async function rateBody(tx: Database, ctx: ServiceContext, id: string) {
@@ -219,7 +229,16 @@ export function createPayRateCommand(
           parsed.membershipId,
           payRateSlot(parsed.component, parsed.rateType),
         )
-        return { run: () => ({ parsed, plan: planPayRate(parsed, { staff, slotRates }) }) }
+        const locked = await lockedPayrollMonths(tx, ctx.institutionId)
+        return {
+          run: () => {
+            const plan = planPayRate(parsed, { staff, slotRates })
+            assertPayrollDaysUnlocked(locked, [
+              payRateCreateRange(parsed, plan.close?.previousEndDate),
+            ])
+            return { parsed, plan }
+          },
+        }
       },
       after: async (tx, { parsed, plan }) => {
         if (plan.close !== null) {
@@ -291,9 +310,15 @@ export function endPayRateCommand(
       load: async (tx) => {
         const parsed = payRateEndSchema.parse(input)
         const { target } = await targetOf(tx, ctx, id, expectedVersion)
+        const locked = await lockedPayrollMonths(tx, ctx.institutionId)
         return {
           run: () => {
             planPayRateEnd(target, parsed)
+            assertPayrollDaysUnlocked(
+              locked,
+              [payRateEndRange(target.endDate, parsed.endDate)],
+              'endDate',
+            )
             return parsed
           },
         }
@@ -335,7 +360,18 @@ export function cancelPayRateCommand(
         const parsed = payRateCancelSchema.parse(input)
         const { target } = await targetOf(tx, ctx, id, expectedVersion)
         const closed = await findClosedBy(tx, ctx.institutionId, id)
-        return { run: () => ({ parsed, plan: planPayRateCancel(target, closed) }) }
+        const locked = await lockedPayrollMonths(tx, ctx.institutionId)
+        return {
+          run: () => {
+            const plan = planPayRateCancel(target, closed)
+            assertPayrollDaysUnlocked(
+              locked,
+              [payRateCancelRange(target, closed?.previousEndDate)],
+              'id',
+            )
+            return { parsed, plan }
+          },
+        }
       },
       after: async (tx, { parsed, plan }) => {
         const saved = await cancelPayRate(tx, ctx.institutionId, {

@@ -23,10 +23,13 @@ import {
   updateDocumentTypeSchema,
   type GapDocumentType,
 } from '@kampus/school-core/lib/prospect-documents.ts'
+import {
+  ENROLLED_PROSPECT_STAGE,
+  enrollmentDocumentHeld,
+} from '@kampus/school-core/lib/enrollment-documents.ts'
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
 
 import type { Database } from '../db/client.ts'
-import { extendFileRetention, findFile } from '../db/files.ts'
 import {
   archiveProspectDocuments,
   countProspectDocuments,
@@ -54,6 +57,11 @@ import { findRecord } from '../db/records.ts'
 import { AppError, ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import type { StorageDriver } from '../storage/storage.ts'
+import {
+  applyEnrollmentDocuments,
+  documentPurgeHeld,
+  scheduleDocumentPurge,
+} from './enrollment-document-links.ts'
 import { defineFileAttachment } from './file-registry.ts'
 import { attachFile, getFileUrl } from './files.ts'
 import { getInstitutionModules } from './modules.ts'
@@ -96,6 +104,8 @@ const documentReads = new WeakSet<ServiceContext>()
 defineFileAttachment(ATTACHMENT, {
   purposes: [PROSPECT_DOCUMENT_PURPOSE],
   canRead: async (_tx, ctx) => documentReads.has(ctx),
+  // Öğrenciye bağlı kabul edilmiş belge imha edilmez (DOM-KAY-045, K-386).
+  purgeHeld: (tx, institutionId, attachedId) => documentPurgeHeld(tx, institutionId, attachedId),
 })
 
 const SPECIAL_FORBIDDEN = 'Özel nitelikli belgeyi yalnız yönetici açar ve inceler.'
@@ -108,7 +118,7 @@ async function institutionTypeOf(db: Database, ctx: ServiceContext): Promise<Ins
 }
 
 /** Kurum ilk kez okuyor ya da yazıyorsa varsayılan tür listesi yazılır (K-320). */
-async function ensureTypes(db: Database, ctx: ServiceContext) {
+export async function ensureProspectDocumentTypes(db: Database, ctx: ServiceContext) {
   const type = await institutionTypeOf(db, ctx)
   await ensureDocumentTypes(db, ctx.institutionId, defaultProspectDocumentTypes(type), ctx.now)
   return type
@@ -118,11 +128,19 @@ async function ensureTypes(db: Database, ctx: ServiceContext) {
 async function prospectOf(db: Database, ctx: ServiceContext, prospectId: string) {
   const row = await findRecord(db, ctx.institutionId, 'prospects', prospectId)
   if (row === null) throw new NotFoundError()
-  const data = row.data as { stage?: unknown; minor?: unknown }
+  const data = row.data as { stage?: unknown; minor?: unknown; studentId?: unknown }
+  const stage = typeof data.stage === 'string' ? data.stage : undefined
   return {
     id: row.id,
-    stage: typeof data.stage === 'string' ? data.stage : undefined,
+    stage,
     minor: typeof data.minor === 'boolean' ? data.minor : undefined,
+    // Kesin kayda dönmüş adayın öğrencisi: kabul edilen belge ve rıza ona bağlanır (DOM-KAY-045).
+    studentId:
+      stage === ENROLLED_PROSPECT_STAGE &&
+      typeof data.studentId === 'string' &&
+      data.studentId !== ''
+        ? data.studentId
+        : null,
   }
 }
 
@@ -156,6 +174,12 @@ const fileAvailable = (status: string) => status !== 'deleted' && status !== 're
 function documentView(row: ProspectDocumentRow, ctx: ServiceContext) {
   const canOpen = canOpenProspectDocument(ctx.actor.role, row.specialCategory)
   const available = fileAvailable(row.fileStatus)
+  // Öğrenciye bağlı belgenin dosyası imha edilmez; vazgeçmeden kalan işaret gösterilmez (K-386).
+  const held = enrollmentDocumentHeld({
+    linked: row.studentId !== null,
+    status: row.status,
+    archived: false,
+  })
   return {
     id: row.id,
     documentTypeId: row.documentTypeId,
@@ -168,8 +192,10 @@ function documentView(row: ProspectDocumentRow, ctx: ServiceContext) {
       name: canOpen ? row.fileName : null,
       contentType: row.fileContentType,
       byteSize: row.fileByteSize,
-      purgeAt: iso(row.fileRetentionUntil),
+      purgeAt: held ? null : iso(row.fileRetentionUntil),
     },
+    linkedToStudent: row.studentId !== null,
+    linkedAt: iso(row.linkedAt),
     rejectionReason: canOpen ? row.rejectionReason : null,
     uploadedAt: row.createdAt.toISOString(),
     reviewedAt: iso(row.reviewedAt),
@@ -187,20 +213,11 @@ const consentView = (row: StoredDocumentConsent) => ({
   version: row.version,
 })
 
-/** Saklama sonunu öne çeker; daha erken işaret ve imha edilmiş dosya korunur. */
-async function scheduleFilePurge(tx: Database, ctx: ServiceContext, fileId: string, until: Date) {
-  const row = await findFile(tx, ctx.institutionId, fileId, { lock: true })
-  if (row === null || row.status === 'deleted') return
-  if (row.retentionUntil !== null && row.retentionUntil <= until) return
-  if ((await extendFileRetention(tx, ctx.institutionId, row, until, ctx.now)) === null)
-    throw new ConflictError()
-}
-
 // --- Belge türleri ------------------------------------------------------------------------
 
 /** Kurumun belge türleri (arşivlenmemiş), sıraya göre; ilk okumada varsayılan liste yazılır. */
 export async function documentTypesFor(ctx: ServiceContext) {
-  await ensureTypes(ctx.db, ctx)
+  await ensureProspectDocumentTypes(ctx.db, ctx)
   return (await listDocumentTypes(ctx.db, ctx.institutionId)).map(typeView)
 }
 
@@ -227,7 +244,7 @@ export function createDocumentTypeCommand(
       entity,
       load: async (tx) => {
         const data = createDocumentTypeSchema.parse(input)
-        await ensureTypes(tx, ctx)
+        await ensureProspectDocumentTypes(tx, ctx)
         const active = await listDocumentTypes(tx, ctx.institutionId)
         return {
           run: () => {
@@ -348,7 +365,7 @@ export function archiveDocumentTypeCommand(
 
 async function prospectDocumentsBody(db: Database, ctx: ServiceContext, prospectId: string) {
   const prospect = await prospectOf(db, ctx, prospectId)
-  const institutionType = await ensureTypes(db, ctx)
+  const institutionType = await ensureProspectDocumentTypes(db, ctx)
   const types = (await listDocumentTypes(db, ctx.institutionId, { includeArchived: true })).map(
     typeView,
   )
@@ -420,7 +437,7 @@ export function addProspectDocumentCommand(
       load: async (tx) => {
         const data = addProspectDocumentSchema.parse(input)
         const prospect = await prospectOf(tx, ctx, prospectId)
-        await ensureTypes(tx, ctx)
+        await ensureProspectDocumentTypes(tx, ctx)
         const found = await findDocumentType(tx, ctx.institutionId, data.documentTypeId)
         const existing = await countProspectDocuments(tx, ctx.institutionId, prospect.id)
         const consent = found?.specialCategory
@@ -455,7 +472,7 @@ export function addProspectDocumentCommand(
           now: ctx.now,
         })
         if (replaced !== null)
-          await scheduleFilePurge(tx, ctx, replaced, documentRetentionUntil(ctx.now))
+          await scheduleDocumentPurge(tx, ctx, replaced, documentRetentionUntil(ctx.now))
         await insertProspectDocument(tx, ctx.institutionId, {
           id,
           prospectId,
@@ -525,7 +542,7 @@ export function reviewProspectDocumentCommand(
               status: document.status,
               fileAvailable: fileAvailable(document.fileStatus),
             })
-            return decision
+            return { ...decision, studentId: prospect.studentId }
           },
         }
       },
@@ -546,6 +563,14 @@ export function reviewProspectDocumentCommand(
           entity,
           decision.decision === 'accept' ? ['status'] : ['status', 'rejectionReason'],
         )
+        // Kesin kayıttan sonraki karar: kabul öğrenciye bağlar, ret 30 gün sonra imhaya işaretler
+        // (DOM-KAY-045, K-384).
+        if (decision.studentId !== null)
+          await applyEnrollmentDocuments(tx, ctx, {
+            prospectId,
+            studentId: decision.studentId,
+            documentIds: [documentId],
+          })
         body = { data: await prospectDocumentsBody(tx, ctx, prospectId) }
       },
     },
@@ -625,6 +650,8 @@ export function recordDocumentConsentCommand(
             return {
               method: data.method,
               grantor: documentConsentGrantor(prospect, institutionType),
+              // Kesin kayıttan sonra alınan rıza öğrenciye de bağlanır (DOM-KAY-045, K-385).
+              studentId: prospect.studentId,
             }
           },
         }
@@ -637,7 +664,11 @@ export function recordDocumentConsentCommand(
           grantedByUserId: ctx.actor.userId,
           now: ctx.now,
         })
-        await auditWork(tx, ctx, 'prospect_document_consent.grant', entity, ['grantor', 'method'])
+        await auditWork(tx, ctx, 'prospect_document_consent.grant', entity, [
+          'grantor',
+          'method',
+          ...(data.studentId === null ? [] : ['studentId']),
+        ])
         body = { data: await prospectDocumentsBody(tx, ctx, prospectId) }
       },
     },
@@ -700,7 +731,7 @@ export function withdrawDocumentConsentCommand(
           ctx.now,
         )
         for (const row of special) {
-          await scheduleFilePurge(tx, ctx, row.fileId, ctx.now)
+          await scheduleDocumentPurge(tx, ctx, row.fileId, ctx.now)
           await auditWork(
             tx,
             ctx,
@@ -735,7 +766,7 @@ export async function documentGapsFor(
   ctx: ServiceContext,
   query: { page: number; pageSize: number; prospectIds: readonly string[] | null },
 ) {
-  await ensureTypes(ctx.db, ctx)
+  await ensureProspectDocumentTypes(ctx.db, ctx)
   const types = (await listDocumentTypes(ctx.db, ctx.institutionId)).map(typeView).map(gapType)
   const prospects = await loadOpenDocumentProspects(ctx.db, ctx.institutionId, query.prospectIds)
   const documents = await loadGapDocuments(
@@ -789,5 +820,5 @@ export async function scheduleLostProspectDocuments(
 ): Promise<void> {
   const rows = await listProspectDocumentFiles(tx, ctx.institutionId, prospectId)
   const until = documentRetentionUntil(ctx.now)
-  for (const row of rows) await scheduleFilePurge(tx, ctx, row.fileId, until)
+  for (const row of rows) await scheduleDocumentPurge(tx, ctx, row.fileId, until)
 }

@@ -4408,6 +4408,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/prospects/enrollment-documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kayıt belgeleri listesi
+         * @description Aday kaydından gelen aktif öğrenciler, ad sırasıyla (DOM-KAY-045, K-386): öğrenciye bağlı belge sayısı, eksik zorunlu türler (kesin kayıtta ön başvuru ve kesin kayıt türlerinin ikisi de istenir; reddedilen ya da dosyası imha edilen belge eksiktir) ve incelemesi bekleyen belge sayısı. Ayrılan, mezun ve aktarımla gelen öğrenci listede yoktur. `q` ada göre arar, `missingOnly=true` yalnız eksiği olanları verir. Satır iletişim ve kimlik bilgisi taşımaz. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.
+         */
+        get: operations["listEnrollmentDocuments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prospects/students/{studentId}/enrollment-documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Öğrencinin kayıt belgeleri
+         * @description Kesin kayıtta (ya da kayıttan sonraki kabulde) öğrenciye bağlanan aday belgeleri, eksik zorunlu türler ve öğrenciye bağlı özel nitelikli belge rızası (DOM-KAY-045, K-384, K-385). Dosya kopyalanmaz; belge `GET /api/v1/prospects/{prospectId}/documents/{documentId}/url` ile açılır ve açılış `prospect_document.read` olarak denetime yazılır. Özel nitelikli belgeyi açamayan (ön büro) dosya adını `null` görür. Reddedilen, yerine yenisi yüklenen ve rızası geri çekilip arşivlenen belge listede yoktur. Aday kaydından gelmeyen öğrencide `prospectId` `null`, liste boş. Olmayan, arşivlenmiş ya da başka kurumun öğrencisi 404. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getEnrollmentDocuments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/prospects/students/{studentId}/enrollment-certificate": {
         parameters: {
             query?: never;
@@ -14638,6 +14678,74 @@ export interface components {
             /** @description Yalnız önizlemede dolu; satırlar maskeli */
             rows: components["schemas"]["EokulImportRowInput"][];
         };
+        EnrollmentDocumentRowInput: {
+            studentId: string;
+            /** @description Belgelerin yüklendiği aday kaydı (aday detayı bağlantısı) */
+            prospectId: string;
+            name: string;
+            /** @description Öğrenciye bağlı, dosyası duran belge sayısı */
+            documentCount: number;
+            /** @description Eksik zorunlu türler (kesin kayıtta iki aşamanın türleri de istenir; K-321) */
+            missing: {
+                id: string;
+                label: string;
+                /** @enum {string} */
+                stage: "application" | "enrollment";
+            }[];
+            /** @description İncelemesi bekleyen güncel aday belgesi */
+            awaitingReview: number;
+        };
+        EnrollmentDocumentInput: {
+            /**
+             * Format: uuid
+             * @description Aday belgesinin kimliği (açılış aday belge ucundan)
+             */
+            id: string;
+            prospectId: string;
+            documentTypeId: string;
+            typeLabel: string;
+            specialCategory: boolean;
+            /** @description Oturumdaki kişi dosyayı açabilir mi (özel nitelikli belgede yalnız yönetici) */
+            canOpen: boolean;
+            file: {
+                /** @description Dosya imha edilmemiş mi */
+                available: boolean;
+                /** @description Özgün dosya adı; özel nitelikli belgeyi açamayana `null` */
+                name: string | null;
+                contentType: string;
+                byteSize: number;
+            };
+            reviewedAt: string | null;
+            /** @description Öğrenciye bağlandığı an */
+            linkedAt: string | null;
+        };
+        EnrollmentDocumentsInput: {
+            studentId: string;
+            name: string;
+            /** @description Kesin kaydın adayı; aday kaydından gelmeyen öğrencide `null` */
+            prospectId: string | null;
+            /** @description Bağlı belgeler, en yeni bağ önce */
+            documents: components["schemas"]["EnrollmentDocumentInput"][];
+            gaps: {
+                /** @description Eksik zorunlu türler (kesin kayıtta iki aşamanın türleri de istenir; K-321) */
+                missing: {
+                    id: string;
+                    label: string;
+                    /** @enum {string} */
+                    stage: "application" | "enrollment";
+                }[];
+                /** @description İncelemesi bekleyen güncel aday belgesi */
+                awaitingReview: number;
+            };
+            /** @description Öğrenciye bağlı etkin özel nitelikli belge rızası (K-385) */
+            consent: {
+                /** @enum {string} */
+                grantor: "guardian" | "self";
+                /** Format: date-time */
+                grantedAt: string;
+                linkedAt: string | null;
+            } | null;
+        };
         EnrollmentFunnelStepInput: {
             /**
              * @description Huni adımı; `trial` yalnız dil okulunda
@@ -15009,9 +15117,13 @@ export interface components {
                 name: string | null;
                 contentType: string;
                 byteSize: number;
-                /** @description Dosyanın imhaya işaretlendiği an (K-323) */
+                /** @description Dosyanın imhaya işaretlendiği an (K-323); öğrenciye bağlı belgede `null` (K-386) */
                 purgeAt: string | null;
             };
+            /** @description Kesin kayıtla öğrenci dosyasına bağlandı mı (DOM-KAY-045, K-384) */
+            linkedToStudent: boolean;
+            /** @description Öğrenciye bağlandığı an */
+            linkedAt: string | null;
             /** @description Ret gerekçesi; özel nitelikli belgeyi açamayana `null` */
             rejectionReason: string | null;
             /** Format: date-time */
@@ -19518,6 +19630,74 @@ export interface components {
             /** @description Yalnız önizlemede dolu; satırlar maskeli */
             rows: components["schemas"]["EokulImportRow"][];
         };
+        EnrollmentDocumentRow: {
+            studentId: string;
+            /** @description Belgelerin yüklendiği aday kaydı (aday detayı bağlantısı) */
+            prospectId: string;
+            name: string;
+            /** @description Öğrenciye bağlı, dosyası duran belge sayısı */
+            documentCount: number;
+            /** @description Eksik zorunlu türler (kesin kayıtta iki aşamanın türleri de istenir; K-321) */
+            missing: {
+                id: string;
+                label: string;
+                /** @enum {string} */
+                stage: "application" | "enrollment";
+            }[];
+            /** @description İncelemesi bekleyen güncel aday belgesi */
+            awaitingReview: number;
+        };
+        EnrollmentDocument: {
+            /**
+             * Format: uuid
+             * @description Aday belgesinin kimliği (açılış aday belge ucundan)
+             */
+            id: string;
+            prospectId: string;
+            documentTypeId: string;
+            typeLabel: string;
+            specialCategory: boolean;
+            /** @description Oturumdaki kişi dosyayı açabilir mi (özel nitelikli belgede yalnız yönetici) */
+            canOpen: boolean;
+            file: {
+                /** @description Dosya imha edilmemiş mi */
+                available: boolean;
+                /** @description Özgün dosya adı; özel nitelikli belgeyi açamayana `null` */
+                name: string | null;
+                contentType: string;
+                byteSize: number;
+            };
+            reviewedAt: string | null;
+            /** @description Öğrenciye bağlandığı an */
+            linkedAt: string | null;
+        };
+        EnrollmentDocuments: {
+            studentId: string;
+            name: string;
+            /** @description Kesin kaydın adayı; aday kaydından gelmeyen öğrencide `null` */
+            prospectId: string | null;
+            /** @description Bağlı belgeler, en yeni bağ önce */
+            documents: components["schemas"]["EnrollmentDocument"][];
+            gaps: {
+                /** @description Eksik zorunlu türler (kesin kayıtta iki aşamanın türleri de istenir; K-321) */
+                missing: {
+                    id: string;
+                    label: string;
+                    /** @enum {string} */
+                    stage: "application" | "enrollment";
+                }[];
+                /** @description İncelemesi bekleyen güncel aday belgesi */
+                awaitingReview: number;
+            };
+            /** @description Öğrenciye bağlı etkin özel nitelikli belge rızası (K-385) */
+            consent: {
+                /** @enum {string} */
+                grantor: "guardian" | "self";
+                /** Format: date-time */
+                grantedAt: string;
+                linkedAt: string | null;
+            } | null;
+        };
         EnrollmentFunnelStep: {
             /**
              * @description Huni adımı; `trial` yalnız dil okulunda
@@ -19889,9 +20069,13 @@ export interface components {
                 name: string | null;
                 contentType: string;
                 byteSize: number;
-                /** @description Dosyanın imhaya işaretlendiği an (K-323) */
+                /** @description Dosyanın imhaya işaretlendiği an (K-323); öğrenciye bağlı belgede `null` (K-386) */
                 purgeAt: string | null;
             };
+            /** @description Kesin kayıtla öğrenci dosyasına bağlandı mı (DOM-KAY-045, K-384) */
+            linkedToStudent: boolean;
+            /** @description Öğrenciye bağlandığı an */
+            linkedAt: string | null;
             /** @description Ret gerekçesi; özel nitelikli belgeyi açamayana `null` */
             rejectionReason: string | null;
             /** Format: date-time */
@@ -49830,6 +50014,207 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["ProspectDocuments"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listEnrollmentDocuments: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Ada göre arama */
+                q?: string;
+                /** @description `true`: yalnız eksik zorunlu belgesi olan öğrenciler */
+                missingOnly?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["EnrollmentDocumentRow"][];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getEnrollmentDocuments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Öğrenci kimliği */
+                studentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["EnrollmentDocuments"];
                     };
                 };
             };

@@ -154,6 +154,8 @@ const documentColumns = {
   uploadedByUserId: prospectDocuments.uploadedByUserId,
   reviewedAt: prospectDocuments.reviewedAt,
   supersededAt: prospectDocuments.supersededAt,
+  studentId: prospectDocuments.studentId,
+  linkedAt: prospectDocuments.linkedAt,
   createdAt: prospectDocuments.createdAt,
   version: prospectDocuments.version,
   fileStatus: files.status,
@@ -171,18 +173,25 @@ const sameFile = and(
 
 /** Adayın arşivlenmemiş belgeleri, en yeni önce; dosyanın durumu ve imha anıyla. */
 export function listProspectDocuments(db: Database, institutionId: string, prospectId: string) {
-  return db
-    .select(documentColumns)
-    .from(prospectDocuments)
-    .innerJoin(files, sameFile)
-    .where(
-      and(
-        eq(prospectDocuments.institutionId, institutionId),
-        eq(prospectDocuments.prospectId, prospectId),
-        isNull(prospectDocuments.archivedAt),
-      ),
-    )
-    .orderBy(desc(prospectDocuments.createdAt), desc(prospectDocuments.id))
+  return (
+    db
+      .select(documentColumns)
+      .from(prospectDocuments)
+      .innerJoin(files, sameFile)
+      .where(
+        and(
+          eq(prospectDocuments.institutionId, institutionId),
+          eq(prospectDocuments.prospectId, prospectId),
+          isNull(prospectDocuments.archivedAt),
+        ),
+      )
+      // Aynı anda yazılan belgelerde (sabit saatli istek) güncel belge yerine geçtiğinden önce gelir.
+      .orderBy(
+        desc(prospectDocuments.createdAt),
+        sql`${prospectDocuments.status} = 'superseded'`,
+        desc(prospectDocuments.id),
+      )
+  )
 }
 
 /** Adayın belgesi (başka adayın ya da başka kurumun belgesi bulunmaz). */
@@ -472,13 +481,17 @@ export async function insertDocumentConsent(
     grantor: DocumentConsentGrantor
     method: DocumentConsentMethod
     grantedByUserId: string
+    /** Kesin kayda dönmüş adayda rızanın bağlandığı öğrenci (DOM-KAY-045, K-385). */
+    studentId: string | null
     now: Date
   },
 ): Promise<void> {
-  const { now, ...values } = input
+  const { now, studentId, ...values } = input
   await tx.insert(prospectDocumentConsents).values({
     ...values,
     institutionId,
+    studentId,
+    linkedAt: studentId === null ? null : now,
     grantedAt: now,
     createdAt: now,
     updatedAt: now,

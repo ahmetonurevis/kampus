@@ -58,8 +58,16 @@ const documentSchema = z
         .describe('Özgün dosya adı; özel nitelikli belgeyi açamayana `null`'),
       contentType: z.string(),
       byteSize: z.number().int().min(0),
-      purgeAt: instant.nullable().describe('Dosyanın imhaya işaretlendiği an (K-323)'),
+      purgeAt: instant
+        .nullable()
+        .describe(
+          'Dosyanın imhaya işaretlendiği an (K-323); öğrenciye bağlı belgede `null` (K-386)',
+        ),
     }),
+    linkedToStudent: z
+      .boolean()
+      .describe('Kesin kayıtla öğrenci dosyasına bağlandı mı (DOM-KAY-045, K-384)'),
+    linkedAt: instant.nullable().describe('Öğrenciye bağlandığı an'),
     rejectionReason: z
       .string()
       .nullable()

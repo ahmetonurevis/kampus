@@ -17,9 +17,10 @@ import { payrollDerivedValues, type PayrollEffectiveSet } from './finance-payrol
 import { isStaffRole } from './staff-accounts.ts'
 
 /**
- * SGK bildirge hazırlık listesi (docs/domain/finans.md DOM-FIN-107; ON-203). Kampüs bordro
- * hesaplamaz ve resmî sisteme (GİB Muhtasar ve Prim Hizmet Beyannamesi, SGK e-Bildirge) hiçbir şey
- * göndermez (IST-143): ay için mali müşavire ya da bordrocuya kontrol listesi üretir.
+ * SGK bildirge hazırlık listesi (docs/domain/finans.md DOM-FIN-107; ON-203). Kampüs resmî sisteme
+ * (GİB Muhtasar ve Prim Hizmet Beyannamesi, SGK e-Bildirge) hiçbir şey göndermez (IST-143): ay
+ * için mali müşavire ya da bordrocuya kontrol listesi üretir. Prim günü bordro hesabıyla
+ * (DOM-FIN-115) ortaktır (`sgkWorkDays`).
  *
  * - Kapsam (K-352): ayda ana ücret tanımı (DOM-FIN-099) yürürlükte olan ya da o ay için elle satır
  *   (eksik gün, giriş/çıkış günü) girilmiş personel. Giriş ve çıkış günü ana ücret tanımlarının

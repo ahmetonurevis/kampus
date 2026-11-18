@@ -62,7 +62,7 @@ type Dialog =
 
 /**
  * Bordro aktarımı (DOM-FIN-105; ON-202): Finans "Bordro aktarımı" sekmesi, yalnız yönetici
- * (K-338). Kampüs bordro hesaplamaz: ay seçilir, o ayın girdi satırları (ücret tanımları ve elle
+ * (K-338). Bordroyu dış programda hesaplatan kurum içindir (ADR 0011): ay seçilir, o ayın girdi satırları (ücret tanımları ve elle
  * girilen ek ders saatleri) önizlenir, CSV indirilir. Önizleme tutar içerir ve her açılışı denetime
  * düşer; dosya taze oturum ister ve her üretim özet satırı yazar. Dönem kilidi yoktur.
  */
@@ -141,9 +141,10 @@ export function FinancePayrollExportSection() {
           Bordro aktarımı
         </h2>
         <p className="text-sm text-muted-foreground">
-          Kampüs bordro hesaplamaz; seçilen ayın ücret ve ek ders girdilerini bordro programınıza
-          aktarılacak dosya olarak verir. Ay içinde başlayan ya da biten ücretin tutarı bordroda gün
-          oranıyla hesaplanır. Önizleme ücret içerdiği için her görüntüleme denetim kaydına yazılır.
+          Bordroyu kendi programında ya da mali müşavirinde hesaplatan kurum için seçilen ayın ücret
+          ve ek ders girdilerini aktarılacak dosya olarak verir; Kampüs'ün hesabı "Bordro hesabı"
+          sekmesindedir. Ay içinde başlayan ya da biten ücretin tutarı bordroda gün oranıyla
+          hesaplanır. Önizleme ücret içerdiği için her görüntüleme denetim kaydına yazılır.
         </p>
       </header>
       <div className="grid gap-5 px-6 pb-6 max-[650px]:px-4">

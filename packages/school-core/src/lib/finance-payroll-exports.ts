@@ -23,8 +23,9 @@ import {
 import { isStaffRole, STAFF_ROLE_LABELS } from './staff-accounts.ts'
 
 /**
- * Bordro programına aktarım (docs/domain/finans.md DOM-FIN-105; ON-202). Kampüs bordro
- * hesaplamaz (ON-193): seçilen ayın **girdi dosyasını** üretir. Kaynak: o ay yürürlükte olan
+ * Bordro programına aktarım (docs/domain/finans.md DOM-FIN-105; ON-202). Bordroyu Kampüs hesaplar
+ * (ADR 0011, DOM-FIN-115); bordroyu dış programda hesaplatan kurum için seçilen ayın **girdi
+ * dosyası** üretilir. Kaynak: o ay yürürlükte olan
  * ücret tanımları (DOM-FIN-099) ve ay için elle girilen ek ders saatleri (personel × ay × tür ×
  * saat; ders saati özeti OG-116 gelene kadar).
  *

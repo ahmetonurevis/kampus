@@ -38,8 +38,8 @@ import { runCommand, type CommandResponse, type IdempotencyRequest } from './ope
 import { auditWork } from './task-work.ts'
 
 /**
- * Bordro programına aktarım (DOM-FIN-105; ON-202). Kampüs bordro hesaplamaz (ON-193): ayın
- * girdi satırları ücret tanımlarından ve elle girilen ek ders saatinden core'da üretilir. Ücret
+ * Bordro programına aktarım (DOM-FIN-105; ON-202). Bordroyu dış programda hesaplatan kurum için
+ * (ADR 0011 karar 9; Kampüs'ün hesabı DOM-FIN-115): ayın girdi satırları ücret tanımlarından ve elle girilen ek ders saatinden core'da üretilir. Ücret
  * kişisel veridir (K-306): tutar içeren önizleme okumayla aynı transaction'da denetime düşer
  * (`finance.payroll_export.read`, K-338); dosya üretimi özet satırı (`payroll_exports`) ve
  * denetim kaydıyla tek transaction'dadır. Denetime alan adları yazılır; tutar, saat ve not

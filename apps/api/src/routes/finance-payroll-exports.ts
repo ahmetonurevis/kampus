@@ -42,8 +42,9 @@ import {
 
 /**
  * Bordro programına aktarım uçları (docs/domain/finans.md DOM-FIN-105; ON-202). Modül
- * `finance`; okuma ve yazma yalnız yönetici (K-306, K-338). Kampüs bordro hesaplamaz: önizleme
- * ve dosya ayın girdi satırlarıdır. Dosya taze oturum ister, kullanıcı başına 10/dk; her üretim
+ * `finance`; okuma ve yazma yalnız yönetici (K-306, K-338). Bordroyu Kampüs hesaplar (ADR 0011,
+ * DOM-FIN-115); aktarım bordroyu dış programda hesaplatan kurum içindir: önizleme ve dosya ayın
+ * girdi satırlarıdır. Dosya taze oturum ister, kullanıcı başına 10/dk; her üretim
  * özet satırı ve denetim kaydı yazar. Sıra: 401 → 403 modül → 403 rol → (taze oturum) →
  * `If-Match` → 400 → işlem.
  */
@@ -88,7 +89,7 @@ export function registerFinancePayrollExportRoutes(app: FastifyInstance) {
         operationId: 'previewPayrollExport',
         tags,
         summary: 'Bordro girdi önizlemesi',
-        description: `Seçilen ayın bordro girdi satırları (DOM-FIN-105). Kampüs bordro hesaplamaz (ON-193). Ana ücret ve yan hak: ayla kesişen her ücret tanımı (DOM-FIN-099) bir satırdır; ay içinde başlayan ya da biten tanım ay içindeki başlangıç/bitiş gününü ve gün sayısını taşır, tutarı orantılanmaz ve boş kalır; saatlik ve ders saati ana ücretinde çalışılan saat bilinmediği için tutar boştur; aylık net ücret brüte çevrilmez (K-336). Ek ders: ay için girilen her saat kaydı bir satırdır, tutar saat × o türün ayla kesişen en geç başlayan ek ders ücretidir; tanım yoksa tutar boş (K-337). Satır yönü bugün yalnız \`earning\`; avans ve kesintiler (ON-199) \`deduction\` satırı olarak eklenecek. Tutar içerdiği için her okuma denetim kaydına \`finance.payroll_export.read\` olarak düşer (yalnız alan adı). ${MANAGER}`,
+        description: `Seçilen ayın bordro girdi satırları (DOM-FIN-105); bordroyu dış programda hesaplatan kurum içindir, Kampüs'ün kendi hesabı \`GET /api/v1/finance/payroll-calculations/{month}\` ucundadır (ADR 0011, DOM-FIN-115). Ana ücret ve yan hak: ayla kesişen her ücret tanımı (DOM-FIN-099) bir satırdır; ay içinde başlayan ya da biten tanım ay içindeki başlangıç/bitiş gününü ve gün sayısını taşır, tutarı orantılanmaz ve boş kalır; saatlik ve ders saati ana ücretinde çalışılan saat bilinmediği için tutar boştur; aylık net ücret brüte çevrilmez (K-336). Ek ders: ay için girilen her saat kaydı bir satırdır, tutar saat × o türün ayla kesişen en geç başlayan ek ders ücretidir; tanım yoksa tutar boş (K-337). Satır yönü bugün yalnız \`earning\`; avans ve kesintiler (ON-199) \`deduction\` satırı olarak eklenecek. Tutar içerdiği için her okuma denetim kaydına \`finance.payroll_export.read\` olarak düşer (yalnız alan adı). ${MANAGER}`,
         querystring: payrollMonthQuery,
         response: { 200: payrollPreviewResponse, ...commandErrors },
       },

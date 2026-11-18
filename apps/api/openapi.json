@@ -237880,6 +237880,2289 @@
         }
       }
     },
+    "/api/v1/finance/payroll-calculations/{month}": {
+      "get": {
+        "operationId": "getPayrollCalculation",
+        "summary": "Bordro ön hesabı (önizleme)",
+        "tags": [
+          "finance-payroll-runs"
+        ],
+        "description": "Ayın canlı bordro hesabı (DOM-FIN-115; kaydedilmez): ayda ana ücret tanımı yürürlükte olan, o ay ek ders saati, aya aktarılan düzeltme ya da elle SGK satırı bulunan personel. Satır: prim günü (SGK hazırlık listesiyle aynı, DOM-FIN-107), brüt kalemleri (aylık brüt gün oranlı, ek ders saat × ücret, nakdi yan hak; vergiye tabi işaretli olan GV ve DV matrahına da girer; ayni yan hak yalnız maliyete; düzeltme kayıtları brüt fark, kesinti kalemi net fark; K-387), SGK taban/tavan, işçi payları, GV matrahı, önceki kümülatif matrah (yılın kayıtlı hesapları + elle devir), hesaplanan GV, asgari ücret GV istisnası (asgari ücretin yıl başından kümülatif matrahıyla, gün oranlı) ve DV istisnası (K-388), net, kesintiler (DOM-FIN-101 sırası; icra net ücretten), ödenecek net, işveren payları (5 puan indirim setten) ve maliyet. Net tanımlı ücret ters hesapla brüte çevrilir (K-389); yuvarlama her kalemde bir kez yarım yukarı, vergi tek yuvarlama (K-390). Saatlik ya da ders saati ana ücret hesaplanmaz (`complete: false`, toplama ve kayda girmez). `saved` ayın etkin kayıtlı hesabının özeti, `locked` ayın onaylı olup olmadığıdır. Set yoksa 422 `payroll_parameters_missing`. Her okuma denetime düşer: ekran `finance.payroll_calculation.read`, `Accept: text/csv` `finance.payroll_calculation_export` (yalnız alan adları); sağlık raporu günü varsa ayrıca `finance.medical_report.read`. CSV taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk. Hesap mali müşavir doğrulaması bekler (M-75…M-77); resmî beyanname ve bildirge Kampüs dışında verilir. Rol: yalnız `yonetici` (K-391). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^20[2-9]\\d-(0[1-9]|1[0-2])$"
+            },
+            "in": "path",
+            "name": "month",
+            "required": true,
+            "description": "Bordro ayı (YYYY-AA)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "month": {
+                          "type": "string"
+                        },
+                        "locked": {
+                          "type": "boolean",
+                          "description": "Ay onaylı (kilitli) mı; kilitliyse kaydetme 409"
+                        },
+                        "parameters": {
+                          "type": "object",
+                          "properties": {
+                            "setId": {
+                              "type": "string"
+                            },
+                            "origin": {
+                              "type": "string",
+                              "enum": [
+                                "platform",
+                                "institution"
+                              ]
+                            },
+                            "effectiveFrom": {
+                              "type": "string"
+                            },
+                            "stale": {
+                              "type": "boolean",
+                              "description": "Ayın yılı için set yok, son bilinen set kullanıldı"
+                            },
+                            "unverified": {
+                              "type": "boolean",
+                              "description": "Platform setinde doğrulanmamış alan var"
+                            },
+                            "minimumWageGrossCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "minimumWageBaseBeforeCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Asgari ücretin yıl başından önceki aylara kümülatif GV matrahı"
+                            }
+                          },
+                          "required": [
+                            "setId",
+                            "origin",
+                            "effectiveFrom",
+                            "stale",
+                            "unverified",
+                            "minimumWageGrossCents",
+                            "minimumWageBaseBeforeCents"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "rows": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "role": {
+                                "type": "string",
+                                "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                              },
+                              "active": {
+                                "type": "boolean"
+                              },
+                              "complete": {
+                                "type": "boolean",
+                                "description": "Satır hesaplandı mı; saatlik ücret ya da ücret tanımı yoksa `false` (kayda girmez)"
+                              },
+                              "entryDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "exitDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "primDays": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "missingDays": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "medicalReportDays": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Aya düşen sağlık raporu günü (DOM-FIN-110)"
+                              },
+                              "wageType": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "monthly_gross",
+                                      "monthly_net",
+                                      "hourly",
+                                      "lesson_hour"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "netTargetCents": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Net tanımlı ücrette ayın hedef neti"
+                              },
+                              "netDifferenceCents": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Ters hesaptan kalan kuruş farkı"
+                              },
+                              "earnings": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "wage",
+                                        "lesson",
+                                        "benefit",
+                                        "adjustment"
+                                      ],
+                                      "description": "`wage`, `lesson`, `benefit`, `adjustment`"
+                                    },
+                                    "code": {
+                                      "type": "string",
+                                      "description": "Ücret türü, ek ders türü, yan hak türü ya da düzeltme kalemi"
+                                    },
+                                    "amountCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Tutar, kuruş"
+                                    },
+                                    "hours": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Ek derste saat"
+                                    },
+                                    "rateCents": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Ek derste birim ücret, kuruş"
+                                    },
+                                    "sgk": {
+                                      "type": "boolean",
+                                      "description": "SGK prime esas kazanca girer"
+                                    },
+                                    "taxable": {
+                                      "type": "boolean",
+                                      "description": "Gelir ve damga vergisi matrahına girer"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "code",
+                                    "amountCents",
+                                    "hours",
+                                    "rateCents",
+                                    "sgk",
+                                    "taxable"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "grossCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Brüt (SGK matrahına giren kalemler), kuruş"
+                              },
+                              "sgkFloorCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Gün oranlı SGK tabanı, kuruş"
+                              },
+                              "sgkCeilingCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Gün oranlı SGK tavanı, kuruş"
+                              },
+                              "sgkBaseCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "SGK prime esas kazanç, kuruş"
+                              },
+                              "sgkEmployeeCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "SGK işçi payı, kuruş"
+                              },
+                              "unemploymentEmployeeCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "İşsizlik sigortası işçi payı, kuruş"
+                              },
+                              "incomeTaxBaseCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ayın gelir vergisi matrahı, kuruş"
+                              },
+                              "cumulativeIncomeTaxBaseBeforeCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Önceki kümülatif GV matrahı (kayıtlı aylar + devir), kuruş"
+                              },
+                              "incomeTaxCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Hesaplanan gelir vergisi, kuruş"
+                              },
+                              "incomeTaxExemptionCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Asgari ücret gelir vergisi istisnası, kuruş"
+                              },
+                              "incomeTaxPayableCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ödenecek gelir vergisi, kuruş"
+                              },
+                              "stampTaxBaseCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Damga vergisi matrahı, kuruş"
+                              },
+                              "stampTaxCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Hesaplanan damga vergisi, kuruş"
+                              },
+                              "stampTaxExemptionCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Asgari ücret damga vergisi istisnası, kuruş"
+                              },
+                              "stampTaxPayableCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ödenecek damga vergisi, kuruş"
+                              },
+                              "netCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Net ücret (kesintilerden önce), kuruş"
+                              },
+                              "netAdjustmentCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Kesinti kalemli düzeltmelerin işaretli toplamı, kuruş"
+                              },
+                              "deductions": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "order": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "advance",
+                                        "garnishment",
+                                        "pension"
+                                      ]
+                                    },
+                                    "sourceId": {
+                                      "type": "string",
+                                      "description": "Avans, icra ya da BES kaydının kimliği"
+                                    },
+                                    "requestedCents": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "amountCents": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "status": {
+                                      "type": "string",
+                                      "enum": [
+                                        "applied",
+                                        "capped",
+                                        "waiting",
+                                        "settled",
+                                        "paused",
+                                        "needs_net",
+                                        "needs_base"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "order",
+                                    "kind",
+                                    "sourceId",
+                                    "requestedCents",
+                                    "amountCents",
+                                    "status"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "Kesintiler (DOM-FIN-101 sırası)"
+                              },
+                              "deductionCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Kesinti toplamı, kuruş"
+                              },
+                              "payableCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ödenecek net, kuruş"
+                              },
+                              "sgkEmployerCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "SGK işveren payı (prim indirimi düşülmüş), kuruş"
+                              },
+                              "unemploymentEmployerCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "İşsizlik sigortası işveren payı, kuruş"
+                              },
+                              "inKindBenefitsCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ayni yan haklar (ödenmez, maliyete girer), kuruş"
+                              },
+                              "employerCostCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "İşveren maliyeti, kuruş"
+                              },
+                              "warnings": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "no_wage",
+                                    "pay_rate_gap",
+                                    "entry_in_month",
+                                    "exit_in_month",
+                                    "missing_days_exceed",
+                                    "missing_reason",
+                                    "hourly_wage",
+                                    "net_wage",
+                                    "net_rounding",
+                                    "mixed_wage",
+                                    "lesson_rate_missing",
+                                    "below_floor",
+                                    "above_ceiling",
+                                    "negative_gross",
+                                    "medical_report_days",
+                                    "previous_month_not_saved",
+                                    "deduction_capped",
+                                    "staff_inactive"
+                                  ]
+                                },
+                                "description": "Uyarı kodları"
+                              }
+                            },
+                            "required": [
+                              "membershipId",
+                              "name",
+                              "role",
+                              "active",
+                              "complete",
+                              "entryDate",
+                              "exitDate",
+                              "primDays",
+                              "missingDays",
+                              "medicalReportDays",
+                              "wageType",
+                              "netTargetCents",
+                              "netDifferenceCents",
+                              "earnings",
+                              "grossCents",
+                              "sgkFloorCents",
+                              "sgkCeilingCents",
+                              "sgkBaseCents",
+                              "sgkEmployeeCents",
+                              "unemploymentEmployeeCents",
+                              "incomeTaxBaseCents",
+                              "cumulativeIncomeTaxBaseBeforeCents",
+                              "incomeTaxCents",
+                              "incomeTaxExemptionCents",
+                              "incomeTaxPayableCents",
+                              "stampTaxBaseCents",
+                              "stampTaxCents",
+                              "stampTaxExemptionCents",
+                              "stampTaxPayableCents",
+                              "netCents",
+                              "netAdjustmentCents",
+                              "deductions",
+                              "deductionCents",
+                              "payableCents",
+                              "sgkEmployerCents",
+                              "unemploymentEmployerCents",
+                              "inKindBenefitsCents",
+                              "employerCostCents",
+                              "warnings"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "totals": {
+                          "type": "object",
+                          "properties": {
+                            "staffCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "completeCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "incompleteCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "grossCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "sgkEmployeeCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "unemploymentEmployeeCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "incomeTaxPayableCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "stampTaxPayableCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "netCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "deductionCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "payableCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "sgkEmployerCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "unemploymentEmployerCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "employerCostCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "staffCount",
+                            "completeCount",
+                            "incompleteCount",
+                            "grossCents",
+                            "sgkEmployeeCents",
+                            "unemploymentEmployeeCents",
+                            "incomeTaxPayableCents",
+                            "stampTaxPayableCents",
+                            "netCents",
+                            "deductionCents",
+                            "payableCents",
+                            "sgkEmployerCents",
+                            "unemploymentEmployerCents",
+                            "employerCostCents"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "saved": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "format": "uuid",
+                                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                },
+                                "revision": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Ayın kaçıncı hesabı"
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "calculatedAt": {
+                                  "type": "string"
+                                },
+                                "calculatedByName": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "staffCount": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "skippedCount": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "payableTotalCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "revision",
+                                "version",
+                                "calculatedAt",
+                                "calculatedByName",
+                                "staffCount",
+                                "skippedCount",
+                                "payableTotalCents"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Ayın etkin kayıtlı hesabı; yoksa `null`"
+                        }
+                      },
+                      "required": [
+                        "month",
+                        "locked",
+                        "parameters",
+                        "rows",
+                        "totals",
+                        "saved"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/payroll-runs/{month}": {
+      "get": {
+        "operationId": "getPayrollRun",
+        "summary": "Kayıtlı bordro hesabı",
+        "tags": [
+          "finance-payroll-runs"
+        ],
+        "description": "Ayın etkin kayıtlı hesabı (K-391): kaydedildiği andaki satırlar değişmeden döner; ücret tanımı ya da parametre sonradan değişse de kayıt aynıdır. Kayıt yoksa 404. Her okuma `finance.payroll_run.read` (CSV `finance.payroll_run_export`) denetimi yazar. CSV taze oturum ister, kullanıcı başına 10/dk. Rol: yalnız `yonetici` (K-391). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^20[2-9]\\d-(0[1-9]|1[0-2])$"
+            },
+            "in": "path",
+            "name": "month",
+            "required": true,
+            "description": "Bordro ayı (YYYY-AA)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "revision": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Ayın kaçıncı hesabı"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "calculatedAt": {
+                          "type": "string"
+                        },
+                        "calculatedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "staffCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "skippedCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "payableTotalCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "month": {
+                          "type": "string"
+                        },
+                        "locked": {
+                          "type": "boolean"
+                        },
+                        "parameterSetId": {
+                          "type": "string"
+                        },
+                        "parameterEffectiveFrom": {
+                          "type": "string"
+                        },
+                        "rows": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "role": {
+                                "type": "string",
+                                "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                              },
+                              "active": {
+                                "type": "boolean"
+                              },
+                              "complete": {
+                                "type": "boolean",
+                                "description": "Satır hesaplandı mı; saatlik ücret ya da ücret tanımı yoksa `false` (kayda girmez)"
+                              },
+                              "entryDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "exitDate": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "primDays": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "missingDays": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "medicalReportDays": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Aya düşen sağlık raporu günü (DOM-FIN-110)"
+                              },
+                              "wageType": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "monthly_gross",
+                                      "monthly_net",
+                                      "hourly",
+                                      "lesson_hour"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "netTargetCents": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Net tanımlı ücrette ayın hedef neti"
+                              },
+                              "netDifferenceCents": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Ters hesaptan kalan kuruş farkı"
+                              },
+                              "earnings": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "wage",
+                                        "lesson",
+                                        "benefit",
+                                        "adjustment"
+                                      ],
+                                      "description": "`wage`, `lesson`, `benefit`, `adjustment`"
+                                    },
+                                    "code": {
+                                      "type": "string",
+                                      "description": "Ücret türü, ek ders türü, yan hak türü ya da düzeltme kalemi"
+                                    },
+                                    "amountCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Tutar, kuruş"
+                                    },
+                                    "hours": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Ek derste saat"
+                                    },
+                                    "rateCents": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Ek derste birim ücret, kuruş"
+                                    },
+                                    "sgk": {
+                                      "type": "boolean",
+                                      "description": "SGK prime esas kazanca girer"
+                                    },
+                                    "taxable": {
+                                      "type": "boolean",
+                                      "description": "Gelir ve damga vergisi matrahına girer"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "code",
+                                    "amountCents",
+                                    "hours",
+                                    "rateCents",
+                                    "sgk",
+                                    "taxable"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "grossCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Brüt (SGK matrahına giren kalemler), kuruş"
+                              },
+                              "sgkFloorCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Gün oranlı SGK tabanı, kuruş"
+                              },
+                              "sgkCeilingCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Gün oranlı SGK tavanı, kuruş"
+                              },
+                              "sgkBaseCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "SGK prime esas kazanç, kuruş"
+                              },
+                              "sgkEmployeeCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "SGK işçi payı, kuruş"
+                              },
+                              "unemploymentEmployeeCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "İşsizlik sigortası işçi payı, kuruş"
+                              },
+                              "incomeTaxBaseCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ayın gelir vergisi matrahı, kuruş"
+                              },
+                              "cumulativeIncomeTaxBaseBeforeCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Önceki kümülatif GV matrahı (kayıtlı aylar + devir), kuruş"
+                              },
+                              "incomeTaxCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Hesaplanan gelir vergisi, kuruş"
+                              },
+                              "incomeTaxExemptionCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Asgari ücret gelir vergisi istisnası, kuruş"
+                              },
+                              "incomeTaxPayableCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ödenecek gelir vergisi, kuruş"
+                              },
+                              "stampTaxBaseCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Damga vergisi matrahı, kuruş"
+                              },
+                              "stampTaxCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Hesaplanan damga vergisi, kuruş"
+                              },
+                              "stampTaxExemptionCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Asgari ücret damga vergisi istisnası, kuruş"
+                              },
+                              "stampTaxPayableCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ödenecek damga vergisi, kuruş"
+                              },
+                              "netCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Net ücret (kesintilerden önce), kuruş"
+                              },
+                              "netAdjustmentCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Kesinti kalemli düzeltmelerin işaretli toplamı, kuruş"
+                              },
+                              "deductions": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "order": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "advance",
+                                        "garnishment",
+                                        "pension"
+                                      ]
+                                    },
+                                    "sourceId": {
+                                      "type": "string",
+                                      "description": "Avans, icra ya da BES kaydının kimliği"
+                                    },
+                                    "requestedCents": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "amountCents": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "status": {
+                                      "type": "string",
+                                      "enum": [
+                                        "applied",
+                                        "capped",
+                                        "waiting",
+                                        "settled",
+                                        "paused",
+                                        "needs_net",
+                                        "needs_base"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "order",
+                                    "kind",
+                                    "sourceId",
+                                    "requestedCents",
+                                    "amountCents",
+                                    "status"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "Kesintiler (DOM-FIN-101 sırası)"
+                              },
+                              "deductionCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Kesinti toplamı, kuruş"
+                              },
+                              "payableCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ödenecek net, kuruş"
+                              },
+                              "sgkEmployerCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "SGK işveren payı (prim indirimi düşülmüş), kuruş"
+                              },
+                              "unemploymentEmployerCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "İşsizlik sigortası işveren payı, kuruş"
+                              },
+                              "inKindBenefitsCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ayni yan haklar (ödenmez, maliyete girer), kuruş"
+                              },
+                              "employerCostCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "İşveren maliyeti, kuruş"
+                              },
+                              "warnings": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "no_wage",
+                                    "pay_rate_gap",
+                                    "entry_in_month",
+                                    "exit_in_month",
+                                    "missing_days_exceed",
+                                    "missing_reason",
+                                    "hourly_wage",
+                                    "net_wage",
+                                    "net_rounding",
+                                    "mixed_wage",
+                                    "lesson_rate_missing",
+                                    "below_floor",
+                                    "above_ceiling",
+                                    "negative_gross",
+                                    "medical_report_days",
+                                    "previous_month_not_saved",
+                                    "deduction_capped",
+                                    "staff_inactive"
+                                  ]
+                                },
+                                "description": "Uyarı kodları"
+                              }
+                            },
+                            "required": [
+                              "membershipId",
+                              "name",
+                              "role",
+                              "active",
+                              "complete",
+                              "entryDate",
+                              "exitDate",
+                              "primDays",
+                              "missingDays",
+                              "medicalReportDays",
+                              "wageType",
+                              "netTargetCents",
+                              "netDifferenceCents",
+                              "earnings",
+                              "grossCents",
+                              "sgkFloorCents",
+                              "sgkCeilingCents",
+                              "sgkBaseCents",
+                              "sgkEmployeeCents",
+                              "unemploymentEmployeeCents",
+                              "incomeTaxBaseCents",
+                              "cumulativeIncomeTaxBaseBeforeCents",
+                              "incomeTaxCents",
+                              "incomeTaxExemptionCents",
+                              "incomeTaxPayableCents",
+                              "stampTaxBaseCents",
+                              "stampTaxCents",
+                              "stampTaxExemptionCents",
+                              "stampTaxPayableCents",
+                              "netCents",
+                              "netAdjustmentCents",
+                              "deductions",
+                              "deductionCents",
+                              "payableCents",
+                              "sgkEmployerCents",
+                              "unemploymentEmployerCents",
+                              "inKindBenefitsCents",
+                              "employerCostCents",
+                              "warnings"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "totals": {
+                          "type": "object",
+                          "properties": {
+                            "staffCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "completeCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "incompleteCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "grossCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "sgkEmployeeCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "unemploymentEmployeeCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "incomeTaxPayableCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "stampTaxPayableCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "netCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "deductionCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "payableCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "sgkEmployerCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "unemploymentEmployerCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "employerCostCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "staffCount",
+                            "completeCount",
+                            "incompleteCount",
+                            "grossCents",
+                            "sgkEmployeeCents",
+                            "unemploymentEmployeeCents",
+                            "incomeTaxPayableCents",
+                            "stampTaxPayableCents",
+                            "netCents",
+                            "deductionCents",
+                            "payableCents",
+                            "sgkEmployerCents",
+                            "unemploymentEmployerCents",
+                            "employerCostCents"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "revision",
+                        "version",
+                        "calculatedAt",
+                        "calculatedByName",
+                        "staffCount",
+                        "skippedCount",
+                        "payableTotalCents",
+                        "month",
+                        "locked",
+                        "parameterSetId",
+                        "parameterEffectiveFrom",
+                        "rows",
+                        "totals"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/payroll-runs/{month}/calculate": {
+      "post": {
+        "operationId": "savePayrollRun",
+        "summary": "Bordro hesabını kaydet ya da yeniden hesapla",
+        "tags": [
+          "finance-payroll-runs"
+        ],
+        "description": "Ay kurum kilidi altında yeniden hesaplanır ve kaydedilir (K-391). Onaylı (kilitli) ay 409 `payroll_period_locked`: dönem onayı kayıtlı hesabı dondurur (DOM-FIN-108). `previousRunId` ekranda görülen kayıtlı hesabın kimliğidir (ilk kayıtta `null`); güncel değilse 409 `payroll_run_changed`. Hesaplanabilen satır yoksa 422 `payroll_run_empty`. Varsa eski hesap arşivlenir, revizyonu bir artırılmış yeni hesap yazılır; eksik satırlar (saatlik ücret, tanımsız) kayda girmez. Kayıtlı hesabın GV matrahı sonraki ayların kümülatifine girer. Kayıt ödeme yapmaz, icra kalanını değiştirmez. İlk kayıt 201, yeniden hesaplama 200. `Idempotency-Key` zorunlu. Hesap mali müşavir doğrulaması bekler (M-75…M-77); resmî beyanname ve bildirge Kampüs dışında verilir. Rol: yalnız `yonetici` (K-391). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "previousRunId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Ekranda görülen kayıtlı hesabın kimliği; ilk kayıtta `null`"
+                  }
+                },
+                "required": [
+                  "previousRunId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^20[2-9]\\d-(0[1-9]|1[0-2])$"
+            },
+            "in": "path",
+            "name": "month",
+            "required": true,
+            "description": "Bordro ayı (YYYY-AA)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "month": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "month"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "month": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "month"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/payroll-tax-carryovers": {
+      "get": {
+        "operationId": "listPayrollTaxCarryovers",
+        "summary": "Kümülatif matrah devirleri",
+        "tags": [
+          "finance-payroll-runs"
+        ],
+        "description": "Yılın etkin kümülatif gelir vergisi matrahı devirleri (K-388), personel adına göre. Her okuma `finance.payroll_tax_carryover.read` denetimi yazar. Rol: yalnız `yonetici` (K-391). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 2020,
+              "maximum": 2099
+            },
+            "in": "query",
+            "name": "year",
+            "required": true,
+            "description": "Devir yılı"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "membershipId": {
+                            "type": "string"
+                          },
+                          "staffName": {
+                            "type": "string"
+                          },
+                          "year": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "incomeTaxBaseCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "note": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü (kaldırma)"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "membershipId",
+                          "staffName",
+                          "year",
+                          "incomeTaxBaseCents",
+                          "note",
+                          "createdAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createPayrollTaxCarryover",
+        "summary": "Kümülatif matrah devri gir",
+        "tags": [
+          "finance-payroll-runs"
+        ],
+        "description": "Personelin yıl içinde önceki işyerinde ya da Kampüs öncesinde oluşan kümülatif gelir vergisi matrahı (K-388); o yılın hesaplarında önceki kümülatife eklenir. Personel × yıl başına tek etkin kayıt: varsa 409 `payroll_carryover_exists` (önce kaldırılır). Olmayan üyelik 422 `payroll_carryover_staff_not_found`, öğrenci ya da veli 422 `payroll_carryover_not_staff`. Kayıtlı hesaplar kendiliğinden değişmez; etkilenen ay yeniden hesaplanır. Denetime alan adları yazılır. `Idempotency-Key` isteğe bağlı. 201. Rol: yalnız `yonetici` (K-391). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "membershipId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Personelin kurum üyeliği"
+                  },
+                  "year": {
+                    "type": "integer",
+                    "minimum": 2020,
+                    "maximum": 2099,
+                    "description": "Devrin yılı"
+                  },
+                  "incomeTaxBaseCents": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100000000000,
+                    "description": "Yıl başından devralınan kümülatif gelir vergisi matrahı, kuruş"
+                  },
+                  "note": {
+                    "description": "İsteğe bağlı kaynak notu (ör. önceki işyeri bordrosu), en çok 200 karakter",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "membershipId",
+                  "year",
+                  "incomeTaxBaseCents"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "membershipId": {
+                          "type": "string"
+                        },
+                        "staffName": {
+                          "type": "string"
+                        },
+                        "year": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "incomeTaxBaseCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü (kaldırma)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "membershipId",
+                        "staffName",
+                        "year",
+                        "incomeTaxBaseCents",
+                        "note",
+                        "createdAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/payroll-tax-carryovers/{carryoverId}": {
+      "delete": {
+        "operationId": "archivePayrollTaxCarryover",
+        "summary": "Kümülatif matrah devrini kaldır",
+        "tags": [
+          "finance-payroll-runs"
+        ],
+        "description": "Devir arşivlenir; sonraki hesaplara girmez. Olmayan, kaldırılmış ya da başka kurumun kaydı 404; `If-Match` zorunlu, sürüm tutmazsa 409. Rol: yalnız `yonetici` (K-391). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "carryoverId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "archivedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "archivedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

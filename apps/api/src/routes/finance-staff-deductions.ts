@@ -62,6 +62,9 @@ const ADVANCES = `${FINANCE}/staff-advances`
 const GARNISHMENTS = `${FINANCE}/staff-garnishments`
 const PENSIONS = `${FINANCE}/staff-pension-enrollments`
 const IF_MATCH = '`If-Match` zorunlu (409 `version_conflict`).'
+/** Dönem kilidi (DOM-FIN-108, K-394): değişikliğin değdiği aylar sona eklenir. */
+const locked = (months: string) =>
+  ` Onaylanmış (kilitli) bordro ayına düşen değişiklik 409 \`payroll_period_locked\`: ${months}.`
 const STAFF_ERRORS =
   'olmayan üyelik 422 `staff_deduction_staff_not_found`, öğrenci ya da veli 422 `staff_deduction_not_staff`, pasif personel 422 `staff_deduction_staff_inactive`'
 
@@ -240,7 +243,7 @@ export function registerFinanceStaffDeductionRoutes(app: FastifyInstance) {
     url: ADVANCES,
     operationId: 'createStaffAdvance',
     summary: 'Personele avans ver',
-    description: `Personel, tutar (kuruş), veriliş günü, ödeme yöntemi (\`cash\`, \`bank_transfer\`), taksit sayısı (1–24) ve mahsubun ilk ayı (K-312). Taksit planı eşit kuruştur, yuvarlama farkı son taksite eklenir; plan saklanmaz. Gelecek gün 422 \`staff_deduction_date_in_future\`; ilk ay veriliş ayından önce 422 \`staff_advance_first_month_before_given\`, 12 aydan sonra 422 \`staff_advance_first_month_too_late\`; ${STAFF_ERRORS}. Taksit planı oluşturduğu için \`Idempotency-Key\` zorunlu.`,
+    description: `Personel, tutar (kuruş), veriliş günü, ödeme yöntemi (\`cash\`, \`bank_transfer\`), taksit sayısı (1–24) ve mahsubun ilk ayı (K-312). Taksit planı eşit kuruştur, yuvarlama farkı son taksite eklenir; plan saklanmaz. Gelecek gün 422 \`staff_deduction_date_in_future\`; ilk ay veriliş ayından önce 422 \`staff_advance_first_month_before_given\`, 12 aydan sonra 422 \`staff_advance_first_month_too_late\`; ${STAFF_ERRORS}. Taksit planı oluşturduğu için \`Idempotency-Key\` zorunlu.${locked('bütün taksit ayları denetlenir')}`,
     body: staffAdvanceSchema,
     response: advanceResponse,
     idempotency: 'required',
@@ -254,7 +257,8 @@ export function registerFinanceStaffDeductionRoutes(app: FastifyInstance) {
     operationId: 'closeStaffAdvance',
     summary: 'Avansı erken kapat',
     description:
-      'Kalanı personel öder: kapama günü, kesilmeyecek ilk taksit ayı ve geri ödeme yöntemi (K-312). Bu ay ve sonraki taksitler kesilmez; kalan plandan hesaplanır. Açık olmayan avans 422 `staff_advance_not_active`; gelecek gün 422 `staff_deduction_date_in_future`; veriliş gününden önce 422 `staff_advance_close_before_given`; kapama ayından önceki ay 422 `staff_advance_close_month_past`; plan dışı ay 422 `staff_advance_close_month_outside_plan`. Başka kurumun avansı 404.',
+      'Kalanı personel öder: kapama günü, kesilmeyecek ilk taksit ayı ve geri ödeme yöntemi (K-312). Bu ay ve sonraki taksitler kesilmez; kalan plandan hesaplanır. Açık olmayan avans 422 `staff_advance_not_active`; gelecek gün 422 `staff_deduction_date_in_future`; veriliş gününden önce 422 `staff_advance_close_before_given`; kapama ayından önceki ay 422 `staff_advance_close_month_past`; plan dışı ay 422 `staff_advance_close_month_outside_plan`. Başka kurumun avansı 404.' +
+      locked('kesilmeyecek ilk aydan planın son ayına'),
     body: staffAdvanceCloseSchema,
     response: advanceResponse,
     run: closeAdvanceCommand,
@@ -267,7 +271,8 @@ export function registerFinanceStaffDeductionRoutes(app: FastifyInstance) {
     operationId: 'cancelStaffAdvance',
     summary: 'Avansı iptal et',
     description:
-      'Yanlış girilen avans silinmez, gerekçeyle (5–500 karakter) iptal edilir; hiçbir taksiti kesilmez (K-312). Gerekçe denetim kaydına yazılmaz. Açık olmayan avans 422 `staff_advance_not_active`. Başka kurumun avansı 404.',
+      'Yanlış girilen avans silinmez, gerekçeyle (5–500 karakter) iptal edilir; hiçbir taksiti kesilmez (K-312). Gerekçe denetim kaydına yazılmaz. Açık olmayan avans 422 `staff_advance_not_active`. Başka kurumun avansı 404.' +
+      locked('bütün taksit ayları; kesilmiş taksit varsa avans erken kapatılır'),
     body: staffDeductionCancelSchema,
     response: advanceResponse,
     run: cancelAdvanceCommand,
@@ -277,7 +282,7 @@ export function registerFinanceStaffDeductionRoutes(app: FastifyInstance) {
     url: GARNISHMENTS,
     operationId: 'createStaffGarnishment',
     summary: 'İcra kesintisi kaydet',
-    description: `İcra dairesi, dosya no, alacak (kuruş), net ücretten oran (onbinde, varsayılan 2500 = dörtte bir; İİK md. 83), nafaka işareti ve tebliğ günü (K-313). Kalan alacak alacağa eşit başlar; kayıt sıra numarası verilir. Aynı personele aynı daire ve dosya 409 \`staff_garnishment_duplicate\`; gelecek tebliğ günü 422 \`staff_deduction_date_in_future\`; ${STAFF_ERRORS}. Hassas veri: değerler loglanmaz, denetime alan adı yazılır.`,
+    description: `İcra dairesi, dosya no, alacak (kuruş), net ücretten oran (onbinde, varsayılan 2500 = dörtte bir; İİK md. 83), nafaka işareti ve tebliğ günü (K-313). Kalan alacak alacağa eşit başlar; kayıt sıra numarası verilir. Aynı personele aynı daire ve dosya 409 \`staff_garnishment_duplicate\`; gelecek tebliğ günü 422 \`staff_deduction_date_in_future\`; ${STAFF_ERRORS}. Hassas veri: değerler loglanmaz, denetime alan adı yazılır.${locked('tebliğ ayından itibaren')}`,
     body: staffGarnishmentSchema,
     response: garnishmentResponse,
     idempotency: 'optional',
@@ -291,7 +296,7 @@ export function registerFinanceStaffDeductionRoutes(app: FastifyInstance) {
     operationId: 'updateStaffGarnishment',
     summary: 'İcranın kalan alacağını güncelle',
     description:
-      'İcra dairesinin bakiye yazısına göre kalan alacak (kuruş, K-313). Alacağı aşan 422 `staff_garnishment_remaining_exceeds_claim`; kapanmış icra 422 `staff_garnishment_closed`. Başka kurumun kaydı 404.',
+      'İcra dairesinin bakiye yazısına göre kalan alacak (kuruş, K-313). Alacağı aşan 422 `staff_garnishment_remaining_exceeds_claim`; kapanmış icra 422 `staff_garnishment_closed`. Başka kurumun kaydı 404. Kalan alacak tarihsiz bakiyedir; dönem kilidi denetlenmez (K-394).',
     body: staffGarnishmentBalanceSchema,
     response: garnishmentResponse,
     run: updateGarnishmentCommand,
@@ -304,7 +309,8 @@ export function registerFinanceStaffDeductionRoutes(app: FastifyInstance) {
     operationId: 'closeStaffGarnishment',
     summary: 'İcrayı kapat',
     description:
-      'Kapanış günü ve nedeni (`paid_off` borç ödendi, `lifted` haciz kaldırıldı, `other`; K-313). Kapanış ayından itibaren kesilmez, sıradaki icra başlar. Zaten kapalı 422 `staff_garnishment_closed`; tebliğden önce 422 `staff_garnishment_close_before_received`; gelecek gün 422 `staff_deduction_date_in_future`. Başka kurumun kaydı 404.',
+      'Kapanış günü ve nedeni (`paid_off` borç ödendi, `lifted` haciz kaldırıldı, `other`; K-313). Kapanış ayından itibaren kesilmez, sıradaki icra başlar. Zaten kapalı 422 `staff_garnishment_closed`; tebliğden önce 422 `staff_garnishment_close_before_received`; gelecek gün 422 `staff_deduction_date_in_future`. Başka kurumun kaydı 404.' +
+      locked('kapanış ayından itibaren'),
     body: staffGarnishmentCloseSchema,
     response: garnishmentResponse,
     run: closeGarnishmentCommand,
@@ -314,7 +320,7 @@ export function registerFinanceStaffDeductionRoutes(app: FastifyInstance) {
     url: PENSIONS,
     operationId: 'createStaffPensionEnrollment',
     summary: 'BES otomatik katılımı kaydet',
-    description: `Çalışan katkı oranı (onbinde, varsayılan ve en az 300 = %3) ve başlangıç günü (K-314). Yalnız kayıttır; katkı emeklilik şirketine aktarılmaz. Personelin açık katılımı varken 409 \`staff_pension_already_enrolled\`; ${STAFF_ERRORS}.`,
+    description: `Çalışan katkı oranı (onbinde, varsayılan ve en az 300 = %3) ve başlangıç günü (K-314). Yalnız kayıttır; katkı emeklilik şirketine aktarılmaz. Personelin açık katılımı varken 409 \`staff_pension_already_enrolled\`; ${STAFF_ERRORS}.${locked('başlangıç ayından itibaren')}`,
     body: staffPensionSchema,
     response: pensionResponse,
     idempotency: 'optional',
@@ -328,7 +334,8 @@ export function registerFinanceStaffDeductionRoutes(app: FastifyInstance) {
     operationId: 'pauseStaffPensionEnrollment',
     summary: 'BES kesintisine ara ver',
     description:
-      'İlk ve son ay (dahil), en çok 12 ay (K-314). Ayrılmış katılım 422 `staff_pension_opted_out`; katılım ayından önce 422 `staff_pension_pause_before_start`; önceki arayla çakışma 422 `staff_pension_pause_overlap`. Başka kurumun kaydı 404.',
+      'İlk ve son ay (dahil), en çok 12 ay (K-314). Ayrılmış katılım 422 `staff_pension_opted_out`; katılım ayından önce 422 `staff_pension_pause_before_start`; önceki arayla çakışma 422 `staff_pension_pause_overlap`. Başka kurumun kaydı 404.' +
+      locked('ara verilen aylar'),
     body: staffPensionPauseSchema,
     response: pensionResponse,
     run: pausePensionCommand,
@@ -341,7 +348,8 @@ export function registerFinanceStaffDeductionRoutes(app: FastifyInstance) {
     operationId: 'optOutStaffPensionEnrollment',
     summary: 'BES katılımından cay ya da ayrıl',
     description:
-      'Gün (K-314); o günün ayından itibaren kesilmez. Katılımdan iki ay içindeyse `optOutKind: cooling_off` (katkı iade edilir), sonra `exit`. Zaten ayrılmış 422 `staff_pension_opted_out`; başlangıçtan önce 422 `staff_pension_opt_out_before_start`; gelecek gün 422 `staff_deduction_date_in_future`. Başka kurumun kaydı 404.',
+      'Gün (K-314); o günün ayından itibaren kesilmez. Katılımdan iki ay içindeyse `optOutKind: cooling_off` (katkı iade edilir), sonra `exit`. Zaten ayrılmış 422 `staff_pension_opted_out`; başlangıçtan önce 422 `staff_pension_opt_out_before_start`; gelecek gün 422 `staff_deduction_date_in_future`. Başka kurumun kaydı 404.' +
+      locked('ayrılma ayından itibaren'),
     body: staffPensionOptOutSchema,
     response: pensionResponse,
     run: optOutPensionCommand,

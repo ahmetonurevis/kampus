@@ -198,11 +198,11 @@ export interface LessonConfirmationRecord {
  * Personelin teyit durumu: son yanıt bugünkü kayıtlara verilmişse onun sonucu, değilse (yanıt
  * yok ya da kayıtlar sonradan değişti) `pending`.
  */
-export function lessonTeacherStates(
+export function lessonTeacherStates<T extends LessonConfirmationRecord>(
   currentHashes: ReadonlyMap<string, string>,
-  confirmations: readonly LessonConfirmationRecord[],
-): Map<string, { state: LessonTeacherState; last: LessonConfirmationRecord | null }> {
-  const last = new Map<string, LessonConfirmationRecord>()
+  confirmations: readonly T[],
+): Map<string, { state: LessonTeacherState; last: T | null }> {
+  const last = new Map<string, T>()
   for (const item of confirmations) {
     const previous = last.get(item.membershipId)
     if (previous === undefined || item.sequence > previous.sequence)

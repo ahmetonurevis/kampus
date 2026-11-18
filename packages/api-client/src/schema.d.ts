@@ -9345,7 +9345,7 @@ export interface paths {
         };
         /**
          * Bordro girdi önizlemesi
-         * @description Seçilen ayın bordro girdi satırları (DOM-FIN-105). Kampüs bordro hesaplamaz (ON-193). Ana ücret ve yan hak: ayla kesişen her ücret tanımı (DOM-FIN-099) bir satırdır; ay içinde başlayan ya da biten tanım ay içindeki başlangıç/bitiş gününü ve gün sayısını taşır, tutarı orantılanmaz ve boş kalır; saatlik ve ders saati ana ücretinde çalışılan saat bilinmediği için tutar boştur; aylık net ücret brüte çevrilmez (K-336). Ek ders: ay için girilen her saat kaydı bir satırdır, tutar saat × o türün ayla kesişen en geç başlayan ek ders ücretidir; tanım yoksa tutar boş (K-337). Kesinti (DOM-FIN-101, K-392): ayın avans taksiti tutarıyla; sıradaki ve nafaka icraları net ücret oranı (`rateBasisPoints`, `deductionBase: net_wage`) ve kalan alacak üst sınırıyla (`capCents`), BES katkı oranı ve matrahıyla (`pension_base`) `deduction` yönünde satırdır; icra ve BES tutarı boştur (net ücret ve matrah bordroda). Sırada bekleyen ve alacağı biten icra ile ara verilen BES satır vermez. Düzeltme (DOM-FIN-108, K-393): bu aya aktarılan her düzeltme bir satırdır; artı fark `earning`, eksi fark `deduction`, tutar mutlak, ait olduğu ay `sourceMonth`. Tutar içerdiği için her okuma denetim kaydına `finance.payroll_export.read` olarak düşer (yalnız alan adı; icra satırı varsa icra alan adları da, K-315). Rol: yalnız `yonetici` (K-306, K-338; muhasebe rolü açılsa da ücret görmez). Modül `finance`.
+         * @description Seçilen ayın bordro girdi satırları (DOM-FIN-105). Kampüs bordro hesaplamaz (ON-193). Ana ücret ve yan hak: ayla kesişen her ücret tanımı (DOM-FIN-099) bir satırdır; ay içinde başlayan ya da biten tanım ay içindeki başlangıç/bitiş gününü ve gün sayısını taşır, tutarı orantılanmaz ve boş kalır; saatlik ve ders saati ana ücretinde çalışılan saat bilinmediği için tutar boştur; aylık net ücret brüte çevrilmez (K-336). Ek ders: ay için girilen her saat kaydı bir satırdır, tutar saat × o türün ayla kesişen en geç başlayan ek ders ücretidir; tanım yoksa tutar boş (K-337); ayın ek ders çizelgesi müdür onaylı değilse (DOM-FIN-120) satır `lesson_hours_pending` uyarısıyla tutarsızdır ve toplama girmez (K-411). Kesinti (DOM-FIN-101, K-392): ayın avans taksiti tutarıyla; sıradaki ve nafaka icraları net ücret oranı (`rateBasisPoints`, `deductionBase: net_wage`) ve kalan alacak üst sınırıyla (`capCents`), BES katkı oranı ve matrahıyla (`pension_base`) `deduction` yönünde satırdır; icra ve BES tutarı boştur (net ücret ve matrah bordroda). Sırada bekleyen ve alacağı biten icra ile ara verilen BES satır vermez. Düzeltme (DOM-FIN-108, K-393): bu aya aktarılan her düzeltme bir satırdır; artı fark `earning`, eksi fark `deduction`, tutar mutlak, ait olduğu ay `sourceMonth`. Tutar içerdiği için her okuma denetim kaydına `finance.payroll_export.read` olarak düşer (yalnız alan adı; icra satırı varsa icra alan adları da, K-315). Rol: yalnız `yonetici` (K-306, K-338; muhasebe rolü açılsa da ücret görmez). Modül `finance`.
          */
         get: operations["previewPayrollExport"];
         put?: never;
@@ -9391,7 +9391,7 @@ export interface paths {
         put?: never;
         /**
          * Ek ders saati gir
-         * @description Ders saati özeti (OG-116) gelene kadar ay için elle girilen ek ders saati: personel, ay (`YYYY-AA`), tür (`extra` ek ders, `duty` nöbet) ve ayın toplam saati (tam sayı, 1–400), isteğe bağlı not (K-337). Ay içinde ayrılan (pasif) personele de girilir. Olmayan ya da başka kurumun üyeliği 422 `payroll_lesson_hours_staff_not_found`, öğrenci ya da veli 422 `payroll_lesson_hours_not_staff`, gelecek ay 422 `payroll_lesson_hours_future_month`; aynı personel, ay ve türde kayıt varsa 409 `payroll_lesson_hours_exist` (kayıt düzeltilir). Denetim kaydına alan adları yazılır. `Idempotency-Key` isteğe bağlı. Rol: yalnız `yonetici` (K-306, K-338; muhasebe rolü açılsa da ücret görmez). Modül `finance`.
+         * @description Ders saati özeti (OG-116) gelene kadar ay için elle girilen ek ders saati: personel, ay (`YYYY-AA`), tür (`extra` ek ders, `duty` nöbet) ve ayın toplam saati (tam sayı, 1–400), isteğe bağlı not (K-337). Ay içinde ayrılan (pasif) personele de girilir. Olmayan ya da başka kurumun üyeliği 422 `payroll_lesson_hours_staff_not_found`, öğrenci ya da veli 422 `payroll_lesson_hours_not_staff`, gelecek ay 422 `payroll_lesson_hours_future_month`; aynı personel, ay ve türde kayıt varsa 409 `payroll_lesson_hours_exist` (kayıt düzeltilir). Ayın ek ders çizelgesi müdür onaylıysa 409 `lesson_hours_locked` (DOM-FIN-120, K-410); bordro dönemi kilitliyse 409 `payroll_period_locked` (DOM-FIN-108). Denetim kaydına alan adları yazılır. `Idempotency-Key` isteğe bağlı. Rol: `yonetici`, `onburo` (K-409; saat girişi ücret içermez). Modül `finance`.
          */
         post: operations["createPayrollLessonHours"];
         delete?: never;
@@ -9412,14 +9412,14 @@ export interface paths {
         post?: never;
         /**
          * Ek ders saatini sil
-         * @description Kayıt arşivlenir; dosyaya girmez, aynı ay ve türde yeni kayıt açılabilir. `If-Match` zorunlu, sürüm tutmazsa 409. Olmayan ya da başka kurumun kaydı 404. Rol: yalnız `yonetici` (K-306, K-338; muhasebe rolü açılsa da ücret görmez). Modül `finance`.
+         * @description Kayıt arşivlenir; dosyaya girmez, aynı ay ve türde yeni kayıt açılabilir. `If-Match` zorunlu, sürüm tutmazsa 409. Olmayan ya da başka kurumun kaydı 404. Ayın ek ders çizelgesi müdür onaylıysa 409 `lesson_hours_locked` (DOM-FIN-120, K-410); bordro dönemi kilitliyse 409 `payroll_period_locked` (DOM-FIN-108). Rol: `yonetici`, `onburo` (K-409; saat girişi ücret içermez). Modül `finance`.
          */
         delete: operations["archivePayrollLessonHours"];
         options?: never;
         head?: never;
         /**
          * Ek ders saatini düzelt
-         * @description Saat ya da not düzeltilir; değişiklik yoksa 422 `payroll_lesson_hours_unchanged`. `If-Match` zorunlu, sürüm tutmazsa 409. Olmayan, silinmiş ya da başka kurumun kaydı 404. Rol: yalnız `yonetici` (K-306, K-338; muhasebe rolü açılsa da ücret görmez). Modül `finance`.
+         * @description Saat ya da not düzeltilir; değişiklik yoksa 422 `payroll_lesson_hours_unchanged`. `If-Match` zorunlu, sürüm tutmazsa 409. Olmayan, silinmiş ya da başka kurumun kaydı 404. Ayın ek ders çizelgesi müdür onaylıysa 409 `lesson_hours_locked` (DOM-FIN-120, K-410); bordro dönemi kilitliyse 409 `payroll_period_locked` (DOM-FIN-108). Rol: `yonetici`, `onburo` (K-409; saat girişi ücret içermez). Modül `finance`.
          */
         patch: operations["updatePayrollLessonHours"];
         trace?: never;
@@ -10294,6 +10294,106 @@ export interface paths {
         get: operations["getStaffDocumentFileUrl"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/lesson-hour-sheets/{month}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ayın ek ders çizelgesi ve onay durumu
+         * @description Ayın ek ders çizelgesi (DOM-FIN-120): durum (`draft` taslak, `teacher_review` öğretmen kontrolünde, `approved` müdür onaylı ve kilitli), son gönderen, onaylayan ve yeniden açan, ayın saat kayıtları (tutarsız) ve saati olan her personelin teyit durumu ile son yanıtı. Teyit personelin o anki saat kayıtlarına bağlıdır; kayıt sonradan değişirse durum `pending` olur. `entriesHash` ayın bütün saat kayıtlarının damgasıdır, müdür onayı bunu gönderir. `payrollLocked` bordro döneminin (DOM-FIN-108) kilitli olduğunu gösterir. Hiç gönderilmemiş ay taslaktır, `version` boştur. Tutar dönmediği için okuma denetime düşmez. Rol: `yonetici`, `onburo` (K-409). Modül `finance`.
+         */
+        get: operations["getLessonHourSheet"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/lesson-hour-sheets/{month}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Çizelgeyi öğretmen kontrolüne gönder
+         * @description Taslak çizelge öğretmen kontrolüne geçer (K-409); ilk gönderim çizelge kaydını açar. Taslak olmayan çizelge 409 `lesson_sheet_not_draft`; ayda saat kaydı yoksa 422 `lesson_sheet_empty`. Kontrol sırasında saat düzeltilebilir; düzeltilen personelin teyidi yeniden alınır. Gövde boş nesnedir. `Idempotency-Key` zorunlu. Rol: `yonetici`, `onburo` (K-409). Modül `finance`.
+         */
+        post: operations["submitLessonHourSheet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/lesson-hour-sheets/{month}/confirmations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Öğretmenin teyidini ya da itirazını işle
+         * @description Öğretmen ekranı yoktur: ön büro ya da yönetici öğretmenin teyidini ya da gerekçeli itirazını alındığı kanalla (`in_person`, `phone`, `email`, `message`, `signed_sheet`) öğretmen adına işler (K-409). Yanıt personelin o anki saat kayıtlarının damgasını taşır; itiraz (gerekçe 5–500) çizelgeyi taslağa döndürür. Çizelge öğretmen kontrolünde değilse 409 `lesson_sheet_not_in_review`; personelin bu ay saat kaydı yoksa (başka kurumun üyeliği dahil) 422 `lesson_confirmation_no_hours`. Yanıt satırı değişmez; denetim kaydına alan adları yazılır, gerekçe yazılmaz. `Idempotency-Key` zorunlu. Rol: `yonetici`, `onburo` (K-409). Modül `finance`.
+         */
+        post: operations["recordLessonHourConfirmation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/lesson-hour-sheets/{month}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Çizelgeye müdür onayı ver (kilitle)
+         * @description Öğretmen kontrolündeki çizelge müdür onayıyla kilitlenir (K-409, K-410): o ayın ek ders saati yazmaları 409 `lesson_hours_locked` olur ve bordro aktarımı saatleri tutarıyla verir (K-411). Saati olan her personel bugünkü kayıtlarını teyit etmiş olmalı (eksikse 422 `lesson_sheet_unconfirmed`); `entriesHash` çizelgedeki damgayla aynı değilse 409 `lesson_hours_changed`. Öğretmen kontrolünde olmayan çizelge 409 `lesson_sheet_not_in_review`; bordro dönemi kilitliyse 409 `payroll_period_locked`. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (müdür onayı, K-409). Modül `finance`.
+         */
+        post: operations["approveLessonHourSheet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/lesson-hour-sheets/{month}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Müdür onaylı çizelgeyi yeniden aç
+         * @description Müdür onaylı çizelge gerekçeyle (5–500) taslağa döner; saat yeniden yazılabilir, çizelge yeniden gönderilip onaylanır (K-410). Onaylı olmayan çizelge 409 `lesson_sheet_not_approved`; bordro dönemi kilitliyse 409 `payroll_period_locked` (fark düzeltme kaydıyla, DOM-FIN-108). Gerekçe çizelgede kalır, denetim kaydına yazılmaz. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (müdür onayı, K-409). Modül `finance`.
+         */
+        post: operations["reopenLessonHourSheet"];
         delete?: never;
         options?: never;
         head?: never;
@@ -99286,7 +99386,7 @@ export interface operations {
                                 /** @description Ek ders saati kaydının notu; dosyaya girmez */
                                 note: string | null;
                                 /** @description Satır uyarı kodları */
-                                warnings: ("partial_month" | "net_wage" | "hourly_wage" | "lesson_rate_missing" | "lesson_rate_changed" | "staff_inactive" | "deduction_on_net" | "deduction_on_pension_base" | "prior_month_adjustment")[];
+                                warnings: ("partial_month" | "net_wage" | "hourly_wage" | "lesson_rate_missing" | "lesson_rate_changed" | "staff_inactive" | "deduction_on_net" | "deduction_on_pension_base" | "prior_month_adjustment" | "lesson_hours_pending")[];
                             }[];
                             totals: {
                                 lineCount: number;
@@ -108053,6 +108153,863 @@ export interface operations {
                             url: string;
                             /** @description Bağlantının geçerlilik sonu */
                             expiresAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getLessonHourSheet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Çizelge ayı (YYYY-AA) */
+                month: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            month: string;
+                            /**
+                             * @description `draft` taslak, `teacher_review` öğretmen kontrolünde, `approved` müdür onaylı
+                             * @enum {string}
+                             */
+                            status: "draft" | "teacher_review" | "approved";
+                            /** @description Çizelge sürümü; hiç gönderilmemiş ayda boş */
+                            version: number | null;
+                            /** @description Bordro dönemi kilitli mi (DOM-FIN-108) */
+                            payrollLocked: boolean;
+                            /** @description Ayın saat kayıtlarının SHA-256 damgası; müdür onayı bunu gönderir */
+                            entriesHash: string;
+                            submittedAt: string | null;
+                            submittedByName: string | null;
+                            /** @description Son müdür onayı */
+                            approvedAt: string | null;
+                            approvedByName: string | null;
+                            approvalCount: number;
+                            reopenedAt: string | null;
+                            reopenedByName: string | null;
+                            reopenReason: string | null;
+                            entries: {
+                                id: string;
+                                membershipId: string;
+                                staffName: string;
+                                /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                                role: string;
+                                staffActive: boolean;
+                                /** @enum {string} */
+                                lessonType: "extra" | "duty";
+                                hours: number;
+                                note: string | null;
+                                /** @description `If-Match` için saat kaydı sürümü */
+                                version: number;
+                            }[];
+                            /** @description Saati girilmiş personel ve teyit durumu, ada göre */
+                            staff: {
+                                membershipId: string;
+                                staffName: string;
+                                role: string;
+                                staffActive: boolean;
+                                /**
+                                 * @description `pending` teyit bekleniyor (yanıt yok ya da saat sonradan değişti), `confirmed` teyit edildi, `disputed` itiraz etti
+                                 * @enum {string}
+                                 */
+                                state: "pending" | "confirmed" | "disputed";
+                                /** @description Personelin ayın toplam saati (ek ders ve nöbet) */
+                                totalHours: number;
+                                entryCount: number;
+                                lastResponse: {
+                                    /** @enum {string} */
+                                    outcome: "confirmed" | "disputed";
+                                    /** @enum {string} */
+                                    channel: "in_person" | "phone" | "email" | "message" | "signed_sheet";
+                                    /** @description İtiraz gerekçesi */
+                                    reason: string | null;
+                                    recordedAt: string;
+                                    /** @description Yanıtı öğretmen adına işleyen kullanıcı */
+                                    recordedByName: string | null;
+                                    /** @description Yanıt bugünkü saat kayıtlarına mı verildi */
+                                    current: boolean;
+                                } | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    submitLessonHourSheet: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                /** @description Çizelge ayı (YYYY-AA) */
+                month: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            month: string;
+                            /**
+                             * @description `draft` taslak, `teacher_review` öğretmen kontrolünde, `approved` müdür onaylı
+                             * @enum {string}
+                             */
+                            status: "draft" | "teacher_review" | "approved";
+                            /** @description Çizelge sürümü; hiç gönderilmemiş ayda boş */
+                            version: number | null;
+                            /** @description Bordro dönemi kilitli mi (DOM-FIN-108) */
+                            payrollLocked: boolean;
+                            /** @description Ayın saat kayıtlarının SHA-256 damgası; müdür onayı bunu gönderir */
+                            entriesHash: string;
+                            submittedAt: string | null;
+                            submittedByName: string | null;
+                            /** @description Son müdür onayı */
+                            approvedAt: string | null;
+                            approvedByName: string | null;
+                            approvalCount: number;
+                            reopenedAt: string | null;
+                            reopenedByName: string | null;
+                            reopenReason: string | null;
+                            entries: {
+                                id: string;
+                                membershipId: string;
+                                staffName: string;
+                                /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                                role: string;
+                                staffActive: boolean;
+                                /** @enum {string} */
+                                lessonType: "extra" | "duty";
+                                hours: number;
+                                note: string | null;
+                                /** @description `If-Match` için saat kaydı sürümü */
+                                version: number;
+                            }[];
+                            /** @description Saati girilmiş personel ve teyit durumu, ada göre */
+                            staff: {
+                                membershipId: string;
+                                staffName: string;
+                                role: string;
+                                staffActive: boolean;
+                                /**
+                                 * @description `pending` teyit bekleniyor (yanıt yok ya da saat sonradan değişti), `confirmed` teyit edildi, `disputed` itiraz etti
+                                 * @enum {string}
+                                 */
+                                state: "pending" | "confirmed" | "disputed";
+                                /** @description Personelin ayın toplam saati (ek ders ve nöbet) */
+                                totalHours: number;
+                                entryCount: number;
+                                lastResponse: {
+                                    /** @enum {string} */
+                                    outcome: "confirmed" | "disputed";
+                                    /** @enum {string} */
+                                    channel: "in_person" | "phone" | "email" | "message" | "signed_sheet";
+                                    /** @description İtiraz gerekçesi */
+                                    reason: string | null;
+                                    recordedAt: string;
+                                    /** @description Yanıtı öğretmen adına işleyen kullanıcı */
+                                    recordedByName: string | null;
+                                    /** @description Yanıt bugünkü saat kayıtlarına mı verildi */
+                                    current: boolean;
+                                } | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    recordLessonHourConfirmation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                /** @description Çizelge ayı (YYYY-AA) */
+                month: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Saati girilmiş personelin kurum üyeliği */
+                    membershipId: string;
+                    /**
+                     * @description `confirmed` teyit, `disputed` itiraz (çizelge taslağa döner)
+                     * @enum {string}
+                     */
+                    outcome: "confirmed" | "disputed";
+                    /**
+                     * @description Yanıtın alındığı kanal: `in_person`, `phone`, `email`, `message`, `signed_sheet`
+                     * @enum {string}
+                     */
+                    channel: "in_person" | "phone" | "email" | "message" | "signed_sheet";
+                    /**
+                     * @description İtiraz gerekçesi (5–500); teyitte boş
+                     * @default null
+                     */
+                    reason?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            month: string;
+                            /**
+                             * @description `draft` taslak, `teacher_review` öğretmen kontrolünde, `approved` müdür onaylı
+                             * @enum {string}
+                             */
+                            status: "draft" | "teacher_review" | "approved";
+                            /** @description Çizelge sürümü; hiç gönderilmemiş ayda boş */
+                            version: number | null;
+                            /** @description Bordro dönemi kilitli mi (DOM-FIN-108) */
+                            payrollLocked: boolean;
+                            /** @description Ayın saat kayıtlarının SHA-256 damgası; müdür onayı bunu gönderir */
+                            entriesHash: string;
+                            submittedAt: string | null;
+                            submittedByName: string | null;
+                            /** @description Son müdür onayı */
+                            approvedAt: string | null;
+                            approvedByName: string | null;
+                            approvalCount: number;
+                            reopenedAt: string | null;
+                            reopenedByName: string | null;
+                            reopenReason: string | null;
+                            entries: {
+                                id: string;
+                                membershipId: string;
+                                staffName: string;
+                                /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                                role: string;
+                                staffActive: boolean;
+                                /** @enum {string} */
+                                lessonType: "extra" | "duty";
+                                hours: number;
+                                note: string | null;
+                                /** @description `If-Match` için saat kaydı sürümü */
+                                version: number;
+                            }[];
+                            /** @description Saati girilmiş personel ve teyit durumu, ada göre */
+                            staff: {
+                                membershipId: string;
+                                staffName: string;
+                                role: string;
+                                staffActive: boolean;
+                                /**
+                                 * @description `pending` teyit bekleniyor (yanıt yok ya da saat sonradan değişti), `confirmed` teyit edildi, `disputed` itiraz etti
+                                 * @enum {string}
+                                 */
+                                state: "pending" | "confirmed" | "disputed";
+                                /** @description Personelin ayın toplam saati (ek ders ve nöbet) */
+                                totalHours: number;
+                                entryCount: number;
+                                lastResponse: {
+                                    /** @enum {string} */
+                                    outcome: "confirmed" | "disputed";
+                                    /** @enum {string} */
+                                    channel: "in_person" | "phone" | "email" | "message" | "signed_sheet";
+                                    /** @description İtiraz gerekçesi */
+                                    reason: string | null;
+                                    recordedAt: string;
+                                    /** @description Yanıtı öğretmen adına işleyen kullanıcı */
+                                    recordedByName: string | null;
+                                    /** @description Yanıt bugünkü saat kayıtlarına mı verildi */
+                                    current: boolean;
+                                } | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    approveLessonHourSheet: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                /** @description Çizelge ayı (YYYY-AA) */
+                month: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Çizelgenin `entriesHash` değeri; onaylanan saatler bunlardır */
+                    entriesHash: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            month: string;
+                            /**
+                             * @description `draft` taslak, `teacher_review` öğretmen kontrolünde, `approved` müdür onaylı
+                             * @enum {string}
+                             */
+                            status: "draft" | "teacher_review" | "approved";
+                            /** @description Çizelge sürümü; hiç gönderilmemiş ayda boş */
+                            version: number | null;
+                            /** @description Bordro dönemi kilitli mi (DOM-FIN-108) */
+                            payrollLocked: boolean;
+                            /** @description Ayın saat kayıtlarının SHA-256 damgası; müdür onayı bunu gönderir */
+                            entriesHash: string;
+                            submittedAt: string | null;
+                            submittedByName: string | null;
+                            /** @description Son müdür onayı */
+                            approvedAt: string | null;
+                            approvedByName: string | null;
+                            approvalCount: number;
+                            reopenedAt: string | null;
+                            reopenedByName: string | null;
+                            reopenReason: string | null;
+                            entries: {
+                                id: string;
+                                membershipId: string;
+                                staffName: string;
+                                /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                                role: string;
+                                staffActive: boolean;
+                                /** @enum {string} */
+                                lessonType: "extra" | "duty";
+                                hours: number;
+                                note: string | null;
+                                /** @description `If-Match` için saat kaydı sürümü */
+                                version: number;
+                            }[];
+                            /** @description Saati girilmiş personel ve teyit durumu, ada göre */
+                            staff: {
+                                membershipId: string;
+                                staffName: string;
+                                role: string;
+                                staffActive: boolean;
+                                /**
+                                 * @description `pending` teyit bekleniyor (yanıt yok ya da saat sonradan değişti), `confirmed` teyit edildi, `disputed` itiraz etti
+                                 * @enum {string}
+                                 */
+                                state: "pending" | "confirmed" | "disputed";
+                                /** @description Personelin ayın toplam saati (ek ders ve nöbet) */
+                                totalHours: number;
+                                entryCount: number;
+                                lastResponse: {
+                                    /** @enum {string} */
+                                    outcome: "confirmed" | "disputed";
+                                    /** @enum {string} */
+                                    channel: "in_person" | "phone" | "email" | "message" | "signed_sheet";
+                                    /** @description İtiraz gerekçesi */
+                                    reason: string | null;
+                                    recordedAt: string;
+                                    /** @description Yanıtı öğretmen adına işleyen kullanıcı */
+                                    recordedByName: string | null;
+                                    /** @description Yanıt bugünkü saat kayıtlarına mı verildi */
+                                    current: boolean;
+                                } | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reopenLessonHourSheet: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                /** @description Çizelge ayı (YYYY-AA) */
+                month: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Yeniden açma gerekçesi (5–500); çizelge kaydında kalır, denetim kaydına yazılmaz */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            month: string;
+                            /**
+                             * @description `draft` taslak, `teacher_review` öğretmen kontrolünde, `approved` müdür onaylı
+                             * @enum {string}
+                             */
+                            status: "draft" | "teacher_review" | "approved";
+                            /** @description Çizelge sürümü; hiç gönderilmemiş ayda boş */
+                            version: number | null;
+                            /** @description Bordro dönemi kilitli mi (DOM-FIN-108) */
+                            payrollLocked: boolean;
+                            /** @description Ayın saat kayıtlarının SHA-256 damgası; müdür onayı bunu gönderir */
+                            entriesHash: string;
+                            submittedAt: string | null;
+                            submittedByName: string | null;
+                            /** @description Son müdür onayı */
+                            approvedAt: string | null;
+                            approvedByName: string | null;
+                            approvalCount: number;
+                            reopenedAt: string | null;
+                            reopenedByName: string | null;
+                            reopenReason: string | null;
+                            entries: {
+                                id: string;
+                                membershipId: string;
+                                staffName: string;
+                                /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                                role: string;
+                                staffActive: boolean;
+                                /** @enum {string} */
+                                lessonType: "extra" | "duty";
+                                hours: number;
+                                note: string | null;
+                                /** @description `If-Match` için saat kaydı sürümü */
+                                version: number;
+                            }[];
+                            /** @description Saati girilmiş personel ve teyit durumu, ada göre */
+                            staff: {
+                                membershipId: string;
+                                staffName: string;
+                                role: string;
+                                staffActive: boolean;
+                                /**
+                                 * @description `pending` teyit bekleniyor (yanıt yok ya da saat sonradan değişti), `confirmed` teyit edildi, `disputed` itiraz etti
+                                 * @enum {string}
+                                 */
+                                state: "pending" | "confirmed" | "disputed";
+                                /** @description Personelin ayın toplam saati (ek ders ve nöbet) */
+                                totalHours: number;
+                                entryCount: number;
+                                lastResponse: {
+                                    /** @enum {string} */
+                                    outcome: "confirmed" | "disputed";
+                                    /** @enum {string} */
+                                    channel: "in_person" | "phone" | "email" | "message" | "signed_sheet";
+                                    /** @description İtiraz gerekçesi */
+                                    reason: string | null;
+                                    recordedAt: string;
+                                    /** @description Yanıtı öğretmen adına işleyen kullanıcı */
+                                    recordedByName: string | null;
+                                    /** @description Yanıt bugünkü saat kayıtlarına mı verildi */
+                                    current: boolean;
+                                } | null;
+                            }[];
                         };
                     };
                 };

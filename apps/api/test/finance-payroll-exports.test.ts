@@ -41,6 +41,7 @@ const PROFILE = `${FINANCE}/payroll-export-profile`
 const RATES = `${FINANCE}/pay-rates`
 const PERIODS = `${FINANCE}/payroll-periods`
 const ADJUSTMENTS = `${FINANCE}/payroll-adjustments`
+const SHEETS = `${FINANCE}/lesson-hour-sheets`
 const BOM = '\uFEFF'
 
 type Json = Record<string, unknown>
@@ -231,6 +232,33 @@ describe('DOM-FIN-105: bordro programına aktarım uçları', () => {
     )
   }
 
+  /**
+   * Ayın ek ders çizelgesini öğretmen kontrolüne gönderir, saati olan herkesi teyit eder ve müdür
+   * onayı verir (DOM-FIN-120): bordro aktarımı yalnız onaylı ayın ek dersine tutar yazar (K-411).
+   */
+  async function approveSheet(t: Tenant, month = '2026-10') {
+    let sheet = ok(await call('POST', `${SHEETS}/${month}/submit`, t.admin, {}, key()))
+    for (const person of sheet.staff as Json[])
+      sheet = ok(
+        await call(
+          'POST',
+          `${SHEETS}/${month}/confirmations`,
+          t.admin,
+          { membershipId: person.membershipId, outcome: 'confirmed', channel: 'in_person' },
+          key(),
+        ),
+      )
+    ok(
+      await call(
+        'POST',
+        `${SHEETS}/${month}/approve`,
+        t.admin,
+        { entriesHash: sheet.entriesHash },
+        key(),
+      ),
+    )
+  }
+
   test('kimliksiz istek 401', async () => {
     const url = `${HOURS}/${randomUUID()}`
     assertError(await get(`${PREVIEW}?month=2026-10`, null), 401)
@@ -252,11 +280,13 @@ describe('DOM-FIN-105: bordro programına aktarım uçları', () => {
       assertError(await preview(cookie), 403)
       assertError(await exportFile(cookie), 403)
       assertError(await get(EXPORTS, cookie), 403)
+      assertError(await get(PROFILE, cookie), 403)
+      assertError(await call('PATCH', PROFILE, cookie, { profile: null }, ifMatch(1)), 403)
+      // DOM-FIN-120: ek ders saati ücret içermez; ön büro da girer (K-409).
+      if (role === 'onburo') continue
       assertError(await createHours(cookie, hoursBody(t.selin, { lessonType: 'duty' })), 403)
       assertError(await call('PATCH', url, cookie, { hours: 2 }, ifMatch(1)), 403)
       assertError(await call('DELETE', url, cookie, undefined, ifMatch(1)), 403)
-      assertError(await get(PROFILE, cookie), 403)
-      assertError(await call('PATCH', PROFILE, cookie, { profile: null }, ifMatch(1)), 403)
     }
     const rows = await hoursRows(t.id)
     assert.equal(rows.length, 1)
@@ -279,6 +309,7 @@ describe('DOM-FIN-105: bordro programına aktarım uçları', () => {
     const t = await staffed()
     ok(await createHours(t.admin, hoursBody(t.selin, { hours: 12, note: 'Yedek ders dahil' })), 201)
     ok(await createHours(t.admin, hoursBody(t.selin, { lessonType: 'duty', hours: 4 })), 201)
+    await approveSheet(t)
     const data = ok(await preview(t.admin))
     assert.equal(data.from, '2026-10-01')
     assert.equal(data.to, '2026-10-31')
@@ -412,6 +443,7 @@ describe('DOM-FIN-105: bordro programına aktarım uçları', () => {
   test('DOM-FIN-105: dosya genel CSV; özet satırı, SHA-256 ve denetim; aynı ay yeniden üretilir (K-338)', async () => {
     const t = await staffed()
     ok(await createHours(t.admin, hoursBody(t.selin, { hours: 12 })), 201)
+    await approveSheet(t)
     const file = await exportFile(t.admin)
     assert.equal(file.statusCode, 200, file.body)
     assert.match(String(file.headers['content-type']), /text\/csv/)
@@ -442,9 +474,20 @@ describe('DOM-FIN-105: bordro programına aktarım uçları', () => {
       audits.map((audit) => [audit.entityId, audit.changes]),
       [[row.id, { fields: ['month:2026-10'] }]],
     )
-    // Dönem kilidi yok: saat değişince aynı ay yeniden üretilir, ikinci özet satırı açılır.
+    // Dönem kilidi yok: çizelge yeniden açılıp saat değişince aynı ay yeniden üretilir, ikinci
+    // özet satırı açılır (DOM-FIN-120: onaylı çizelgenin saati önce yeniden açılır).
+    ok(
+      await call(
+        'POST',
+        `${SHEETS}/2026-10/reopen`,
+        t.admin,
+        { reason: 'Saat yanlış girildi' },
+        key(),
+      ),
+    )
     const [entry] = await hoursRows(t.id)
     ok(await call('PATCH', `${HOURS}/${entry!.id}`, t.admin, { hours: 2 }, ifMatch(1)))
+    await approveSheet(t)
     assert.equal((await exportFile(t.admin)).statusCode, 200)
     const history = await get(`${EXPORTS}?month=2026-10`, t.admin)
     assert.equal(history.statusCode, 200, history.body)

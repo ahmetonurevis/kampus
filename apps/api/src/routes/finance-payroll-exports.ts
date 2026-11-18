@@ -7,6 +7,7 @@ import type {
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
 
+import { LESSON_SHEET_ROLES } from '@kampus/school-core/lib/finance-lesson-hour-approvals.ts'
 import {
   FINANCE_PAYROLL_EXPORT_ROLES,
   payrollLessonHoursInputSchema,
@@ -42,7 +43,8 @@ import {
 
 /**
  * Bordro programına aktarım uçları (docs/domain/finans.md DOM-FIN-105; ON-202). Modül
- * `finance`; okuma ve yazma yalnız yönetici (K-306, K-338). Kampüs bordro hesaplamaz: önizleme
+ * `finance`; okuma ve yazma yalnız yönetici (K-306, K-338); ek ders saati yazmaları ön büroya da
+ * açıktır ve çizelge onayına bağlıdır (DOM-FIN-120, K-409, K-410). Kampüs bordro hesaplamaz: önizleme
  * ve dosya ayın girdi satırlarıdır. Dosya taze oturum ister, kullanıcı başına 10/dk; her üretim
  * özet satırı ve denetim kaydı yazar. Sıra: 401 → 403 modül → 403 rol → (taze oturum) →
  * `If-Match` → 400 → işlem.
@@ -50,6 +52,9 @@ import {
 
 const MANAGER =
   'Rol: yalnız `yonetici` (K-306, K-338; muhasebe rolü açılsa da ücret görmez). Modül `finance`.'
+const DESK = 'Rol: `yonetici`, `onburo` (K-409; saat girişi ücret içermez). Modül `finance`.'
+const LOCKS =
+  'Ayın ek ders çizelgesi müdür onaylıysa 409 `lesson_hours_locked` (DOM-FIN-120, K-410); bordro dönemi kilitliyse 409 `payroll_period_locked` (DOM-FIN-108).'
 const BASE = '/api/v1/finance'
 const EXPORTS = `${BASE}/payroll-exports`
 const HOURS = `${BASE}/payroll-lesson-hours`
@@ -78,6 +83,11 @@ export function registerFinancePayrollExportRoutes(app: FastifyInstance) {
     app.requireModule('finance'),
     app.requireRole(FINANCE_PAYROLL_EXPORT_ROLES),
   ]
+  const hoursGuard: preValidationAsyncHookHandler[] = [
+    app.authenticate,
+    app.requireModule('finance'),
+    app.requireRole(LESSON_SHEET_ROLES),
+  ]
   const tags = ['finance-payroll-exports']
 
   typed.get(
@@ -88,7 +98,7 @@ export function registerFinancePayrollExportRoutes(app: FastifyInstance) {
         operationId: 'previewPayrollExport',
         tags,
         summary: 'Bordro girdi önizlemesi',
-        description: `Seçilen ayın bordro girdi satırları (DOM-FIN-105). Kampüs bordro hesaplamaz (ON-193). Ana ücret ve yan hak: ayla kesişen her ücret tanımı (DOM-FIN-099) bir satırdır; ay içinde başlayan ya da biten tanım ay içindeki başlangıç/bitiş gününü ve gün sayısını taşır, tutarı orantılanmaz ve boş kalır; saatlik ve ders saati ana ücretinde çalışılan saat bilinmediği için tutar boştur; aylık net ücret brüte çevrilmez (K-336). Ek ders: ay için girilen her saat kaydı bir satırdır, tutar saat × o türün ayla kesişen en geç başlayan ek ders ücretidir; tanım yoksa tutar boş (K-337). Kesinti (DOM-FIN-101, K-392): ayın avans taksiti tutarıyla; sıradaki ve nafaka icraları net ücret oranı (\`rateBasisPoints\`, \`deductionBase: net_wage\`) ve kalan alacak üst sınırıyla (\`capCents\`), BES katkı oranı ve matrahıyla (\`pension_base\`) \`deduction\` yönünde satırdır; icra ve BES tutarı boştur (net ücret ve matrah bordroda). Sırada bekleyen ve alacağı biten icra ile ara verilen BES satır vermez. Düzeltme (DOM-FIN-108, K-393): bu aya aktarılan her düzeltme bir satırdır; artı fark \`earning\`, eksi fark \`deduction\`, tutar mutlak, ait olduğu ay \`sourceMonth\`. Tutar içerdiği için her okuma denetim kaydına \`finance.payroll_export.read\` olarak düşer (yalnız alan adı; icra satırı varsa icra alan adları da, K-315). ${MANAGER}`,
+        description: `Seçilen ayın bordro girdi satırları (DOM-FIN-105). Kampüs bordro hesaplamaz (ON-193). Ana ücret ve yan hak: ayla kesişen her ücret tanımı (DOM-FIN-099) bir satırdır; ay içinde başlayan ya da biten tanım ay içindeki başlangıç/bitiş gününü ve gün sayısını taşır, tutarı orantılanmaz ve boş kalır; saatlik ve ders saati ana ücretinde çalışılan saat bilinmediği için tutar boştur; aylık net ücret brüte çevrilmez (K-336). Ek ders: ay için girilen her saat kaydı bir satırdır, tutar saat × o türün ayla kesişen en geç başlayan ek ders ücretidir; tanım yoksa tutar boş (K-337); ayın ek ders çizelgesi müdür onaylı değilse (DOM-FIN-120) satır \`lesson_hours_pending\` uyarısıyla tutarsızdır ve toplama girmez (K-411). Kesinti (DOM-FIN-101, K-392): ayın avans taksiti tutarıyla; sıradaki ve nafaka icraları net ücret oranı (\`rateBasisPoints\`, \`deductionBase: net_wage\`) ve kalan alacak üst sınırıyla (\`capCents\`), BES katkı oranı ve matrahıyla (\`pension_base\`) \`deduction\` yönünde satırdır; icra ve BES tutarı boştur (net ücret ve matrah bordroda). Sırada bekleyen ve alacağı biten icra ile ara verilen BES satır vermez. Düzeltme (DOM-FIN-108, K-393): bu aya aktarılan her düzeltme bir satırdır; artı fark \`earning\`, eksi fark \`deduction\`, tutar mutlak, ait olduğu ay \`sourceMonth\`. Tutar içerdiği için her okuma denetim kaydına \`finance.payroll_export.read\` olarak düşer (yalnız alan adı; icra satırı varsa icra alan adları da, K-315). ${MANAGER}`,
         querystring: payrollMonthQuery,
         response: { 200: payrollPreviewResponse, ...commandErrors },
       },
@@ -160,12 +170,12 @@ export function registerFinancePayrollExportRoutes(app: FastifyInstance) {
   typed.post(
     HOURS,
     {
-      preValidation: [...guarded, rejectIfMatch(), captureInput()],
+      preValidation: [...hoursGuard, rejectIfMatch(), captureInput()],
       schema: {
         operationId: 'createPayrollLessonHours',
         tags,
         summary: 'Ek ders saati gir',
-        description: `Ders saati özeti (OG-116) gelene kadar ay için elle girilen ek ders saati: personel, ay (\`YYYY-AA\`), tür (\`extra\` ek ders, \`duty\` nöbet) ve ayın toplam saati (tam sayı, 1–400), isteğe bağlı not (K-337). Ay içinde ayrılan (pasif) personele de girilir. Olmayan ya da başka kurumun üyeliği 422 \`payroll_lesson_hours_staff_not_found\`, öğrenci ya da veli 422 \`payroll_lesson_hours_not_staff\`, gelecek ay 422 \`payroll_lesson_hours_future_month\`; aynı personel, ay ve türde kayıt varsa 409 \`payroll_lesson_hours_exist\` (kayıt düzeltilir). Denetim kaydına alan adları yazılır. \`Idempotency-Key\` isteğe bağlı. ${MANAGER}`,
+        description: `Ders saati özeti (OG-116) gelene kadar ay için elle girilen ek ders saati: personel, ay (\`YYYY-AA\`), tür (\`extra\` ek ders, \`duty\` nöbet) ve ayın toplam saati (tam sayı, 1–400), isteğe bağlı not (K-337). Ay içinde ayrılan (pasif) personele de girilir. Olmayan ya da başka kurumun üyeliği 422 \`payroll_lesson_hours_staff_not_found\`, öğrenci ya da veli 422 \`payroll_lesson_hours_not_staff\`, gelecek ay 422 \`payroll_lesson_hours_future_month\`; aynı personel, ay ve türde kayıt varsa 409 \`payroll_lesson_hours_exist\` (kayıt düzeltilir). ${LOCKS} Denetim kaydına alan adları yazılır. \`Idempotency-Key\` isteğe bağlı. ${DESK}`,
         headers: commandHeadersSchema('optional', { ifMatch: false }),
         body: payrollLessonHoursInputSchema,
         response: { 201: lessonHoursResponse, ...commandErrors },
@@ -186,12 +196,12 @@ export function registerFinancePayrollExportRoutes(app: FastifyInstance) {
   typed.patch(
     `${HOURS}/:entryId`,
     {
-      preValidation: [...guarded, requireIfMatch(), captureInput()],
+      preValidation: [...hoursGuard, requireIfMatch(), captureInput()],
       schema: {
         operationId: 'updatePayrollLessonHours',
         tags,
         summary: 'Ek ders saatini düzelt',
-        description: `Saat ya da not düzeltilir; değişiklik yoksa 422 \`payroll_lesson_hours_unchanged\`. \`If-Match\` zorunlu, sürüm tutmazsa 409. Olmayan, silinmiş ya da başka kurumun kaydı 404. ${MANAGER}`,
+        description: `Saat ya da not düzeltilir; değişiklik yoksa 422 \`payroll_lesson_hours_unchanged\`. \`If-Match\` zorunlu, sürüm tutmazsa 409. Olmayan, silinmiş ya da başka kurumun kaydı 404. ${LOCKS} ${DESK}`,
         headers: commandHeadersSchema('optional', { ifMatch: 'required' }),
         params: lessonHoursParams,
         body: payrollLessonHoursUpdateSchema,
@@ -214,12 +224,12 @@ export function registerFinancePayrollExportRoutes(app: FastifyInstance) {
   typed.delete(
     `${HOURS}/:entryId`,
     {
-      preValidation: [...guarded, requireIfMatch()],
+      preValidation: [...hoursGuard, requireIfMatch()],
       schema: {
         operationId: 'archivePayrollLessonHours',
         tags,
         summary: 'Ek ders saatini sil',
-        description: `Kayıt arşivlenir; dosyaya girmez, aynı ay ve türde yeni kayıt açılabilir. \`If-Match\` zorunlu, sürüm tutmazsa 409. Olmayan ya da başka kurumun kaydı 404. ${MANAGER}`,
+        description: `Kayıt arşivlenir; dosyaya girmez, aynı ay ve türde yeni kayıt açılabilir. \`If-Match\` zorunlu, sürüm tutmazsa 409. Olmayan ya da başka kurumun kaydı 404. ${LOCKS} ${DESK}`,
         headers: commandHeadersSchema('optional', { ifMatch: 'required' }),
         params: lessonHoursParams,
         response: { 200: lessonHoursArchiveResponse, ...commandErrors },

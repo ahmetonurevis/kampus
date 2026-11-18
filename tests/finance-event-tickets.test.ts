@@ -5,9 +5,14 @@ import { DomainError } from '../packages/school-core/src/lib/errors.ts'
 import {
   assertEventArchivable,
   canManageEvents,
+  canOverrideEventRefund,
   canSellEventTickets,
   compareSeats,
   eventCapacity,
+  eventDayOf,
+  eventRefundQuote,
+  eventTicketCheckInUndoBlocker,
+  eventTicketRefundStatus,
   eventTicketState,
   eventTicketsCsv,
   eventTicketSummary,
@@ -18,7 +23,9 @@ import {
   planEventTicketAllocation,
   planEventTicketCancel,
   planEventTicketCheckIn,
+  planEventTicketCheckInUndo,
   planEventTicketPayment,
+  planEventTicketRefund,
   planEventUpdate,
   seatLabel,
   ticketCodeFromBytes,
@@ -27,7 +34,7 @@ import {
   type EventTicketFacts,
 } from '../packages/school-core/src/lib/finance-event-tickets.ts'
 
-/** Etkinlik bileti ve oturma kuralları (DOM-FIN-103; ON-159; K-324…K-327). */
+/** Etkinlik bileti ve oturma kuralları (DOM-FIN-103; ON-159, ON-345; K-324…K-327, K-378…K-380). */
 
 const NOW = new Date('2026-11-16T09:00:00.000Z')
 let keyCount = 0
@@ -342,12 +349,74 @@ test('DOM-FIN-103, K-325: numarasızda kontenjan, öğrenci başına üst sını
   )
 })
 
+test('DOM-FIN-103, K-379: aile kapsamında kardeşlerin biletleri birlikte sayılır; öğrenci kapsamında ayrı', () => {
+  const event = { ...general(), capacity: 20, perStudentLimit: 3 }
+  const key = keyOf(event, 'invitation')
+  const item = () => ({ ticketTypeKey: key, seat: null, holderName: 'Veli Ad' })
+  const siblings = [ticket(null, key, 's1'), ticket(null, key, 's2')]
+  const allocate = (scope: 'student' | 'family', family?: readonly string[], count = 2) =>
+    planEventTicketAllocation(
+      { studentId: 's1', items: Array.from({ length: count }, item) },
+      {
+        event: { ...event, limitScope: scope },
+        active: [...siblings, ticket(null, key, 's9')],
+        student: STUDENT,
+        ...(family ? { family } : {}),
+      },
+    )
+  // Öğrenci kapsamı: s1'in 1 bileti + 2 = 3, sınırda.
+  assert.equal(allocate('student', ['s1', 's2']).tickets.length, 2)
+  // Aile kapsamı: s1 ve kardeşi s2'nin 2 bileti + 2 = 4 > 3; başka ailenin (s9) bileti sayılmaz.
+  assert.throws(
+    () => allocate('family', ['s1', 's2']),
+    (error: unknown) =>
+      error instanceof DomainError &&
+      error.code === 'event_ticket_limit_exceeded' &&
+      error.message.includes('Aile başına en çok 3') &&
+      error.message.includes('2 bileti'),
+  )
+  assert.equal(allocate('family', ['s1', 's2'], 1).tickets.length, 1)
+  // Küme verilmezse aile öğrencinin kendisidir (velisiz öğrenci).
+  assert.equal(allocate('family').tickets.length, 2)
+  // Sınır yoksa kapsam etkisizdir.
+  assert.equal(
+    planEventTicketAllocation(
+      { studentId: 's1', items: [item(), item(), item(), item()] },
+      {
+        event: { ...event, perStudentLimit: null, limitScope: 'family' },
+        active: siblings,
+        student: STUDENT,
+        family: ['s1', 's2'],
+      },
+    ).tickets.length,
+    4,
+  )
+})
+
+test('DOM-FIN-103, K-379: kapsam açılışta öğrenci başına başlar, düzeltmeyle aileye geçer; geçersiz kapsam 400', () => {
+  const event = seated()
+  assert.equal(event.limitScope, 'student')
+  assert.equal(planEvent({ ...SEATED, limitScope: 'family' }, tools).limitScope, 'family')
+  const { next, changed } = planEventUpdate(
+    event,
+    { limitScope: 'family' },
+    { ...tools, active: [ticket('A2', keyOf(event, 'invitation'), 's1')] },
+  )
+  assert.equal(next.limitScope, 'family')
+  assert.deepEqual(changed, ['limitScope'])
+  invalid(() => planEvent({ ...SEATED, limitScope: 'class' }, tools))
+})
+
 const facts = (overrides: Partial<EventTicketFacts> = {}): EventTicketFacts => ({
   eventId: 'e1',
   status: 'active',
   ticketKind: 'paid',
+  priceCents: 15000,
   paymentStatus: 'unpaid',
   usedAt: null,
+  usedByUserId: null,
+  refundCents: null,
+  refundedAt: null,
   ...overrides,
 })
 
@@ -373,25 +442,189 @@ test('DOM-FIN-103, K-326: ödeme yalnız ödenmemiş ücretli bilette; ikinci ö
   )
 })
 
-test('DOM-FIN-103, K-326: iptal ödenmişte iade sayılır; kullanılmış ve iptal edilmiş bilet reddedilir', () => {
-  assert.deepEqual(planEventTicketCancel({}, facts()), { reason: null, refunded: false })
-  assert.deepEqual(
-    planEventTicketCancel({ reason: ' Gelemeyecek ' }, facts({ paymentStatus: 'paid' })),
-    {
-      reason: 'Gelemeyecek',
-      refunded: true,
-    },
-  )
+/** Etkinlik 2026-12-20 16:00 İstanbul; NOW 2026-11-16 12:00 İstanbul. */
+const STARTS = '2026-12-20T13:00:00.000Z'
+const at = (iso: string) => new Date(iso)
+const cancelContext = (now = NOW, role = 'onburo') => ({ startsAt: STARTS, now, role })
+
+test('DOM-FIN-103, K-380: iade kuralı İstanbul gününe göre; 7 gün ve öncesi tam, 1–6 gün %50, etkinlik günü yok', () => {
+  assert.deepEqual(eventRefundQuote(15000, STARTS, NOW), {
+    rule: 'full',
+    refundCents: 15000,
+    daysBefore: 34,
+  })
+  // 13 Aralık 23:30 İstanbul (20:30 UTC): 7 gün kala, tam.
+  assert.equal(eventRefundQuote(15000, STARTS, at('2026-12-13T20:30:00Z')).rule, 'full')
+  // 14 Aralık 00:30 İstanbul (13 Aralık 21:30 UTC): 6 gün kala, yarı.
+  assert.deepEqual(eventRefundQuote(15001, STARTS, at('2026-12-13T21:30:00Z')), {
+    rule: 'partial',
+    refundCents: 7501,
+    daysBefore: 6,
+  })
+  assert.equal(eventRefundQuote(15000, STARTS, at('2026-12-19T20:00:00Z')).rule, 'partial')
+  // Etkinlik günü (20 Aralık 00:30 İstanbul) ve sonrası iade yok.
+  assert.deepEqual(eventRefundQuote(15000, STARTS, at('2026-12-19T21:30:00Z')), {
+    rule: 'none',
+    refundCents: 0,
+    daysBefore: 0,
+  })
+  assert.equal(eventRefundQuote(15000, STARTS, at('2026-12-22T09:00:00Z')).daysBefore, -2)
+  assert.equal(eventDayOf('2026-12-19T21:30:00Z'), '2026-12-20')
+  assert.equal(canOverrideEventRefund('yonetici'), true)
+  assert.equal(canOverrideEventRefund('onburo'), false)
+})
+
+test('DOM-FIN-103, K-326, K-380: iptal ödenmişte kural tutarını yazar; kullanılmış ve iptal edilmiş bilet reddedilir', () => {
+  assert.deepEqual(planEventTicketCancel({}, facts(), cancelContext()), {
+    reason: null,
+    refundCents: null,
+  })
+  const paid = facts({ paymentStatus: 'paid' })
+  assert.deepEqual(planEventTicketCancel({ reason: ' Gelemeyecek ' }, paid, cancelContext()), {
+    reason: 'Gelemeyecek',
+    refundCents: 15000,
+  })
+  const late = cancelContext(at('2026-12-18T09:00:00Z'))
+  assert.equal(planEventTicketCancel({}, paid, late).refundCents, 7500)
+  // Kurala eşit tutar ön büroda da geçer.
+  assert.equal(planEventTicketCancel({ refundCents: 7500 }, paid, late).refundCents, 7500)
   rejects(
-    () => planEventTicketCancel({}, facts({ usedAt: NOW.toISOString() })),
+    () => planEventTicketCancel({}, facts({ usedAt: NOW.toISOString() }), cancelContext()),
     'event_ticket_used',
   )
   rejects(
-    () => planEventTicketCancel({}, facts({ status: 'cancelled' })),
+    () => planEventTicketCancel({}, facts({ status: 'cancelled' }), cancelContext()),
     'event_ticket_already_cancelled',
     'conflict',
   )
-  invalid(() => planEventTicketCancel({ reason: 'x'.repeat(201) }, facts()))
+  invalid(() => planEventTicketCancel({ reason: 'x'.repeat(201) }, facts(), cancelContext()))
+  invalid(() => planEventTicketCancel({ refundCents: -1 }, paid, cancelContext()))
+  invalid(() => planEventTicketCancel({ refundCents: 10.5 }, paid, cancelContext()))
+})
+
+test('DOM-FIN-103, K-380: kuraldan farklı iade yalnız yönetici ve notla; bedeli aşamaz; ödenmemişte tutar girilmez', () => {
+  const paid = facts({ paymentStatus: 'paid' })
+  const late = (role: string) => cancelContext(at('2026-12-18T09:00:00Z'), role)
+  rejects(
+    () =>
+      planEventTicketCancel(
+        { refundCents: 15000, reason: 'Etkinlik ertelendi' },
+        paid,
+        late('onburo'),
+      ),
+    'event_ticket_refund_override_forbidden',
+    'forbidden',
+  )
+  rejects(
+    () => planEventTicketCancel({ refundCents: 15000 }, paid, late('yonetici')),
+    'event_ticket_refund_reason_required',
+  )
+  rejects(
+    () => planEventTicketCancel({ refundCents: 15001, reason: 'Fazla' }, paid, late('yonetici')),
+    'event_ticket_refund_exceeds_price',
+  )
+  assert.deepEqual(
+    planEventTicketCancel(
+      { refundCents: 15000, reason: 'Etkinlik ertelendi' },
+      paid,
+      late('yonetici'),
+    ),
+    { reason: 'Etkinlik ertelendi', refundCents: 15000 },
+  )
+  assert.equal(
+    planEventTicketCancel({ refundCents: 0, reason: 'Kesintili' }, paid, late('yonetici'))
+      .refundCents,
+    0,
+  )
+  rejects(
+    () => planEventTicketCancel({ refundCents: 0 }, facts(), cancelContext()),
+    'event_ticket_refund_not_applicable',
+  )
+})
+
+test('DOM-FIN-103, K-380: iade ödendi işareti iptal edilmiş, tutarı olan bilette bir kez', () => {
+  const pending = facts({ status: 'cancelled', paymentStatus: 'paid', refundCents: 7500 })
+  assert.deepEqual(planEventTicketRefund({ method: 'cash' }, pending), { method: 'cash' })
+  invalid(() => planEventTicketRefund({ method: 'card' }, pending))
+  rejects(
+    () => planEventTicketRefund({ method: 'cash' }, facts({ paymentStatus: 'paid' })),
+    'event_ticket_not_cancelled',
+  )
+  rejects(
+    () => planEventTicketRefund({ method: 'cash' }, { ...pending, refundCents: 0 }),
+    'event_ticket_no_refund',
+  )
+  rejects(
+    () => planEventTicketRefund({ method: 'cash' }, { ...pending, refundCents: null }),
+    'event_ticket_no_refund',
+  )
+  rejects(
+    () =>
+      planEventTicketRefund({ method: 'transfer' }, { ...pending, refundedAt: NOW.toISOString() }),
+    'event_ticket_already_refunded',
+    'conflict',
+  )
+  assert.equal(eventTicketRefundStatus(pending), 'pending')
+  assert.equal(eventTicketRefundStatus({ ...pending, refundedAt: NOW.toISOString() }), 'paid')
+  assert.equal(eventTicketRefundStatus({ refundCents: 0, refundedAt: null }), 'none')
+  assert.equal(eventTicketRefundStatus({ refundCents: null, refundedAt: null }), 'none')
+})
+
+test('DOM-FIN-103, K-378: girişi yönetici ya da okutan görevli etkinlik günü bitene dek gerekçeyle geri alır', () => {
+  const used = facts({
+    paymentStatus: 'paid',
+    usedAt: '2026-12-20T12:50:00.000Z',
+    usedByUserId: 'desk-1',
+  })
+  const eventDay = at('2026-12-20T15:00:00Z')
+  const context = (userId: string, role = 'onburo', now = eventDay) => ({
+    startsAt: STARTS,
+    now,
+    actor: { role, userId },
+  })
+  assert.deepEqual(
+    planEventTicketCheckInUndo({ reason: ' Yanlış bilet okundu ' }, used, context('desk-1')),
+    { reason: 'Yanlış bilet okundu', usedAt: '2026-12-20T12:50:00.000Z', usedByUserId: 'desk-1' },
+  )
+  assert.equal(eventTicketCheckInUndoBlocker(used, context('admin-1', 'yonetici')), null)
+  // Etkinlikten önce yanlışlıkla okutulan bilet de geri alınır.
+  assert.equal(eventTicketCheckInUndoBlocker(used, context('desk-1', 'onburo', NOW)), null)
+  rejects(
+    () => planEventTicketCheckInUndo({ reason: 'Yanlış bilet' }, used, context('desk-2')),
+    'event_ticket_check_in_not_owner',
+    'forbidden',
+  )
+  // Etkinlik günü İstanbul'da 23:59'a kadar sürer; ertesi gün (21 Aralık 00:10) geri alınmaz.
+  assert.equal(
+    eventTicketCheckInUndoBlocker(used, context('desk-1', 'onburo', at('2026-12-20T20:59:00Z'))),
+    null,
+  )
+  rejects(
+    () =>
+      planEventTicketCheckInUndo(
+        { reason: 'Yanlış bilet' },
+        used,
+        context('admin-1', 'yonetici', at('2026-12-20T21:10:00Z')),
+      ),
+    'event_ticket_check_in_undo_expired',
+  )
+  rejects(
+    () => planEventTicketCheckInUndo({ reason: 'Yanlış bilet' }, facts(), context('desk-1')),
+    'event_ticket_not_used',
+    'conflict',
+  )
+  rejects(
+    () =>
+      planEventTicketCheckInUndo(
+        { reason: 'Yanlış bilet' },
+        { ...used, status: 'cancelled' },
+        context('desk-1'),
+      ),
+    'event_ticket_cancelled',
+  )
+  invalid(() => planEventTicketCheckInUndo({ reason: 'kısa' }, used, context('desk-1')))
+  invalid(() => planEventTicketCheckInUndo({}, used, context('desk-1')))
+  invalid(() => planEventTicketCheckInUndo({ reason: 'x'.repeat(201) }, used, context('desk-1')))
 })
 
 test('DOM-FIN-103, K-326: giriş bir kez; başka etkinlik, iptal ve ödenmemiş bilet girmez', () => {
@@ -431,7 +664,7 @@ test('DOM-FIN-103, K-326: bilet kodu rastgele baytlardan 12 karakter; okunan kod
   assert.equal(normalizeTicketCode('ABCD-EFGH-JKMU'), null)
 })
 
-test('DOM-FIN-103, K-327: özet ve CSV; kod CSV’ye yazılmaz, iade edilen tutar toplanmaz', () => {
+test('DOM-FIN-103, K-327, K-380: özet ve CSV; kod CSV’ye yazılmaz, iade düşülür, kesinti kalır', () => {
   const event = general()
   const base = {
     ticketTypeName: 'Veli bileti',
@@ -444,6 +677,7 @@ test('DOM-FIN-103, K-327: özet ve CSV; kod CSV’ye yazılmaz, iade edilen tuta
     paidAt: null,
     usedAt: null,
     cancelledAt: null,
+    refundCents: null,
     refundedAt: null,
   }
   const rows = [
@@ -460,7 +694,22 @@ test('DOM-FIN-103, K-327: özet ve CSV; kod CSV’ye yazılmaz, iade edilen tuta
       ...base,
       status: 'cancelled' as const,
       paymentStatus: 'paid' as const,
+      refundCents: 15000,
       refundedAt: NOW.toISOString(),
+      cancelledAt: NOW.toISOString(),
+    },
+    {
+      ...base,
+      status: 'cancelled' as const,
+      paymentStatus: 'paid' as const,
+      refundCents: 7500,
+      cancelledAt: NOW.toISOString(),
+    },
+    {
+      ...base,
+      status: 'cancelled' as const,
+      paymentStatus: 'paid' as const,
+      refundCents: 0,
       cancelledAt: NOW.toISOString(),
     },
   ]
@@ -471,21 +720,34 @@ test('DOM-FIN-103, K-327: özet ve CSV; kod CSV’ye yazılmaz, iade edilen tuta
     invitationCount: 0,
     usedCount: 1,
     unpaidCount: 1,
-    collectedCents: 15000,
+    // 15000 (etkin) + 0 (tam iade) + 7500 (yarı kesinti) + 15000 (iade yok)
+    collectedCents: 37500,
+    pendingRefundCount: 1,
+    pendingRefundCents: 7500,
   })
-  assert.deepEqual(rows.map(eventTicketState), ['used', 'unpaid', 'cancelled'])
+  assert.deepEqual(rows.map(eventTicketState), [
+    'used',
+    'unpaid',
+    'cancelled',
+    'cancelled',
+    'cancelled',
+  ])
   assert.equal(
     eventTicketState({ status: 'active', paymentStatus: 'not_required', usedAt: null }),
     'valid',
   )
   const csv = eventTicketsCsv(rows)
   const lines = csv.split('\r\n')
-  assert.equal(lines.length, 4)
+  assert.equal(lines.length, 6)
   assert.ok(lines[0]?.startsWith('"Bilet türü";"Tür";"Koltuk"'))
+  assert.ok(lines[0]?.endsWith('"İade tutarı";"İade";"İade zamanı"'))
   assert.ok(lines[1]?.includes(`"'=Ayşe"`), 'formül kaçışı')
   assert.ok(lines[1]?.includes('150,00'))
   assert.ok(lines[1]?.includes('"16.11.2026 12:30"'), 'İstanbul saati')
   assert.ok(lines[1]?.includes('"Kullanıldı"'))
-  assert.ok(lines[3]?.includes('"Bedel iade edildi"'))
+  assert.ok(lines[1]?.endsWith(';"";""'), 'iptal edilmemiş bilette iade boş')
+  assert.ok(lines[3]?.endsWith('150,00;"İade ödendi";"16.11.2026 12:00"'))
+  assert.ok(lines[4]?.endsWith('75,00;"İade bekliyor";""'))
+  assert.ok(lines[5]?.endsWith('0,00;"İade yok";""'))
   assert.ok(!lines[0]?.includes('Kod'), 'bilet kodu sütunu yok')
 })

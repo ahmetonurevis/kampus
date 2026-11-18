@@ -1,6 +1,7 @@
-// Kıdem ve ihbar hesaplayıcı formu (DOM-FIN-094; ON-205). Tutarlar formda `1.234,56` metnidir,
-// gövdede kuruş; gün ve sıra kuralları core şemasından gelir (aynı mesajlar). Form değeri hiçbir
-// yerde saklanmaz (K-273).
+// Kıdem ve ihbar hesaplayıcı formu (DOM-FIN-094; ON-205, ON-341). Tutarlar formda `1.234,56`
+// metnidir, gövdede kuruş; gün ve sıra kuralları core şemasından gelir (aynı mesajlar). Personel
+// seçilirse ücret önerisi forma dolar ve gövde `membershipId` taşır (K-345, K-346). Form değeri
+// hiçbir yerde saklanmaz (K-273).
 import { z } from 'zod'
 import type { SeveranceEstimateBody } from '@kampus/react-shared/use-finance-severance.ts'
 import { daySchema } from '@kampus/school-core/lib/domain.ts'
@@ -11,7 +12,7 @@ import {
   severanceRequestSchema,
   type SeveranceExitReason,
 } from '@kampus/school-core/lib/finance-severance.ts'
-import { parseAmountInput } from '@kampus/school-core/lib/payments.ts'
+import { amountInputValue, parseAmountInput } from '@kampus/school-core/lib/payments.ts'
 
 const parseWage = (text: string) => parseAmountInput(text, { maxCents: SEVERANCE_WAGE_MAX_CENTS })
 const parseOptional = (text: string, maxCents: number) =>
@@ -26,6 +27,8 @@ const isExitReason = (value: string): value is SeveranceExitReason =>
   (SEVERANCE_EXIT_REASONS as readonly string[]).includes(value)
 
 const fieldsSchema = z.object({
+  /** Seçilen personelin üyeliği; boşsa ücret elle girilir. */
+  membershipId: z.string(),
   startDate: daySchema,
   endDate: daySchema,
   grossWage: z.string().refine((value) => parseWage(value) !== null, {
@@ -47,6 +50,7 @@ type FormField = keyof SeveranceFormValues
 
 /** Gövde alanı → form alanı. */
 const BODY_FIELDS: Readonly<Record<string, FormField>> = {
+  membershipId: 'membershipId',
   startDate: 'startDate',
   endDate: 'endDate',
   grossWageCents: 'grossWage',
@@ -65,6 +69,23 @@ export function severanceBody(values: SeveranceFormValues): SeveranceEstimateBod
     exitReason: isExitReason(values.exitReason) ? values.exitReason : 'employer_termination',
     noticeGiven: values.noticeGiven,
     cumulativeTaxBaseCents: parseOptional(values.cumulativeTaxBase, SEVERANCE_TAX_BASE_MAX_CENTS),
+    membershipId: values.membershipId === '' ? null : values.membershipId,
+  }
+}
+
+/**
+ * Öneriden forma dolacak ücret alanları (K-345): öneri yoksa (net, saatlik ücret ya da tanım yok)
+ * `null`, alanlara dokunulmaz. Yan hak toplamı 0 ise alan boş kalır.
+ */
+export function severanceSuggestionFields(suggestion: {
+  grossWageCents: number | null
+  regularBenefitsCents: number | null
+}): Pick<SeveranceFormValues, 'grossWage' | 'regularBenefits'> | null {
+  if (suggestion.grossWageCents === null) return null
+  const benefits = suggestion.regularBenefitsCents ?? 0
+  return {
+    grossWage: amountInputValue(suggestion.grossWageCents),
+    regularBenefits: benefits === 0 ? '' : amountInputValue(benefits),
   }
 }
 
@@ -82,6 +103,7 @@ export const severanceFormSchema = fieldsSchema.superRefine((values, context) =>
 
 export function severanceDefaults(today: string): SeveranceFormValues {
   return {
+    membershipId: '',
     startDate: '',
     endDate: today,
     grossWage: '',

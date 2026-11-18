@@ -1,5 +1,5 @@
 {
-  "id": "ba0e19eb-80c0-4781-be41-a6dc43e42b7c",
+  "id": "dcec7c6e-2e9f-4240-aae4-1551d9ea52ab",
   "prevId": "523f5a8e-fdd4-4ca6-b533-12f9fda0e91d",
   "version": "7",
   "dialect": "postgresql",
@@ -22880,6 +22880,696 @@
       },
       "isRLSEnabled": false
     },
+    "public.staff_advances": {
+      "name": "staff_advances",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "membership_id": {
+          "name": "membership_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount_cents": {
+          "name": "amount_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'TRY'"
+        },
+        "given_date": {
+          "name": "given_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payment_method": {
+          "name": "payment_method",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "installment_count": {
+          "name": "installment_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "first_month": {
+          "name": "first_month",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        },
+        "closed_date": {
+          "name": "closed_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closed_from_month": {
+          "name": "closed_from_month",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "close_method": {
+          "name": "close_method",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closed_by_user_id": {
+          "name": "closed_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancelled_at": {
+          "name": "cancelled_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancel_reason": {
+          "name": "cancel_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancelled_by_user_id": {
+          "name": "cancelled_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "staff_advances_membership_idx": {
+          "name": "staff_advances_membership_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "given_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "staff_advances_institution_id_institutions_id_fk": {
+          "name": "staff_advances_institution_id_institutions_id_fk",
+          "tableFrom": "staff_advances",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "staff_advances_membership_fkey": {
+          "name": "staff_advances_membership_fkey",
+          "tableFrom": "staff_advances",
+          "tableTo": "memberships",
+          "columnsFrom": [
+            "institution_id",
+            "membership_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "staff_advances_pkey": {
+          "name": "staff_advances_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "staff_advances_amount_check": {
+          "name": "staff_advances_amount_check",
+          "value": "\"staff_advances\".\"amount_cents\" between \"staff_advances\".\"installment_count\" and 100000000\n        and \"staff_advances\".\"currency\" = 'TRY'"
+        },
+        "staff_advances_installment_check": {
+          "name": "staff_advances_installment_check",
+          "value": "\"staff_advances\".\"installment_count\" between 1 and 24\n        and \"staff_advances\".\"first_month\" ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'"
+        },
+        "staff_advances_payment_method_check": {
+          "name": "staff_advances_payment_method_check",
+          "value": "\"staff_advances\".\"payment_method\" in ('cash', 'bank_transfer')"
+        },
+        "staff_advances_status_check": {
+          "name": "staff_advances_status_check",
+          "value": "\"staff_advances\".\"status\" in ('active', 'closed', 'cancelled')"
+        },
+        "staff_advances_close_check": {
+          "name": "staff_advances_close_check",
+          "value": "(\"staff_advances\".\"status\" = 'closed') = (\"staff_advances\".\"closed_date\" is not null)\n        and (\"staff_advances\".\"status\" = 'closed') = (\"staff_advances\".\"closed_from_month\" is not null)\n        and (\"staff_advances\".\"status\" = 'closed') = (\"staff_advances\".\"close_method\" is not null)\n        and (\"staff_advances\".\"status\" = 'closed') = (\"staff_advances\".\"closed_by_user_id\" is not null)\n        and (\"staff_advances\".\"closed_from_month\" is null or \"staff_advances\".\"closed_from_month\" ~ '^[0-9]{4}-(0[1-9]|1[0-2])$')\n        and (\"staff_advances\".\"close_method\" is null or \"staff_advances\".\"close_method\" in ('cash', 'bank_transfer'))"
+        },
+        "staff_advances_cancel_check": {
+          "name": "staff_advances_cancel_check",
+          "value": "(\"staff_advances\".\"status\" = 'cancelled') = (\"staff_advances\".\"cancelled_at\" is not null)\n        and (\"staff_advances\".\"status\" = 'cancelled') = (\"staff_advances\".\"cancel_reason\" is not null)\n        and (\"staff_advances\".\"status\" = 'cancelled') = (\"staff_advances\".\"cancelled_by_user_id\" is not null)\n        and (\"staff_advances\".\"cancel_reason\" is null or char_length(\"staff_advances\".\"cancel_reason\")\n          between 5 and 500)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.staff_garnishments": {
+      "name": "staff_garnishments",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "membership_id": {
+          "name": "membership_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "office": {
+          "name": "office",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "file_number": {
+          "name": "file_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "claim_cents": {
+          "name": "claim_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "remaining_cents": {
+          "name": "remaining_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'TRY'"
+        },
+        "rate_basis_points": {
+          "name": "rate_basis_points",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_alimony": {
+          "name": "is_alimony",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "received_date": {
+          "name": "received_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sequence": {
+          "name": "sequence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        },
+        "closed_date": {
+          "name": "closed_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "close_reason": {
+          "name": "close_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closed_by_user_id": {
+          "name": "closed_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "staff_garnishments_file_key": {
+          "name": "staff_garnishments_file_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "office",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "file_number",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"staff_garnishments\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "staff_garnishments_sequence_key": {
+          "name": "staff_garnishments_sequence_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "sequence",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "staff_garnishments_institution_id_institutions_id_fk": {
+          "name": "staff_garnishments_institution_id_institutions_id_fk",
+          "tableFrom": "staff_garnishments",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "staff_garnishments_membership_fkey": {
+          "name": "staff_garnishments_membership_fkey",
+          "tableFrom": "staff_garnishments",
+          "tableTo": "memberships",
+          "columnsFrom": [
+            "institution_id",
+            "membership_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "staff_garnishments_pkey": {
+          "name": "staff_garnishments_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "staff_garnishments_text_check": {
+          "name": "staff_garnishments_text_check",
+          "value": "char_length(\"staff_garnishments\".\"office\") between 3 and 120\n        and char_length(\"staff_garnishments\".\"file_number\") between 3 and 40"
+        },
+        "staff_garnishments_amount_check": {
+          "name": "staff_garnishments_amount_check",
+          "value": "\"staff_garnishments\".\"claim_cents\" > 0 and \"staff_garnishments\".\"remaining_cents\" between 0 and \"staff_garnishments\".\"claim_cents\"\n        and \"staff_garnishments\".\"currency\" = 'TRY'\n        and \"staff_garnishments\".\"rate_basis_points\" between 1 and 10000 and \"staff_garnishments\".\"sequence\" > 0"
+        },
+        "staff_garnishments_status_check": {
+          "name": "staff_garnishments_status_check",
+          "value": "\"staff_garnishments\".\"status\" in ('active', 'closed')"
+        },
+        "staff_garnishments_close_check": {
+          "name": "staff_garnishments_close_check",
+          "value": "(\"staff_garnishments\".\"status\" = 'closed') = (\"staff_garnishments\".\"closed_date\" is not null)\n        and (\"staff_garnishments\".\"status\" = 'closed') = (\"staff_garnishments\".\"close_reason\" is not null)\n        and (\"staff_garnishments\".\"status\" = 'closed') = (\"staff_garnishments\".\"closed_by_user_id\" is not null)\n        and (\"staff_garnishments\".\"closed_date\" is null or \"staff_garnishments\".\"closed_date\" >= \"staff_garnishments\".\"received_date\")\n        and (\"staff_garnishments\".\"close_reason\" is null or \"staff_garnishments\".\"close_reason\" in ('paid_off', 'lifted', 'other'))"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.staff_pension_enrollments": {
+      "name": "staff_pension_enrollments",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "membership_id": {
+          "name": "membership_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rate_basis_points": {
+          "name": "rate_basis_points",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_date": {
+          "name": "start_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pauses": {
+          "name": "pauses",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "opt_out_date": {
+          "name": "opt_out_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "opted_out_by_user_id": {
+          "name": "opted_out_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "staff_pension_enrollments_open_key": {
+          "name": "staff_pension_enrollments_open_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"staff_pension_enrollments\".\"opt_out_date\" is null and \"staff_pension_enrollments\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "staff_pension_enrollments_membership_idx": {
+          "name": "staff_pension_enrollments_membership_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "staff_pension_enrollments_institution_id_institutions_id_fk": {
+          "name": "staff_pension_enrollments_institution_id_institutions_id_fk",
+          "tableFrom": "staff_pension_enrollments",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "staff_pension_enrollments_membership_fkey": {
+          "name": "staff_pension_enrollments_membership_fkey",
+          "tableFrom": "staff_pension_enrollments",
+          "tableTo": "memberships",
+          "columnsFrom": [
+            "institution_id",
+            "membership_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "staff_pension_enrollments_pkey": {
+          "name": "staff_pension_enrollments_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "staff_pension_enrollments_rate_check": {
+          "name": "staff_pension_enrollments_rate_check",
+          "value": "\"staff_pension_enrollments\".\"rate_basis_points\" between 300 and 10000"
+        },
+        "staff_pension_enrollments_pauses_check": {
+          "name": "staff_pension_enrollments_pauses_check",
+          "value": "jsonb_typeof(\"staff_pension_enrollments\".\"pauses\") = 'array'"
+        },
+        "staff_pension_enrollments_opt_out_check": {
+          "name": "staff_pension_enrollments_opt_out_check",
+          "value": "(\"staff_pension_enrollments\".\"opt_out_date\" is null) = (\"staff_pension_enrollments\".\"opted_out_by_user_id\" is null)\n        and (\"staff_pension_enrollments\".\"opt_out_date\" is null or \"staff_pension_enrollments\".\"opt_out_date\" >= \"staff_pension_enrollments\".\"start_date\")"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.stakeholder_agreements": {
       "name": "stakeholder_agreements",
       "schema": "",
@@ -26191,824 +26881,6 @@
         "supply_requests_lifecycle_check": {
           "name": "supply_requests_lifecycle_check",
           "value": "(\"supply_requests\".\"status\" = 'submitted' and \"supply_requests\".\"decided_at\" is null and \"supply_requests\".\"fulfilled_at\" is null and \"supply_requests\".\"cancelled_at\" is null)\n        or (\"supply_requests\".\"status\" = 'approved' and \"supply_requests\".\"decided_at\" is not null and \"supply_requests\".\"decided_by_user_id\" is not null and \"supply_requests\".\"fulfilled_at\" is null and \"supply_requests\".\"cancelled_at\" is null)\n        or (\"supply_requests\".\"status\" = 'rejected' and \"supply_requests\".\"decided_at\" is not null and \"supply_requests\".\"decided_by_user_id\" is not null and \"supply_requests\".\"decision_note\" is not null and \"supply_requests\".\"fulfilled_at\" is null and \"supply_requests\".\"cancelled_at\" is null)\n        or (\"supply_requests\".\"status\" = 'fulfilled' and \"supply_requests\".\"decided_at\" is not null and \"supply_requests\".\"fulfilled_at\" is not null and \"supply_requests\".\"fulfilled_by_user_id\" is not null and \"supply_requests\".\"cancelled_at\" is null)\n        or (\"supply_requests\".\"status\" = 'cancelled' and \"supply_requests\".\"decided_at\" is null and \"supply_requests\".\"fulfilled_at\" is null and \"supply_requests\".\"cancelled_at\" is not null and \"supply_requests\".\"cancelled_by_user_id\" is not null and \"supply_requests\".\"cancel_reason\" is not null)"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.trip_plan_events": {
-      "name": "trip_plan_events",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "plan_id": {
-          "name": "plan_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "event": {
-          "name": "event",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "from_status": {
-          "name": "from_status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "to_status": {
-          "name": "to_status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "note": {
-          "name": "note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "actor_user_id": {
-          "name": "actor_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "occurred_at": {
-          "name": "occurred_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "trip_plan_events_plan_idx": {
-          "name": "trip_plan_events_plan_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "plan_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "occurred_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "trip_plan_events_institution_id_institutions_id_fk": {
-          "name": "trip_plan_events_institution_id_institutions_id_fk",
-          "tableFrom": "trip_plan_events",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "trip_plan_events_plan_fkey": {
-          "name": "trip_plan_events_plan_fkey",
-          "tableFrom": "trip_plan_events",
-          "tableTo": "trip_plans",
-          "columnsFrom": [
-            "institution_id",
-            "plan_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "trip_plan_events_pkey": {
-          "name": "trip_plan_events_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "trip_plan_events_event_check": {
-          "name": "trip_plan_events_event_check",
-          "value": "\"trip_plan_events\".\"event\" in ('created', 'submitted', 'approved', 'rejected', 'reopened', 'authority_notified', 'completed', 'cancelled')"
-        },
-        "trip_plan_events_status_check": {
-          "name": "trip_plan_events_status_check",
-          "value": "\"trip_plan_events\".\"to_status\" in ('draft', 'submitted', 'approved', 'rejected', 'completed', 'cancelled')\n        and (\"trip_plan_events\".\"from_status\" is null or \"trip_plan_events\".\"from_status\" in ('draft', 'submitted', 'approved', 'rejected', 'completed', 'cancelled'))\n        and ((\"trip_plan_events\".\"event\" = 'created') = (\"trip_plan_events\".\"from_status\" is null))"
-        },
-        "trip_plan_events_note_check": {
-          "name": "trip_plan_events_note_check",
-          "value": "\"trip_plan_events\".\"note\" is null or char_length(\"trip_plan_events\".\"note\") between 1 and 500"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.trip_plan_staff": {
-      "name": "trip_plan_staff",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "plan_id": {
-          "name": "plan_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "membership_id": {
-          "name": "membership_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "role": {
-          "name": "role",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "position": {
-          "name": "position",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "trip_plan_staff_member_key": {
-          "name": "trip_plan_staff_member_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "plan_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "membership_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"trip_plan_staff\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "trip_plan_staff_plan_idx": {
-          "name": "trip_plan_staff_plan_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "plan_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "position",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "trip_plan_staff_membership_idx": {
-          "name": "trip_plan_staff_membership_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "membership_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "trip_plan_staff_institution_id_institutions_id_fk": {
-          "name": "trip_plan_staff_institution_id_institutions_id_fk",
-          "tableFrom": "trip_plan_staff",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "trip_plan_staff_plan_fkey": {
-          "name": "trip_plan_staff_plan_fkey",
-          "tableFrom": "trip_plan_staff",
-          "tableTo": "trip_plans",
-          "columnsFrom": [
-            "institution_id",
-            "plan_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "trip_plan_staff_membership_fkey": {
-          "name": "trip_plan_staff_membership_fkey",
-          "tableFrom": "trip_plan_staff",
-          "tableTo": "memberships",
-          "columnsFrom": [
-            "institution_id",
-            "membership_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "trip_plan_staff_pkey": {
-          "name": "trip_plan_staff_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "trip_plan_staff_role_check": {
-          "name": "trip_plan_staff_role_check",
-          "value": "\"trip_plan_staff\".\"role\" in ('lead', 'assistant')"
-        },
-        "trip_plan_staff_position_check": {
-          "name": "trip_plan_staff_position_check",
-          "value": "\"trip_plan_staff\".\"position\" >= 0"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.trip_plans": {
-      "name": "trip_plans",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "sequence": {
-          "name": "sequence",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "purpose": {
-          "name": "purpose",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "departure_at": {
-          "name": "departure_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "return_at": {
-          "name": "return_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "expected_student_count": {
-          "name": "expected_student_count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "stops": {
-          "name": "stops",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "transport_type": {
-          "name": "transport_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "transport_company": {
-          "name": "transport_company",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "transport_plate": {
-          "name": "transport_plate",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "driver_name": {
-          "name": "driver_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "driver_phone": {
-          "name": "driver_phone",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "transport_file_id": {
-          "name": "transport_file_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "risks": {
-          "name": "risks",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "emergency_contacts": {
-          "name": "emergency_contacts",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "paid_activity_id": {
-          "name": "paid_activity_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'draft'"
-        },
-        "submitted_at": {
-          "name": "submitted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "approved_at": {
-          "name": "approved_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "approved_by_user_id": {
-          "name": "approved_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "rejected_at": {
-          "name": "rejected_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "rejection_reason": {
-          "name": "rejection_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "authority_notified_on": {
-          "name": "authority_notified_on",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "authority_reference": {
-          "name": "authority_reference",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "completed_at": {
-          "name": "completed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancelled_at": {
-          "name": "cancelled_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancel_reason": {
-          "name": "cancel_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "trip_plans_sequence_key": {
-          "name": "trip_plans_sequence_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "sequence",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "trip_plans_paid_activity_key": {
-          "name": "trip_plans_paid_activity_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "paid_activity_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"trip_plans\".\"paid_activity_id\" is not null and \"trip_plans\".\"archived_at\" is null and \"trip_plans\".\"status\" <> 'cancelled'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "trip_plans_status_idx": {
-          "name": "trip_plans_status_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "departure_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "trip_plans_departure_idx": {
-          "name": "trip_plans_departure_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "departure_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "trip_plans_transport_file_idx": {
-          "name": "trip_plans_transport_file_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "transport_file_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "trip_plans_paid_activity_idx": {
-          "name": "trip_plans_paid_activity_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "paid_activity_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "trip_plans_institution_id_institutions_id_fk": {
-          "name": "trip_plans_institution_id_institutions_id_fk",
-          "tableFrom": "trip_plans",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "trip_plans_transport_file_fkey": {
-          "name": "trip_plans_transport_file_fkey",
-          "tableFrom": "trip_plans",
-          "tableTo": "files",
-          "columnsFrom": [
-            "institution_id",
-            "transport_file_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "trip_plans_paid_activity_fkey": {
-          "name": "trip_plans_paid_activity_fkey",
-          "tableFrom": "trip_plans",
-          "tableTo": "paid_activities",
-          "columnsFrom": [
-            "institution_id",
-            "paid_activity_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "trip_plans_pkey": {
-          "name": "trip_plans_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "trip_plans_sequence_check": {
-          "name": "trip_plans_sequence_check",
-          "value": "\"trip_plans\".\"sequence\" >= 1"
-        },
-        "trip_plans_status_check": {
-          "name": "trip_plans_status_check",
-          "value": "\"trip_plans\".\"status\" in ('draft', 'submitted', 'approved', 'rejected', 'completed', 'cancelled')"
-        },
-        "trip_plans_transport_type_check": {
-          "name": "trip_plans_transport_type_check",
-          "value": "\"trip_plans\".\"transport_type\" in ('bus', 'minibus', 'train', 'plane', 'ship', 'walking', 'other')"
-        },
-        "trip_plans_text_check": {
-          "name": "trip_plans_text_check",
-          "value": "char_length(\"trip_plans\".\"name\") between 3 and 120\n        and char_length(\"trip_plans\".\"purpose\") between 10 and 2000\n        and (\"trip_plans\".\"transport_company\" is null or char_length(\"trip_plans\".\"transport_company\") between 2 and 120)\n        and (\"trip_plans\".\"transport_plate\" is null or \"trip_plans\".\"transport_plate\" ~ '^[0-9]{2}[A-Z]{1,3}[0-9]{2,5}$')\n        and (\"trip_plans\".\"driver_name\" is null or char_length(\"trip_plans\".\"driver_name\") between 2 and 120)\n        and (\"trip_plans\".\"driver_phone\" is null or \"trip_plans\".\"driver_phone\" ~ '^0[0-9]{10}$')\n        and (\"trip_plans\".\"authority_reference\" is null or char_length(\"trip_plans\".\"authority_reference\") between 1 and 60)"
-        },
-        "trip_plans_terms_check": {
-          "name": "trip_plans_terms_check",
-          "value": "\"trip_plans\".\"return_at\" > \"trip_plans\".\"departure_at\"\n        and \"trip_plans\".\"expected_student_count\" between 1 and 2000\n        and jsonb_typeof(\"trip_plans\".\"stops\") = 'array'\n        and jsonb_array_length(\"trip_plans\".\"stops\") between 1 and 30\n        and jsonb_typeof(\"trip_plans\".\"risks\") = 'array'\n        and jsonb_array_length(\"trip_plans\".\"risks\") <= 30\n        and jsonb_typeof(\"trip_plans\".\"emergency_contacts\") = 'array'\n        and jsonb_array_length(\"trip_plans\".\"emergency_contacts\") <= 5"
-        },
-        "trip_plans_status_fields_check": {
-          "name": "trip_plans_status_fields_check",
-          "value": "(\"trip_plans\".\"status\" not in ('approved', 'completed') or \"trip_plans\".\"approved_at\" is not null)\n        and (\"trip_plans\".\"approved_at\" is null or \"trip_plans\".\"status\" in ('approved', 'completed', 'cancelled'))\n        and ((\"trip_plans\".\"approved_at\" is null) = (\"trip_plans\".\"approved_by_user_id\" is null))\n        and (\"trip_plans\".\"status\" <> 'rejected' or \"trip_plans\".\"rejected_at\" is not null)\n        and (\"trip_plans\".\"rejected_at\" is null or \"trip_plans\".\"status\" in ('rejected', 'cancelled'))\n        and ((\"trip_plans\".\"rejected_at\" is null) = (\"trip_plans\".\"rejection_reason\" is null))\n        and (\"trip_plans\".\"rejection_reason\" is null\n          or char_length(\"trip_plans\".\"rejection_reason\") between 5 and 500)\n        and (\"trip_plans\".\"status\" = 'draft' or \"trip_plans\".\"status\" = 'cancelled' or \"trip_plans\".\"submitted_at\" is not null)\n        and (\"trip_plans\".\"authority_notified_on\" is null or \"trip_plans\".\"approved_at\" is not null)\n        and (\"trip_plans\".\"authority_reference\" is null or \"trip_plans\".\"authority_notified_on\" is not null)\n        and ((\"trip_plans\".\"status\" = 'completed') = (\"trip_plans\".\"completed_at\" is not null))\n        and ((\"trip_plans\".\"status\" = 'cancelled') = (\"trip_plans\".\"cancelled_at\" is not null))\n        and ((\"trip_plans\".\"cancelled_at\" is null) = (\"trip_plans\".\"cancel_reason\" is null))\n        and (\"trip_plans\".\"cancel_reason\" is null\n          or char_length(\"trip_plans\".\"cancel_reason\") between 5 and 500)"
         }
       },
       "isRLSEnabled": false

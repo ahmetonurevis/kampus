@@ -16,6 +16,7 @@ import {
   planPayRateEnd,
   previousDay,
   severancePaySuggestion,
+  SEVERANCE_SUGGESTION_WARNINGS,
   wageOn,
   type PayRateChecks,
   type PayRateInput,
@@ -188,6 +189,7 @@ const RATES = [
     amountCents: 4_000_000,
     startDate: '2026-01-01',
     endDate: '2026-08-31',
+    benefitForm: null,
   },
   {
     id: 'w1',
@@ -196,6 +198,7 @@ const RATES = [
     amountCents: 4_500_000,
     startDate: '2026-09-01',
     endDate: null,
+    benefitForm: null,
   },
   {
     id: 'b1',
@@ -204,6 +207,7 @@ const RATES = [
     amountCents: 150_000,
     startDate: '2026-03-01',
     endDate: null,
+    benefitForm: 'cash' as const,
   },
   {
     id: 'b0',
@@ -212,6 +216,7 @@ const RATES = [
     amountCents: 300_000,
     startDate: '2026-02-01',
     endDate: '2026-06-30',
+    benefitForm: 'in_kind' as const,
   },
   {
     id: 'l1',
@@ -220,6 +225,7 @@ const RATES = [
     amountCents: 25_000,
     startDate: '2026-10-01',
     endDate: null,
+    benefitForm: null,
   },
 ]
 
@@ -254,22 +260,33 @@ test('DOM-FIN-099: durum bugüne göre hesaplanır', () => {
   )
 })
 
-test('DOM-FIN-099: kıdem önerisi aylık brüt ve yürürlükteki yan hakların toplamıdır (DOM-FIN-094)', () => {
-  assert.deepEqual(severancePaySuggestion(RATES, '2026-05-15'), {
-    grossWageCents: 4_000_000,
-    regularBenefitsCents: 450_000,
-  })
-  assert.deepEqual(severancePaySuggestion(RATES, '2026-10-01'), {
-    grossWageCents: 4_500_000,
-    regularBenefitsCents: 150_000,
-  })
+test('DOM-FIN-099: kıdem önerisi aylık brüt ve yürürlükteki nakdi yan hakların toplamıdır; ayni ve ek ders girmez (DOM-FIN-094, K-345)', () => {
+  const may = severancePaySuggestion(RATES, '2026-05-15')
+  assert.equal(may.status, 'suggested')
+  assert.equal(may.grossWageCents, 4_000_000)
+  // Ayni yemek (b0) girmez; nakdi yol (b1) girer.
+  assert.equal(may.regularBenefitsCents, 150_000)
+  assert.equal(may.wage?.id, 'w0')
+  assert.deepEqual(
+    may.benefits.map((item) => [item.rate.id, item.included]),
+    [
+      ['b0', false],
+      ['b1', true],
+    ],
+  )
+  const october = severancePaySuggestion(RATES, '2026-10-01')
+  assert.equal(october.grossWageCents, 4_500_000)
+  assert.equal(october.regularBenefitsCents, 150_000)
   const net = RATES.map((rate) => (rate.id === 'w1' ? { ...rate, rateType: 'monthly_net' } : rate))
-  assert.deepEqual(severancePaySuggestion(net, '2026-10-01'), {
-    grossWageCents: null,
-    regularBenefitsCents: 150_000,
-  })
-  assert.deepEqual(severancePaySuggestion([], '2026-10-01'), {
-    grossWageCents: null,
-    regularBenefitsCents: 0,
-  })
+  const netSuggestion = severancePaySuggestion(net, '2026-10-01')
+  assert.equal(netSuggestion.status, 'net_wage')
+  assert.equal(netSuggestion.grossWageCents, null)
+  assert.equal(netSuggestion.regularBenefitsCents, null)
+  assert.ok(SEVERANCE_SUGGESTION_WARNINGS.net_wage?.includes('net tanımlı'))
+  const hourly = RATES.map((rate) => (rate.id === 'w1' ? { ...rate, rateType: 'hourly' } : rate))
+  assert.equal(severancePaySuggestion(hourly, '2026-10-01').status, 'non_monthly_wage')
+  const none = severancePaySuggestion([], '2026-10-01')
+  assert.equal(none.status, 'no_wage')
+  assert.equal(none.wage, null)
+  assert.equal(none.regularBenefitsCents, null)
 })

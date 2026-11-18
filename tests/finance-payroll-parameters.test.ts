@@ -23,7 +23,6 @@ import {
   payrollPeriodLabel,
   payrollYearOptions,
   requireEffectivePayrollParameters,
-  severanceCeilingRows,
   stampTaxLabel,
   updatePayrollParameterSetSchema,
   wageTariffBrackets,
@@ -32,8 +31,8 @@ import {
 } from '../packages/school-core/src/lib/finance-payroll-parameters.ts'
 import { DomainError } from '../packages/school-core/src/lib/errors.ts'
 import {
-  SEVERANCE_CEILINGS,
-  WAGE_INCOME_TAX_TARIFFS,
+  SEVERANCE_FALLBACK_CEILINGS,
+  severanceParametersOn,
 } from '../packages/school-core/src/lib/finance-severance.ts'
 
 // Bordro parametreleri (DOM-FIN-100; ON-197). Yürürlük tarihli set, platform varsayılanı + kurum
@@ -321,24 +320,23 @@ test('DOM-FIN-100: yıllık tablo — dönemler, önceki yıldan süren set ve y
   assert.equal(monthStarts(2026).length, 12)
 })
 
-test('DOM-FIN-100: kıdem hesaplayıcısıyla okuma bağı — tavan ve dilimler aynı (DOM-FIN-094, H-34)', () => {
-  const rows = severanceCeilingRows([])
-  for (const row of rows)
-    assert.deepEqual(
-      SEVERANCE_CEILINGS.find((ceiling) => ceiling.from === row.from),
-      row,
-      `kıdem tavanı ${row.from}`,
-    )
-  for (const set of PAYROLL_PLATFORM_DEFAULTS)
-    assert.deepEqual(
-      wageTariffBrackets(set.incomeTaxBrackets),
-      WAGE_INCOME_TAX_TARIFFS[Number(set.effectiveFrom.slice(0, 4))],
-      `tarife ${set.effectiveFrom}`,
-    )
-  assert.deepEqual(severanceCeilingRows([institutionSet({ effectiveFrom: '2026-07-01' })]).at(-1), {
-    from: '2026-07-01',
-    monthlyCents: 6_494_877,
-  })
+test('DOM-FIN-100: kıdem hesaplayıcısı tavanı, dilimleri ve damga oranını geçerli setten okur (DOM-FIN-094, K-344)', () => {
+  for (const set of PAYROLL_PLATFORM_DEFAULTS) {
+    const parameters = severanceParametersOn(set.effectiveFrom)
+    assert.equal(parameters.setId, set.id)
+    assert.equal(parameters.ceiling.monthlyCents, set.severanceCeilingCents)
+    assert.deepEqual(parameters.tariff.brackets, wageTariffBrackets(set.incomeTaxBrackets))
+    assert.equal(parameters.stampTaxRatePer100k, set.stampTaxRatePer100k)
+  }
+  // Yedek tablo platform setlerinin başladığı günden önce biter (tek kaynak).
+  const first = PAYROLL_PLATFORM_DEFAULTS[0]?.effectiveFrom ?? ''
+  assert.ok(SEVERANCE_FALLBACK_CEILINGS.every((row) => row.from < first))
+  const july = severanceParametersOn('2026-07-01', [
+    institutionSet({ effectiveFrom: '2026-07-01' }),
+  ])
+  assert.equal(july.origin, 'institution')
+  assert.equal(july.ceiling.from, '2026-07-01')
+  assert.equal(july.ceiling.monthlyCents, 6_494_877)
 })
 
 test('DOM-FIN-100: gösterim satırları ve doğrulanmalı işareti', () => {

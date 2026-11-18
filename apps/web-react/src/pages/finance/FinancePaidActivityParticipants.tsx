@@ -163,15 +163,9 @@ export function ParticipantsPanel({
       {
         key: 'studentName',
         label: learner.title,
-        cell: (row) => (
-          <span className="grid">
-            <span>{row.name}</span>
-            {row.className ? (
-              <span className="text-sm text-muted-foreground">{row.className}</span>
-            ) : null}
-          </span>
-        ),
+        cell: (row) => row.name,
       },
+      { key: 'className', label: 'Sınıf', cell: (row) => row.className ?? '—' },
       {
         key: 'status',
         label: 'Katılım',

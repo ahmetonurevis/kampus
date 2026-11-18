@@ -114,7 +114,7 @@ test.describe('ON-142: gezi ve etkinlik ücretleri ekranı', () => {
     await cancel.getByRole('button', { name: 'Katılımı iptal et' }).click()
     await expect(cancel).toBeHidden()
     await expect(row(SIBLING).getByText('İzin bekliyor')).toBeVisible()
-    await expect(activities.getByText('1 / 1')).toBeVisible()
+    await expect(activities.getByRole('cell', { name: '1 / 1', exact: true })).toBeVisible()
   })
 
   test('K-300: ön büro listeyi görür, etkinlik tanımlayamaz; dar ekranda taşma yok', async ({

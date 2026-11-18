@@ -2440,6 +2440,59 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: aday belgeleri (ON-263; DOM-KAY-043). Kanıt `prospect-documents.test.ts`.
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/prospects/document-types', 'get(TYPES, a.admin)'],
+        ['gövde', 'POST /api/v1/prospects/document-types', 'institutionId: b.id'],
+        [
+          'kayıt',
+          'PATCH /api/v1/prospects/document-types/:typeId',
+          "call('PATCH', `${TYPES}/${String(bType.id)}`, a.admin",
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/prospects/document-types/:typeId',
+          "call('DELETE', `${TYPES}/${String(bType.id)}`, a.admin",
+        ],
+        ['liste', 'GET /api/v1/prospects/document-gaps', 'get(GAPS, a.admin)'],
+        ['kayıt', 'GET /api/v1/prospects/:prospectId/documents', "get(docs('pb1'), a.admin)"],
+        [
+          'kayıt',
+          'POST /api/v1/prospects/:prospectId/documents',
+          "call('POST', docs('pb1'), a.front",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/prospects/:prospectId/documents/:documentId/review',
+          '`${bUrl}/review`',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/prospects/:prospectId/documents/:documentId/url',
+          'get(`${bUrl}/url`, a.admin)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/prospects/:prospectId/document-consent',
+          "call('POST', consent('pb1'), a.front",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/prospects/:prospectId/document-consent/withdraw',
+          "`${consent('pb1')}/withdraw`",
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'prospect-documents.test.ts',
+        'başka kurumun adayı, belgesi, türü ve rızası 404, B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

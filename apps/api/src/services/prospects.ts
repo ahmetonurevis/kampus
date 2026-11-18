@@ -52,6 +52,7 @@ import { archiveStudentIdentity } from '../db/withdrawals.ts'
 import { NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { notify } from './notify.ts'
+import { scheduleLostProspectDocuments } from './prospect-documents.ts'
 import { commandBody } from './command-result.ts'
 import { environment, type CommandOptions } from './commands.ts'
 import { loadEffectiveTariff, withTariffCarryOver } from './fee-tariffs.ts'
@@ -96,7 +97,7 @@ type ProspectAction =
   | 'prospect.meeting'
   | 'prospect.trial'
   | 'prospect.trialResult'
-type Outcome = { id: string; statusCode: number }
+type Outcome = { id: string; statusCode: number; lost?: boolean }
 
 interface ProspectRun {
   action: ProspectAction
@@ -107,6 +108,14 @@ interface ProspectRun {
   /** Gövdedeki kampanya kodu (DOM-KAY-041); kampanya kurum kilidi altında okunur. */
   campaignCode?: string | undefined
   run: (state: State, by: Participant, tools: OperationTools, options: ProspectOptions) => Outcome
+}
+
+/**
+ * Vazgeçen adayın belgeleri imhaya işaretlenir (DOM-KAY-043, K-323); aşama değişikliğiyle aynı
+ * transaction'da.
+ */
+async function afterProspectRun(tx: Database, ctx: ServiceContext, outcome: Outcome) {
+  if (outcome.lost === true) await scheduleLostProspectDocuments(tx, ctx, outcome.id)
 }
 
 const COLLECTION: CollectionName = 'prospects'
@@ -146,6 +155,7 @@ function execute(
           }
         : {}),
       entity: (outcome: Outcome) => ({ type: COLLECTION, id: outcome.id }),
+      after: (tx, outcome) => afterProspectRun(tx, ctx, outcome),
       load: async (tx) => {
         const { actor, institutionType, scalars } = await environment(tx, ctx, spec)
         const by: Participant = { ...actor, userId: ctx.actor.userId }
@@ -218,8 +228,8 @@ export function changeProspectStageCommand(
       action: 'prospect.stage',
       subjectId: prospectId,
       run: (state, by, { now }, prospectOptions) => {
-        changeProspectStage(state, by, prospectId, input, now, prospectOptions)
-        return { id: prospectId, statusCode: 200 }
+        const changed = changeProspectStage(state, by, prospectId, input, now, prospectOptions)
+        return { id: prospectId, statusCode: 200, lost: changed.stage === 'Vazgeçti' }
       },
     },
     options,

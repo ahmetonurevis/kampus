@@ -904,6 +904,13 @@
       "when": 1795038055447,
       "tag": "0128_create_leave_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 129,
+      "version": "7",
+      "when": 1795041237835,
+      "tag": "0129_leave_calendar_settings",
+      "breakpoints": true
     }
   ]
 }

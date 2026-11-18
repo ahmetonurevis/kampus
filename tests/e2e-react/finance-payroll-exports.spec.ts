@@ -1,20 +1,21 @@
+import { randomUUID } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 
 import { expect, test } from './support/fixtures.ts'
 import { istanbulDay } from './support/finance-refund-invoices.ts'
 import { expectNoHorizontalOverflow } from './support/ui.ts'
 
-// Bordro programına aktarım (ON-202; DOM-FIN-105). Kural dalları birim ve API testlerindedir
-// (`tests/finance-payroll-exports.test.ts`, `apps/api/test/finance-payroll-exports.test.ts`);
-// burada yönetici bu ayın önizlemesinde öğretmenin ana ücretini görür, ek ders saati girer, saat ×
-// ücret satırını görür ve CSV'yi indirir (K-336…K-338); ön büro sekmeyi görmez. Ay İstanbul
-// gününe göre seçilir.
+// Bordro programına aktarım (ON-202, ON-343; DOM-FIN-105). Kural dalları birim ve API
+// testlerindedir (`tests/finance-payroll-exports.test.ts`, `apps/api/test/finance-payroll-exports.test.ts`);
+// burada yönetici bu ayın önizlemesinde öğretmenin ana ücretini ve avans taksitini (DOM-FIN-101,
+// K-392) görür, ek ders saati girer, saat × ücret satırını görür ve CSV'yi indirir (K-336…K-338);
+// ön büro sekmeyi görmez. Ay İstanbul gününe göre seçilir.
 
 const ADMIN = '/yonetici/finans'
 const DESK = '/onburo/tahsilat-takip'
 
 test.describe('DOM-FIN-105: bordro aktarımı', () => {
-  test('DOM-FIN-105: yönetici ek ders saati girer, önizlemeyi görür ve CSV indirir; ön büro sekmeyi görmez', async ({
+  test('DOM-FIN-105: yönetici ek ders saati girer, avans kesintisini ve önizlemeyi görür, CSV indirir; ön büro sekmeyi görmez', async ({
     api,
     loginAs,
     tenant,
@@ -39,9 +40,22 @@ test.describe('DOM-FIN-105: bordro aktarımı', () => {
       })
       expect(created.status).toBe(201)
     }
+    const month = istanbulDay().slice(0, 7)
+    const advance = await manager.post(
+      '/api/v1/finance/staff-advances',
+      {
+        membershipId,
+        amountCents: 200_000,
+        givenDate: istanbulDay(),
+        paymentMethod: 'cash',
+        installmentCount: 2,
+        firstMonth: month,
+      },
+      { 'idempotency-key': randomUUID() },
+    )
+    expect(advance.status, JSON.stringify(advance.body)).toBe(201)
     await manager.dispose()
 
-    const month = istanbulDay().slice(0, 7)
     const page = await loginAs(school.user('yonetici'))
     await page.goto(`${ADMIN}?gorunum=bordro-aktarim`)
     const section = page.getByRole('region', { name: 'Bordro aktarımı' })
@@ -49,6 +63,9 @@ test.describe('DOM-FIN-105: bordro aktarımı', () => {
     const wage = section.getByRole('row', { name: /Ana ücret · Aylık brüt/ })
     await expect(wage).toContainText(teacher)
     await expect(wage).toContainText('45.000,00 ₺')
+    const deduction = section.getByRole('row', { name: /Kesinti · Avans taksiti \(1\/2\)/ })
+    await expect(deduction).toContainText('Taksit 1/2')
+    await expect(deduction).toContainText('-1.000,00 ₺')
 
     await section.getByRole('button', { name: 'Ek ders saati ekle' }).click()
     const dialog = page.getByRole('dialog', { name: 'Ek ders saati ekle' })
@@ -75,9 +92,14 @@ test.describe('DOM-FIN-105: bordro aktarımı', () => {
     expect(csv).toContain(
       `"lesson.extra";"Ek ders ücreti · Ek ders";"Kazanç";"Saat";350,00;12;4200,00;`,
     )
+    expect(csv).toContain(
+      `"deduction.advance";"Kesinti · Avans taksiti (1/2)";"Kesinti";"Aylık";;;1000,00;`,
+    )
     const history = section.getByRole('list', { name: 'Üretilen dosyalar' })
     await expect(history.getByRole('listitem')).toHaveCount(1)
-    await expect(history).toContainText('2 satır · 1 personel · 49.200,00 ₺ · genel dosya')
+    await expect(history).toContainText(
+      '3 satır · 1 personel · 49.200,00 ₺ · kesinti 1.000,00 ₺ · genel dosya',
+    )
 
     await page.setViewportSize({ width: 390, height: 844 })
     await expectNoHorizontalOverflow(page)

@@ -229,11 +229,8 @@ export function EnrollmentPage({ page }: { page: NavPage }) {
         />
       )}
       <EnrollmentCertificateSection />
-<<<<<<< HEAD
-      <EnrollmentDocumentsSection />
-=======
       <EnrollmentAlumniDocumentsSection />
->>>>>>> feature/platform-gecisi
+      <EnrollmentDocumentsSection />
       <GuardianInvitationsSection />
       <StudentImportSection />
       <EnrollmentEokulImportSection />

@@ -862,6 +862,13 @@
       "when": 1795032955820,
       "tag": "0122_create_staff_leave",
       "breakpoints": true
+    },
+    {
+      "idx": 123,
+      "version": "7",
+      "when": 1795032995941,
+      "tag": "0123_create_sgk_missing_days",
+      "breakpoints": true
     }
   ]
 }

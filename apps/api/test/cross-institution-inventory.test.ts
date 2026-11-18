@@ -2708,6 +2708,37 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: SGK bildirge hazırlık listesi (ON-203; DOM-FIN-107).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/sgk-preparation', 'listOf(a.admin)'],
+        ['gövde', 'POST /api/v1/finance/sgk-missing-days', 'institutionId: b.id'],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/sgk-missing-days/:entryId',
+          '`${MISSING}/${String(bEntry.id)}`',
+        ],
+        [
+          'gövde',
+          'POST /api/v1/finance/sgk-employment-dates',
+          'addDates(a.admin, { membershipId: bStaff',
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/sgk-employment-dates/:entryId',
+          '`${DATES}/${String(bDates.id)}`',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-sgk-preparation.test.ts',
+        'DOM-FIN-107: başka kurumun personeli ve satırı 404 ve B değişmez; listede yok; gövdedeki institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

@@ -869,6 +869,13 @@
       "when": 1795032995941,
       "tag": "0123_create_sgk_missing_days",
       "breakpoints": true
+    },
+    {
+      "idx": 124,
+      "version": "7",
+      "when": 1795033042897,
+      "tag": "0124_create_teacher_work_permits",
+      "breakpoints": true
     }
   ]
 }

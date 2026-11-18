@@ -2739,6 +2739,33 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: öğretmen çalışma onayı (ON-174; DOM-FIN-114).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/work-permit-teachers', 'teachersOf(a.admin)'],
+        ['liste', 'GET /api/v1/finance/work-permits', 'listOf(a.admin)'],
+        ['gövde', 'POST /api/v1/finance/work-permits', 'institutionId: b.id'],
+        ['kayıt', 'GET /api/v1/finance/work-permits/:permitId', 'get(bUrl, a.admin)'],
+        ['kayıt', 'PATCH /api/v1/finance/work-permits/:permitId', "call('PATCH', bUrl, a.admin"],
+        ['kayıt', 'POST /api/v1/finance/work-permits/:permitId/apply', "bPermit, 'apply'"],
+        [
+          'kayıt',
+          'POST /api/v1/finance/work-permits/:permitId/approve',
+          'approve(a.admin, bPermit)',
+        ],
+        ['kayıt', 'POST /api/v1/finance/work-permits/:permitId/reject', "bPermit, 'reject'"],
+        ['kayıt', 'POST /api/v1/finance/work-permits/:permitId/cancel', "bPermit, 'cancel'"],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-work-permits.test.ts',
+        'başka kurumun öğretmeni ve kaydı 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

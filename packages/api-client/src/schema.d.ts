@@ -9736,6 +9736,154 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/work-permit-teachers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Öğretmenlerin çalışma onayı takibi
+         * @description Kurumun etkin öğretmenleri ada göre; her satırda geçerli (bitişi en geç) onay, durum (`valid`, `expiring` 30 gün içinde dolacak, `expired`, `missing`), kalan gün, açık başvuru ve `teaching` (önümüzdeki 30 günde ders programında iptal edilmemiş dersi ya da bitmemiş dil grubu) ile `warning` (programda görevli ve onay yok ya da süresi doldu) işaretleri (K-376). Durum her okumada bugüne (Europe/Istanbul) göre hesaplanır. `status` (`attention` geçerli olmayan her durum) ve `warning=true` süzer; `counts` süzgeçten bağımsız rozet sayılarıdır. Rol: yalnız `yonetici` (K-377). Modül `finance`. MEBBİS’e gönderim yoktur (IST-143).
+         */
+        get: operations["listWorkPermitTeachers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/work-permits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Çalışma onayı kayıtlarını listele
+         * @description İptal edilmemiş kayıtlar, yeni açılan önce. `membershipId` öğretmene, `state` gösterilen duruma (`expired` onaylı ve bitişi bugünden önce; `approved` yalnız süresi geçmemiş onaylar), `q` öğretmen adı ve branşa göre süzer. Rol: yalnız `yonetici` (K-377). Modül `finance`. MEBBİS’e gönderim yoktur (IST-143).
+         */
+        get: operations["listWorkPermits"];
+        put?: never;
+        /**
+         * Çalışma onayı kaydı aç
+         * @description Öğretmen üyeliği, onay türü (`initial`, `renewal`, `branch_change`), branş ve isteğe bağlı başvuru günü ile not. Başvuru günü varsa kayıt `applied`, yoksa `preparing` açılır (K-375). Olmayan üyelik 422 `work_permit_teacher_not_found`, öğretmen olmayan üyelik 422 `work_permit_not_teacher`, pasif öğretmen 422 `work_permit_teacher_inactive`, sürmekte olan başvuru varken 422 `work_permit_open_exists`, onaysız öğretmende yenileme ya da branş değişikliği 422 `work_permit_no_prior_approval`, gelecek gün 422 `work_permit_date_in_future`. Denetim kaydına alan adları yazılır. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (K-377). Modül `finance`. MEBBİS’e gönderim yoktur (IST-143).
+         */
+        post: operations["createWorkPermit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/work-permits/{permitId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Çalışma onayı ayrıntısı
+         * @description Kayıt, hesaplanan durum, ret gerekçesi ve onay belgesinin adı. Olmayan, iptal edilmiş ya da başka kurumun kaydı 404. Rol: yalnız `yonetici` (K-377). Modül `finance`. MEBBİS’e gönderim yoktur (IST-143).
+         */
+        get: operations["getWorkPermit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Çalışma onayı kaydını düzelt
+         * @description Verilen alanlar değişir. Sonuçlanmış (onaylanmış ya da reddedilmiş) kayıtta yalnız not ve onay belgesi değişir (422 `work_permit_decided`; yanlış kayıt iptal edilip yeniden açılır). Başvuru günü yalnız başvurulmuş kayıtta (422 `work_permit_not_applied`). Değişiklik yoksa 422 `work_permit_unchanged`. `documentFileId` (`POST /files`, `purpose: document`, PDF; yükleyen yönetici bağlar: başkasının ya da başka kurumun dosyası 422 `file_unavailable`, başka kayda bağlı 409 `file_already_attached`) değişince eski dosyanın bağı kalkar; `null` eki kaldırır. `If-Match` zorunlu. Rol: yalnız `yonetici` (K-377). Modül `finance`. MEBBİS’e gönderim yoktur (IST-143).
+         */
+        patch: operations["updateWorkPermit"];
+        trace?: never;
+    };
+    "/api/v1/finance/work-permits/{permitId}/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Başvuruldu olarak işaretle
+         * @description Hazırlanan kayıt MEBBİS başvuru günüyle `applied` olur (K-375). Hazırlanmayan kayıt 422 `work_permit_not_preparing`, gelecek gün 422 `work_permit_date_in_future`. `If-Match` zorunlu. Başka kurumun ya da iptal edilmiş kaydı 404. Rol: yalnız `yonetici` (K-377). Modül `finance`. MEBBİS’e gönderim yoktur (IST-143).
+         */
+        post: operations["applyWorkPermit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/work-permits/{permitId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Onayı kaydet
+         * @description Başvurulmuş kayıt onay günü, onay sayısı ve geçerlilik bitişiyle `approved` olur. `validUntil` verilmezse onay gününün eğitim yılı sonu (kurumun yıl kaydı, yoksa 31 Ağustos; yıl sonuna 60 günden az kala verilen onayda sonraki yılın sonu), `null` süresizdir (K-376). Onay belgesi (`documentFileId`) isteğe bağlıdır. Başvurulmamış kayıt 422 `work_permit_not_applied`, başvurudan önceki gün 422 `work_permit_decision_before_application`, gelecek gün 422 `work_permit_date_in_future`, onaydan önceki bitiş 422 `work_permit_valid_until_before_approval`. `If-Match` zorunlu. Başka kurumun ya da iptal edilmiş kaydı 404. Rol: yalnız `yonetici` (K-377). Modül `finance`. MEBBİS’e gönderim yoktur (IST-143).
+         */
+        post: operations["approveWorkPermit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/work-permits/{permitId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reddi kaydet
+         * @description Başvurulmuş kayıt ret günü ve gerekçesiyle (5–500 karakter; denetim kaydına yalnız alan adı) `rejected` olur. Başvurulmamış kayıt 422 `work_permit_not_applied`, başvurudan önceki gün 422 `work_permit_decision_before_application`. `If-Match` zorunlu. Başka kurumun ya da iptal edilmiş kaydı 404. Rol: yalnız `yonetici` (K-377). Modül `finance`. MEBBİS’e gönderim yoktur (IST-143).
+         */
+        post: operations["rejectWorkPermit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/work-permits/{permitId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Yanlış kaydı iptal et
+         * @description Her durumdaki kayıt gerekçeyle (5–500 karakter; denetim kaydına yazılmaz) iptal (arşiv) edilir; listeden ve takipten düşer, bağlı onay belgesinin bağı kalkar. `If-Match` zorunlu. Başka kurumun ya da iptal edilmiş kaydı 404. Rol: yalnız `yonetici` (K-377). Modül `finance`. MEBBİS’e gönderim yoktur (IST-143).
+         */
+        post: operations["cancelWorkPermit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -101683,6 +101831,1348 @@ export interface operations {
                             /** Format: uuid */
                             id: string;
                             archivedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listWorkPermitTeachers: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Öğretmen adında arama */
+                q?: string;
+                /** @description Onay durumu; `attention` geçerli olmayan her durum (dolmak üzere, doldu, yok) */
+                status?: "valid" | "expiring" | "expired" | "missing" | "attention";
+                /** @description `true` yalnız programda görevli ve onaysız öğretmenler */
+                warning?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            membershipId: string;
+                            name: string;
+                            /**
+                             * @description `valid` geçerli, `expiring` 30 gün içinde dolacak, `expired` süresi doldu, `missing` onay yok (K-376)
+                             * @enum {string}
+                             */
+                            status: "valid" | "expiring" | "expired" | "missing";
+                            /** @description Geçerlilik bitişine kalan gün (eksi: geçen); süresiz ya da onaysızsa boş */
+                            daysLeft: number | null;
+                            /** @description Geçerli (bitişi en geç) onay */
+                            current: {
+                                id: string;
+                                /**
+                                 * @description `initial` ilk onay, `renewal` yenileme, `branch_change` branş değişikliği
+                                 * @enum {string}
+                                 */
+                                permitType: "initial" | "renewal" | "branch_change";
+                                branch: string;
+                                approvalDate: string;
+                                validUntil: string | null;
+                            } | null;
+                            /** @description Hazırlanan ya da başvurulan kayıt */
+                            openApplication: {
+                                id: string;
+                                /**
+                                 * @description `initial` ilk onay, `renewal` yenileme, `branch_change` branş değişikliği
+                                 * @enum {string}
+                                 */
+                                permitType: "initial" | "renewal" | "branch_change";
+                                /** @enum {string} */
+                                status: "preparing" | "applied" | "approved" | "rejected";
+                                applicationDate: string | null;
+                            } | null;
+                            /** @description Önümüzdeki 30 günde ders programında dersi ya da süren dil grubu var (K-376) */
+                            teaching: boolean;
+                            /** @description Programda görevli ve geçerli onayı yok (onay yok ya da süresi doldu) */
+                            warning: boolean;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                        /** @description Süzgeçten bağımsız rozet sayıları (bütün etkin öğretmenler) */
+                        counts: {
+                            /** @description Geçerli onayı olmayan ya da süresi dolmak üzere olan */
+                            attention: number;
+                            /** @description Programda görevli ve geçerli onayı olmayan */
+                            warning: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listWorkPermits: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Öğretmen adında ve branşta arama */
+                q?: string;
+                /** @description Öğretmenin üyeliği */
+                membershipId?: string;
+                /** @description Gösterilen durum */
+                state?: "preparing" | "applied" | "approved" | "rejected" | "expired";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            teacher: {
+                                membershipId: string;
+                                name: string;
+                            };
+                            /**
+                             * @description `initial` ilk onay, `renewal` yenileme, `branch_change` branş değişikliği
+                             * @enum {string}
+                             */
+                            permitType: "initial" | "renewal" | "branch_change";
+                            branch: string;
+                            /**
+                             * @description Saklanan durum: `preparing`, `applied`, `approved`, `rejected`
+                             * @enum {string}
+                             */
+                            status: "preparing" | "applied" | "approved" | "rejected";
+                            /**
+                             * @description Gösterilen durum; geçerlilik bitişi bugünden önceki onay `expired` (K-376)
+                             * @enum {string}
+                             */
+                            state: "preparing" | "applied" | "approved" | "rejected" | "expired";
+                            /** @description MEBBİS başvuru günü (YYYY-MM-DD) */
+                            applicationDate: string | null;
+                            /** @description Onay günü */
+                            approvalDate: string | null;
+                            /** @description Onay sayısı ya da belge numarası */
+                            approvalNumber: string | null;
+                            /** @description Geçerlilik bitişi (dahil); onaylı kayıtta boşsa süresiz */
+                            validUntil: string | null;
+                            /** @description Ret günü */
+                            rejectionDate: string | null;
+                            /** @description Onay belgesi dosyası */
+                            documentFileId: string | null;
+                            note: string | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createWorkPermit: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Öğretmenin kurum üyeliği */
+                    membershipId: string;
+                    /**
+                     * @description `initial` ilk onay, `renewal` yenileme, `branch_change` branş değişikliği
+                     * @enum {string}
+                     */
+                    permitType: "initial" | "renewal" | "branch_change";
+                    /** @description Onayın istendiği branş (ör. İngilizce, Matematik), 2–80 karakter */
+                    branch: string;
+                    /**
+                     * @description MEBBİS başvuru günü; boşsa kayıt hazırlanıyor durumundadır
+                     * @default null
+                     */
+                    applicationDate?: string | null;
+                    /** @description İsteğe bağlı not, en çok 500 karakter */
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            teacher: {
+                                membershipId: string;
+                                name: string;
+                            };
+                            /**
+                             * @description `initial` ilk onay, `renewal` yenileme, `branch_change` branş değişikliği
+                             * @enum {string}
+                             */
+                            permitType: "initial" | "renewal" | "branch_change";
+                            branch: string;
+                            /**
+                             * @description Saklanan durum: `preparing`, `applied`, `approved`, `rejected`
+                             * @enum {string}
+                             */
+                            status: "preparing" | "applied" | "approved" | "rejected";
+                            /**
+                             * @description Gösterilen durum; geçerlilik bitişi bugünden önceki onay `expired` (K-376)
+                             * @enum {string}
+                             */
+                            state: "preparing" | "applied" | "approved" | "rejected" | "expired";
+                            /** @description MEBBİS başvuru günü (YYYY-MM-DD) */
+                            applicationDate: string | null;
+                            /** @description Onay günü */
+                            approvalDate: string | null;
+                            /** @description Onay sayısı ya da belge numarası */
+                            approvalNumber: string | null;
+                            /** @description Geçerlilik bitişi (dahil); onaylı kayıtta boşsa süresiz */
+                            validUntil: string | null;
+                            /** @description Ret günü */
+                            rejectionDate: string | null;
+                            /** @description Onay belgesi dosyası */
+                            documentFileId: string | null;
+                            note: string | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            rejectionReason: string | null;
+                            /** @description Onay belgesi; silinmiş ya da reddedilmiş dosyada boş */
+                            documentFile: {
+                                id: string;
+                                name: string;
+                                byteSize: number;
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getWorkPermit: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                permitId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            teacher: {
+                                membershipId: string;
+                                name: string;
+                            };
+                            /**
+                             * @description `initial` ilk onay, `renewal` yenileme, `branch_change` branş değişikliği
+                             * @enum {string}
+                             */
+                            permitType: "initial" | "renewal" | "branch_change";
+                            branch: string;
+                            /**
+                             * @description Saklanan durum: `preparing`, `applied`, `approved`, `rejected`
+                             * @enum {string}
+                             */
+                            status: "preparing" | "applied" | "approved" | "rejected";
+                            /**
+                             * @description Gösterilen durum; geçerlilik bitişi bugünden önceki onay `expired` (K-376)
+                             * @enum {string}
+                             */
+                            state: "preparing" | "applied" | "approved" | "rejected" | "expired";
+                            /** @description MEBBİS başvuru günü (YYYY-MM-DD) */
+                            applicationDate: string | null;
+                            /** @description Onay günü */
+                            approvalDate: string | null;
+                            /** @description Onay sayısı ya da belge numarası */
+                            approvalNumber: string | null;
+                            /** @description Geçerlilik bitişi (dahil); onaylı kayıtta boşsa süresiz */
+                            validUntil: string | null;
+                            /** @description Ret günü */
+                            rejectionDate: string | null;
+                            /** @description Onay belgesi dosyası */
+                            documentFileId: string | null;
+                            note: string | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            rejectionReason: string | null;
+                            /** @description Onay belgesi; silinmiş ya da reddedilmiş dosyada boş */
+                            documentFile: {
+                                id: string;
+                                name: string;
+                                byteSize: number;
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateWorkPermit: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                permitId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description `initial` ilk onay, `renewal` yenileme, `branch_change` branş değişikliği
+                     * @enum {string}
+                     */
+                    permitType?: "initial" | "renewal" | "branch_change";
+                    branch?: string;
+                    /** @description Başvuru günü (yalnız başvurulmuş kayıtta) */
+                    applicationDate?: string;
+                    note?: string | null;
+                    /** @description Onay belgesi (`POST /files`, `purpose: document`, PDF); `null` eki kaldırır */
+                    documentFileId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            teacher: {
+                                membershipId: string;
+                                name: string;
+                            };
+                            /**
+                             * @description `initial` ilk onay, `renewal` yenileme, `branch_change` branş değişikliği
+                             * @enum {string}
+                             */
+                            permitType: "initial" | "renewal" | "branch_change";
+                            branch: string;
+                            /**
+                             * @description Saklanan durum: `preparing`, `applied`, `approved`, `rejected`
+                             * @enum {string}
+                             */
+                            status: "preparing" | "applied" | "approved" | "rejected";
+                            /**
+                             * @description Gösterilen durum; geçerlilik bitişi bugünden önceki onay `expired` (K-376)
+                             * @enum {string}
+                             */
+                            state: "preparing" | "applied" | "approved" | "rejected" | "expired";
+                            /** @description MEBBİS başvuru günü (YYYY-MM-DD) */
+                            applicationDate: string | null;
+                            /** @description Onay günü */
+                            approvalDate: string | null;
+                            /** @description Onay sayısı ya da belge numarası */
+                            approvalNumber: string | null;
+                            /** @description Geçerlilik bitişi (dahil); onaylı kayıtta boşsa süresiz */
+                            validUntil: string | null;
+                            /** @description Ret günü */
+                            rejectionDate: string | null;
+                            /** @description Onay belgesi dosyası */
+                            documentFileId: string | null;
+                            note: string | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            rejectionReason: string | null;
+                            /** @description Onay belgesi; silinmiş ya da reddedilmiş dosyada boş */
+                            documentFile: {
+                                id: string;
+                                name: string;
+                                byteSize: number;
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    applyWorkPermit: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                permitId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description MEBBİS başvuru günü */
+                    applicationDate: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            teacher: {
+                                membershipId: string;
+                                name: string;
+                            };
+                            /**
+                             * @description `initial` ilk onay, `renewal` yenileme, `branch_change` branş değişikliği
+                             * @enum {string}
+                             */
+                            permitType: "initial" | "renewal" | "branch_change";
+                            branch: string;
+                            /**
+                             * @description Saklanan durum: `preparing`, `applied`, `approved`, `rejected`
+                             * @enum {string}
+                             */
+                            status: "preparing" | "applied" | "approved" | "rejected";
+                            /**
+                             * @description Gösterilen durum; geçerlilik bitişi bugünden önceki onay `expired` (K-376)
+                             * @enum {string}
+                             */
+                            state: "preparing" | "applied" | "approved" | "rejected" | "expired";
+                            /** @description MEBBİS başvuru günü (YYYY-MM-DD) */
+                            applicationDate: string | null;
+                            /** @description Onay günü */
+                            approvalDate: string | null;
+                            /** @description Onay sayısı ya da belge numarası */
+                            approvalNumber: string | null;
+                            /** @description Geçerlilik bitişi (dahil); onaylı kayıtta boşsa süresiz */
+                            validUntil: string | null;
+                            /** @description Ret günü */
+                            rejectionDate: string | null;
+                            /** @description Onay belgesi dosyası */
+                            documentFileId: string | null;
+                            note: string | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            rejectionReason: string | null;
+                            /** @description Onay belgesi; silinmiş ya da reddedilmiş dosyada boş */
+                            documentFile: {
+                                id: string;
+                                name: string;
+                                byteSize: number;
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    approveWorkPermit: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                permitId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Onay günü */
+                    approvalDate: string;
+                    /** @description Onay yazısının sayısı ya da belge numarası */
+                    approvalNumber: string;
+                    /** @description Geçerlilik bitişi (dahil). Verilmezse onay gününün eğitim yılı sonu (K-376); `null` süresiz */
+                    validUntil?: string | null;
+                    /**
+                     * @description İsteğe bağlı onay belgesi (`POST /files`, `purpose: document`, PDF)
+                     * @default null
+                     */
+                    documentFileId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            teacher: {
+                                membershipId: string;
+                                name: string;
+                            };
+                            /**
+                             * @description `initial` ilk onay, `renewal` yenileme, `branch_change` branş değişikliği
+                             * @enum {string}
+                             */
+                            permitType: "initial" | "renewal" | "branch_change";
+                            branch: string;
+                            /**
+                             * @description Saklanan durum: `preparing`, `applied`, `approved`, `rejected`
+                             * @enum {string}
+                             */
+                            status: "preparing" | "applied" | "approved" | "rejected";
+                            /**
+                             * @description Gösterilen durum; geçerlilik bitişi bugünden önceki onay `expired` (K-376)
+                             * @enum {string}
+                             */
+                            state: "preparing" | "applied" | "approved" | "rejected" | "expired";
+                            /** @description MEBBİS başvuru günü (YYYY-MM-DD) */
+                            applicationDate: string | null;
+                            /** @description Onay günü */
+                            approvalDate: string | null;
+                            /** @description Onay sayısı ya da belge numarası */
+                            approvalNumber: string | null;
+                            /** @description Geçerlilik bitişi (dahil); onaylı kayıtta boşsa süresiz */
+                            validUntil: string | null;
+                            /** @description Ret günü */
+                            rejectionDate: string | null;
+                            /** @description Onay belgesi dosyası */
+                            documentFileId: string | null;
+                            note: string | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            rejectionReason: string | null;
+                            /** @description Onay belgesi; silinmiş ya da reddedilmiş dosyada boş */
+                            documentFile: {
+                                id: string;
+                                name: string;
+                                byteSize: number;
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rejectWorkPermit: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                permitId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Ret günü */
+                    decisionDate: string;
+                    /** @description Ret gerekçesi, 5–500 karakter */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            teacher: {
+                                membershipId: string;
+                                name: string;
+                            };
+                            /**
+                             * @description `initial` ilk onay, `renewal` yenileme, `branch_change` branş değişikliği
+                             * @enum {string}
+                             */
+                            permitType: "initial" | "renewal" | "branch_change";
+                            branch: string;
+                            /**
+                             * @description Saklanan durum: `preparing`, `applied`, `approved`, `rejected`
+                             * @enum {string}
+                             */
+                            status: "preparing" | "applied" | "approved" | "rejected";
+                            /**
+                             * @description Gösterilen durum; geçerlilik bitişi bugünden önceki onay `expired` (K-376)
+                             * @enum {string}
+                             */
+                            state: "preparing" | "applied" | "approved" | "rejected" | "expired";
+                            /** @description MEBBİS başvuru günü (YYYY-MM-DD) */
+                            applicationDate: string | null;
+                            /** @description Onay günü */
+                            approvalDate: string | null;
+                            /** @description Onay sayısı ya da belge numarası */
+                            approvalNumber: string | null;
+                            /** @description Geçerlilik bitişi (dahil); onaylı kayıtta boşsa süresiz */
+                            validUntil: string | null;
+                            /** @description Ret günü */
+                            rejectionDate: string | null;
+                            /** @description Onay belgesi dosyası */
+                            documentFileId: string | null;
+                            note: string | null;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            rejectionReason: string | null;
+                            /** @description Onay belgesi; silinmiş ya da reddedilmiş dosyada boş */
+                            documentFile: {
+                                id: string;
+                                name: string;
+                                byteSize: number;
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelWorkPermit: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                permitId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description İptal gerekçesi; denetim kaydına yazılmaz */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            cancelledAt: string;
                         };
                     };
                 };

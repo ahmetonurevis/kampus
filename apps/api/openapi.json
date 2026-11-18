@@ -199968,6 +199968,1477 @@
         }
       }
     },
+    "/api/v1/finance/sgk-preparation": {
+      "get": {
+        "operationId": "getFinanceSgkPreparation",
+        "summary": "SGK bildirge hazırlık listesi",
+        "tags": [
+          "finance-sgk-preparation"
+        ],
+        "description": "Ay (`month`, `YYYY-MM`) için mali müşavire ya da bordrocuya kontrol listesi (DOM-FIN-107); Muhtasar ve Prim Hizmet Beyannamesi değildir, hiçbir resmî sisteme gönderilmez (IST-143). Personel: ayda ana ücret tanımı (DOM-FIN-099) yürürlükte olan ya da o ay elle eksik gün veya giriş/çıkış satırı bulunan yönetici, öğretmen ve ön büro üyelikleri (pasif dahil), ada göre. İşe giriş/çıkış günü ana ücret tanımlarının kesintisiz zincirinden (ücret değişikliği sayılmaz), elle girilen gün önceliklidir (K-352). Prim günü tam ayda 30, ay içi giriş/çıkışta takvim günü (en çok 30), eksi elle eksik gün; birden fazla neden kodu 12 (kısa çalışma 27, yarım çalışma 24) (K-353). SGK matrahı tahmini (aylık brüt ana ücret + nakdi yan haklar) × prim günü / 30; ayni yan hak ve ek ders girmez; taban ve tavan ayın ilk günündeki bordro parametre setinden (DOM-FIN-100) gün oranlı, tabanın altı yükseltilir, tavanın üstü kesilir; ana ücret aylık brüt değilse `null` (K-354). Uyarılar kod olarak döner. Kimlik numarası tutulmaz. Set yoksa 422 `payroll_parameters_missing`. Her okuma denetime düşer: ekran `finance.sgk_preparation.read`, `purpose=pdf` ve `Accept: text/csv` `finance.sgk_preparation_export` (yalnız alan adları; K-355). CSV: `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı, kimlik sütunu boş. PDF verisi ve CSV taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk. Rol: yalnız `yonetici` (K-355). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-(0[1-9]|1[0-2])$"
+            },
+            "in": "query",
+            "name": "month",
+            "required": true,
+            "description": "Ay (`YYYY-MM`)"
+          },
+          {
+            "schema": {
+              "default": "view",
+              "type": "string",
+              "enum": [
+                "view",
+                "pdf"
+              ]
+            },
+            "in": "query",
+            "name": "purpose",
+            "required": false,
+            "description": "`view` ekran (denetim `finance.sgk_preparation.read`), `pdf` PDF üretimi (denetim `finance.sgk_preparation_export`, taze oturum)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "month": {
+                          "type": "string"
+                        },
+                        "firstDay": {
+                          "type": "string"
+                        },
+                        "lastDay": {
+                          "type": "string"
+                        },
+                        "daysInMonth": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "parameters": {
+                          "type": "object",
+                          "properties": {
+                            "effectiveFrom": {
+                              "type": "string",
+                              "description": "Kullanılan bordro parametre setinin başlangıcı"
+                            },
+                            "origin": {
+                              "type": "string",
+                              "enum": [
+                                "platform",
+                                "institution"
+                              ]
+                            },
+                            "stale": {
+                              "type": "boolean",
+                              "description": "Ayın yılı için set yok, son bilinen set kullanıldı"
+                            },
+                            "unverified": {
+                              "type": "boolean",
+                              "description": "Asgari ücret ya da taban/tavan çarpanı doğrulanmamış"
+                            },
+                            "minimumWageGrossCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "floorCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Aylık SGK tabanı, kuruş"
+                            },
+                            "ceilingCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Aylık SGK tavanı, kuruş"
+                            }
+                          },
+                          "required": [
+                            "effectiveFrom",
+                            "origin",
+                            "stale",
+                            "unverified",
+                            "minimumWageGrossCents",
+                            "floorCents",
+                            "ceilingCents"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "rows": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "role": {
+                                "type": "string",
+                                "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                              },
+                              "active": {
+                                "type": "boolean",
+                                "description": "Pasifleştirilmiş (ayrılan) personelde `false`"
+                              },
+                              "entryDate": {
+                                "description": "Ay içindeyse işe giriş günü",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "entrySource": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "pay_rate",
+                                      "manual"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "`pay_rate` ücret tanımından, `manual` elle"
+                              },
+                              "exitDate": {
+                                "description": "Ay içindeyse işten çıkış günü",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "exitSource": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "pay_rate",
+                                      "manual"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "`pay_rate` ücret tanımından, `manual` elle"
+                              },
+                              "baseDays": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Eksik gün düşülmeden: tam ayda 30, ay içi giriş/çıkışta takvim günü (en çok 30)"
+                              },
+                              "missingDays": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Elle girilen eksik gün toplamı"
+                              },
+                              "primDays": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Prim günü: taban gün − eksik gün (0 altına inmez)"
+                              },
+                              "reasonCode": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "10",
+                                      "11",
+                                      "12",
+                                      "13",
+                                      "15",
+                                      "16",
+                                      "18",
+                                      "19",
+                                      "20",
+                                      "21",
+                                      "23",
+                                      "24",
+                                      "25",
+                                      "27",
+                                      "01",
+                                      "03",
+                                      "04",
+                                      "05",
+                                      "06",
+                                      "07",
+                                      "08",
+                                      "09"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Ayın eksik gün nedeni kodu; birden fazla neden 12 (kısa çalışmada 27, yarımda 24)"
+                              },
+                              "wage": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "rateType": {
+                                        "type": "string",
+                                        "enum": [
+                                          "monthly_gross",
+                                          "monthly_net",
+                                          "hourly",
+                                          "lesson_hour"
+                                        ]
+                                      },
+                                      "amountCents": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "startDate": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "rateType",
+                                      "amountCents",
+                                      "startDate"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Son çalışılan günde yürürlükteki ana ücret"
+                              },
+                              "cashBenefitsCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Nakdi yan hakların aylık toplamı, kuruş"
+                              },
+                              "floorCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Prim günüyle orantılı SGK tabanı, kuruş"
+                              },
+                              "ceilingCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Prim günüyle orantılı SGK tavanı, kuruş"
+                              },
+                              "sgkBaseCents": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "SGK matrahı tahmini, kuruş; ana ücret aylık brüt değilse `null`"
+                              },
+                              "warnings": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "below_floor",
+                                    "above_ceiling",
+                                    "missing_reason",
+                                    "entry_in_month",
+                                    "exit_in_month",
+                                    "missing_days_exceed",
+                                    "no_wage",
+                                    "wage_not_monthly_gross",
+                                    "wage_changed",
+                                    "pay_rate_gap",
+                                    "lesson_pay_excluded"
+                                  ]
+                                },
+                                "description": "Uyarı kodları"
+                              },
+                              "missingDayEntries": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "format": "uuid",
+                                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                    },
+                                    "membershipId": {
+                                      "type": "string"
+                                    },
+                                    "days": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Eksik gün (1–30)"
+                                    },
+                                    "reasonCode": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "10",
+                                            "11",
+                                            "12",
+                                            "13",
+                                            "15",
+                                            "16",
+                                            "18",
+                                            "19",
+                                            "20",
+                                            "21",
+                                            "23",
+                                            "24",
+                                            "25",
+                                            "27",
+                                            "01",
+                                            "03",
+                                            "04",
+                                            "05",
+                                            "06",
+                                            "07",
+                                            "08",
+                                            "09"
+                                          ]
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Eksik gün nedeni kodu; boşsa girilmemiş"
+                                    },
+                                    "note": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "version": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "`If-Match` için kayıt sürümü (kaldırma)"
+                                    },
+                                    "createdAt": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "membershipId",
+                                    "days",
+                                    "reasonCode",
+                                    "note",
+                                    "version",
+                                    "createdAt"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "employmentDates": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string",
+                                        "format": "uuid",
+                                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                      },
+                                      "membershipId": {
+                                        "type": "string"
+                                      },
+                                      "entryDate": {
+                                        "description": "Elle işe giriş günü (YYYY-MM-DD)",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "exitDate": {
+                                        "description": "Elle işten çıkış günü (YYYY-MM-DD)",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "note": {
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "version": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "`If-Match` için kayıt sürümü (kaldırma)"
+                                      },
+                                      "createdAt": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "membershipId",
+                                      "entryDate",
+                                      "exitDate",
+                                      "note",
+                                      "version",
+                                      "createdAt"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "membershipId",
+                              "name",
+                              "role",
+                              "active",
+                              "entryDate",
+                              "entrySource",
+                              "exitDate",
+                              "exitSource",
+                              "baseDays",
+                              "missingDays",
+                              "primDays",
+                              "reasonCode",
+                              "wage",
+                              "cashBenefitsCents",
+                              "floorCents",
+                              "ceilingCents",
+                              "sgkBaseCents",
+                              "warnings",
+                              "missingDayEntries",
+                              "employmentDates"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "totals": {
+                          "type": "object",
+                          "properties": {
+                            "staffCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "primDays": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "missingDays": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "sgkBaseCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "unestimatedCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "warningRowCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "staffCount",
+                            "primDays",
+                            "missingDays",
+                            "sgkBaseCents",
+                            "unestimatedCount",
+                            "warningRowCount"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "month",
+                        "firstDay",
+                        "lastDay",
+                        "daysInMonth",
+                        "parameters",
+                        "rows",
+                        "totals"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/sgk-missing-days": {
+      "post": {
+        "operationId": "createSgkMissingDay",
+        "summary": "Eksik gün satırı ekle",
+        "tags": [
+          "finance-sgk-preparation"
+        ],
+        "description": "Personelin ay için eksik günü (1–30) ve isteğe bağlı neden kodu (birleşik kodlar 12, 24, 27 seçilmez; boşsa listede \"neden girilmemiş\" uyarısı) (K-353). Aynı ayda birden çok satır olabilir; ayın toplamı 30'u aşarsa 422 `sgk_missing_days_exceed_month`. Olmayan üyelik 422 `sgk_staff_not_found`, öğrenci ya da veli 422 `sgk_not_staff`. Not tanı içermez. Sağlık raporu ve izinlerden besleme yoktur. Denetim kaydına alan adları yazılır. `Idempotency-Key` isteğe bağlı. Rol: yalnız `yonetici` (K-355). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "membershipId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Personelin kurum üyeliği"
+                  },
+                  "month": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+                    "description": "Ay (`YYYY-MM`)"
+                  },
+                  "days": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 30,
+                    "description": "Eksik gün sayısı (1–30)"
+                  },
+                  "reasonCode": {
+                    "default": null,
+                    "description": "Eksik gün nedeni kodu; boşsa listede \"neden girilmemiş\" uyarısı çıkar",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "10",
+                          "11",
+                          "13",
+                          "15",
+                          "16",
+                          "18",
+                          "19",
+                          "20",
+                          "21",
+                          "23",
+                          "25",
+                          "01",
+                          "03",
+                          "04",
+                          "05",
+                          "06",
+                          "07",
+                          "08",
+                          "09"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "note": {
+                    "description": "İsteğe bağlı not, en çok 200 karakter; tanı yazılmaz",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "membershipId",
+                  "month",
+                  "days"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "membershipId": {
+                          "type": "string"
+                        },
+                        "days": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Eksik gün (1–30)"
+                        },
+                        "reasonCode": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "10",
+                                "11",
+                                "12",
+                                "13",
+                                "15",
+                                "16",
+                                "18",
+                                "19",
+                                "20",
+                                "21",
+                                "23",
+                                "24",
+                                "25",
+                                "27",
+                                "01",
+                                "03",
+                                "04",
+                                "05",
+                                "06",
+                                "07",
+                                "08",
+                                "09"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Eksik gün nedeni kodu; boşsa girilmemiş"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü (kaldırma)"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "month": {
+                          "type": "string",
+                          "description": "Ay (`YYYY-MM`)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "membershipId",
+                        "days",
+                        "reasonCode",
+                        "note",
+                        "version",
+                        "createdAt",
+                        "month"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/sgk-missing-days/{entryId}": {
+      "delete": {
+        "operationId": "archiveSgkMissingDay",
+        "summary": "Eksik gün satırını kaldır",
+        "tags": [
+          "finance-sgk-preparation"
+        ],
+        "description": "Satır arşivlenir; listeye ve ay toplamına girmez. Olmayan, kaldırılmış ya da başka kurumun satırı 404; `If-Match` zorunlu, sürüm tutmazsa 409. Rol: yalnız `yonetici` (K-355). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "entryId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "archivedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "archivedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/sgk-employment-dates": {
+      "post": {
+        "operationId": "createSgkEmploymentDates",
+        "summary": "Elle giriş/çıkış günü gir",
+        "tags": [
+          "finance-sgk-preparation"
+        ],
+        "description": "Personelin ay içindeki işe giriş ve/veya işten çıkış günü; ücret tanımından çıkan günün yerine geçer (K-352). En az biri; günler ayın içinde, çıkış girişten önce olamaz (400). Ayda tek etkin satır: varsa 409 `sgk_employment_dates_exist` (önce kaldırılır). Olmayan üyelik 422 `sgk_staff_not_found`, öğrenci ya da veli 422 `sgk_not_staff`. Resmî işe giriş/ayrılış bildirgesi değildir. `Idempotency-Key` isteğe bağlı. Rol: yalnız `yonetici` (K-355). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "membershipId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Personelin kurum üyeliği"
+                  },
+                  "month": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-(0[1-9]|1[0-2])$",
+                    "description": "Ay (`YYYY-MM`)"
+                  },
+                  "entryDate": {
+                    "default": null,
+                    "description": "İşe giriş günü (ayın içinde)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "exitDate": {
+                    "default": null,
+                    "description": "İşten çıkış günü (ayın içinde)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "note": {
+                    "description": "İsteğe bağlı not, en çok 200 karakter",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "membershipId",
+                  "month"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "membershipId": {
+                          "type": "string"
+                        },
+                        "entryDate": {
+                          "description": "Elle işe giriş günü (YYYY-MM-DD)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "exitDate": {
+                          "description": "Elle işten çıkış günü (YYYY-MM-DD)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü (kaldırma)"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "month": {
+                          "type": "string",
+                          "description": "Ay (`YYYY-MM`)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "membershipId",
+                        "entryDate",
+                        "exitDate",
+                        "note",
+                        "version",
+                        "createdAt",
+                        "month"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/sgk-employment-dates/{entryId}": {
+      "delete": {
+        "operationId": "archiveSgkEmploymentDates",
+        "summary": "Elle giriş/çıkış gününü kaldır",
+        "tags": [
+          "finance-sgk-preparation"
+        ],
+        "description": "Satır arşivlenir; giriş/çıkış yeniden ücret tanımından çıkar. Olmayan, kaldırılmış ya da başka kurumun satırı 404; `If-Match` zorunlu, sürüm tutmazsa 409. Rol: yalnız `yonetici` (K-355). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "entryId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "archivedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "archivedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

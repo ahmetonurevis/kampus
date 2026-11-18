@@ -8476,6 +8476,106 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/sgk-preparation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * SGK bildirge hazırlık listesi
+         * @description Ay (`month`, `YYYY-MM`) için mali müşavire ya da bordrocuya kontrol listesi (DOM-FIN-107); Muhtasar ve Prim Hizmet Beyannamesi değildir, hiçbir resmî sisteme gönderilmez (IST-143). Personel: ayda ana ücret tanımı (DOM-FIN-099) yürürlükte olan ya da o ay elle eksik gün veya giriş/çıkış satırı bulunan yönetici, öğretmen ve ön büro üyelikleri (pasif dahil), ada göre. İşe giriş/çıkış günü ana ücret tanımlarının kesintisiz zincirinden (ücret değişikliği sayılmaz), elle girilen gün önceliklidir (K-352). Prim günü tam ayda 30, ay içi giriş/çıkışta takvim günü (en çok 30), eksi elle eksik gün; birden fazla neden kodu 12 (kısa çalışma 27, yarım çalışma 24) (K-353). SGK matrahı tahmini (aylık brüt ana ücret + nakdi yan haklar) × prim günü / 30; ayni yan hak ve ek ders girmez; taban ve tavan ayın ilk günündeki bordro parametre setinden (DOM-FIN-100) gün oranlı, tabanın altı yükseltilir, tavanın üstü kesilir; ana ücret aylık brüt değilse `null` (K-354). Uyarılar kod olarak döner. Kimlik numarası tutulmaz. Set yoksa 422 `payroll_parameters_missing`. Her okuma denetime düşer: ekran `finance.sgk_preparation.read`, `purpose=pdf` ve `Accept: text/csv` `finance.sgk_preparation_export` (yalnız alan adları; K-355). CSV: `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı, kimlik sütunu boş. PDF verisi ve CSV taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk. Rol: yalnız `yonetici` (K-355). Modül `finance`.
+         */
+        get: operations["getFinanceSgkPreparation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/sgk-missing-days": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Eksik gün satırı ekle
+         * @description Personelin ay için eksik günü (1–30) ve isteğe bağlı neden kodu (birleşik kodlar 12, 24, 27 seçilmez; boşsa listede "neden girilmemiş" uyarısı) (K-353). Aynı ayda birden çok satır olabilir; ayın toplamı 30'u aşarsa 422 `sgk_missing_days_exceed_month`. Olmayan üyelik 422 `sgk_staff_not_found`, öğrenci ya da veli 422 `sgk_not_staff`. Not tanı içermez. Sağlık raporu ve izinlerden besleme yoktur. Denetim kaydına alan adları yazılır. `Idempotency-Key` isteğe bağlı. Rol: yalnız `yonetici` (K-355). Modül `finance`.
+         */
+        post: operations["createSgkMissingDay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/sgk-missing-days/{entryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Eksik gün satırını kaldır
+         * @description Satır arşivlenir; listeye ve ay toplamına girmez. Olmayan, kaldırılmış ya da başka kurumun satırı 404; `If-Match` zorunlu, sürüm tutmazsa 409. Rol: yalnız `yonetici` (K-355). Modül `finance`.
+         */
+        delete: operations["archiveSgkMissingDay"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/sgk-employment-dates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Elle giriş/çıkış günü gir
+         * @description Personelin ay içindeki işe giriş ve/veya işten çıkış günü; ücret tanımından çıkan günün yerine geçer (K-352). En az biri; günler ayın içinde, çıkış girişten önce olamaz (400). Ayda tek etkin satır: varsa 409 `sgk_employment_dates_exist` (önce kaldırılır). Olmayan üyelik 422 `sgk_staff_not_found`, öğrenci ya da veli 422 `sgk_not_staff`. Resmî işe giriş/ayrılış bildirgesi değildir. `Idempotency-Key` isteğe bağlı. Rol: yalnız `yonetici` (K-355). Modül `finance`.
+         */
+        post: operations["createSgkEmploymentDates"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/sgk-employment-dates/{entryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Elle giriş/çıkış gününü kaldır
+         * @description Satır arşivlenir; giriş/çıkış yeniden ücret tanımından çıkar. Olmayan, kaldırılmış ya da başka kurumun satırı 404; `If-Match` zorunlu, sürüm tutmazsa 409. Rol: yalnız `yonetici` (K-355). Modül `finance`.
+         */
+        delete: operations["archiveSgkEmploymentDates"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -90079,6 +90179,671 @@ export interface operations {
                             actions: ("start" | "ready" | "deliver" | "reject")[];
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getFinanceSgkPreparation: {
+        parameters: {
+            query: {
+                /** @description Ay (`YYYY-MM`) */
+                month: string;
+                /** @description `view` ekran (denetim `finance.sgk_preparation.read`), `pdf` PDF üretimi (denetim `finance.sgk_preparation_export`, taze oturum) */
+                purpose?: "view" | "pdf";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            month: string;
+                            firstDay: string;
+                            lastDay: string;
+                            daysInMonth: number;
+                            parameters: {
+                                /** @description Kullanılan bordro parametre setinin başlangıcı */
+                                effectiveFrom: string;
+                                /** @enum {string} */
+                                origin: "platform" | "institution";
+                                /** @description Ayın yılı için set yok, son bilinen set kullanıldı */
+                                stale: boolean;
+                                /** @description Asgari ücret ya da taban/tavan çarpanı doğrulanmamış */
+                                unverified: boolean;
+                                minimumWageGrossCents: number;
+                                /** @description Aylık SGK tabanı, kuruş */
+                                floorCents: number;
+                                /** @description Aylık SGK tavanı, kuruş */
+                                ceilingCents: number;
+                            };
+                            rows: {
+                                membershipId: string;
+                                name: string;
+                                /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                                role: string;
+                                /** @description Pasifleştirilmiş (ayrılan) personelde `false` */
+                                active: boolean;
+                                /** @description Ay içindeyse işe giriş günü */
+                                entryDate: string | null;
+                                /** @description `pay_rate` ücret tanımından, `manual` elle */
+                                entrySource: ("pay_rate" | "manual") | null;
+                                /** @description Ay içindeyse işten çıkış günü */
+                                exitDate: string | null;
+                                /** @description `pay_rate` ücret tanımından, `manual` elle */
+                                exitSource: ("pay_rate" | "manual") | null;
+                                /** @description Eksik gün düşülmeden: tam ayda 30, ay içi giriş/çıkışta takvim günü (en çok 30) */
+                                baseDays: number;
+                                /** @description Elle girilen eksik gün toplamı */
+                                missingDays: number;
+                                /** @description Prim günü: taban gün − eksik gün (0 altına inmez) */
+                                primDays: number;
+                                /** @description Ayın eksik gün nedeni kodu; birden fazla neden 12 (kısa çalışmada 27, yarımda 24) */
+                                reasonCode: ("10" | "11" | "12" | "13" | "15" | "16" | "18" | "19" | "20" | "21" | "23" | "24" | "25" | "27" | "01" | "03" | "04" | "05" | "06" | "07" | "08" | "09") | null;
+                                /** @description Son çalışılan günde yürürlükteki ana ücret */
+                                wage: {
+                                    /** @enum {string} */
+                                    rateType: "monthly_gross" | "monthly_net" | "hourly" | "lesson_hour";
+                                    amountCents: number;
+                                    startDate: string;
+                                } | null;
+                                /** @description Nakdi yan hakların aylık toplamı, kuruş */
+                                cashBenefitsCents: number;
+                                /** @description Prim günüyle orantılı SGK tabanı, kuruş */
+                                floorCents: number;
+                                /** @description Prim günüyle orantılı SGK tavanı, kuruş */
+                                ceilingCents: number;
+                                /** @description SGK matrahı tahmini, kuruş; ana ücret aylık brüt değilse `null` */
+                                sgkBaseCents: number | null;
+                                /** @description Uyarı kodları */
+                                warnings: ("below_floor" | "above_ceiling" | "missing_reason" | "entry_in_month" | "exit_in_month" | "missing_days_exceed" | "no_wage" | "wage_not_monthly_gross" | "wage_changed" | "pay_rate_gap" | "lesson_pay_excluded")[];
+                                missingDayEntries: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    membershipId: string;
+                                    /** @description Eksik gün (1–30) */
+                                    days: number;
+                                    /** @description Eksik gün nedeni kodu; boşsa girilmemiş */
+                                    reasonCode: ("10" | "11" | "12" | "13" | "15" | "16" | "18" | "19" | "20" | "21" | "23" | "24" | "25" | "27" | "01" | "03" | "04" | "05" | "06" | "07" | "08" | "09") | null;
+                                    note: string | null;
+                                    /** @description `If-Match` için kayıt sürümü (kaldırma) */
+                                    version: number;
+                                    createdAt: string;
+                                }[];
+                                employmentDates: {
+                                    /** Format: uuid */
+                                    id: string;
+                                    membershipId: string;
+                                    /** @description Elle işe giriş günü (YYYY-MM-DD) */
+                                    entryDate: string | null;
+                                    /** @description Elle işten çıkış günü (YYYY-MM-DD) */
+                                    exitDate: string | null;
+                                    note: string | null;
+                                    /** @description `If-Match` için kayıt sürümü (kaldırma) */
+                                    version: number;
+                                    createdAt: string;
+                                } | null;
+                            }[];
+                            totals: {
+                                staffCount: number;
+                                primDays: number;
+                                missingDays: number;
+                                sgkBaseCents: number;
+                                unestimatedCount: number;
+                                warningRowCount: number;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createSgkMissingDay: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Personelin kurum üyeliği */
+                    membershipId: string;
+                    /** @description Ay (`YYYY-MM`) */
+                    month: string;
+                    /** @description Eksik gün sayısı (1–30) */
+                    days: number;
+                    /**
+                     * @description Eksik gün nedeni kodu; boşsa listede "neden girilmemiş" uyarısı çıkar
+                     * @default null
+                     */
+                    reasonCode?: ("10" | "11" | "13" | "15" | "16" | "18" | "19" | "20" | "21" | "23" | "25" | "01" | "03" | "04" | "05" | "06" | "07" | "08" | "09") | null;
+                    /** @description İsteğe bağlı not, en çok 200 karakter; tanı yazılmaz */
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            id: string;
+                            membershipId: string;
+                            /** @description Eksik gün (1–30) */
+                            days: number;
+                            /** @description Eksik gün nedeni kodu; boşsa girilmemiş */
+                            reasonCode: ("10" | "11" | "12" | "13" | "15" | "16" | "18" | "19" | "20" | "21" | "23" | "24" | "25" | "27" | "01" | "03" | "04" | "05" | "06" | "07" | "08" | "09") | null;
+                            note: string | null;
+                            /** @description `If-Match` için kayıt sürümü (kaldırma) */
+                            version: number;
+                            createdAt: string;
+                            /** @description Ay (`YYYY-MM`) */
+                            month: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveSgkMissingDay: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                entryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            id: string;
+                            archivedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createSgkEmploymentDates: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Personelin kurum üyeliği */
+                    membershipId: string;
+                    /** @description Ay (`YYYY-MM`) */
+                    month: string;
+                    /**
+                     * @description İşe giriş günü (ayın içinde)
+                     * @default null
+                     */
+                    entryDate?: string | null;
+                    /**
+                     * @description İşten çıkış günü (ayın içinde)
+                     * @default null
+                     */
+                    exitDate?: string | null;
+                    /** @description İsteğe bağlı not, en çok 200 karakter */
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            id: string;
+                            membershipId: string;
+                            /** @description Elle işe giriş günü (YYYY-MM-DD) */
+                            entryDate: string | null;
+                            /** @description Elle işten çıkış günü (YYYY-MM-DD) */
+                            exitDate: string | null;
+                            note: string | null;
+                            /** @description `If-Match` için kayıt sürümü (kaldırma) */
+                            version: number;
+                            createdAt: string;
+                            /** @description Ay (`YYYY-MM`) */
+                            month: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveSgkEmploymentDates: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                entryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            id: string;
+                            archivedAt: string;
                         };
                     };
                 };

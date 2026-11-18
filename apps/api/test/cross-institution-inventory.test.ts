@@ -2587,6 +2587,33 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: personel maliyeti (ON-204; DOM-FIN-104).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/staff-costs', "reportOf(a.admin, '?people=true')"],
+        ['liste', 'GET /api/v1/finance/staff-cost-staff', 'staffListOf(a.admin)'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/staff-cost-staff/:membershipId',
+          '`${STAFF}/${bStaff}`, a.admin',
+        ],
+        ['gövde', 'POST /api/v1/finance/staff-cost-allocations', 'institutionId: b.id'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-cost-allocations/:allocationId/cancel',
+          'cancel(a.admin, bAllocation',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-staff-costs.test.ts',
+        'başka kurumun personeli, ataması ve merkezi 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

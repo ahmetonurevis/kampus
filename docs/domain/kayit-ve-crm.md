@@ -167,11 +167,11 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 
 ### DOM-KAY-024 · Kayıt dondurma ve ayrılış
 
-- **Kural:** Öğrenci ayrılırken ayrılış tarihi, nedeni (nakil, taşınma, sağlık, ekonomik, memnuniyetsizlik, diğer) ve hedef okul tutulur; öğrenci pasifleşir, ileri tarihli etüt/servis/kulüp kayıtları sonlanır, iade hesabı `DOM-FIN-040` ile açılır. Dil okulunda kayıt dondurma (`DOM-DIL-052`) ayrılıştan ayrı bir durumdur.
+- **Kural:** Öğrenci ayrılırken ayrılış tarihi, nedeni (nakil, taşınma, sağlık, ekonomik, memnuniyetsizlik, diğer) ve hedef okul tutulur; öğrenci pasifleşir, ileri tarihli etüt/servis/kulüp kayıtları sonlanır, etkinlik günü ayrılış gününden sonra olan gezi ve etkinlik katılımı etkinliğin kuralıyla iptal edilir (`DOM-FIN-098`, K-348), iade hesabı `DOM-FIN-040` ile açılır. Dil okulunda kayıt dondurma (`DOM-DIL-052`) ayrılıştan ayrı bir durumdur.
 - **Gerekçe:** Ücret iadesi ayrılış tarihine göre hesaplanır; neden verisi kayıp analizi için gerekir.
 - **Kaynak:** ÖÖKY md. 56/3.
 - **Kurum türü:** ikisi
-- **Kodda:** var (API, ayrılış) — `withdrawStudent` (`lib/withdrawals.ts`), `POST /api/v1/students/:studentId/withdraw`; hesaba bütün yürürlükteki sözleşmeler girer (K-06, `DOM-FIN-040`). Dil okulunda kayıt dondurma yok.
+- **Kodda:** var (API, ayrılış) — `withdrawStudent` (`lib/withdrawals.ts`), `POST /api/v1/students/:studentId/withdraw`; hesaba bütün yürürlükteki sözleşmeler girer (K-06, `DOM-FIN-040`). Etkinlik katılımlarının iptali ayrılışla aynı transaction'dadır (`withdrawStudentWithFollowups`, `lib/withdrawal-followups.ts`; ON-342). Dil okulunda kayıt dondurma yok.
 
 ### DOM-KAY-025 · Borçlu öğrencinin kaydı yenilenmeyebilir
 

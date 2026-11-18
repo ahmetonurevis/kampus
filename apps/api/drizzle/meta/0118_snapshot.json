@@ -1,5 +1,5 @@
 {
-  "id": "86a65ad4-02a0-4e19-ae5f-c0f2ffa08837",
+  "id": "b9725f0d-995e-44fc-9e83-4c1a234e9dee",
   "prevId": "fbe75b8a-138b-4a76-ba51-e41cf8d5ab8d",
   "version": "7",
   "dialect": "postgresql",
@@ -10768,152 +10768,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.event_ticket_check_in_reversals": {
-      "name": "event_ticket_check_in_reversals",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "ticket_id": {
-          "name": "ticket_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "used_at": {
-          "name": "used_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "used_by_user_id": {
-          "name": "used_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "reason": {
-          "name": "reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "event_ticket_check_in_reversals_ticket_idx": {
-          "name": "event_ticket_check_in_reversals_ticket_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "ticket_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "event_ticket_check_in_reversals_institution_id_institutions_id_fk": {
-          "name": "event_ticket_check_in_reversals_institution_id_institutions_id_fk",
-          "tableFrom": "event_ticket_check_in_reversals",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "event_ticket_check_in_reversals_ticket_fkey": {
-          "name": "event_ticket_check_in_reversals_ticket_fkey",
-          "tableFrom": "event_ticket_check_in_reversals",
-          "tableTo": "event_tickets",
-          "columnsFrom": [
-            "institution_id",
-            "ticket_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "event_ticket_check_in_reversals_pkey": {
-          "name": "event_ticket_check_in_reversals_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "event_ticket_check_in_reversals_reason_check": {
-          "name": "event_ticket_check_in_reversals_reason_check",
-          "value": "char_length(\"event_ticket_check_in_reversals\".\"reason\") between 5 and 200"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.event_tickets": {
       "name": "event_tickets",
       "schema": "",
@@ -11022,27 +10876,9 @@
           "primaryKey": false,
           "notNull": false
         },
-        "refund_cents": {
-          "name": "refund_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "refund_method": {
-          "name": "refund_method",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "refunded_at": {
           "name": "refunded_at",
           "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "refunded_by_user_id": {
-          "name": "refunded_by_user_id",
-          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -11275,15 +11111,7 @@
         },
         "event_tickets_cancelled_check": {
           "name": "event_tickets_cancelled_check",
-          "value": "(\"event_tickets\".\"status\" = 'cancelled') = (\"event_tickets\".\"cancelled_at\" is not null)\n        and (\"event_tickets\".\"cancelled_at\" is null) = (\"event_tickets\".\"cancelled_by_user_id\" is null)\n        and (\"event_tickets\".\"cancel_reason\" is null or \"event_tickets\".\"cancelled_at\" is not null)"
-        },
-        "event_tickets_refund_check": {
-          "name": "event_tickets_refund_check",
-          "value": "(\"event_tickets\".\"refund_cents\" is not null)\n          = (\"event_tickets\".\"status\" = 'cancelled' and \"event_tickets\".\"payment_status\" = 'paid')\n        and (\"event_tickets\".\"refund_cents\" is null\n          or \"event_tickets\".\"refund_cents\" between 0 and \"event_tickets\".\"price_cents\")\n        and (\"event_tickets\".\"refunded_at\" is null or \"event_tickets\".\"refund_cents\" > 0)\n        and (\"event_tickets\".\"refunded_at\" is null) = (\"event_tickets\".\"refunded_by_user_id\" is null)\n        and (\"event_tickets\".\"refund_method\" is null or \"event_tickets\".\"refunded_at\" is not null)"
-        },
-        "event_tickets_refund_method_check": {
-          "name": "event_tickets_refund_method_check",
-          "value": "\"event_tickets\".\"refund_method\" is null or \"event_tickets\".\"refund_method\" in ('cash', 'transfer')"
+          "value": "(\"event_tickets\".\"status\" = 'cancelled') = (\"event_tickets\".\"cancelled_at\" is not null)\n        and (\"event_tickets\".\"cancelled_at\" is null) = (\"event_tickets\".\"cancelled_by_user_id\" is null)\n        and (\"event_tickets\".\"cancel_reason\" is null or \"event_tickets\".\"cancelled_at\" is not null)\n        and (\"event_tickets\".\"refunded_at\" is null or (\"event_tickets\".\"cancelled_at\" is not null\n          and \"event_tickets\".\"payment_status\" = 'paid'))"
         },
         "event_tickets_used_check": {
           "name": "event_tickets_used_check",
@@ -11374,13 +11202,6 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": false
-        },
-        "limit_scope": {
-          "name": "limit_scope",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'student'"
         },
         "sales_open": {
           "name": "sales_open",
@@ -11488,10 +11309,6 @@
         "ticketed_events_per_student_limit_check": {
           "name": "ticketed_events_per_student_limit_check",
           "value": "\"ticketed_events\".\"per_student_limit\" is null\n        or \"ticketed_events\".\"per_student_limit\" between 1 and 20"
-        },
-        "ticketed_events_limit_scope_check": {
-          "name": "ticketed_events_limit_scope_check",
-          "value": "\"ticketed_events\".\"limit_scope\" in ('student', 'family')"
         }
       },
       "isRLSEnabled": false
@@ -23855,6 +23672,356 @@
         "staff_certificates_cancel_check": {
           "name": "staff_certificates_cancel_check",
           "value": "((\"staff_certificates\".\"cancelled_at\" is null) = (\"staff_certificates\".\"cancelled_by_user_id\" is null))\n        and ((\"staff_certificates\".\"cancelled_at\" is null) = (\"staff_certificates\".\"cancel_reason\" is null))\n        and (\"staff_certificates\".\"cancel_reason\" is null or char_length(\"staff_certificates\".\"cancel_reason\")\n          between 5 and 500)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.staff_cost_allocation_shares": {
+      "name": "staff_cost_allocation_shares",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "allocation_id": {
+          "name": "allocation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cost_center_id": {
+          "name": "cost_center_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "share_basis_points": {
+          "name": "share_basis_points",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "staff_cost_allocation_shares_cost_center_idx": {
+          "name": "staff_cost_allocation_shares_cost_center_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "cost_center_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "staff_cost_allocation_shares_institution_id_institutions_id_fk": {
+          "name": "staff_cost_allocation_shares_institution_id_institutions_id_fk",
+          "tableFrom": "staff_cost_allocation_shares",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "staff_cost_allocation_shares_allocation_fkey": {
+          "name": "staff_cost_allocation_shares_allocation_fkey",
+          "tableFrom": "staff_cost_allocation_shares",
+          "tableTo": "staff_cost_allocations",
+          "columnsFrom": [
+            "institution_id",
+            "allocation_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "staff_cost_allocation_shares_cost_center_fkey": {
+          "name": "staff_cost_allocation_shares_cost_center_fkey",
+          "tableFrom": "staff_cost_allocation_shares",
+          "tableTo": "cost_centers",
+          "columnsFrom": [
+            "institution_id",
+            "cost_center_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "staff_cost_allocation_shares_pkey": {
+          "name": "staff_cost_allocation_shares_pkey",
+          "columns": [
+            "institution_id",
+            "allocation_id",
+            "cost_center_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "staff_cost_allocation_shares_share_check": {
+          "name": "staff_cost_allocation_shares_share_check",
+          "value": "\"staff_cost_allocation_shares\".\"share_basis_points\" between 1 and 10000"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.staff_cost_allocations": {
+      "name": "staff_cost_allocations",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "membership_id": {
+          "name": "membership_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_month": {
+          "name": "start_month",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "wage_hours": {
+          "name": "wage_hours",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "extra_lesson_hours": {
+          "name": "extra_lesson_hours",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duty_hours": {
+          "name": "duty_hours",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cancel_reason": {
+          "name": "cancel_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cancelled_by_user_id": {
+          "name": "cancelled_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "staff_cost_allocations_month_key": {
+          "name": "staff_cost_allocations_month_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "start_month",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"staff_cost_allocations\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "staff_cost_allocations_membership_idx": {
+          "name": "staff_cost_allocations_membership_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "start_month",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "staff_cost_allocations_institution_id_institutions_id_fk": {
+          "name": "staff_cost_allocations_institution_id_institutions_id_fk",
+          "tableFrom": "staff_cost_allocations",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "staff_cost_allocations_membership_fkey": {
+          "name": "staff_cost_allocations_membership_fkey",
+          "tableFrom": "staff_cost_allocations",
+          "tableTo": "memberships",
+          "columnsFrom": [
+            "institution_id",
+            "membership_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "staff_cost_allocations_pkey": {
+          "name": "staff_cost_allocations_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "staff_cost_allocations_start_month_check": {
+          "name": "staff_cost_allocations_start_month_check",
+          "value": "extract(day from \"staff_cost_allocations\".\"start_month\") = 1 and \"staff_cost_allocations\".\"start_month\" between '2020-01-01' and '2099-12-01'"
+        },
+        "staff_cost_allocations_hours_check": {
+          "name": "staff_cost_allocations_hours_check",
+          "value": "(\"staff_cost_allocations\".\"wage_hours\" is null or \"staff_cost_allocations\".\"wage_hours\" between 0 and 300)\n        and (\"staff_cost_allocations\".\"extra_lesson_hours\" is null or \"staff_cost_allocations\".\"extra_lesson_hours\" between 0 and 300)\n        and (\"staff_cost_allocations\".\"duty_hours\" is null or \"staff_cost_allocations\".\"duty_hours\" between 0 and 300)"
+        },
+        "staff_cost_allocations_cancel_check": {
+          "name": "staff_cost_allocations_cancel_check",
+          "value": "((\"staff_cost_allocations\".\"archived_at\" is null) = (\"staff_cost_allocations\".\"cancel_reason\" is null))\n        and ((\"staff_cost_allocations\".\"archived_at\" is null) = (\"staff_cost_allocations\".\"cancelled_by_user_id\" is null))\n        and (\"staff_cost_allocations\".\"cancel_reason\" is null or char_length(\"staff_cost_allocations\".\"cancel_reason\")\n          between 5 and 500)"
         }
       },
       "isRLSEnabled": false

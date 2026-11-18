@@ -84,6 +84,21 @@ const breakdownSchema = z.object({
           .optional()
           .describe('Pakette kullanılan saat girilmedi; hesap sıfır saate dayanır (K-21)'),
         scholarshipExempt: z.boolean(),
+        scholarshipEnd: z
+          .object({
+            kind: z.enum(['terminate', 'revoke']),
+            effectiveDate: z
+              .string()
+              .describe('Kesme günü (o gün burslu sayılır) ya da iptal günü'),
+            reinstatedCents: z
+              .number()
+              .int()
+              .describe('Kesme ya da iptalin kaldırdığı burs payı; tabana eklenir'),
+          })
+          .optional()
+          .describe(
+            'Ayrılış gününde yürürlükteki burs kesmesi ya da iptali: burslu istisnası uygulanmaz (K-350); eski kayıtta yok',
+          ),
         baseCents: z.number().int(),
         deductionCents: z.number().int(),
         usageCents: z.number().int(),
@@ -115,6 +130,49 @@ const breakdownSchema = z.object({
     .int()
     .optional()
     .describe('Paketli ayrılışta yöneticinin onayladığı iade tutarı (K-21); öteki kayıtta yok'),
+  scholarshipClawbacks: z
+    .array(
+      z.object({
+        awardId: z.string(),
+        contractId: z.string(),
+        effectiveDate: z.string().describe('Geri isteme (iptal) günü'),
+        principalCents: z.number().int(),
+        interestCents: z.number().int().describe('Kanuni faiz'),
+        openCents: z.number().int().describe('Ayrılış anında ödenmemiş kısım'),
+      }),
+    )
+    .optional()
+    .describe(
+      'Geri istenen burs alacağı: iade ve borca girmez, ayrılış iptal etmez (K-351, K-266); yalnız varsa',
+    ),
+  activities: z
+    .array(
+      z.object({
+        participantId: z.string(),
+        activityId: z.string(),
+        name: z.string(),
+        activityDate: z.string(),
+        outcome: z
+          .enum(['cancelled', 'held'])
+          .describe(
+            '`cancelled`: etkinlik ayrılıştan sonra, katılım etkinliğin kuralıyla iptal edildi; `held`: gerçekleşti, ödenmemiş kısım borç',
+          ),
+        invoiceId: z.string(),
+        amountCents: z.number().int(),
+        paidCents: z.number().int(),
+        retainedCents: z.number().int().describe('İptalde katılımcıda kalan kesinti'),
+        refundCents: z.number().int().describe('Katılım kaydından ödenecek iade (K-303)'),
+        openCents: z.number().int().describe('Ayrılıştan sonra açık kalan etkinlik borcu'),
+        debtInvoiceId: z
+          .string()
+          .optional()
+          .describe('İptalde kesinti farkı için açılan taksit; yalnız ayrılış kaydında'),
+      }),
+    )
+    .optional()
+    .describe(
+      'Gezi ve etkinlik katılımları (K-348, K-349): iade ve borca girmez; yalnız varsa, eski kayıtta yok',
+    ),
 })
 
 const withdrawalSchema = z.object({
@@ -179,7 +237,7 @@ export function registerWithdrawalRoutes(app: FastifyInstance) {
         tags: ['withdrawals'],
         summary: 'Ayrılış ve iade hesabını önizle',
         description:
-          'Hiçbir kayıt yazmaz. Taban sözleşmenin net ücretidir; kesinti %10, dönem başladıysa kullanım `taban × görülen / toplam` (okulda ders günü, dil okulunda ders saati; yönetici girer). Hak edilen tabanı aşamaz; ödenen azsa iade sıfır, kalan borçtur. Ek hizmetin kullanılmayan kısmı iade edilir (DOM-FIN-040; oranlar ve taban doğrulanmalı). Paket satışında kullanım kayıtlı saatten gelir; saat girilmemişse satır `usedHoursMissing` taşır ve hesap sıfır saate dayanır (K-21). İleri tarih 422 `withdrawal_date_in_future`; görülen toplamı aşarsa 422 `attended_exceeds_total`; dönem başlamadan görülen birim 422 `attended_before_term`; kesintisiz iade yalnız okulda ve dönem başlamadan (422 `exemption_not_applicable`). Sözleşme yoksa 422 `withdrawal_contract_missing`. Roller: `yonetici`, `onburo`.',
+          'Hiçbir kayıt yazmaz. Taban sözleşmenin net ücretidir; kesinti %10, dönem başladıysa kullanım `taban × görülen / toplam` (okulda ders günü, dil okulunda ders saati; yönetici girer). Hak edilen tabanı aşamaz; ödenen azsa iade sıfır, kalan borçtur. Ek hizmetin kullanılmayan kısmı iade edilir (DOM-FIN-040; oranlar ve taban doğrulanmalı). Paket satışında kullanım kayıtlı saatten gelir; saat girilmemişse satır `usedHoursMissing` taşır ve hesap sıfır saate dayanır (K-21). İleri tarih 422 `withdrawal_date_in_future`; görülen toplamı aşarsa 422 `attended_exceeds_total`; dönem başlamadan görülen birim 422 `attended_before_term`; kesintisiz iade yalnız okulda ve dönem başlamadan (422 `exemption_not_applicable`). Sözleşme yoksa 422 `withdrawal_contract_missing`. Ayrılış gününde yürürlükteki burs kesmesi ya da iptali burslu istisnasını kaldırır, kalkan pay tabana eklenir (`contracts[].scholarshipEnd`, K-350); geri isteme alacağı `scholarshipClawbacks` satırıdır, iade ve borca girmez (K-351). Etkinlik katılımları `activities` alanındadır: etkinliği ayrılış gününden sonra olan katılım ayrılış gününe göre etkinliğin kuralıyla iptal edilir, gerçekleşmişin ödenmemiş kısmı borç kalır; iade ve borca girmez (K-348, K-349). Roller: `yonetici`, `onburo`.',
         params: studentParams,
         body: withdrawalQuoteSchema,
         response: {
@@ -225,7 +283,7 @@ export function registerWithdrawalRoutes(app: FastifyInstance) {
         tags: ['withdrawals'],
         summary: 'Öğrencinin ayrılışını onayla',
         description:
-          'Tek işlemde öğrenciyi pasifleştirir, açık taksitleri iptal eder, borç kalırsa tek taksit açar, ileri tarihli etüt, servis ve kulüp kayıtlarını sonlandırır, planlanmış yenilemeyi iptal eder, iptal edilen burslu yenilemenin burs atamasını arşivleyip açık fonlardan karşılanan payını sistem gerekçesiyle bakiyeye döndürür (K-117) ve iade kaydını oluşturur (DOM-FIN-041, DOM-KAY-024). Paket satışı hesaba giriyorsa iade tutarı yönetici onayından geçer (K-21): önizlemede görülen tutar `approvedRefundCents` ile gelir, yoksa 422 `withdrawal_refund_approval_required`, tutar değiştiyse 409 `withdrawal_refund_changed`; kullanılan saat girilmemişse satır `usedHoursMissing` taşır. Pasif öğrenci 409 `student_already_withdrawn`; tahsilatı olan yenileme 409 `withdrawal_renewal_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Rol: `yonetici`.',
+          'Tek işlemde öğrenciyi pasifleştirir, açık taksitleri iptal eder, borç kalırsa tek taksit açar, ileri tarihli etüt, servis ve kulüp kayıtlarını sonlandırır, planlanmış yenilemeyi iptal eder, iptal edilen burslu yenilemenin burs atamasını arşivleyip açık fonlardan karşılanan payını sistem gerekçesiyle bakiyeye döndürür (K-117), etkinliği ayrılış gününden sonra olan katılımı etkinliğin kuralıyla iptal eder (iade katılım kaydından ödenir, kesinti farkı etkinlik taksiti olur; K-348) ve iade kaydını oluşturur (DOM-FIN-041, DOM-KAY-024). Etkinlik taksiti ve burs geri isteme alacağı iptal edilmez (K-349, K-351). Paket satışı hesaba giriyorsa iade tutarı yönetici onayından geçer (K-21): önizlemede görülen tutar `approvedRefundCents` ile gelir, yoksa 422 `withdrawal_refund_approval_required`, tutar değiştiyse 409 `withdrawal_refund_changed`; kullanılan saat girilmemişse satır `usedHoursMissing` taşır. Pasif öğrenci 409 `student_already_withdrawn`; tahsilatı olan yenileme 409 `withdrawal_renewal_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Rol: `yonetici`.',
         headers: commandHeadersSchema('required', { ifMatch: false }),
         params: studentParams,
         body: withdrawStudentSchema,

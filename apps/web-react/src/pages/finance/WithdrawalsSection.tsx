@@ -4,6 +4,7 @@ import { useForm } from 'react-hook-form'
 import { useSearchParams } from 'react-router'
 import { dateLabel, dayKey, money } from '@kampus/school-core/lib/format.ts'
 import { bankAccountLabel } from '@kampus/school-core/lib/payments.ts'
+import { withdrawalFollowupSections } from '@kampus/school-core/lib/withdrawal-followups.ts'
 import {
   contractLineRows,
   contractLinesToShow,
@@ -261,11 +262,28 @@ export function WithdrawalsSection({ canManage }: { canManage: boolean }) {
 }
 
 function BreakdownRows({ rows }: { rows: readonly (readonly [string, string])[] }) {
-  return rows.map(([label, value]) => (
-    <div key={label} className="flex justify-between gap-4 border-b py-1.5">
+  // Aynı adlı iki etkinlik ya da iki geri isteme satırı olabilir; anahtar sırayı da taşır.
+  return rows.map(([label, value], index) => (
+    <div key={`${String(index)}-${label}`} className="flex justify-between gap-4 border-b py-1.5">
       <dt className="text-muted-foreground">{label}</dt>
       <dd className="font-medium">{value}</dd>
     </div>
+  ))
+}
+
+/**
+ * Burs ve etkinlik bölümleri (ON-342, K-348…K-351): tutarları iade ve kalan borca girmez, bölüm
+ * notu bunu söyler. Eski kayıtta bölüm yoktur.
+ */
+function FollowupSections({ breakdown }: { breakdown: WithdrawalBreakdown }) {
+  return withdrawalFollowupSections(breakdown).map((section) => (
+    <section key={section.title} aria-label={section.title} className="grid gap-1">
+      <h4 className="font-semibold">{section.title}</h4>
+      {section.note ? <p className="text-muted-foreground">{section.note}</p> : null}
+      <dl className="grid gap-1">
+        <BreakdownRows rows={section.rows} />
+      </dl>
+    </section>
   ))
 }
 
@@ -332,6 +350,7 @@ function ContractBreakdown({
           </div>
         </dl>
       </section>
+      <FollowupSections breakdown={breakdown} />
     </div>
   )
 }
@@ -374,17 +393,20 @@ function BreakdownList({
       : []),
   ]
   return (
-    <dl className="grid gap-1 text-sm">
-      <BreakdownRows rows={lines} />
-      <div className="flex justify-between gap-4 py-1.5 font-semibold">
-        <dt>İade</dt>
-        <dd>{money(breakdown.refundCents)}</dd>
-      </div>
-      <div className="flex justify-between gap-4 py-1.5 font-semibold">
-        <dt>Kalan borç</dt>
-        <dd>{money(breakdown.debtCents)}</dd>
-      </div>
-    </dl>
+    <div className="grid gap-4 text-sm">
+      <dl className="grid gap-1">
+        <BreakdownRows rows={lines} />
+        <div className="flex justify-between gap-4 py-1.5 font-semibold">
+          <dt>İade</dt>
+          <dd>{money(breakdown.refundCents)}</dd>
+        </div>
+        <div className="flex justify-between gap-4 py-1.5 font-semibold">
+          <dt>Kalan borç</dt>
+          <dd>{money(breakdown.debtCents)}</dd>
+        </div>
+      </dl>
+      <FollowupSections breakdown={breakdown} />
+    </div>
   )
 }
 

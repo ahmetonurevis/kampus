@@ -159,6 +159,11 @@ export interface WaitlistEntry {
   studentId: string
   waitlistPosition: number
   consentStatus: ConsentStatus
+  /**
+   * Öğrenci kurumda etkin mi; `false` (ayrılmış ya da mezun) yedek asile geçmez, sıradaki geçer
+   * (K-396). Verilmezse etkin sayılır.
+   */
+  studentActive?: boolean
 }
 
 export interface Promotion {
@@ -170,16 +175,20 @@ export interface Promotion {
 
 /**
  * Asile geçecek yedekler (K-369): boş yer kadar, en küçük sıra numarasından. Etkinlik iptal
- * edilmişse ya da günü geçmişse yoktur. Saf seçim; taksit açmaz.
+ * edilmişse ya da günü geçmişse yoktur. Etkin olmayan (ayrılmış ya da mezun) öğrencinin yedeği
+ * atlanır, katılımdaki gibi (K-396). Saf seçim; taksit açmaz.
  */
-export function promotionCandidates<T extends Pick<WaitlistEntry, 'waitlistPosition'>>(
+export function promotionCandidates<
+  T extends Pick<WaitlistEntry, 'waitlistPosition' | 'studentActive'>,
+>(
   activity: Pick<PaidActivityTerms, 'status' | 'activityDate' | 'capacity'>,
   input: { seatCount: number; waitlisted: readonly T[] },
   today: string,
 ): T[] {
   if (activity.status === 'cancelled' || today > activity.activityDate) return []
   const free = Math.max(0, activity.capacity - input.seatCount)
-  return [...input.waitlisted]
+  return input.waitlisted
+    .filter((item) => item.studentActive !== false)
     .sort((a, b) => a.waitlistPosition - b.waitlistPosition)
     .slice(0, free)
 }

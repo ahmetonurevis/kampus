@@ -710,4 +710,186 @@ describe('DOM-FIN-101: avans ve kesinti uçları', () => {
     assert.equal(aRows.advances.length + aRows.garnishments.length + aRows.pensions.length, 0)
     assert.deepEqual(await rowsOf(b.id), bRowsBefore)
   })
+
+  // --- Dönem kilidi (DOM-FIN-108; ON-343, K-394) ---------------------------------------------
+
+  const PERIODS = `${FINANCE}/payroll-periods`
+  async function periodOf(t: Tenant, month: string) {
+    const year = ok(await get(`${PERIODS}?year=${month.slice(0, 4)}`, t.admin)) as {
+      months: { month: string; version: number | null; current: { inputsHash: string } | null }[]
+    }
+    const view = year.months.find((item) => item.month === month)
+    assert.ok(view)
+    return view
+  }
+  async function approveMonth(t: Tenant, month: string) {
+    const view = await periodOf(t, month)
+    assert.ok(view.current)
+    const response = await call(
+      'POST',
+      `${PERIODS}/${month}/approve`,
+      t.admin,
+      { inputsHash: view.current.inputsHash },
+      key(),
+    )
+    assert.ok([200, 201].includes(response.statusCode), response.body)
+  }
+
+  test('DOM-FIN-101: kilitli bordro ayına düşen avans, icra ve BES yazması 409 payroll_period_locked, kayıt değişmez (DOM-FIN-108, K-394)', async () => {
+    const t = await institution()
+    const selin = await staff(t, 'ogretmen', 'Selin Kaya')
+    const ahmet = await staff(t, 'onburo', 'Ahmet Demir')
+    // Kilitten önce: Eylül'de başlayan avans, Ağustos tebliğli icra, Eylül başlangıçlı BES.
+    const given = ok(
+      await giveAdvance(
+        t.admin,
+        advance(selin, { givenDate: '2026-09-01', firstMonth: '2026-09' }),
+      ),
+      201,
+    )
+    const icra = ok(
+      await addGarnishment(t.admin, garnishment(selin, { receivedDate: '2026-08-10' })),
+      201,
+    )
+    const bes = ok(await enroll(t.admin, pension(selin)), 201)
+    await approveMonth(t, '2026-09')
+    const before = await rowsOf(t.id)
+
+    const locked = (response: Response, path: string) => {
+      assertError(response, 409, 'payroll_period_locked')
+      assert.deepEqual(response.json().issues?.[0]?.path, [path])
+    }
+    // Avans: plan Eylül'e değerse yeni kayıt, iptal ve Eylül'den kapama 409.
+    locked(
+      await giveAdvance(
+        t.admin,
+        advance(ahmet, { givenDate: '2026-09-01', firstMonth: '2026-09' }),
+      ),
+      'firstMonth',
+    )
+    locked(
+      await call(
+        'POST',
+        `${ADVANCES}/${String(given.id)}/cancel`,
+        t.admin,
+        { reason: 'Yanlış tutar girildi' },
+        ifMatch(given.version),
+      ),
+      'reason',
+    )
+    // İcra: Eylül tebliği ve Eylül kapanışı 409; BES: Eylül başlangıcı, ara ve ayrılma 409.
+    locked(
+      await addGarnishment(
+        t.admin,
+        garnishment(ahmet, { fileNumber: '2026/77', receivedDate: '2026-09-15' }),
+      ),
+      'receivedDate',
+    )
+    locked(
+      await call(
+        'POST',
+        `${GARNISHMENTS}/${String(icra.id)}/close`,
+        t.admin,
+        { closedDate: '2026-09-30', reason: 'paid_off' },
+        ifMatch(icra.version),
+      ),
+      'closedDate',
+    )
+    locked(await enroll(t.admin, pension(ahmet, { startDate: '2026-09-10' })), 'startDate')
+    locked(
+      await call(
+        'POST',
+        `${PENSIONS}/${String(bes.id)}/pause`,
+        t.admin,
+        { fromMonth: '2026-09', toMonth: '2026-10' },
+        ifMatch(bes.version),
+      ),
+      'fromMonth',
+    )
+    locked(
+      await call(
+        'POST',
+        `${PENSIONS}/${String(bes.id)}/opt-out`,
+        t.admin,
+        { optOutDate: '2026-09-20' },
+        ifMatch(bes.version),
+      ),
+      'optOutDate',
+    )
+    assert.deepEqual(await rowsOf(t.id), before)
+    assert.equal((await auditsOf(t.id, 'staff_advance.cancel')).length, 0)
+
+    // Kilitli aya değmeyen değişiklik geçer; kalan alacak tarihsiz bakiyedir, denetlenmez.
+    ok(
+      await giveAdvance(
+        t.admin,
+        advance(ahmet, { givenDate: '2026-09-01', firstMonth: '2026-10' }),
+      ),
+      201,
+    )
+    const closed = ok(
+      await call(
+        'POST',
+        `${ADVANCES}/${String(given.id)}/close`,
+        t.admin,
+        { closedDate: '2026-10-05', fromMonth: '2026-10', method: 'cash' },
+        ifMatch(given.version),
+      ),
+    )
+    assert.equal(closed.status, 'closed')
+    ok(
+      await call(
+        'PATCH',
+        `${GARNISHMENTS}/${String(icra.id)}`,
+        t.admin,
+        { remainingCents: 4_000_000 },
+        ifMatch(icra.version),
+      ),
+    )
+    ok(
+      await call(
+        'POST',
+        `${PENSIONS}/${String(bes.id)}/pause`,
+        t.admin,
+        { fromMonth: '2026-10', toMonth: '2026-11' },
+        ifMatch(bes.version),
+      ),
+    )
+    ok(await enroll(t.admin, pension(ahmet, { startDate: '2026-10-01' })), 201)
+
+    // Dönem yeniden açılınca Eylül'e düşen değişiklik yazılır.
+    const view = await periodOf(t, '2026-09')
+    ok(
+      await call(
+        'POST',
+        `${PERIODS}/2026-09/reopen`,
+        t.admin,
+        { reason: 'İcra kapanışı eksik girildi' },
+        { ...ifMatch(view.version), ...key() },
+      ),
+    )
+    ok(
+      await call(
+        'POST',
+        `${GARNISHMENTS}/${String(icra.id)}/close`,
+        t.admin,
+        { closedDate: '2026-09-30', reason: 'paid_off' },
+        ifMatch(Number(icra.version) + 1),
+      ),
+    )
+  })
+
+  test('DOM-FIN-101: başka kurumun kilidi bu kurumun kesinti yazmasını etkilemez (K-394)', async () => {
+    const a = await institution()
+    const b = await institution()
+    const selin = await staff(a, 'ogretmen', 'Selin Kaya')
+    await approveMonth(b, '2026-09')
+    ok(
+      await giveAdvance(
+        a.admin,
+        advance(selin, { givenDate: '2026-09-01', firstMonth: '2026-09' }),
+      ),
+      201,
+    )
+  })
 })

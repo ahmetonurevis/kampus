@@ -1,18 +1,23 @@
-// Bordro aktarımı ekranının saf mantığı (DOM-FIN-105; ON-202): önizleme satırının gösterimi ve ek
-// ders saati formu. Sınırlar ve mesajlar core `payrollLessonHoursInputSchema` ile aynıdır.
+// Bordro aktarımı ekranının saf mantığı (DOM-FIN-105; ON-202, ON-343): önizleme satırının gösterimi
+// (ücret, ek ders, kesinti ve düzeltme) ve ek ders saati formu. Sınırlar ve mesajlar core
+// `payrollLessonHoursInputSchema` ile aynıdır.
 import { z } from 'zod'
 import type {
   CreatePayrollLessonHoursBody,
   PayrollLine,
 } from '@kampus/react-shared/use-finance-payroll-exports.ts'
 import {
+  PAYROLL_DEDUCTION_BASE_LABELS,
   PAYROLL_LESSON_HOURS_MAX,
   PAYROLL_LESSON_NOTE_MAX,
+  PAYROLL_LINE_DIRECTION_LABELS,
   PAYROLL_UNIT_LABELS,
   PAYROLL_WARNING_LABELS,
   payrollItemLabel,
 } from '@kampus/school-core/lib/finance-payroll-exports.ts'
 import { LESSON_PAY_TYPES } from '@kampus/school-core/lib/finance-pay-rates.ts'
+import { payrollMonthLabel } from '@kampus/school-core/lib/finance-payroll-periods.ts'
+import { rateLabel } from '@kampus/school-core/lib/finance-staff-deductions.ts'
 import { money } from '@kampus/school-core/lib/format.ts'
 
 export const PAYROLL_EXPORT_VIEW = 'bordro-aktarim'
@@ -30,6 +35,7 @@ export interface PayrollRow {
   id: string
   staff: string
   item: string
+  direction: string
   unit: string
   rate: string
   quantity: string
@@ -39,10 +45,33 @@ export interface PayrollRow {
   lessonHoursId: string | null
 }
 
-/** Ay içindeki dönem: "01.10–14.10 · 14/31 gün"; ek derste "Ay toplamı". */
+/**
+ * Ay içindeki dönem: "01.10–14.10 · 14/31 gün"; avans taksitinde "Taksit 2/3", düzeltmede
+ * "Eylül 2026 farkı", ek ders ve öteki kesintilerde "Ay toplamı".
+ */
 export function payrollPeriodText(line: PayrollLine): string {
+  if (line.installmentNo !== null && line.installmentCount !== null)
+    return `Taksit ${String(line.installmentNo)}/${String(line.installmentCount)}`
+  if (line.sourceMonth !== null) return `${payrollMonthLabel(line.sourceMonth)} farkı`
   if (line.startDate === null || line.endDate === null || line.days === null) return 'Ay toplamı'
   return `${shortDay(line.startDate)}–${shortDay(line.endDate)} · ${String(line.days)}/${String(line.monthDays)} gün`
+}
+
+/** Birim ücret ya da oranlı kesintide oran, matrah ve üst sınır: "%25 · Net ücret · en çok …". */
+export function payrollRateText(line: PayrollLine): string {
+  if (line.rateBasisPoints !== null) {
+    const base =
+      line.deductionBase === null ? '' : ` · ${PAYROLL_DEDUCTION_BASE_LABELS[line.deductionBase]}`
+    const cap = line.capCents === null ? '' : ` · en çok ${money(line.capCents)}`
+    return `${rateLabel(line.rateBasisPoints)}${base}${cap}`
+  }
+  return line.rateCents === null ? '—' : money(line.rateCents)
+}
+
+/** Tutar: kesinti eksi işaretle; hesaplanamıyorsa bordroya bırakılır. */
+export function payrollTotalText(line: Pick<PayrollLine, 'direction' | 'totalCents'>): string {
+  if (line.totalCents === null) return 'Bordroda hesaplanır'
+  return money(line.direction === 'deduction' ? -line.totalCents : line.totalCents)
 }
 
 export function payrollRow(line: PayrollLine): PayrollRow {
@@ -50,10 +79,11 @@ export function payrollRow(line: PayrollLine): PayrollRow {
     id: line.key,
     staff: line.staffActive ? line.staffName : `${line.staffName} (pasif)`,
     item: payrollItemLabel(line),
+    direction: PAYROLL_LINE_DIRECTION_LABELS[line.direction],
     unit: PAYROLL_UNIT_LABELS[line.unit],
-    rate: line.rateCents === null ? '—' : money(line.rateCents),
+    rate: payrollRateText(line),
     quantity: line.quantity === null ? '—' : `${String(line.quantity)} saat`,
-    total: line.totalCents === null ? 'Bordroda hesaplanır' : money(line.totalCents),
+    total: payrollTotalText(line),
     period: payrollPeriodText(line),
     warnings: line.warnings.map((code) => PAYROLL_WARNING_LABELS[code]).join('; '),
     lessonHoursId: line.lessonHoursId,

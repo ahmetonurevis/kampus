@@ -9083,7 +9083,7 @@ export interface paths {
         put?: never;
         /**
          * Personele avans ver
-         * @description Personel, tutar (kuruş), veriliş günü, ödeme yöntemi (`cash`, `bank_transfer`), taksit sayısı (1–24) ve mahsubun ilk ayı (K-312). Taksit planı eşit kuruştur, yuvarlama farkı son taksite eklenir; plan saklanmaz. Gelecek gün 422 `staff_deduction_date_in_future`; ilk ay veriliş ayından önce 422 `staff_advance_first_month_before_given`, 12 aydan sonra 422 `staff_advance_first_month_too_late`; olmayan üyelik 422 `staff_deduction_staff_not_found`, öğrenci ya da veli 422 `staff_deduction_not_staff`, pasif personel 422 `staff_deduction_staff_inactive`. Taksit planı oluşturduğu için `Idempotency-Key` zorunlu. Rol: `yonetici` (muhasebe/İK rolü açılınca o da; K-315). Modül `finance`.
+         * @description Personel, tutar (kuruş), veriliş günü, ödeme yöntemi (`cash`, `bank_transfer`), taksit sayısı (1–24) ve mahsubun ilk ayı (K-312). Taksit planı eşit kuruştur, yuvarlama farkı son taksite eklenir; plan saklanmaz. Gelecek gün 422 `staff_deduction_date_in_future`; ilk ay veriliş ayından önce 422 `staff_advance_first_month_before_given`, 12 aydan sonra 422 `staff_advance_first_month_too_late`; olmayan üyelik 422 `staff_deduction_staff_not_found`, öğrenci ya da veli 422 `staff_deduction_not_staff`, pasif personel 422 `staff_deduction_staff_inactive`. Taksit planı oluşturduğu için `Idempotency-Key` zorunlu. Onaylanmış (kilitli) bordro ayına düşen değişiklik 409 `payroll_period_locked`: bütün taksit ayları denetlenir. Rol: `yonetici` (muhasebe/İK rolü açılınca o da; K-315). Modül `finance`.
          */
         post: operations["createStaffAdvance"];
         delete?: never;
@@ -9103,7 +9103,7 @@ export interface paths {
         put?: never;
         /**
          * Avansı erken kapat
-         * @description Kalanı personel öder: kapama günü, kesilmeyecek ilk taksit ayı ve geri ödeme yöntemi (K-312). Bu ay ve sonraki taksitler kesilmez; kalan plandan hesaplanır. Açık olmayan avans 422 `staff_advance_not_active`; gelecek gün 422 `staff_deduction_date_in_future`; veriliş gününden önce 422 `staff_advance_close_before_given`; kapama ayından önceki ay 422 `staff_advance_close_month_past`; plan dışı ay 422 `staff_advance_close_month_outside_plan`. Başka kurumun avansı 404. `If-Match` zorunlu (409 `version_conflict`). Rol: `yonetici` (muhasebe/İK rolü açılınca o da; K-315). Modül `finance`.
+         * @description Kalanı personel öder: kapama günü, kesilmeyecek ilk taksit ayı ve geri ödeme yöntemi (K-312). Bu ay ve sonraki taksitler kesilmez; kalan plandan hesaplanır. Açık olmayan avans 422 `staff_advance_not_active`; gelecek gün 422 `staff_deduction_date_in_future`; veriliş gününden önce 422 `staff_advance_close_before_given`; kapama ayından önceki ay 422 `staff_advance_close_month_past`; plan dışı ay 422 `staff_advance_close_month_outside_plan`. Başka kurumun avansı 404. Onaylanmış (kilitli) bordro ayına düşen değişiklik 409 `payroll_period_locked`: kesilmeyecek ilk aydan planın son ayına. `If-Match` zorunlu (409 `version_conflict`). Rol: `yonetici` (muhasebe/İK rolü açılınca o da; K-315). Modül `finance`.
          */
         post: operations["closeStaffAdvance"];
         delete?: never;
@@ -9123,7 +9123,7 @@ export interface paths {
         put?: never;
         /**
          * Avansı iptal et
-         * @description Yanlış girilen avans silinmez, gerekçeyle (5–500 karakter) iptal edilir; hiçbir taksiti kesilmez (K-312). Gerekçe denetim kaydına yazılmaz. Açık olmayan avans 422 `staff_advance_not_active`. Başka kurumun avansı 404. `If-Match` zorunlu (409 `version_conflict`). Rol: `yonetici` (muhasebe/İK rolü açılınca o da; K-315). Modül `finance`.
+         * @description Yanlış girilen avans silinmez, gerekçeyle (5–500 karakter) iptal edilir; hiçbir taksiti kesilmez (K-312). Gerekçe denetim kaydına yazılmaz. Açık olmayan avans 422 `staff_advance_not_active`. Başka kurumun avansı 404. Onaylanmış (kilitli) bordro ayına düşen değişiklik 409 `payroll_period_locked`: bütün taksit ayları; kesilmiş taksit varsa avans erken kapatılır. `If-Match` zorunlu (409 `version_conflict`). Rol: `yonetici` (muhasebe/İK rolü açılınca o da; K-315). Modül `finance`.
          */
         post: operations["cancelStaffAdvance"];
         delete?: never;
@@ -9143,7 +9143,7 @@ export interface paths {
         put?: never;
         /**
          * İcra kesintisi kaydet
-         * @description İcra dairesi, dosya no, alacak (kuruş), net ücretten oran (onbinde, varsayılan 2500 = dörtte bir; İİK md. 83), nafaka işareti ve tebliğ günü (K-313). Kalan alacak alacağa eşit başlar; kayıt sıra numarası verilir. Aynı personele aynı daire ve dosya 409 `staff_garnishment_duplicate`; gelecek tebliğ günü 422 `staff_deduction_date_in_future`; olmayan üyelik 422 `staff_deduction_staff_not_found`, öğrenci ya da veli 422 `staff_deduction_not_staff`, pasif personel 422 `staff_deduction_staff_inactive`. Hassas veri: değerler loglanmaz, denetime alan adı yazılır. Rol: `yonetici` (muhasebe/İK rolü açılınca o da; K-315). Modül `finance`.
+         * @description İcra dairesi, dosya no, alacak (kuruş), net ücretten oran (onbinde, varsayılan 2500 = dörtte bir; İİK md. 83), nafaka işareti ve tebliğ günü (K-313). Kalan alacak alacağa eşit başlar; kayıt sıra numarası verilir. Aynı personele aynı daire ve dosya 409 `staff_garnishment_duplicate`; gelecek tebliğ günü 422 `staff_deduction_date_in_future`; olmayan üyelik 422 `staff_deduction_staff_not_found`, öğrenci ya da veli 422 `staff_deduction_not_staff`, pasif personel 422 `staff_deduction_staff_inactive`. Hassas veri: değerler loglanmaz, denetime alan adı yazılır. Onaylanmış (kilitli) bordro ayına düşen değişiklik 409 `payroll_period_locked`: tebliğ ayından itibaren. Rol: `yonetici` (muhasebe/İK rolü açılınca o da; K-315). Modül `finance`.
          */
         post: operations["createStaffGarnishment"];
         delete?: never;
@@ -9167,7 +9167,7 @@ export interface paths {
         head?: never;
         /**
          * İcranın kalan alacağını güncelle
-         * @description İcra dairesinin bakiye yazısına göre kalan alacak (kuruş, K-313). Alacağı aşan 422 `staff_garnishment_remaining_exceeds_claim`; kapanmış icra 422 `staff_garnishment_closed`. Başka kurumun kaydı 404. `If-Match` zorunlu (409 `version_conflict`). Rol: `yonetici` (muhasebe/İK rolü açılınca o da; K-315). Modül `finance`.
+         * @description İcra dairesinin bakiye yazısına göre kalan alacak (kuruş, K-313). Alacağı aşan 422 `staff_garnishment_remaining_exceeds_claim`; kapanmış icra 422 `staff_garnishment_closed`. Başka kurumun kaydı 404. Kalan alacak tarihsiz bakiyedir; dönem kilidi denetlenmez (K-394). `If-Match` zorunlu (409 `version_conflict`). Rol: `yonetici` (muhasebe/İK rolü açılınca o da; K-315). Modül `finance`.
          */
         patch: operations["updateStaffGarnishment"];
         trace?: never;
@@ -9183,7 +9183,7 @@ export interface paths {
         put?: never;
         /**
          * İcrayı kapat
-         * @description Kapanış günü ve nedeni (`paid_off` borç ödendi, `lifted` haciz kaldırıldı, `other`; K-313). Kapanış ayından itibaren kesilmez, sıradaki icra başlar. Zaten kapalı 422 `staff_garnishment_closed`; tebliğden önce 422 `staff_garnishment_close_before_received`; gelecek gün 422 `staff_deduction_date_in_future`. Başka kurumun kaydı 404. `If-Match` zorunlu (409 `version_conflict`). Rol: `yonetici` (muhasebe/İK rolü açılınca o da; K-315). Modül `finance`.
+         * @description Kapanış günü ve nedeni (`paid_off` borç ödendi, `lifted` haciz kaldırıldı, `other`; K-313). Kapanış ayından itibaren kesilmez, sıradaki icra başlar. Zaten kapalı 422 `staff_garnishment_closed`; tebliğden önce 422 `staff_garnishment_close_before_received`; gelecek gün 422 `staff_deduction_date_in_future`. Başka kurumun kaydı 404. Onaylanmış (kilitli) bordro ayına düşen değişiklik 409 `payroll_period_locked`: kapanış ayından itibaren. `If-Match` zorunlu (409 `version_conflict`). Rol: `yonetici` (muhasebe/İK rolü açılınca o da; K-315). Modül `finance`.
          */
         post: operations["closeStaffGarnishment"];
         delete?: never;
@@ -9203,7 +9203,7 @@ export interface paths {
         put?: never;
         /**
          * BES otomatik katılımı kaydet
-         * @description Çalışan katkı oranı (onbinde, varsayılan ve en az 300 = %3) ve başlangıç günü (K-314). Yalnız kayıttır; katkı emeklilik şirketine aktarılmaz. Personelin açık katılımı varken 409 `staff_pension_already_enrolled`; olmayan üyelik 422 `staff_deduction_staff_not_found`, öğrenci ya da veli 422 `staff_deduction_not_staff`, pasif personel 422 `staff_deduction_staff_inactive`. Rol: `yonetici` (muhasebe/İK rolü açılınca o da; K-315). Modül `finance`.
+         * @description Çalışan katkı oranı (onbinde, varsayılan ve en az 300 = %3) ve başlangıç günü (K-314). Yalnız kayıttır; katkı emeklilik şirketine aktarılmaz. Personelin açık katılımı varken 409 `staff_pension_already_enrolled`; olmayan üyelik 422 `staff_deduction_staff_not_found`, öğrenci ya da veli 422 `staff_deduction_not_staff`, pasif personel 422 `staff_deduction_staff_inactive`. Onaylanmış (kilitli) bordro ayına düşen değişiklik 409 `payroll_period_locked`: başlangıç ayından itibaren. Rol: `yonetici` (muhasebe/İK rolü açılınca o da; K-315). Modül `finance`.
          */
         post: operations["createStaffPensionEnrollment"];
         delete?: never;
@@ -9223,7 +9223,7 @@ export interface paths {
         put?: never;
         /**
          * BES kesintisine ara ver
-         * @description İlk ve son ay (dahil), en çok 12 ay (K-314). Ayrılmış katılım 422 `staff_pension_opted_out`; katılım ayından önce 422 `staff_pension_pause_before_start`; önceki arayla çakışma 422 `staff_pension_pause_overlap`. Başka kurumun kaydı 404. `If-Match` zorunlu (409 `version_conflict`). Rol: `yonetici` (muhasebe/İK rolü açılınca o da; K-315). Modül `finance`.
+         * @description İlk ve son ay (dahil), en çok 12 ay (K-314). Ayrılmış katılım 422 `staff_pension_opted_out`; katılım ayından önce 422 `staff_pension_pause_before_start`; önceki arayla çakışma 422 `staff_pension_pause_overlap`. Başka kurumun kaydı 404. Onaylanmış (kilitli) bordro ayına düşen değişiklik 409 `payroll_period_locked`: ara verilen aylar. `If-Match` zorunlu (409 `version_conflict`). Rol: `yonetici` (muhasebe/İK rolü açılınca o da; K-315). Modül `finance`.
          */
         post: operations["pauseStaffPensionEnrollment"];
         delete?: never;
@@ -9243,7 +9243,7 @@ export interface paths {
         put?: never;
         /**
          * BES katılımından cay ya da ayrıl
-         * @description Gün (K-314); o günün ayından itibaren kesilmez. Katılımdan iki ay içindeyse `optOutKind: cooling_off` (katkı iade edilir), sonra `exit`. Zaten ayrılmış 422 `staff_pension_opted_out`; başlangıçtan önce 422 `staff_pension_opt_out_before_start`; gelecek gün 422 `staff_deduction_date_in_future`. Başka kurumun kaydı 404. `If-Match` zorunlu (409 `version_conflict`). Rol: `yonetici` (muhasebe/İK rolü açılınca o da; K-315). Modül `finance`.
+         * @description Gün (K-314); o günün ayından itibaren kesilmez. Katılımdan iki ay içindeyse `optOutKind: cooling_off` (katkı iade edilir), sonra `exit`. Zaten ayrılmış 422 `staff_pension_opted_out`; başlangıçtan önce 422 `staff_pension_opt_out_before_start`; gelecek gün 422 `staff_deduction_date_in_future`. Başka kurumun kaydı 404. Onaylanmış (kilitli) bordro ayına düşen değişiklik 409 `payroll_period_locked`: ayrılma ayından itibaren. `If-Match` zorunlu (409 `version_conflict`). Rol: `yonetici` (muhasebe/İK rolü açılınca o da; K-315). Modül `finance`.
          */
         post: operations["optOutStaffPensionEnrollment"];
         delete?: never;
@@ -9345,7 +9345,7 @@ export interface paths {
         };
         /**
          * Bordro girdi önizlemesi
-         * @description Seçilen ayın bordro girdi satırları (DOM-FIN-105); bordroyu dış programda hesaplatan kurum içindir, Kampüs'ün kendi hesabı `GET /api/v1/finance/payroll-calculations/{month}` ucundadır (ADR 0011, DOM-FIN-115). Ana ücret ve yan hak: ayla kesişen her ücret tanımı (DOM-FIN-099) bir satırdır; ay içinde başlayan ya da biten tanım ay içindeki başlangıç/bitiş gününü ve gün sayısını taşır, tutarı orantılanmaz ve boş kalır; saatlik ve ders saati ana ücretinde çalışılan saat bilinmediği için tutar boştur; aylık net ücret brüte çevrilmez (K-336). Ek ders: ay için girilen her saat kaydı bir satırdır, tutar saat × o türün ayla kesişen en geç başlayan ek ders ücretidir; tanım yoksa tutar boş (K-337). Satır yönü bugün yalnız `earning`; avans ve kesintiler (ON-199) `deduction` satırı olarak eklenecek. Tutar içerdiği için her okuma denetim kaydına `finance.payroll_export.read` olarak düşer (yalnız alan adı). Rol: yalnız `yonetici` (K-306, K-338; muhasebe rolü açılsa da ücret görmez). Modül `finance`.
+         * @description Seçilen ayın bordro girdi satırları (DOM-FIN-105). Bordroyu dış programda hesaplatan kurum içindir; Kampüs'ün kendi hesabı `GET /api/v1/finance/payroll-calculations/{month}` ucundadır (ADR 0011, DOM-FIN-115). Ana ücret ve yan hak: ayla kesişen her ücret tanımı (DOM-FIN-099) bir satırdır; ay içinde başlayan ya da biten tanım ay içindeki başlangıç/bitiş gününü ve gün sayısını taşır, tutarı orantılanmaz ve boş kalır; saatlik ve ders saati ana ücretinde çalışılan saat bilinmediği için tutar boştur; aylık net ücret brüte çevrilmez (K-336). Ek ders: ay için girilen her saat kaydı bir satırdır, tutar saat × o türün ayla kesişen en geç başlayan ek ders ücretidir; tanım yoksa tutar boş (K-337). Kesinti (DOM-FIN-101, K-392): ayın avans taksiti tutarıyla; sıradaki ve nafaka icraları net ücret oranı (`rateBasisPoints`, `deductionBase: net_wage`) ve kalan alacak üst sınırıyla (`capCents`), BES katkı oranı ve matrahıyla (`pension_base`) `deduction` yönünde satırdır; icra ve BES tutarı boştur (net ücret ve matrah bordroda). Sırada bekleyen ve alacağı biten icra ile ara verilen BES satır vermez. Düzeltme (DOM-FIN-108, K-393): bu aya aktarılan her düzeltme bir satırdır; artı fark `earning`, eksi fark `deduction`, tutar mutlak, ait olduğu ay `sourceMonth`. Tutar içerdiği için her okuma denetim kaydına `finance.payroll_export.read` olarak düşer (yalnız alan adı; icra satırı varsa icra alan adları da, K-315). Rol: yalnız `yonetici` (K-306, K-338; muhasebe rolü açılsa da ücret görmez). Modül `finance`.
          */
         get: operations["previewPayrollExport"];
         put?: never;
@@ -9371,7 +9371,7 @@ export interface paths {
         put?: never;
         /**
          * Bordro girdi dosyasını üret
-         * @description Önizlemeyle aynı satırlardan CSV üretir: kurumun sütun eşleme şablonu varsa onun ayırıcısı, ondalık işareti, tarih biçimi ve sütun adı/sırası; yoksa genel dosya (UTF-8 BOM, `;` ayırıcı, ondalık virgül, ISO gün, bütün sütunlar). Metin hücreleri formül kaçışlıdır; boş tutar boş hücredir. Belirli bir bordro programının hazır biçimi değildir (K-339). Personel kimlik numarası sütunu yoktur: personel kimlik verisi Kampüs'te tutulmaz, "Personel no" kurum üyeliğidir. Her üretim aynı işlemde özet satırı (ay, biçim, satır ve personel sayısı, toplamlar, dosyanın SHA-256 özeti) ve `finance.payroll_export.create` denetimi yazar; dosya saklanmaz. Dönem kilidi yoktur, aynı ay yeniden üretilebilir (K-338). Taze oturum ister: eskiyse 403 `reauthentication_required`; kullanıcı başına 10/dk. Rol: yalnız `yonetici` (K-306, K-338; muhasebe rolü açılsa da ücret görmez). Modül `finance`.
+         * @description Önizlemeyle aynı satırlardan CSV üretir: kurumun sütun eşleme şablonu varsa onun ayırıcısı, ondalık işareti, tarih biçimi ve sütun adı/sırası; yoksa genel dosya (UTF-8 BOM, `;` ayırıcı, ondalık virgül, ISO gün, bütün sütunlar). Metin hücreleri formül kaçışlıdır; boş tutar boş hücredir. Kesinti ve düzeltme sütunları (Kesinti türü kodu, Kesinti sırası, Oran (%), Matrah, Üst sınır, Ait olduğu ay) genel dosyanın sonundadır; önceki sütunların yeri değişmez (K-392, K-393). Belirli bir bordro programının hazır biçimi değildir (K-339). Personel kimlik numarası sütunu yoktur: personel kimlik verisi Kampüs'te tutulmaz, "Personel no" kurum üyeliğidir. Her üretim aynı işlemde özet satırı (ay, biçim, satır ve personel sayısı, toplamlar, dosyanın SHA-256 özeti) ve `finance.payroll_export.create` denetimi yazar (icra satırı varsa icra alan adları da); dosya saklanmaz. Dönem kilidi yoktur, aynı ay yeniden üretilebilir (K-338). Taze oturum ister: eskiyse 403 `reauthentication_required`; kullanıcı başına 10/dk. Rol: yalnız `yonetici` (K-306, K-338; muhasebe rolü açılsa da ücret görmez). Modül `finance`.
          */
         post: operations["createPayrollExport"];
         delete?: never;
@@ -9663,7 +9663,7 @@ export interface paths {
         put?: never;
         /**
          * Bordro ayını onayla (kilitle)
-         * @description Ayın bordro girdilerini onaylar ve ayı kilitler (DOM-FIN-108, K-356, K-357): onaydan sonra yürürlüğü bu aya düşen ücret tanımı yazmaları (yeni tanım, bitiş, iptal) ve bu ayda geçerli seti değiştiren bordro parametresi yazmaları 409 `payroll_period_locked` olur. Girdi özeti ve damgası kurum kilidi altında yeniden hesaplanır; `inputsHash` listedeki `current.inputsHash` ile aynı değilse 409 `payroll_inputs_changed`. Başlamamış ay 422 `payroll_period_in_future`, onaylı ay 409 `payroll_period_already_approved`. İlk onay 201, yeniden açılmış ayın onayı 200. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (K-359). Modül `finance`.
+         * @description Ayın bordro girdilerini onaylar ve ayı kilitler (DOM-FIN-108, K-356, K-357): onaydan sonra yürürlüğü bu aya düşen ücret tanımı yazmaları (yeni tanım, bitiş, iptal), bu ayda geçerli seti değiştiren bordro parametresi yazmaları ve bu ayın kesintisini değiştiren avans, icra ve BES yazmaları (K-394) 409 `payroll_period_locked` olur. Girdi özeti ve damgası kurum kilidi altında yeniden hesaplanır; `inputsHash` listedeki `current.inputsHash` ile aynı değilse 409 `payroll_inputs_changed`. Başlamamış ay 422 `payroll_period_in_future`, onaylı ay 409 `payroll_period_already_approved`. İlk onay 201, yeniden açılmış ayın onayı 200. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (K-359). Modül `finance`.
          */
         post: operations["approvePayrollPeriod"];
         delete?: never;
@@ -99317,8 +99317,13 @@ export interface operations {
                             to: string;
                             days: number;
                             lines: {
-                                /** @description Satırın kimliği: `rate:<tanım>` ya da `hours:<saat kaydı>` */
+                                /** @description Satırın kimliği: `rate:<tanım>`, `hours:<saat kaydı>`, `deduction:<tür>:<kayıt>` ya da `adjustment:<düzeltme>` */
                                 key: string;
+                                /**
+                                 * @description `rate` ücret tanımı, `lesson_hours` ek ders saati, `deduction` avans ya da kesinti (DOM-FIN-101), `adjustment` kilitli aydan aktarılan düzeltme (DOM-FIN-108)
+                                 * @enum {string}
+                                 */
+                                kind: "rate" | "lesson_hours" | "deduction" | "adjustment";
                                 month: string;
                                 /** @description Personelin kurum üyeliği (dosyada "Personel no") */
                                 membershipId: string;
@@ -99327,28 +99332,46 @@ export interface operations {
                                 role: string;
                                 /** @description Pasifleştirilmiş (ayrılan) personelde `false` */
                                 staffActive: boolean;
-                                /** @enum {string} */
-                                component: "wage" | "lesson" | "benefit";
-                                /** @enum {string} */
-                                rateType: "monthly_gross" | "monthly_net" | "hourly" | "lesson_hour" | "extra" | "duty" | "meal" | "transport" | "child" | "service";
-                                /** @description Kalem kodu `<bileşen>.<tür>`, ör. `wage.monthly_gross` */
+                                /** @description Ücret tanımı ve ek derste bileşen; kesinti ve düzeltmede boş */
+                                component: ("wage" | "lesson" | "benefit") | null;
+                                /** @description Ücret tanımı ve ek derste tür; kesinti ve düzeltmede boş */
+                                rateType: ("monthly_gross" | "monthly_net" | "hourly" | "lesson_hour" | "extra" | "duty" | "meal" | "transport" | "child" | "service") | null;
+                                /** @description Kalem kodu: `<bileşen>.<tür>` (`wage.monthly_gross`), `deduction.<tür>` (`deduction.advance`) ya da `adjustment.<kalem>` (`adjustment.lesson`) */
                                 itemCode: string;
                                 /**
-                                 * @description `earning` kazanç; `deduction` kesinti avans ve kesintiler (ON-199) için ayrılmıştır
+                                 * @description `earning` kazanç; `deduction` kesinti (avans, icra, BES ve eksi düzeltme)
                                  * @enum {string}
                                  */
                                 direction: "earning" | "deduction";
                                 /**
-                                 * @description `month` aylık, `hour` saat, `lesson_hour` ders saati
+                                 * @description `month` aylık, `hour` saat, `lesson_hour` ders saati, `once` tek sefer (düzeltme)
                                  * @enum {string}
                                  */
-                                unit: "month" | "hour" | "lesson_hour";
+                                unit: "month" | "hour" | "lesson_hour" | "once";
                                 /** @description Tanımın tutarı (birim ücret), kuruş; ek ders tanımı yoksa boş */
                                 rateCents: number | null;
                                 /** @description Ek derste saat; diğerlerinde boş */
                                 quantity: number | null;
-                                /** @description Tam ay aylık tutar ya da saat × birim ücret, kuruş; kısmi ay, saatlik ücret ve tanımsız ek derste boş (K-336) */
+                                /** @description Tam ay aylık tutar, saat × birim ücret, avans taksiti ya da düzeltmenin mutlak tutarı, kuruş; kısmi ay, saatlik ücret, tanımsız ek ders, icra ve BES satırında boş (K-336, K-392) */
                                 totalCents: number | null;
+                                /** @description Kesinti türü: `advance` avans taksiti, `garnishment` icra, `pension` BES */
+                                deductionKind: ("advance" | "garnishment" | "pension") | null;
+                                /** @description Personelin ayki kesinti sırası (1’den; avans, nafaka, sıradaki icra, BES) */
+                                deductionOrder: number | null;
+                                /** @description İcra ve BES oranı, onbinde (2500 = %25) */
+                                rateBasisPoints: number | null;
+                                /** @description Oranlı kesintinin matrahı: `net_wage` net ücret (icra), `pension_base` BES matrahı */
+                                deductionBase: ("net_wage" | "pension_base") | null;
+                                /** @description İcrada kalan alacak, kuruş; kesintinin üst sınırı */
+                                capCents: number | null;
+                                /** @description Avans taksitinin sırası */
+                                installmentNo: number | null;
+                                /** @description Avansın taksit sayısı */
+                                installmentCount: number | null;
+                                /** @description Düzeltme kalemi (DOM-FIN-108) */
+                                adjustmentItem: ("wage" | "lesson" | "benefit" | "deduction" | "other") | null;
+                                /** @description Düzeltmenin ait olduğu (kilitli) ay, YYYY-AA */
+                                sourceMonth: string | null;
                                 /** @description Yan hak vergiye tabi mi */
                                 taxable: boolean | null;
                                 benefitForm: ("cash" | "in_kind") | null;
@@ -99367,14 +99390,14 @@ export interface operations {
                                 /** @description Ek ders saati kaydının notu; dosyaya girmez */
                                 note: string | null;
                                 /** @description Satır uyarı kodları */
-                                warnings: ("partial_month" | "net_wage" | "hourly_wage" | "lesson_rate_missing" | "lesson_rate_changed" | "staff_inactive")[];
+                                warnings: ("partial_month" | "net_wage" | "hourly_wage" | "lesson_rate_missing" | "lesson_rate_changed" | "staff_inactive" | "deduction_on_net" | "deduction_on_pension_base" | "prior_month_adjustment")[];
                             }[];
                             totals: {
                                 lineCount: number;
                                 staffCount: number;
                                 /** @description Tutarı olan kazanç satırlarının toplamı, kuruş */
                                 earningCents: number;
-                                /** @description Tutarı olan kesinti satırlarının toplamı, kuruş */
+                                /** @description Tutarı olan kesinti satırlarının (avans taksiti, eksi düzeltme) toplamı, kuruş */
                                 deductionCents: number;
                                 /** @description Tutarı boş satır sayısı */
                                 missingTotalCount: number;

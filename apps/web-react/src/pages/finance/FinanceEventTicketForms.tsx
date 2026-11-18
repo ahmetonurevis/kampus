@@ -7,6 +7,10 @@ import {
   type TicketedEventRow,
 } from '@kampus/react-shared/use-finance-event-tickets.ts'
 import {
+  EVENT_FULL_REFUND_DAYS,
+  EVENT_LATE_REFUND_PERCENT,
+  EVENT_LIMIT_SCOPE_LABELS,
+  EVENT_LIMIT_SCOPES,
   EVENT_SEATING_MODE_LABELS,
   EVENT_SEATING_MODES,
   EVENT_TICKET_KIND_LABELS,
@@ -206,7 +210,7 @@ export function EventFormModal({
         )}
         <FormField
           id="etkinlik-sinir"
-          label="Öğrenci başına bilet sınırı"
+          label="Bilet sınırı"
           error={errors.perStudentLimit}
           description="Boş bırakılırsa sınır yoktur."
         >
@@ -217,6 +221,27 @@ export function EventFormModal({
               {...form.register('perStudentLimit')}
               disabled={busy}
             />
+          )}
+        </FormField>
+        <FormField
+          id="etkinlik-sinir-kapsami"
+          label="Sınır kapsamı"
+          error={errors.limitScope}
+          description="Aile başına sınırda aynı veliye bağlı kardeşlerin biletleri birlikte sayılır."
+        >
+          {(control) => (
+            <NativeSelect
+              {...control}
+              {...form.register('limitScope')}
+              disabled={busy}
+              className="w-full"
+            >
+              {EVENT_LIMIT_SCOPES.map((scope) => (
+                <NativeSelectOption key={scope} value={scope}>
+                  {EVENT_LIMIT_SCOPE_LABELS[scope]}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
           )}
         </FormField>
         <fieldset className="grid gap-3 sm:col-span-2">
@@ -390,7 +415,9 @@ export function AllocateTicketsModal({
       description={
         event.perStudentLimit === null
           ? 'Bilet öğrencinin ailesine ayrılır; bilet sahibi veli ya da misafirdir.'
-          : `Öğrenci başına en çok ${String(event.perStudentLimit)} bilet ayrılabilir.`
+          : event.limitScope === 'family'
+            ? `Aile başına en çok ${String(event.perStudentLimit)} bilet ayrılabilir; kardeşlerin biletleri birlikte sayılır.`
+            : `Öğrenci başına en çok ${String(event.perStudentLimit)} bilet ayrılabilir.`
       }
       footer={<Footer busy={busy} form={ALLOCATE_FORM_ID} submit="Bileti ayır" onClose={onClose} />}
     >
@@ -500,6 +527,13 @@ export function AllocateTicketsModal({
             Toplam: {money(total)}
             {total > 0 ? ' · ödeme ayrıca işaretlenir' : ''}
           </p>
+          {event.ticketTypes.some((type) => type.kind === 'paid') ? (
+            <p className="text-sm text-muted-foreground">
+              İptalde iade: etkinliğe {String(EVENT_FULL_REFUND_DAYS)} gün ve daha çok kala tam, 1–
+              {String(EVENT_FULL_REFUND_DAYS - 1)} gün kala %{String(EVENT_LATE_REFUND_PERCENT)},
+              etkinlik günü iade yok. Veliye bildirin.
+            </p>
+          ) : null}
           <RootError message={errors.root?.server?.message} />
         </form>
       )}

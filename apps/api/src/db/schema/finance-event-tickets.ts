@@ -17,6 +17,7 @@ import {
 
 import {
   EVENT_CAPACITY_MAX,
+  EVENT_LIMIT_SCOPES,
   EVENT_PER_STUDENT_LIMIT_MAX,
   EVENT_ROWS_MAX,
   EVENT_SEATING_MODES,
@@ -26,6 +27,9 @@ import {
   EVENT_TICKET_PAYMENT_STATUSES,
   EVENT_TICKET_STATUSES,
   EVENT_TICKET_TYPES_MAX,
+  EVENT_UNDO_REASON_MAX,
+  EVENT_UNDO_REASON_MIN,
+  type EventLimitScope,
   type EventSeatingMode,
   type EventTicketKind,
   type EventTicketPaymentMethod,
@@ -42,8 +46,8 @@ const n = (value: number) => sql.raw(String(value))
 /**
  * Biletli etkinlik (DOM-FIN-103; ON-159; K-325): ad, başlangıç anı, salon, isteğe bağlı okul takvimi
  * etkinliği (`school_event_id`, `records` kimliği, yabancı anahtar değil), oturma düzeni (numaralı
- * salon: sıra × koltuk ve kapalı koltuklar; numarasız: kontenjan), bilet türleri ve öğrenci başına
- * üst sınır. Etkin bileti varken arşivlenmez.
+ * salon: sıra × koltuk ve kapalı koltuklar; numarasız: kontenjan), bilet türleri ve öğrenci ya da aile
+ * başına üst sınır (`limit_scope`, K-379). Etkin bileti varken arşivlenmez.
  */
 export const ticketedEvents = pgTable(
   'ticketed_events',
@@ -66,6 +70,7 @@ export const ticketedEvents = pgTable(
     capacity: integer('capacity'),
     ticketTypes: jsonb('ticket_types').$type<EventTicketType[]>().notNull(),
     perStudentLimit: integer('per_student_limit'),
+    limitScope: text('limit_scope').$type<EventLimitScope>().notNull().default('student'),
     salesOpen: boolean('sales_open').notNull().default(true),
     // kvkk: K
     createdByUserId: text('created_by_user_id').notNull(),
@@ -95,15 +100,17 @@ export const ticketedEvents = pgTable(
       sql`${table.perStudentLimit} is null
         or ${table.perStudentLimit} between 1 and ${n(EVENT_PER_STUDENT_LIMIT_MAX)}`,
     ),
+    check('ticketed_events_limit_scope_check', oneOf(table.limitScope, EVENT_LIMIT_SCOPES)),
     index('ticketed_events_starts_at_idx').on(table.institutionId, table.startsAt),
   ],
 )
 
 /**
- * Etkinlik bileti (DOM-FIN-103; K-325, K-326): öğrencinin ailesine ayrılan, bilet sahibi adını
+ * Etkinlik bileti (DOM-FIN-103; K-325, K-326, K-380): öğrencinin ailesine ayrılan, bilet sahibi adını
  * taşıyan bilet. Tür adı, türü ve fiyatı ayırma anında kopyalanır. Koltuk, etkinlikte etkin biletler
  * arasında tekildir (`event_tickets_event_seat_key`, eşzamanlı satışta da). Kod kurumda tekildir ve
- * tahmin edilemez. Bilet silinmez; iptal koltuğu boşa çıkarır.
+ * tahmin edilemez. Bilet silinmez; iptal koltuğu boşa çıkarır. Ödenmiş biletin iptalinde iade tutarı
+ * (`refund_cents`, 0…bedel) yazılır; iadenin ödendiği (`refunded_at`) ayrıca işaretlenir.
  */
 export const eventTickets = pgTable(
   'event_tickets',
@@ -130,7 +137,11 @@ export const eventTickets = pgTable(
     paidAt: timestamp('paid_at', { withTimezone: true }),
     // kvkk: K
     paidByUserId: text('paid_by_user_id'),
+    refundCents: bigint('refund_cents', { mode: 'number' }),
+    refundMethod: text('refund_method').$type<EventTicketPaymentMethod>(),
     refundedAt: timestamp('refunded_at', { withTimezone: true }),
+    // kvkk: K
+    refundedByUserId: text('refunded_by_user_id'),
     usedAt: timestamp('used_at', { withTimezone: true }),
     // kvkk: K
     usedByUserId: text('used_by_user_id'),
@@ -177,9 +188,21 @@ export const eventTickets = pgTable(
       'event_tickets_cancelled_check',
       sql`(${table.status} = 'cancelled') = (${table.cancelledAt} is not null)
         and (${table.cancelledAt} is null) = (${table.cancelledByUserId} is null)
-        and (${table.cancelReason} is null or ${table.cancelledAt} is not null)
-        and (${table.refundedAt} is null or (${table.cancelledAt} is not null
-          and ${table.paymentStatus} = 'paid'))`,
+        and (${table.cancelReason} is null or ${table.cancelledAt} is not null)`,
+    ),
+    check(
+      'event_tickets_refund_check',
+      sql`(${table.refundCents} is not null)
+          = (${table.status} = 'cancelled' and ${table.paymentStatus} = 'paid')
+        and (${table.refundCents} is null
+          or ${table.refundCents} between 0 and ${table.priceCents})
+        and (${table.refundedAt} is null or ${table.refundCents} > 0)
+        and (${table.refundedAt} is null) = (${table.refundedByUserId} is null)
+        and (${table.refundMethod} is null or ${table.refundedAt} is not null)`,
+    ),
+    check(
+      'event_tickets_refund_method_check',
+      sql`${table.refundMethod} is null or ${oneOf(table.refundMethod, EVENT_TICKET_PAYMENT_METHODS)}`,
     ),
     check(
       'event_tickets_used_check',
@@ -192,5 +215,45 @@ export const eventTickets = pgTable(
       .where(sql`${table.status} = 'active' and ${table.seat} is not null`),
     index('event_tickets_event_idx').on(table.institutionId, table.eventId),
     index('event_tickets_student_idx').on(table.institutionId, table.studentId),
+  ],
+)
+
+/**
+ * Geri alınan giriş (DOM-FIN-103; K-378): yanlış okutulan biletin "kullanıldı" işareti gerekçeyle
+ * kaldırılınca eski kullanımın izi (an, okutan, gerekçe, geri alan) burada kalır; bilet yeniden
+ * okutulabilir. Satır değişmez ve silinmez. Gerekçe serbest metindir, denetim kaydına ve loga
+ * yazılmaz.
+ */
+export const eventTicketCheckInReversals = pgTable(
+  'event_ticket_check_in_reversals',
+  {
+    institutionId: text('institution_id')
+      .notNull()
+      .references(() => institutions.id),
+    id: uuid('id').notNull(),
+    ticketId: uuid('ticket_id').notNull(),
+    usedAt: timestamp('used_at', { withTimezone: true }).notNull(),
+    // kvkk: K
+    usedByUserId: text('used_by_user_id').notNull(),
+    reason: text('reason').notNull(),
+    // kvkk: K
+    createdByUserId: text('created_by_user_id').notNull(),
+    ...requiredColumns(),
+  },
+  (table) => [
+    primaryKey({
+      name: 'event_ticket_check_in_reversals_pkey',
+      columns: [table.institutionId, table.id],
+    }),
+    foreignKey({
+      name: 'event_ticket_check_in_reversals_ticket_fkey',
+      columns: [table.institutionId, table.ticketId],
+      foreignColumns: [eventTickets.institutionId, eventTickets.id],
+    }).onDelete('restrict'),
+    check(
+      'event_ticket_check_in_reversals_reason_check',
+      sql`char_length(${table.reason}) between ${n(EVENT_UNDO_REASON_MIN)} and ${n(EVENT_UNDO_REASON_MAX)}`,
+    ),
+    index('event_ticket_check_in_reversals_ticket_idx').on(table.institutionId, table.ticketId),
   ],
 )

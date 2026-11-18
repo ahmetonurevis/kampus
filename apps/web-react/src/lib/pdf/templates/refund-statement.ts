@@ -1,11 +1,14 @@
 // İade hesap kırılımı: veri ayrılış kaydından gelir, hesap burada yeniden yazılmaz (DOM-FIN-040, -041; IST-110).
 import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
+import { withdrawalFollowupSections } from '@kampus/school-core/lib/withdrawal-followups.ts'
 import {
   contractLineRows,
   contractLinesToShow,
   paidTuitionLabel,
   WITHDRAWAL_PAYER_LABELS,
   WITHDRAWAL_REASON_LABELS,
+  type WithdrawalActivityLine,
+  type WithdrawalClawbackLine,
   type WithdrawalContractLine,
   type WithdrawalPayer,
   withdrawalTargetLabel,
@@ -44,6 +47,9 @@ export type RefundWithdrawal = {
     contracts?: readonly WithdrawalContractLine[]
     /** Gerekçe belgeye yazılmaz; yalnız iadeyi alacak ödeyici (K-12). */
     payerDecision?: { payer: WithdrawalPayer }
+    /** Geri istenen burs ve etkinlik katılımları (ON-342); eski kayıtta yok. */
+    scholarshipClawbacks?: readonly WithdrawalClawbackLine[]
+    activities?: readonly WithdrawalActivityLine[]
   }
 }
 
@@ -126,6 +132,11 @@ export function refundStatementDocument(
       ['İade', money(withdrawal.refundCents)],
       ['Kalan borç', money(withdrawal.debtCents)],
     ])
+  }
+  // Burs ve etkinlik bölümleri iade ve kalan borca girmez (K-349, K-351); not belgeye de yazılır.
+  for (const section of withdrawalFollowupSections(breakdown)) {
+    doc.section(section.title)
+    doc.fields([...section.rows, ...(section.note ? ([['Not', section.note]] as const) : [])])
   }
   doc.section('Ödeme')
   doc.fields([

@@ -56,6 +56,7 @@ import { registerFinanceChemicalRoutes } from './routes/finance-chemicals.ts'
 import { registerFinanceInventoryRoutes } from './routes/finance-inventory.ts'
 import { registerFinanceMaintenancePlanRoutes } from './routes/finance-maintenance-plans.ts'
 import { registerFinanceMaintenanceRequestRoutes } from './routes/finance-maintenance-requests.ts'
+import { registerFinanceMedicalReportRoutes } from './routes/finance-medical-reports.ts'
 import { registerFinancePayRateRoutes } from './routes/finance-pay-rates.ts'
 import { registerFinanceSeveranceRoutes } from './routes/finance-severance.ts'
 import { registerFinancePayrollParameterRoutes } from './routes/finance-payroll-parameters.ts'
@@ -88,6 +89,7 @@ import { registerFinanceSupplierRoutes } from './routes/finance-suppliers.ts'
 import { registerFinanceSupplyRequestRoutes } from './routes/finance-supply-requests.ts'
 import { registerFinanceStakeholderRoutes } from './routes/finance-stakeholders.ts'
 import { registerFinanceStaffCertificateRoutes } from './routes/finance-staff-certificates.ts'
+import { registerFinanceStaffCostRoutes } from './routes/finance-staff-costs.ts'
 import { registerPaymentRoutes } from './routes/payments.ts'
 import { registerWithdrawalRoutes } from './routes/withdrawals.ts'
 import { registerProspectRoutes } from './routes/prospects.ts'
@@ -575,6 +577,8 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceStaffDeductionRoutes(app)
   registerFinanceStaffCertificateRoutes(app)
   registerFinancePayrollExportRoutes(app)
+  registerFinanceStaffCostRoutes(app)
+  registerFinanceMedicalReportRoutes(app)
   registerFinancePayrollPeriodRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)

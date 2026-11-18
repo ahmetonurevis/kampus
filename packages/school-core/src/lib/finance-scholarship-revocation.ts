@@ -470,6 +470,21 @@ export function endScholarship(
   }
 }
 
+/**
+ * Kaydın geri isteme alacağı taksitleri (K-266): `endScholarship` önce ileriye kalkan payların
+ * taksitlerini, sonra anapara ve faiz alacağını yazar. Ayrılış hesabı bunları sözleşmeye saymaz,
+ * iptal etmez ve ayrı satırda gösterir (K-351).
+ */
+export function scholarshipEndClawbackInvoiceIds(end: {
+  invoiceIds: readonly string[]
+  lines: readonly Pick<ScholarshipEndLine, 'status' | 'shareCents'>[]
+}): string[] {
+  const reinstated = end.lines.filter(
+    (line) => line.status === 'reinstated' && line.shareCents > 0,
+  ).length
+  return end.invoiceIds.slice(reinstated)
+}
+
 const day = (value: string) => dateLabel(`${value}${DAY_TIME}`, { year: 'numeric', month: 'long' })
 
 /**

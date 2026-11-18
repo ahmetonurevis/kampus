@@ -837,3 +837,65 @@ export async function paidActivityRefundsPaidOnDay(
     bankAccountLabel: labelOf(bankName, bankIban),
   }))
 }
+
+/** Ayrılış hesabına giren katılım (ON-342, K-348): etkinlik koşullarıyla birlikte. */
+export interface WithdrawalParticipationRow {
+  id: string
+  activityId: string
+  studentId: string
+  name: string
+  status: ParticipationStatus
+  invoiceId: string
+  feeCents: number
+  debtInvoiceId: string | null
+  activityDate: string
+  cancelDeadline: string
+  lateRefundRule: LateRefundRule
+  lateRefundPercent: number | null
+  lateCostCents: number | null
+  activityFeeCents: number
+}
+
+/**
+ * Öğrencinin ayrılışta değerlendirilen katılımları: iptal edilmemişler ve kesinti taksiti olan
+ * iptal edilmişler (K-348). Etkinlik günü ve iade koşulları etkinlikten okunur.
+ */
+export async function withdrawalParticipations(
+  db: Database,
+  institutionId: string,
+  studentId: string,
+): Promise<WithdrawalParticipationRow[]> {
+  return db
+    .select({
+      id: paidActivityParticipants.id,
+      activityId: paidActivityParticipants.activityId,
+      studentId: paidActivityParticipants.studentId,
+      name: paidActivities.name,
+      status: sql<ParticipationStatus>`${paidActivityParticipants.status}`,
+      invoiceId: paidActivityParticipants.invoiceId,
+      feeCents: paidActivityParticipants.feeCents,
+      debtInvoiceId: paidActivityParticipants.debtInvoiceId,
+      activityDate: paidActivities.activityDate,
+      cancelDeadline: paidActivities.cancelDeadline,
+      lateRefundRule: sql<LateRefundRule>`${paidActivities.lateRefundRule}`,
+      lateRefundPercent: paidActivities.lateRefundPercent,
+      lateCostCents: paidActivities.lateCostCents,
+      activityFeeCents: paidActivities.feeCents,
+    })
+    .from(paidActivityParticipants)
+    .innerJoin(
+      paidActivities,
+      and(
+        eq(paidActivities.institutionId, paidActivityParticipants.institutionId),
+        eq(paidActivities.id, paidActivityParticipants.activityId),
+      ),
+    )
+    .where(
+      and(
+        liveParticipant(institutionId),
+        eq(paidActivityParticipants.studentId, studentId),
+        sql`(${paidActivityParticipants.status} = 'active' or ${paidActivityParticipants.debtInvoiceId} is not null)`,
+      ),
+    )
+    .orderBy(asc(paidActivities.activityDate), asc(paidActivityParticipants.id))
+}

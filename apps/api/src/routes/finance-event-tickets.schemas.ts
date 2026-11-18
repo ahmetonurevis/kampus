@@ -1,17 +1,19 @@
 import { z } from 'zod'
 
 import {
+  EVENT_LIMIT_SCOPES,
   EVENT_SEATING_MODES,
   EVENT_TICKET_KINDS,
   EVENT_TICKET_PAYMENT_METHODS,
   EVENT_TICKET_PAYMENT_STATUSES,
+  EVENT_TICKET_REFUND_STATUSES,
   EVENT_TICKET_STATES,
   EVENT_TICKET_STATUSES,
 } from '@kampus/school-core/lib/finance-event-tickets.ts'
 
 import { dataResponse, pageMetaSchema, pageQuerySchema } from './common.schemas.ts'
 
-/** Etkinlik bileti ve oturma şemaları (DOM-FIN-103; ON-159; K-324…K-327). */
+/** Etkinlik bileti ve oturma şemaları (DOM-FIN-103; ON-159, ON-345; K-324…K-327, K-378…K-380). */
 
 const ticketTypeSchema = z.object({
   key: z.string().describe('Bilet türü anahtarı (ayırmada `ticketTypeKey`)'),
@@ -33,7 +35,14 @@ const eventSchema = z.object({
   blockedSeats: z.array(z.string()).describe('Satışa kapalı koltuklar'),
   capacity: z.number().int().nullable().describe('Numarasız etkinliğin kontenjanı'),
   ticketTypes: z.array(ticketTypeSchema),
-  perStudentLimit: z.number().int().nullable().describe('Öğrenci başına üst sınır; boşsa sınırsız'),
+  perStudentLimit: z
+    .number()
+    .int()
+    .nullable()
+    .describe('Öğrenci ya da aile başına üst sınır; boşsa sınırsız'),
+  limitScope: z
+    .enum(EVENT_LIMIT_SCOPES)
+    .describe('`student` öğrenci başına, `family` aile başına (kardeşler birlikte sayılır; K-379)'),
   salesOpen: z.boolean(),
   totalCapacity: z.number().int().describe('Satışa açık koltuk ya da kontenjan'),
   activeCount: z.number().int().describe('Etkin (iptal edilmemiş) bilet'),
@@ -41,7 +50,12 @@ const eventSchema = z.object({
   invitationCount: z.number().int().describe('Etkin davetiye'),
   usedCount: z.number().int().describe('Girişte kullanılan bilet'),
   unpaidCount: z.number().int().describe('Ödemesi beklenen ücretli bilet'),
-  collectedCents: z.number().int().describe('Ödenmiş etkin biletlerin toplamı, kuruş (iade düşer)'),
+  collectedCents: z
+    .number()
+    .int()
+    .describe('Ödenmiş biletlerin net toplamı, kuruş: iptalde yazılan iade düşer, kesinti kalır'),
+  pendingRefundCount: z.number().int().describe('Ödendiği işaretlenmemiş iade sayısı (K-380)'),
+  pendingRefundCents: z.number().int().describe('Ödenmesi bekleyen iade toplamı, kuruş'),
   takenSeats: z.array(z.string()).describe('Etkin bileti olan koltuklar (koltuk haritası)'),
   version: z.number().int().describe('`If-Match` için etkinliğin sürümü'),
 })
@@ -86,7 +100,16 @@ const ticketSchema = z.object({
   paymentStatus: z.enum(EVENT_TICKET_PAYMENT_STATUSES),
   paymentMethod: z.enum(EVENT_TICKET_PAYMENT_METHODS).nullable(),
   paidAt: z.string().nullable(),
-  refundedAt: z.string().nullable().describe('Ödenmiş biletin iptalinde bedelin iade edildiği an'),
+  refundCents: z
+    .number()
+    .int()
+    .nullable()
+    .describe('İptal edilen ödenmiş bilette iade tutarı, kuruş (0…bedel; K-380); diğerlerinde boş'),
+  refundMethod: z.enum(EVENT_TICKET_PAYMENT_METHODS).nullable().describe('İadenin yöntemi'),
+  refundedAt: z.string().nullable().describe('İadenin ödendiğinin işaretlendiği an'),
+  refundStatus: z
+    .enum(EVENT_TICKET_REFUND_STATUSES)
+    .describe('`none` iade yok, `pending` iade bekliyor, `paid` iade ödendi'),
   usedAt: z.string().nullable(),
   cancelledAt: z.string().nullable(),
   cancelReason: z.string().nullable(),
@@ -94,6 +117,12 @@ const ticketSchema = z.object({
     .enum(EVENT_TICKET_STATES)
     .describe(
       '`valid` girişe hazır, `unpaid` ödeme bekliyor, `used` kullanıldı, `cancelled` iptal',
+    ),
+  checkInUndoCount: z.number().int().describe('Geri alınmış giriş sayısı (K-378)'),
+  canUndoCheckIn: z
+    .boolean()
+    .describe(
+      'İsteği yapan bu biletin girişini şimdi geri alabilir mi (kullanılmış, yönetici ya da okutan, etkinlik günü bitmemiş)',
     ),
   createdAt: z.string(),
   version: z.number().int().describe('`If-Match` için biletin sürümü'),

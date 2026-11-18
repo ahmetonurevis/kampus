@@ -14,6 +14,8 @@ import {
   EVENT_MANAGE_ROLES,
   EVENT_TICKET_ROLES,
   payEventTicketSchema,
+  refundEventTicketSchema,
+  undoEventTicketCheckInSchema,
   updateEventSchema,
 } from '@kampus/school-core/lib/finance-event-tickets.ts'
 
@@ -48,12 +50,13 @@ import {
 } from './finance-event-tickets.schemas.ts'
 
 /**
- * Etkinlik bileti ve oturma uçları (docs/domain/finans.md DOM-FIN-103; ON-159; K-324…K-327). Modül
- * `finance`. Etkinliği yönetici açar, düzeltir ve arşivler; yönetici ve ön büro okur, bilet ayırır,
- * ödeme işaretler, iptal eder ve girişte kod okutur (K-324). Bilet ayırma, ödeme ve iptal
- * `Idempotency-Key` ister (çift tıklama ikinci bileti ya da ikinci ödemeyi yazmaz); iptal ödenmiş
- * bilette bedel iadesi olduğu için taze oturum ister. Sıra: 401 → 403 modül → 403 rol → `If-Match`
- * → 400 → işlem.
+ * Etkinlik bileti ve oturma uçları (docs/domain/finans.md DOM-FIN-103; ON-159, ON-345;
+ * K-324…K-327, K-378…K-380). Modül `finance`. Etkinliği yönetici açar, düzeltir ve arşivler;
+ * yönetici ve ön büro okur, bilet ayırır, ödeme işaretler, iptal eder, iadeyi işaretler, girişte kod
+ * okutur ve girişi geri alır (K-324, K-378). Bilet ayırma, ödeme, iptal, iade ve girişi geri alma
+ * `Idempotency-Key` ister (çift tıklama ikinci bileti, ödemeyi ya da iadeyi yazmaz); iptal ve iade
+ * para çıkışı olduğu için taze oturum ister. Sıra: 401 → 403 modül → 403 rol → `If-Match` → 400 →
+ * işlem.
  */
 
 const READERS = 'Roller: `yonetici`, `onburo` (K-324). Modül `finance`.'
@@ -91,7 +94,7 @@ export function registerFinanceEventTicketRoutes(app: FastifyInstance) {
   }
   const tags = ['finance-event-tickets']
   const eventFields =
-    'Ad (2–120), başlangıç anı (ISO 8601, gelecekte; 422 `event_starts_in_past`), salon (2–120), isteğe bağlı okul takvimi etkinliği (`schoolEventId`; kurumda yoksa 422 `event_school_event_not_found`), oturma düzeni: `seated` sıra sayısı (1–26, A–Z) × sıra başına koltuk (1–60) ve kapalı koltuklar (`A1` biçimi) ya da `general` kontenjan (1–5000); bilet türleri (1–5; `invitation` fiyat 0, `paid` fiyat > 0 kuruş, ad tekil) ve öğrenci başına üst sınır (1–20, boşsa sınırsız).'
+    'Ad (2–120), başlangıç anı (ISO 8601, gelecekte; 422 `event_starts_in_past`), salon (2–120), isteğe bağlı okul takvimi etkinliği (`schoolEventId`; kurumda yoksa 422 `event_school_event_not_found`), oturma düzeni: `seated` sıra sayısı (1–26, A–Z) × sıra başına koltuk (1–60) ve kapalı koltuklar (`A1` biçimi) ya da `general` kontenjan (1–5000); bilet türleri (1–5; `invitation` fiyat 0, `paid` fiyat > 0 kuruş, ad tekil) ve öğrenci ya da aile başına üst sınır (1–20, boşsa sınırsız; `limitScope` `student` ya da `family`, K-379).'
 
   typed.get(
     EVENTS,
@@ -267,7 +270,7 @@ export function registerFinanceEventTicketRoutes(app: FastifyInstance) {
         operationId: 'allocateEventTickets',
         tags,
         summary: 'Öğrenci ailesine bilet ayır',
-        description: `Bir öğrencinin ailesine 1–10 bilet ayırır (K-325): bilet başına tür, bilet sahibinin adı (veli ya da misafir) ve numaralı salonda koltuk. Satış kapalıysa 422 \`event_sales_closed\`; öğrenci kurumda yoksa 422 \`event_ticket_student_not_found\` (başka kurumun öğrencisi de), etkin değilse \`event_ticket_student_inactive\`. Koltuk: eksik \`event_seat_required\`, salonda yok \`event_seat_unknown\`, kapalı \`event_seat_blocked\`, istekte iki kez \`event_seat_duplicate\`, başka bilette 409 \`event_seat_taken\` (eşzamanlı ayırma kurum kilidiyle sıraya girer; kısmi tekil indeks son güvencedir). Numarasızda koltuk 422 \`event_seat_not_allowed\`, kontenjan aşımı \`event_sold_out\`; öğrenci başına üst sınır \`event_ticket_limit_exceeded\` (iptal edilen bilet sayılmaz). Ücretli bilet ödenmemiş başlar. Her bilete tahmin edilemez kod verilir (K-326). \`Idempotency-Key\` zorunlu. ${READERS}`,
+        description: `Bir öğrencinin ailesine 1–10 bilet ayırır (K-325): bilet başına tür, bilet sahibinin adı (veli ya da misafir) ve numaralı salonda koltuk. Satış kapalıysa 422 \`event_sales_closed\`; öğrenci kurumda yoksa 422 \`event_ticket_student_not_found\` (başka kurumun öğrencisi de), etkin değilse \`event_ticket_student_inactive\`. Koltuk: eksik \`event_seat_required\`, salonda yok \`event_seat_unknown\`, kapalı \`event_seat_blocked\`, istekte iki kez \`event_seat_duplicate\`, başka bilette 409 \`event_seat_taken\` (eşzamanlı ayırma kurum kilidiyle sıraya girer; kısmi tekil indeks son güvencedir). Numarasızda koltuk 422 \`event_seat_not_allowed\`, kontenjan aşımı \`event_sold_out\`; üst sınır aşımı \`event_ticket_limit_exceeded\` (iptal edilen bilet sayılmaz; aile kapsamında aynı veliye bağlı kardeşlerin biletleri birlikte sayılır ve kardeş kümesi kurum kilidi altında okunur, K-379). Ücretli bilet ödenmemiş başlar. Her bilete tahmin edilemez kod verilir (K-326). \`Idempotency-Key\` zorunlu. ${READERS}`,
         headers: commandHeadersSchema('required', { ifMatch: false }),
         params: ticketedEventParams,
         body: allocateEventTicketsSchema,
@@ -348,7 +351,7 @@ export function registerFinanceEventTicketRoutes(app: FastifyInstance) {
         operationId: 'cancelEventTicket',
         tags,
         summary: 'Bileti iptal et',
-        description: `Bileti iptal eder; koltuk boşa çıkar ve yeniden ayrılabilir (K-326). Ödenmiş biletin bedeli iptalle elle iade edilmiş sayılır (\`refundedAt\`; kısmi iade yok), bu yüzden taze oturum ister (eskiyse 403 \`reauthentication_required\`). Kullanılmış bilet 422 \`event_ticket_used\`, iptal edilmiş 409 \`event_ticket_already_cancelled\`. İsteğe bağlı not (≤ 200) denetime yazılmaz. Başka kurumun bileti 404. \`Idempotency-Key\` zorunlu; \`If-Match\` verilirse biletin sürümüdür. ${READERS}`,
+        description: `Bileti iptal eder; koltuk boşa çıkar ve yeniden ayrılabilir (K-326). Ödenmiş bilette iade tutarı yazılır (\`refundCents\`, K-380): verilmezse kural, İstanbul günüyle etkinliğe 7+ gün kala tam, 1–6 gün kala %50, etkinlik günü ve sonrası 0. Kuraldan farklı tutarı yalnız yönetici yazar (ön büroya 403 \`event_ticket_refund_override_forbidden\`), not zorunludur (422 \`event_ticket_refund_reason_required\`), bedeli aşamaz (422 \`event_ticket_refund_exceeds_price\`); ödenmemiş bilette tutar 422 \`event_ticket_refund_not_applicable\`. İadenin ödendiği ayrıca işaretlenir (\`…/refund\`). İade para çıkışı olduğu için taze oturum ister (eskiyse 403 \`reauthentication_required\`). Kullanılmış bilet 422 \`event_ticket_used\`, iptal edilmiş 409 \`event_ticket_already_cancelled\`. Not (≤ 200) ve tutar denetime yazılmaz. Başka kurumun bileti 404. \`Idempotency-Key\` zorunlu; \`If-Match\` verilirse biletin sürümüdür. ${READERS}`,
         headers: commandHeadersSchema('required'),
         params: eventTicketParams,
         body: cancelEventTicketSchema,
@@ -360,6 +363,64 @@ export function registerFinanceEventTicketRoutes(app: FastifyInstance) {
       const result = await changeEventTicketCommand(
         contextOf(request),
         'cancel',
+        request.params.ticketId,
+        request.commandInput,
+        opts.expectedVersion,
+        opts.idempotency,
+      )
+      return eventTicketResponse.parse(sendBody(reply, result))
+    },
+  )
+
+  typed.post(
+    `${TICKETS}/:ticketId/refund`,
+    {
+      preValidation: [...readers, app.requireFreshSession, captureInput()],
+      schema: {
+        operationId: 'refundEventTicket',
+        tags,
+        summary: 'Bilet iadesinin ödendiğini işaretle',
+        description: `İptal edilen biletin iade tutarının veliye elle (\`cash\` nakit, \`transfer\` havale/EFT) ödendiğini işaretler (K-380). Gün sonuna ve muhasebe aktarımına girmez (M-49, M-72). İptal edilmemiş bilet 422 \`event_ticket_not_cancelled\`, iade tutarı 0 ya da yok 422 \`event_ticket_no_refund\`, ikinci işaret 409 \`event_ticket_already_refunded\`. Para çıkışı olduğu için taze oturum ister (eskiyse 403 \`reauthentication_required\`). Başka kurumun bileti 404. \`Idempotency-Key\` zorunlu; \`If-Match\` verilirse biletin sürümüdür. ${READERS}`,
+        headers: commandHeadersSchema('required'),
+        params: eventTicketParams,
+        body: refundEventTicketSchema,
+        response: { 200: eventTicketResponse, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const opts = options(request, 'required')
+      const result = await changeEventTicketCommand(
+        contextOf(request),
+        'refund',
+        request.params.ticketId,
+        request.commandInput,
+        opts.expectedVersion,
+        opts.idempotency,
+      )
+      return eventTicketResponse.parse(sendBody(reply, result))
+    },
+  )
+
+  typed.post(
+    `${TICKETS}/:ticketId/undo-check-in`,
+    {
+      preValidation: [...readers, captureInput()],
+      schema: {
+        operationId: 'undoEventTicketCheckIn',
+        tags,
+        summary: 'Yanlış okutulan girişi geri al',
+        description: `Biletin "kullanıldı" işaretini gerekçeyle (5–200) kaldırır; bilet yeniden geçerli olur ve yeniden okutulabilir (K-378). Eski kullanımın anı, okutanı, gerekçesi ve geri alan ayrı kayıtta kalır (\`checkInUndoCount\`); denetim \`event_ticket.undo_check_in\`, gerekçe denetime yazılmaz. Yönetici her girişi, ön büro yalnız kendi okuttuğu girişi geri alır (403 \`event_ticket_check_in_not_owner\`); etkinlik günü (Europe/Istanbul) bitince 422 \`event_ticket_check_in_undo_expired\`. Kullanılmamış bilet 409 \`event_ticket_not_used\`. Başka kurumun bileti 404. \`Idempotency-Key\` zorunlu; \`If-Match\` verilirse biletin sürümüdür. ${READERS}`,
+        headers: commandHeadersSchema('required'),
+        params: eventTicketParams,
+        body: undoEventTicketCheckInSchema,
+        response: { 200: eventTicketResponse, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const opts = options(request, 'required')
+      const result = await changeEventTicketCommand(
+        contextOf(request),
+        'undo-check-in',
         request.params.ticketId,
         request.commandInput,
         opts.expectedVersion,

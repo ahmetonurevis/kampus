@@ -5,6 +5,7 @@ import type { Page } from '@playwright/test'
 
 import type { ApiClient } from './support/api.ts'
 import { expect, test } from './support/fixtures.ts'
+import { markFilesReady } from './support/materials.ts'
 import type { Tenant, TenantOptions, TenantUser } from './support/tenant.ts'
 import { expectEveryRow, expectNoHorizontalOverflow } from './support/ui.ts'
 
@@ -1475,5 +1476,82 @@ test.describe('kayıt sezonu nöbeti', () => {
     await expect(followUps.first()).toContainText('Deneme Yapılmış')
     await expect(followUps.first()).toContainText('Deneme sonrası takip')
     await expect(followUps.first()).toContainText('Öğretmen sonucu bekleniyor')
+  })
+})
+
+test.describe('Aday belgeleri', () => {
+  test('ön büro eksik belgeyi listede görür, belge yükler, reddeder ve hatırlatma notu düşer (DOM-KAY-043, K-321, K-323)', async ({
+    page,
+    loginAs,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      roles: ['onburo'],
+      records: [
+        prospect({
+          id: 'e2e-doc-offer',
+          name: 'Belge Bekleyen',
+          phone: '05550300401',
+          stage: 'Teklif verildi',
+        }),
+        prospect({ id: 'e2e-doc-new', name: 'Yeni Başvuran', phone: '05550300402' }),
+      ],
+    })
+    await loginAs(school.user('onburo'))
+    await page.goto(LIST_URL)
+    // Varsayılan listede kimlik, karne ve fotoğraf kesin kayıt aşamasında zorunludur (K-320).
+    const rows = bodyRows(page, 'Aday öğrenciler')
+    await expect(rows.filter({ hasText: 'Belge Bekleyen' })).toContainText('3 eksik belge')
+    await expect(rows.filter({ hasText: 'Yeni Başvuran' })).not.toContainText('eksik belge')
+
+    await page.getByRole('button', { name: 'Eksik belgesi olanlar' }).click()
+    await expect(page).toHaveURL(/gorunum=eksik-belge/)
+    const gaps = bodyRows(page, 'Eksik belgesi olan adaylar')
+    await expect(gaps).toHaveCount(1)
+    await expect(gaps.first()).toContainText('Belge Bekleyen')
+    await expect(gaps.first()).toContainText('Nüfus kayıt örneği / kimlik (Kesin kayıt)')
+
+    await gaps.first().getByRole('link', { name: 'Belge Bekleyen', exact: true }).click()
+    const section = page.getByRole('region', { name: 'Belgeler' })
+    await expect(section.getByText('3 eksik belge')).toBeVisible()
+    const form = section.getByRole('form', { name: 'Belge ekle' })
+    await form
+      .getByLabel('Belge türü')
+      .selectOption({ label: 'Nüfus kayıt örneği / kimlik (Kesin kayıt, zorunlu)' })
+    await form.getByLabel('Belge dosyası').setInputFiles({
+      name: 'kimlik.pdf',
+      mimeType: 'application/pdf',
+      buffer: Buffer.from('%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n', 'latin1'),
+    })
+    await expect(
+      form.getByRole('list', { name: 'Eklenecek belge' }).getByRole('listitem'),
+    ).toHaveCount(1)
+    // E2E API'si tarayıcısız koşar: dosya taramadan geçmiş gibi işaretlenir.
+    await markFilesReady(school.institutionId)
+    await form.getByRole('button', { name: 'Belgeyi ekle' }).click()
+    await expect(toast(page, 'Belge eklendi.')).toBeVisible()
+    const current = section.getByRole('list', { name: 'Güncel belgeler' })
+    await expect(current.getByRole('listitem')).toHaveCount(1)
+    await expect(current).toContainText('İnceleme bekliyor')
+    await expect(section.getByText('2 eksik belge')).toBeVisible()
+
+    await current
+      .getByRole('button', { name: 'Nüfus kayıt örneği / kimlik belgesini reddet' })
+      .click()
+    const dialog = page.getByRole('dialog', {
+      name: 'Nüfus kayıt örneği / kimlik belgesini reddet',
+    })
+    await dialog.getByLabel('Ret gerekçesi').fill('Fotokopi okunmuyor.')
+    await dialog.getByRole('button', { name: 'Reddet' }).click()
+    await expect(toast(page, 'Belge reddedildi.')).toBeVisible()
+    await expect(current).toContainText('Reddedildi')
+    await expect(current).toContainText('Ret gerekçesi: Fotokopi okunmuyor.')
+    await expect(section.getByText('3 eksik belge')).toBeVisible()
+
+    await section.getByRole('button', { name: 'Hatırlat' }).click()
+    await expect(toast(page, 'Hatırlatma aday kartına not olarak eklendi.')).toBeVisible()
+    await expect(page.getByRole('region', { name: 'İletişim geçmişi' })).toContainText(
+      'Eksik belgeler için hatırlatma yapıldı: Nüfus kayıt örneği / kimlik, Karne / öğrenim belgesi, Vesikalık fotoğraf.',
+    )
   })
 })

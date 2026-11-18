@@ -11,6 +11,7 @@ import { useChemicalLots } from '@kampus/react-shared/use-finance-chemicals.ts'
 import { useCriticalStockItems } from '@kampus/react-shared/use-finance-inventory.ts'
 import { useMaintenancePlans } from '@kampus/react-shared/use-finance-maintenance-plans.ts'
 import { useStakeholderAgreements } from '@kampus/react-shared/use-finance-stakeholders.ts'
+import { useStaffDocumentAlerts } from '@kampus/react-shared/use-finance-staff-documents.ts'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { useCoreAll, useCoreList } from '@/hooks/use-core-collection.ts'
 import { useEnrollmentLearner } from '@/hooks/use-enrollment-learner.ts'
@@ -42,6 +43,7 @@ import { EXPIRY_TONE, expiryText, lotText } from './finance-chemical-forms.ts'
 import { criticalQuantityText } from './finance-inventory-forms.ts'
 import { dueText, MAINTENANCE_PLAN_DUE_VIEW } from './finance-maintenance-plan-forms.ts'
 import { invoiceClassScope, invoiceRow } from './finance-rows.ts'
+import { alertBadges, STAFF_DOCUMENT_TRACKING_DUE_PARAM } from './finance-staff-document-forms.ts'
 
 const SLICE_TONE = { gecikmis: 'warning', yaklasan: 'primary', odendi: 'success' } as const
 const FRONT_DESK_PATH = 'tahsilat-takip'
@@ -269,6 +271,44 @@ function StakeholderRenewalsCard({ ctx }: { ctx: DashboardCardContext }) {
               {row.daysLeft === 0 ? 'Bugün bitiyor' : `${number(row.daysLeft ?? 0)} gün kaldı`}
               <StatusBadge text="Yenileme yaklaşıyor" tone="amber" />
             </span>
+          </li>
+        ))}
+      </CardList>
+    </ListCard>
+  )
+}
+
+/**
+ * Özlük belgeleri (DOM-FIN-113, K-373): süresi geçen, 30 gün içinde biten belge ve zorunlu belgesi
+ * eksik personel sayısı. Uyarı yoksa (ya da sayılar gelmeden) kart çizilmez; belgeler kampüse bağlı
+ * olmadığı için kampüs seçiliyken kart gizlenir ve istek atılmaz. Bildirim gönderilmez.
+ */
+function StaffDocumentAlertsCard({ ctx }: { ctx: DashboardCardContext }) {
+  const [params] = useSearchParams()
+  const branchSelected = params.has(BRANCH_PARAM)
+  const query = useStaffDocumentAlerts(!branchSelected)
+  const badges = alertBadges(query.data?.data)
+  if (branchSelected || (!query.error && badges.length === 0)) return null
+  const path = ctx.role === 'onburo' ? FRONT_DESK_PATH : 'finans'
+  return (
+    <ListCard
+      title="Özlük belgeleri"
+      description="Geçerliliği izlenen personel belgeleri"
+      action={{
+        label: 'Tümünü gör',
+        href: dashboardHref(ctx.role, path, {
+          gorunum: 'ozluk-belgeleri',
+          [STAFF_DOCUMENT_TRACKING_DUE_PARAM]: 'attention',
+        }),
+      }}
+      state={combineStates(query)}
+      isEmpty={false}
+      emptyText="Belge uyarısı yok."
+    >
+      <CardList label="Özlük belgesi uyarıları">
+        {badges.map((badge) => (
+          <li key={badge.key} className="flex items-center py-2.5 first:pt-0 last:pb-0">
+            <StatusBadge text={badge.text} tone={badge.tone} />
           </li>
         ))}
       </CardList>
@@ -672,6 +712,16 @@ export const FINANCE_CARDS = [
     area: 'side',
     order: 408,
     component: StakeholderRenewalsCard,
+  }),
+  // --- Yönetici ve ön büro: özlük belgesi uyarıları (DOM-FIN-113; ON-173). Sponsorun altında. ---
+  defineCard({
+    id: 'finans.ozluk-belgeleri',
+    roles: ['yonetici', 'onburo'],
+    module: 'finance',
+    section: (data) => ('finance' in data ? data.finance : null),
+    area: 'side',
+    order: 409,
+    component: StaffDocumentAlertsCard,
   }),
 
   // --- Veli: çocuğun bakiyesi (DOM-FIN-052). Öğrencinin özetinde alan yoktur, kart çizilmez. ---

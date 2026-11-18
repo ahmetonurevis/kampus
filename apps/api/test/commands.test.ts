@@ -129,6 +129,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/ticketed-events/{eventId}/tickets',
   'POST /api/v1/finance/event-tickets/{ticketId}/pay',
   'POST /api/v1/finance/event-tickets/{ticketId}/cancel',
+  // Kullanılmış izin kaydı yıllık izin bakiyesinden düşer; çift gönderim izni iki kez düşmez
+  // (routes/finance-staff-leave.ts; DOM-FIN-109, ON-181).
+  'POST /api/v1/finance/leave-records',
 ]
 // Onur: kayıt ve finans sonu
 

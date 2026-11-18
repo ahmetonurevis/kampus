@@ -264,7 +264,7 @@ test('DOM-FIN-109: varsayılan türler ve Ek md. 2 günleri; kurum ayarı kilitl
       ['other', true, false, null],
     ],
   )
-  assert.ok(TYPES.every((type) => type.version === 0 && type.isActive && !type.isCustom))
+  assert.ok(TYPES.every((type) => type.version === 1 && type.isActive && !type.isCustom))
   assert.equal(isDefaultLeaveTypeCode('marriage'), true)
   assert.equal(isDefaultLeaveTypeCode('custom_ab12'), false)
   const stored: StoredLeaveType[] = [

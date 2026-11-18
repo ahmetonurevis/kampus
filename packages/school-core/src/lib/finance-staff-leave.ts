@@ -364,7 +364,7 @@ export interface LeaveType {
   isActive: boolean
   isCustom: boolean
   locked: readonly LeaveTypeLockableField[]
-  /** Saklanan ayarın sürümü; ayar hiç yazılmadıysa 0 (`If-Match: "0"`). */
+  /** Saklanan ayarın sürümü; ayar hiç yazılmadıysa 1 (ilk ayar satırı 2 sürümüyle açılır). */
   version: number
 }
 
@@ -382,7 +382,7 @@ function fromDefault(base: LeaveTypeDefault, stored: StoredLeaveType | undefined
     isActive: base.locked.includes('isActive') ? true : (stored?.isActive ?? true),
     isCustom: false,
     locked: base.locked,
-    version: stored?.version ?? 0,
+    version: stored?.version ?? 1,
   }
 }
 

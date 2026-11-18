@@ -56,6 +56,7 @@ import { registerFinanceInventoryRoutes } from './routes/finance-inventory.ts'
 import { registerFinanceMaintenancePlanRoutes } from './routes/finance-maintenance-plans.ts'
 import { registerFinanceMaintenanceRequestRoutes } from './routes/finance-maintenance-requests.ts'
 import { registerFinancePayRateRoutes } from './routes/finance-pay-rates.ts'
+import { registerFinanceStaffLeaveRoutes } from './routes/finance-staff-leave.ts'
 import { registerFinanceSeveranceRoutes } from './routes/finance-severance.ts'
 import { registerFinancePayrollParameterRoutes } from './routes/finance-payroll-parameters.ts'
 import { registerFinanceBudgetDraftRoutes } from './routes/finance-budget-drafts.ts'
@@ -562,6 +563,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceDonationRoutes(app)
   registerFinanceStakeholderRoutes(app)
   registerFinancePayRateRoutes(app)
+  registerFinanceStaffLeaveRoutes(app)
   registerFinancePaidActivityRoutes(app)
   registerEnrollmentAlumniDocumentRoutes(app)
   // Onur: kayıt ve finans sonu

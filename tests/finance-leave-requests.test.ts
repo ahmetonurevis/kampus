@@ -25,6 +25,7 @@ import {
   type ScheduleLesson,
 } from '../packages/school-core/src/lib/finance-leave-requests.ts'
 import {
+  assertManualLeaveRecord,
   effectiveLeaveTypes,
   type LeaveProfile,
   type LeaveType,
@@ -447,4 +448,9 @@ test('DOM-FIN-116: bakiye hesabı profil ve tür olmadan boş; hafta içi gün �
   assert.equal(weekdayCount('2026-11-02', '2026-11-08'), 5)
   assert.equal(weekdayCount('2026-11-07', '2026-11-08'), 0)
   assert.equal(weekdayCount('2026-11-06', '2026-11-02'), 0)
+})
+
+test('DOM-FIN-116: talepten doğan kayıt elle iptal edilmez', () => {
+  assertManualLeaveRecord({ requestId: null })
+  rejects(() => assertManualLeaveRecord({ requestId: 'r1' }), 'staff_leave_record_from_request')
 })

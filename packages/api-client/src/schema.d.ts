@@ -8592,6 +8592,150 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/leave-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * İzin talepleri
+         * @description Kurumun izin talepleri: onay bekleyenler önce, sonra başlangıç günü yeniden eskiye. Durum, personel, ad araması ve gün aralığı (`from` bu güne uzanan, `to` bu güne kadar başlayan) süzgeci. Satırda tür, aralık, gün, durum, karar ve iptal bilgisi, bağlı ve yedeği seçilmiş ders sayısı (DOM-FIN-116). Rol: yalnız `yonetici` (personel kişisel verisi). Modül `finance`.
+         */
+        get: operations["listLeaveRequests"];
+        put?: never;
+        /**
+         * İzin talebi aç
+         * @description Yönetici personel adına talep açar (K-397): tür, ilk ve son gün, iş günü (tam gün; yarım gün yok), açıklama ve derslere yedek öğretmen. Kullanılmış izin kaydının kuralları geçerlidir (DOM-FIN-109: `staff_leave_staff_not_found`, `staff_leave_not_staff`, `staff_leave_staff_inactive`, `staff_leave_type_not_found`, `staff_leave_type_inactive`, rapor talep edilmez `staff_leave_sick_not_manual`, `staff_leave_days_exceed_range`, `staff_leave_profile_required`, `staff_leave_before_seniority`, etkin kayıtla çakışma `staff_leave_overlap`); bekleyen ya da onaylı taleple çakışma 422 `staff_leave_request_overlap`. Personel öğretmen kaydına bağlıysa aralıktaki dersler ders programından kopyalanır (en çok 200; fazlası 422 `staff_leave_request_too_many_lessons`); yedek seçimi yalnız bu derslerde (422 `staff_leave_lesson_not_affected`), etkin öğretmen (422 `staff_leave_substitute_not_found`) ve izne çıkan değil (422 `staff_leave_substitute_self`). Yetersiz bakiye talepte uyarıdır. Açıklama denetim kaydına yazılmaz. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (personel kişisel verisi). Modül `finance`.
+         */
+        post: operations["createLeaveRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/leave-requests/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * İzin talebi önizlemesi
+         * @description Talep formu için: personel bir öğretmen kaydına bağlıysa aralıktaki (Europe/Istanbul günü) iptal edilmemiş dersleri (asıl ya da yedek olduğu; en çok `lessonLimit`), yedek adayları (etkin öğretmenler) ve her derste uyarısı olan adaylar (`busy`, `on_leave`, `other_subject`; engel değildir, K-399). `typeCode` ve `days` verilirse talep onaylanırsa kalacak yıllık izin. Yalnız okur. Olmayan, başka kurumun ya da personel olmayan üyelik 404. Rol: yalnız `yonetici` (personel kişisel verisi). Modül `finance`.
+         */
+        get: operations["previewLeaveRequest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/leave-requests/{requestId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * İzin talebi
+         * @description Talep, bağlı dersler (seçilen yedek, uyarıları ve uyarısı olan adaylar), yedek adayları ve bekleyen talepte onaylanırsa kalacak yıllık izin. Başka kurumun talebi 404. Rol: yalnız `yonetici` (personel kişisel verisi). Modül `finance`.
+         */
+        get: operations["getLeaveRequest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/leave-requests/{requestId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * İzin talebini onayla
+         * @description Talebi onaylar ve kullanılmış izin kaydını türün güncel ayarıyla üretir (kayıt `requestId` taşır; K-398). Kayıt kuralları yeniden denetlenir; onaylı bordro ayına değen aralık 409 `payroll_period_locked` (DOM-FIN-108). Yıllıktan düşen türde kalan izin (başlangıç gününde, planlananlar düşülmüş) talebi karşılamıyorsa 422 `staff_leave_balance_insufficient`; `allowAdvance: true` avans izin olarak onaylar. Bekleyen olmayan talep 422 `staff_leave_request_not_pending`. `If-Match` ve `Idempotency-Key` zorunlu. Başka kurumun talebi 404. Rol: yalnız `yonetici` (personel kişisel verisi). Modül `finance`.
+         */
+        post: operations["approveLeaveRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/leave-requests/{requestId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * İzin talebini reddet
+         * @description Bekleyen talebi gerekçeyle (5–500 karakter) reddeder; kayıt üretilmez. Gerekçe denetim kaydına yazılmaz. Bekleyen olmayan talep 422 `staff_leave_request_not_pending`. `If-Match` zorunlu. Başka kurumun talebi 404. Rol: yalnız `yonetici` (personel kişisel verisi). Modül `finance`.
+         */
+        post: operations["rejectLeaveRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/leave-requests/{requestId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * İzin talebini iptal et
+         * @description Bekleyen talep gerekçeyle geri çekilir; onaylı talep iptal edilir ve ürettiği kullanılmış izin kaydı da aynı gerekçeyle iptal edilir (bakiyeye geri döner; K-397). Onaylı talebin aralığı onaylı bordro ayına değiyorsa 409 `payroll_period_locked`. Reddedilmiş ya da iptal edilmiş talep 422 `staff_leave_request_closed`. Gerekçe denetim kaydına yazılmaz. `If-Match` zorunlu. Başka kurumun talebi 404. Rol: yalnız `yonetici` (personel kişisel verisi). Modül `finance`.
+         */
+        post: operations["cancelLeaveRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/leave-requests/{requestId}/assign-substitutes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Derslere yedek öğretmen seç
+         * @description Bekleyen ya da onaylı talebin derslerinde yedek öğretmeni seçer, değiştirir ya da kaldırır (`null`; K-399). Ders talebin derslerinden olmalı (422 `staff_leave_lesson_not_affected`), yedek etkin öğretmen (422 `staff_leave_substitute_not_found`) ve izne çıkan değil (422 `staff_leave_substitute_self`); değişiklik yoksa 422 `staff_leave_substitutes_unchanged`; kapalı talep 422 `staff_leave_request_closed`. Seçim ders programına yazılmaz. `If-Match` zorunlu (talep sürümü). Başka kurumun talebi 404. Rol: yalnız `yonetici` (personel kişisel verisi). Modül `finance`.
+         */
+        post: operations["updateLeaveRequestSubstitutes"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/paid-activities": {
         parameters: {
             query?: never;
@@ -92349,6 +92493,8 @@ export interface operations {
                                 /** @description Kullanılan iş günü */
                                 days: number;
                                 note: string | null;
+                                /** @description Kaydı üreten izin talebi (DOM-FIN-116); elle yazılmış kayıtta boş */
+                                requestId: string | null;
                                 createdAt: string;
                                 /** @description `If-Match` için kayıt sürümü (iptal) */
                                 version: number;
@@ -92754,6 +92900,8 @@ export interface operations {
                             /** @description Kullanılan iş günü */
                             days: number;
                             note: string | null;
+                            /** @description Kaydı üreten izin talebi (DOM-FIN-116); elle yazılmış kayıtta boş */
+                            requestId: string | null;
                             createdAt: string;
                             /** @description `If-Match` için kayıt sürümü (iptal) */
                             version: number;
@@ -92867,6 +93015,1377 @@ export interface operations {
                     "application/json": {
                         data: {
                             id: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listLeaveRequests: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description `pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` iptal */
+                status?: "pending" | "approved" | "rejected" | "cancelled";
+                /** @description Personel üyeliği */
+                membershipId?: string;
+                /** @description Personel adında arama */
+                q?: string;
+                /** @description Bu güne ya da sonrasına uzanan talepler */
+                from?: string;
+                /** @description Bu güne kadar başlayan talepler */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            membershipId: string;
+                            /** @description Personelin adı */
+                            name: string;
+                            /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                            role: string;
+                            typeCode: string;
+                            /** @enum {string} */
+                            kind: "annual" | "excuse" | "unpaid" | "sick" | "other";
+                            /** @description Talep anındaki tür adı */
+                            typeLabel: string;
+                            /** @description Talep anında tür yıllık izinden düşüyor muydu */
+                            deductsFromAnnual: boolean;
+                            startDate: string;
+                            endDate: string;
+                            /** @description İstenen iş günü (tam gün) */
+                            days: number;
+                            description: string | null;
+                            /**
+                             * @description `pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            status: "pending" | "approved" | "rejected" | "cancelled";
+                            /** @description Onay ya da ret anı */
+                            decidedAt: string | null;
+                            rejectReason: string | null;
+                            /** @description Avans izin olarak onaylandı mı (K-398) */
+                            advanceApproved: boolean;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /** @description Talebe bağlı ders sayısı */
+                            lessonCount: number;
+                            /** @description Yedek öğretmen seçilmiş ders sayısı */
+                            substitutedCount: number;
+                            createdAt: string;
+                            /** @description `If-Match` için talep sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createLeaveRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description İzin isteyen personelin kurum üyeliği */
+                    membershipId: string;
+                    /** @description İzin türü kodu (DOM-FIN-109) */
+                    typeCode: string;
+                    /** @description İznin ilk günü */
+                    startDate: string;
+                    /** @description İznin son günü (dahil) */
+                    endDate: string;
+                    /** @description İzin iş günü (hafta tatili ve genel tatil hariç; elle, tam gün) */
+                    days: number;
+                    /** @description İsteğe bağlı açıklama, en çok 500 karakter; denetim kaydına yazılmaz */
+                    description?: string | null;
+                    /**
+                     * @description Etkilenen derslerden yedek seçilenler; seçilmeyen ders yedeksiz kalır
+                     * @default []
+                     */
+                    substitutes?: {
+                        /** @description Ders programındaki ders kimliği */
+                        lessonId: string;
+                        /** @description Yedek öğretmen kaydı; `null` seçilmemiş */
+                        substituteTeacherId: string | null;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            membershipId: string;
+                            /** @description Personelin adı */
+                            name: string;
+                            /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                            role: string;
+                            typeCode: string;
+                            /** @enum {string} */
+                            kind: "annual" | "excuse" | "unpaid" | "sick" | "other";
+                            /** @description Talep anındaki tür adı */
+                            typeLabel: string;
+                            /** @description Talep anında tür yıllık izinden düşüyor muydu */
+                            deductsFromAnnual: boolean;
+                            startDate: string;
+                            endDate: string;
+                            /** @description İstenen iş günü (tam gün) */
+                            days: number;
+                            description: string | null;
+                            /**
+                             * @description `pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            status: "pending" | "approved" | "rejected" | "cancelled";
+                            /** @description Onay ya da ret anı */
+                            decidedAt: string | null;
+                            rejectReason: string | null;
+                            /** @description Avans izin olarak onaylandı mı (K-398) */
+                            advanceApproved: boolean;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /** @description Talebe bağlı ders sayısı */
+                            lessonCount: number;
+                            /** @description Yedek öğretmen seçilmiş ders sayısı */
+                            substitutedCount: number;
+                            createdAt: string;
+                            /** @description `If-Match` için talep sürümü */
+                            version: number;
+                            /** @description Bekleyen talepte onaylanırsa kalacak yıllık izin (eksi avans izindir); yıllıktan düşmeyen türde ya da karara bağlanmış talepte boş */
+                            balanceAfterDays: number | null;
+                            /** @description Personelin bağlı öğretmen kaydı */
+                            ownTeacherId: string | null;
+                            /** @description Etkilenen dersler, başlangıca göre */
+                            lessons: {
+                                lessonId: string;
+                                /** @description Dersin başlangıcı (talep anındaki kopya) */
+                                startsAt: string;
+                                /** @description Dakika */
+                                duration: number;
+                                classId: string;
+                                className: string | null;
+                                subjectId: string;
+                                title: string;
+                                substituteTeacherId: string | null;
+                                substituteName: string | null;
+                                /** @description Seçilen yedeğin uyarıları (engel değildir) */
+                                substituteWarnings: ("busy" | "on_leave" | "other_subject")[];
+                                /** @description Uyarısı olan yedek adayları; listede olmayan adayın uyarısı yok */
+                                candidateWarnings: {
+                                    teacherId: string;
+                                    warnings: ("busy" | "on_leave" | "other_subject")[];
+                                }[];
+                            }[];
+                            /** @description Yedek adayları: etkin öğretmenler, izne çıkan hariç */
+                            teachers: {
+                                /** @description Öğretmen kaydı */
+                                id: string;
+                                name: string;
+                                subjectId: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    previewLeaveRequest: {
+        parameters: {
+            query: {
+                /** @description Personel üyeliği */
+                membershipId: string;
+                startDate: string;
+                endDate: string;
+                /** @description İzin türü; bakiye önizlemesi için */
+                typeCode?: string;
+                /** @description İş günü */
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            membershipId: string;
+                            startDate: string;
+                            endDate: string;
+                            ownTeacherId: string | null;
+                            /** @description Aralıktaki etkilenen ders sayısı */
+                            lessonCount: number;
+                            /** @description Bir talebe bağlanabilecek en çok ders */
+                            lessonLimit: number;
+                            /** @description Etkilenen dersler (en çok `lessonLimit`) */
+                            lessons: {
+                                lessonId: string;
+                                /** @description Dersin başlangıcı (talep anındaki kopya) */
+                                startsAt: string;
+                                /** @description Dakika */
+                                duration: number;
+                                classId: string;
+                                className: string | null;
+                                subjectId: string;
+                                title: string;
+                                substituteTeacherId: string | null;
+                                substituteName: string | null;
+                                /** @description Seçilen yedeğin uyarıları (engel değildir) */
+                                substituteWarnings: ("busy" | "on_leave" | "other_subject")[];
+                                /** @description Uyarısı olan yedek adayları; listede olmayan adayın uyarısı yok */
+                                candidateWarnings: {
+                                    teacherId: string;
+                                    warnings: ("busy" | "on_leave" | "other_subject")[];
+                                }[];
+                            }[];
+                            teachers: {
+                                /** @description Öğretmen kaydı */
+                                id: string;
+                                name: string;
+                                subjectId: string | null;
+                            }[];
+                            /** @description Seçilen tür yıllıktan düşer mi; tür yoksa boş */
+                            deductsFromAnnual: boolean | null;
+                            /** @description Talep onaylanırsa kalacak yıllık izin; tür, gün ya da profil yoksa boş */
+                            balanceAfterDays: number | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getLeaveRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            membershipId: string;
+                            /** @description Personelin adı */
+                            name: string;
+                            /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                            role: string;
+                            typeCode: string;
+                            /** @enum {string} */
+                            kind: "annual" | "excuse" | "unpaid" | "sick" | "other";
+                            /** @description Talep anındaki tür adı */
+                            typeLabel: string;
+                            /** @description Talep anında tür yıllık izinden düşüyor muydu */
+                            deductsFromAnnual: boolean;
+                            startDate: string;
+                            endDate: string;
+                            /** @description İstenen iş günü (tam gün) */
+                            days: number;
+                            description: string | null;
+                            /**
+                             * @description `pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            status: "pending" | "approved" | "rejected" | "cancelled";
+                            /** @description Onay ya da ret anı */
+                            decidedAt: string | null;
+                            rejectReason: string | null;
+                            /** @description Avans izin olarak onaylandı mı (K-398) */
+                            advanceApproved: boolean;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /** @description Talebe bağlı ders sayısı */
+                            lessonCount: number;
+                            /** @description Yedek öğretmen seçilmiş ders sayısı */
+                            substitutedCount: number;
+                            createdAt: string;
+                            /** @description `If-Match` için talep sürümü */
+                            version: number;
+                            /** @description Bekleyen talepte onaylanırsa kalacak yıllık izin (eksi avans izindir); yıllıktan düşmeyen türde ya da karara bağlanmış talepte boş */
+                            balanceAfterDays: number | null;
+                            /** @description Personelin bağlı öğretmen kaydı */
+                            ownTeacherId: string | null;
+                            /** @description Etkilenen dersler, başlangıca göre */
+                            lessons: {
+                                lessonId: string;
+                                /** @description Dersin başlangıcı (talep anındaki kopya) */
+                                startsAt: string;
+                                /** @description Dakika */
+                                duration: number;
+                                classId: string;
+                                className: string | null;
+                                subjectId: string;
+                                title: string;
+                                substituteTeacherId: string | null;
+                                substituteName: string | null;
+                                /** @description Seçilen yedeğin uyarıları (engel değildir) */
+                                substituteWarnings: ("busy" | "on_leave" | "other_subject")[];
+                                /** @description Uyarısı olan yedek adayları; listede olmayan adayın uyarısı yok */
+                                candidateWarnings: {
+                                    teacherId: string;
+                                    warnings: ("busy" | "on_leave" | "other_subject")[];
+                                }[];
+                            }[];
+                            /** @description Yedek adayları: etkin öğretmenler, izne çıkan hariç */
+                            teachers: {
+                                /** @description Öğretmen kaydı */
+                                id: string;
+                                name: string;
+                                subjectId: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    approveLeaveRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description Kalan yıllık izin yetmiyorsa avans izin olarak onayla (bakiye eksiye düşer)
+                     * @default false
+                     */
+                    allowAdvance?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            membershipId: string;
+                            /** @description Personelin adı */
+                            name: string;
+                            /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                            role: string;
+                            typeCode: string;
+                            /** @enum {string} */
+                            kind: "annual" | "excuse" | "unpaid" | "sick" | "other";
+                            /** @description Talep anındaki tür adı */
+                            typeLabel: string;
+                            /** @description Talep anında tür yıllık izinden düşüyor muydu */
+                            deductsFromAnnual: boolean;
+                            startDate: string;
+                            endDate: string;
+                            /** @description İstenen iş günü (tam gün) */
+                            days: number;
+                            description: string | null;
+                            /**
+                             * @description `pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            status: "pending" | "approved" | "rejected" | "cancelled";
+                            /** @description Onay ya da ret anı */
+                            decidedAt: string | null;
+                            rejectReason: string | null;
+                            /** @description Avans izin olarak onaylandı mı (K-398) */
+                            advanceApproved: boolean;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /** @description Talebe bağlı ders sayısı */
+                            lessonCount: number;
+                            /** @description Yedek öğretmen seçilmiş ders sayısı */
+                            substitutedCount: number;
+                            createdAt: string;
+                            /** @description `If-Match` için talep sürümü */
+                            version: number;
+                            /** @description Bekleyen talepte onaylanırsa kalacak yıllık izin (eksi avans izindir); yıllıktan düşmeyen türde ya da karara bağlanmış talepte boş */
+                            balanceAfterDays: number | null;
+                            /** @description Personelin bağlı öğretmen kaydı */
+                            ownTeacherId: string | null;
+                            /** @description Etkilenen dersler, başlangıca göre */
+                            lessons: {
+                                lessonId: string;
+                                /** @description Dersin başlangıcı (talep anındaki kopya) */
+                                startsAt: string;
+                                /** @description Dakika */
+                                duration: number;
+                                classId: string;
+                                className: string | null;
+                                subjectId: string;
+                                title: string;
+                                substituteTeacherId: string | null;
+                                substituteName: string | null;
+                                /** @description Seçilen yedeğin uyarıları (engel değildir) */
+                                substituteWarnings: ("busy" | "on_leave" | "other_subject")[];
+                                /** @description Uyarısı olan yedek adayları; listede olmayan adayın uyarısı yok */
+                                candidateWarnings: {
+                                    teacherId: string;
+                                    warnings: ("busy" | "on_leave" | "other_subject")[];
+                                }[];
+                            }[];
+                            /** @description Yedek adayları: etkin öğretmenler, izne çıkan hariç */
+                            teachers: {
+                                /** @description Öğretmen kaydı */
+                                id: string;
+                                name: string;
+                                subjectId: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rejectLeaveRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Ret gerekçesi; denetim kaydına yazılmaz */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            membershipId: string;
+                            /** @description Personelin adı */
+                            name: string;
+                            /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                            role: string;
+                            typeCode: string;
+                            /** @enum {string} */
+                            kind: "annual" | "excuse" | "unpaid" | "sick" | "other";
+                            /** @description Talep anındaki tür adı */
+                            typeLabel: string;
+                            /** @description Talep anında tür yıllık izinden düşüyor muydu */
+                            deductsFromAnnual: boolean;
+                            startDate: string;
+                            endDate: string;
+                            /** @description İstenen iş günü (tam gün) */
+                            days: number;
+                            description: string | null;
+                            /**
+                             * @description `pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            status: "pending" | "approved" | "rejected" | "cancelled";
+                            /** @description Onay ya da ret anı */
+                            decidedAt: string | null;
+                            rejectReason: string | null;
+                            /** @description Avans izin olarak onaylandı mı (K-398) */
+                            advanceApproved: boolean;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /** @description Talebe bağlı ders sayısı */
+                            lessonCount: number;
+                            /** @description Yedek öğretmen seçilmiş ders sayısı */
+                            substitutedCount: number;
+                            createdAt: string;
+                            /** @description `If-Match` için talep sürümü */
+                            version: number;
+                            /** @description Bekleyen talepte onaylanırsa kalacak yıllık izin (eksi avans izindir); yıllıktan düşmeyen türde ya da karara bağlanmış talepte boş */
+                            balanceAfterDays: number | null;
+                            /** @description Personelin bağlı öğretmen kaydı */
+                            ownTeacherId: string | null;
+                            /** @description Etkilenen dersler, başlangıca göre */
+                            lessons: {
+                                lessonId: string;
+                                /** @description Dersin başlangıcı (talep anındaki kopya) */
+                                startsAt: string;
+                                /** @description Dakika */
+                                duration: number;
+                                classId: string;
+                                className: string | null;
+                                subjectId: string;
+                                title: string;
+                                substituteTeacherId: string | null;
+                                substituteName: string | null;
+                                /** @description Seçilen yedeğin uyarıları (engel değildir) */
+                                substituteWarnings: ("busy" | "on_leave" | "other_subject")[];
+                                /** @description Uyarısı olan yedek adayları; listede olmayan adayın uyarısı yok */
+                                candidateWarnings: {
+                                    teacherId: string;
+                                    warnings: ("busy" | "on_leave" | "other_subject")[];
+                                }[];
+                            }[];
+                            /** @description Yedek adayları: etkin öğretmenler, izne çıkan hariç */
+                            teachers: {
+                                /** @description Öğretmen kaydı */
+                                id: string;
+                                name: string;
+                                subjectId: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelLeaveRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description İptal gerekçesi; denetim kaydına yazılmaz */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            membershipId: string;
+                            /** @description Personelin adı */
+                            name: string;
+                            /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                            role: string;
+                            typeCode: string;
+                            /** @enum {string} */
+                            kind: "annual" | "excuse" | "unpaid" | "sick" | "other";
+                            /** @description Talep anındaki tür adı */
+                            typeLabel: string;
+                            /** @description Talep anında tür yıllık izinden düşüyor muydu */
+                            deductsFromAnnual: boolean;
+                            startDate: string;
+                            endDate: string;
+                            /** @description İstenen iş günü (tam gün) */
+                            days: number;
+                            description: string | null;
+                            /**
+                             * @description `pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            status: "pending" | "approved" | "rejected" | "cancelled";
+                            /** @description Onay ya da ret anı */
+                            decidedAt: string | null;
+                            rejectReason: string | null;
+                            /** @description Avans izin olarak onaylandı mı (K-398) */
+                            advanceApproved: boolean;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /** @description Talebe bağlı ders sayısı */
+                            lessonCount: number;
+                            /** @description Yedek öğretmen seçilmiş ders sayısı */
+                            substitutedCount: number;
+                            createdAt: string;
+                            /** @description `If-Match` için talep sürümü */
+                            version: number;
+                            /** @description Bekleyen talepte onaylanırsa kalacak yıllık izin (eksi avans izindir); yıllıktan düşmeyen türde ya da karara bağlanmış talepte boş */
+                            balanceAfterDays: number | null;
+                            /** @description Personelin bağlı öğretmen kaydı */
+                            ownTeacherId: string | null;
+                            /** @description Etkilenen dersler, başlangıca göre */
+                            lessons: {
+                                lessonId: string;
+                                /** @description Dersin başlangıcı (talep anındaki kopya) */
+                                startsAt: string;
+                                /** @description Dakika */
+                                duration: number;
+                                classId: string;
+                                className: string | null;
+                                subjectId: string;
+                                title: string;
+                                substituteTeacherId: string | null;
+                                substituteName: string | null;
+                                /** @description Seçilen yedeğin uyarıları (engel değildir) */
+                                substituteWarnings: ("busy" | "on_leave" | "other_subject")[];
+                                /** @description Uyarısı olan yedek adayları; listede olmayan adayın uyarısı yok */
+                                candidateWarnings: {
+                                    teacherId: string;
+                                    warnings: ("busy" | "on_leave" | "other_subject")[];
+                                }[];
+                            }[];
+                            /** @description Yedek adayları: etkin öğretmenler, izne çıkan hariç */
+                            teachers: {
+                                /** @description Öğretmen kaydı */
+                                id: string;
+                                name: string;
+                                subjectId: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateLeaveRequestSubstitutes: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Yedeği değişecek dersler; `null` yedeği kaldırır */
+                    substitutes: {
+                        /** @description Ders programındaki ders kimliği */
+                        lessonId: string;
+                        /** @description Yedek öğretmen kaydı; `null` seçilmemiş */
+                        substituteTeacherId: string | null;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            membershipId: string;
+                            /** @description Personelin adı */
+                            name: string;
+                            /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                            role: string;
+                            typeCode: string;
+                            /** @enum {string} */
+                            kind: "annual" | "excuse" | "unpaid" | "sick" | "other";
+                            /** @description Talep anındaki tür adı */
+                            typeLabel: string;
+                            /** @description Talep anında tür yıllık izinden düşüyor muydu */
+                            deductsFromAnnual: boolean;
+                            startDate: string;
+                            endDate: string;
+                            /** @description İstenen iş günü (tam gün) */
+                            days: number;
+                            description: string | null;
+                            /**
+                             * @description `pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            status: "pending" | "approved" | "rejected" | "cancelled";
+                            /** @description Onay ya da ret anı */
+                            decidedAt: string | null;
+                            rejectReason: string | null;
+                            /** @description Avans izin olarak onaylandı mı (K-398) */
+                            advanceApproved: boolean;
+                            cancelledAt: string | null;
+                            cancelReason: string | null;
+                            /** @description Talebe bağlı ders sayısı */
+                            lessonCount: number;
+                            /** @description Yedek öğretmen seçilmiş ders sayısı */
+                            substitutedCount: number;
+                            createdAt: string;
+                            /** @description `If-Match` için talep sürümü */
+                            version: number;
+                            /** @description Bekleyen talepte onaylanırsa kalacak yıllık izin (eksi avans izindir); yıllıktan düşmeyen türde ya da karara bağlanmış talepte boş */
+                            balanceAfterDays: number | null;
+                            /** @description Personelin bağlı öğretmen kaydı */
+                            ownTeacherId: string | null;
+                            /** @description Etkilenen dersler, başlangıca göre */
+                            lessons: {
+                                lessonId: string;
+                                /** @description Dersin başlangıcı (talep anındaki kopya) */
+                                startsAt: string;
+                                /** @description Dakika */
+                                duration: number;
+                                classId: string;
+                                className: string | null;
+                                subjectId: string;
+                                title: string;
+                                substituteTeacherId: string | null;
+                                substituteName: string | null;
+                                /** @description Seçilen yedeğin uyarıları (engel değildir) */
+                                substituteWarnings: ("busy" | "on_leave" | "other_subject")[];
+                                /** @description Uyarısı olan yedek adayları; listede olmayan adayın uyarısı yok */
+                                candidateWarnings: {
+                                    teacherId: string;
+                                    warnings: ("busy" | "on_leave" | "other_subject")[];
+                                }[];
+                            }[];
+                            /** @description Yedek adayları: etkin öğretmenler, izne çıkan hariç */
+                            teachers: {
+                                /** @description Öğretmen kaydı */
+                                id: string;
+                                name: string;
+                                subjectId: string | null;
+                            }[];
                         };
                     };
                 };

@@ -2604,6 +2604,16 @@ const FINANCE: Readonly<Record<string, Proof>> = {
           'POST /api/v1/finance/staff-cost-allocations/:allocationId/cancel',
           'cancel(a.admin, bAllocation',
         ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-staff-costs.test.ts',
+        'başka kurumun personeli, ataması ve merkezi 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
   // Onur: personel sağlık raporu (ON-185; DOM-FIN-110).
   ...Object.fromEntries(
     (
@@ -2613,6 +2623,16 @@ const FINANCE: Readonly<Record<string, Proof>> = {
         ['gövde', 'POST /api/v1/finance/medical-reports', 'institutionId: b.id'],
         ['kayıt', 'PATCH /api/v1/finance/medical-reports/:reportId', "call('PATCH', bUrl, a.admin"],
         ['kayıt', 'POST /api/v1/finance/medical-reports/:reportId/cancel', '`${bUrl}/cancel`'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-medical-reports.test.ts',
+        'başka kurumun personeli ve raporu 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
   // Onur: bordro onayı ve dönem kilidi (ON-200; DOM-FIN-108).
   ...Object.fromEntries(
     (
@@ -2647,10 +2667,6 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     ).map(([kind, key, marker]) => [
       key,
       proof(kind)(
-        'finance-staff-costs.test.ts',
-        'başka kurumun personeli, ataması ve merkezi 404 ve B değişmez',
-        'finance-medical-reports.test.ts',
-        'başka kurumun personeli ve raporu 404 ve B değişmez',
         'finance-payroll-periods.test.ts',
         'başka kurumun dönemi ve düzeltmesi 404 ve B değişmez',
         marker,

@@ -4,11 +4,12 @@ import { pdfText } from './support/finance-pdf-text.ts'
 import { expect, test } from './support/fixtures.ts'
 import { expectNoHorizontalOverflow } from './support/ui.ts'
 
-// Etkinlik biletleri ekranı (ON-159; DOM-FIN-103, K-324…K-327). Kural dalları (eşzamanlı koltuk,
-// üst sınır, kontenjan, kurumlar arası 404, CSV) birim ve API testlerindedir
-// (`tests/finance-event-tickets.test.ts`, `apps/api/test/finance-event-tickets.test.ts`); burada
-// yöneticinin etkinlik açma, koltuk seçip bilet ayırma, ödeme, PDF bilet, girişte kod okutma ve iptal
-// akışı ile ön büronun etkinlik açamaması var.
+// Etkinlik biletleri ekranı (ON-159, ON-345; DOM-FIN-103, K-324…K-327, K-378…K-380). Kural dalları
+// (eşzamanlı koltuk, aile sınırı, iade kuralı, girişi geri alma yetkisi ve süresi, kurumlar arası
+// 404, CSV) birim ve API testlerindedir (`tests/finance-event-tickets.test.ts`,
+// `apps/api/test/finance-event-tickets.test.ts`); burada yöneticinin etkinlik açma (aile sınırı),
+// koltuk seçip bilet ayırma, ödeme, PDF bilet, girişte kod okutma ve girişi geri alma, iptal ve iade
+// ödendi akışı ile ön büronun etkinlik açamaması var.
 
 const ADMIN_URL = '/yonetici/finans?gorunum=etkinlik-bileti'
 const DESK_URL = '/onburo/tahsilat-takip?gorunum=etkinlik-bileti'
@@ -29,7 +30,7 @@ function futureEvening(): string {
 }
 
 test.describe('ON-159: etkinlik biletleri ekranı', () => {
-  test('DOM-FIN-103: yönetici etkinlik açar, koltuk seçip bilet ayırır, ödeme alır, PDF açar, girişte okutur ve iptal eder', async ({
+  test('DOM-FIN-103, K-378…K-380: yönetici etkinlik açar, bilet ayırır, ödeme alır, PDF açar, girişi okutup geri alır, iptal edip iadeyi işaretler', async ({
     loginAs,
     tenant,
   }) => {
@@ -45,6 +46,9 @@ test.describe('ON-159: etkinlik biletleri ekranı', () => {
     await form.getByLabel('Sıra sayısı').fill('2')
     await form.getByLabel('Sıra başına koltuk').fill('3')
     await form.getByLabel('Kapalı koltuklar').fill('A1')
+    await form
+      .getByLabel('Sınır kapsamı')
+      .selectOption({ label: 'Aile başına (kardeşler birlikte)' })
     await form.getByRole('button', { name: 'Bilet türü ekle' }).click()
     await form.getByLabel('2. tür adı').fill('Veli bileti')
     await form.getByLabel('2. tür fiyatı (TL)').fill('150')
@@ -62,6 +66,7 @@ test.describe('ON-159: etkinlik biletleri ekranı', () => {
     await map.getByRole('button', { name: 'Seçili koltuklara bilet ayır (2)' }).click()
 
     const allocate = page.getByRole('dialog', { name: 'Bilet ayır' })
+    await expect(allocate).toContainText('Aile başına en çok 2 bilet')
     await allocate.getByLabel('Öğrenci', { exact: true }).selectOption({ label: STUDENT })
     await allocate.getByLabel('A2 koltuğu bilet sahibi').fill('Ayşe Yılmaz')
     await allocate
@@ -100,13 +105,34 @@ test.describe('ON-159: etkinlik biletleri ekranı', () => {
     )
     await expect(sales.getByRole('row', { name: /Ayşe Yılmaz/ })).toContainText('Kullanıldı')
 
+    await sales.getByRole('button', { name: 'Ayşe Yılmaz biletinin girişini geri al' }).click()
+    const undo = page.getByRole('dialog', { name: 'Girişi geri al' })
+    await undo.getByLabel('Gerekçe').fill('Yanlış bilet okutuldu')
+    await undo.getByRole('button', { name: 'Girişi geri al' }).click()
+    await expect(undo).toBeHidden()
+    const ayse = sales.getByRole('row', { name: /Ayşe Yılmaz/ })
+    await expect(ayse).toContainText('Geçerli')
+    await expect(ayse).toContainText('Giriş 1 kez geri alındı')
+
     await sales.getByRole('button', { name: 'Misafir Can biletini iptal et' }).click()
     const cancel = page.getByRole('dialog', { name: 'Bileti iptal et' })
-    await expect(cancel).toContainText('150,00 ₺')
+    await expect(cancel).toContainText('Kurala göre iade 150,00 ₺')
+    await expect(cancel.getByLabel('İade tutarı (TL)')).toHaveValue('150')
     await cancel.getByRole('button', { name: 'İptal et' }).click()
     await expect(cancel).toBeHidden()
-    await expect(sales.getByRole('row', { name: /Misafir Can/ })).toContainText('İptal')
+    const can = sales.getByRole('row', { name: /Misafir Can/ })
+    await expect(can).toContainText('İptal')
+    await expect(can).toContainText('İade bekliyor · 150,00 ₺')
     await expect(map.getByRole('button', { name: 'B1 koltuğu, boş' })).toBeEnabled()
+
+    await sales
+      .getByRole('button', { name: 'Misafir Can biletinin iadesini ödendi işaretle' })
+      .click()
+    const refund = page.getByRole('dialog', { name: 'İade ödendi' })
+    await refund.getByLabel('İade yöntemi').selectOption({ label: 'Havale/EFT' })
+    await refund.getByRole('button', { name: 'İadeyi işaretle' }).click()
+    await expect(refund).toBeHidden()
+    await expect(can).toContainText('İade ödendi · 150,00 ₺')
   })
 
   test('K-324: ön büro etkinlik açamaz, bilet listesini görür; dar ekranda taşma yok', async ({

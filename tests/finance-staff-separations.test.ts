@@ -20,6 +20,7 @@ import {
   staffSeparationSteps,
   staffSeparationUpdateSchema,
   STAFF_SEPARATION_REASONS,
+  type StaffSeparationChecks,
   type StaffSeparationDetails,
   type StaffSeparationFacts,
   type StaffSeparationInput,
@@ -36,7 +37,7 @@ const INPUT: StaffSeparationInput = {
   separationDate: '2026-09-30',
   reason: 'resignation',
 }
-const CHECKS = { staff: { role: 'ogretmen' }, hasOpen: false, today: TODAY }
+const CHECKS: StaffSeparationChecks = { staff: { role: 'ogretmen' }, hasOpen: false, today: TODAY }
 const NO_MARKS: StaffSeparationMarks = {
   deductionsCheckedAt: null,
   leaveCheckedAt: null,

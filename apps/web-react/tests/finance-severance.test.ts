@@ -12,6 +12,7 @@ import {
   severanceDefaults,
   severanceFormField,
   severanceFormSchema,
+  severanceSuggestionFields,
   type SeveranceFormValues,
 } from '../src/pages/finance/finance-severance-form.ts'
 import {
@@ -58,6 +59,7 @@ test('DOM-FIN-094: form tutarı kuruşa, boş isteğe bağlı alanları varsayı
     exitReason: 'employer_termination',
     noticeGiven: false,
     cumulativeTaxBaseCents: null,
+    membershipId: null,
   })
   assert.deepEqual(
     severanceBody(
@@ -71,8 +73,31 @@ test('DOM-FIN-094: form tutarı kuruşa, boş isteğe bağlı alanları varsayı
       exitReason: 'employer_termination',
       noticeGiven: true,
       cumulativeTaxBaseCents: 0,
+      membershipId: null,
     },
   )
+  assert.equal(severanceBody(values({ membershipId: 'm-1' })).membershipId, 'm-1')
+})
+
+test('DOM-FIN-094: personelin ücret önerisi forma dolar; öneri yoksa alanlara dokunulmaz (K-345)', () => {
+  assert.deepEqual(
+    severanceSuggestionFields({ grossWageCents: 6_000_000, regularBenefitsCents: 250_000 }),
+    { grossWage: '60000,00', regularBenefits: '2500,00' },
+  )
+  assert.deepEqual(
+    severanceSuggestionFields({ grossWageCents: 6_000_050, regularBenefitsCents: 0 }),
+    { grossWage: '60000,50', regularBenefits: '' },
+  )
+  assert.equal(
+    severanceSuggestionFields({ grossWageCents: null, regularBenefitsCents: null }),
+    null,
+  )
+  // Doldurulan değer formdan geçer ve aynı kuruşa döner.
+  const filled = values({ grossWage: '60000,00', regularBenefits: '2500,00', membershipId: 'm-1' })
+  assert.deepEqual(fieldErrors(filled), {})
+  assert.equal(severanceBody(filled).grossWageCents, 6_000_000)
+  assert.equal(severanceBody(filled).regularBenefitsCents, 250_000)
+  assert.equal(severanceFormField('membershipId'), 'membershipId')
 })
 
 test('DOM-FIN-094: form alan hataları ve core kuralları (gün sırası, tavan tablosu) alan mesajı olur', () => {
@@ -121,6 +146,11 @@ test('DOM-FIN-094: PDF dayanakları, dökümü, notları ve "tahmini hesap" uyar
     '102.666,67 ₺',
     'Net tutar',
     '383.360,36 ₺',
+    'Ücret kaynağı',
+    'Elle girildi',
+    'Parametre kaynağı',
+    'Platformun bordro parametresi',
+    'binde 7,59',
   ])
     assert.ok(text.includes(part), part)
   assert.equal(severanceEstimateFilename(estimate), 'kidem-ihbar-tahmini-2025-09-30.pdf')
@@ -135,7 +165,7 @@ test('DOM-FIN-094: PDF dayanakları, dökümü, notları ve "tahmini hesap" uyar
   for (const part of [
     'Notlar',
     'Kıdem: Bu çıkış nedeninde',
-    'kıdem tavanı tabloda yok',
+    'kıdem tavanı bordro parametrelerinde yok',
     'çalışan işverene öder',
   ])
     assert.ok(notes.includes(part), part)

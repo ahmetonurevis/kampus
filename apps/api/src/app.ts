@@ -31,6 +31,7 @@ import { requireMarkedHeaders } from './routes/commands.schemas.ts'
 import { registerEnrollmentImportRoutes } from './routes/enrollment-imports.ts'
 import { registerEnrollmentEokulImportRoutes } from './routes/enrollment-eokul-imports.ts'
 import { registerEnrollmentCertificateRoutes } from './routes/enrollment-certificates.ts'
+import { registerEnrollmentDocumentRoutes } from './routes/enrollment-documents.ts'
 import { registerEnrollmentFunnelRoutes } from './routes/enrollment-funnel.ts'
 import { registerFeeTariffRoutes } from './routes/fee-tariffs.ts'
 import { registerFinanceBoardReportRoutes } from './routes/finance-board-report.ts'
@@ -55,14 +56,18 @@ import { registerFinanceChemicalRoutes } from './routes/finance-chemicals.ts'
 import { registerFinanceInventoryRoutes } from './routes/finance-inventory.ts'
 import { registerFinanceMaintenancePlanRoutes } from './routes/finance-maintenance-plans.ts'
 import { registerFinanceMaintenanceRequestRoutes } from './routes/finance-maintenance-requests.ts'
+import { registerFinanceMedicalReportRoutes } from './routes/finance-medical-reports.ts'
 import { registerFinancePayRateRoutes } from './routes/finance-pay-rates.ts'
 import { registerFinanceStaffLeaveRoutes } from './routes/finance-staff-leave.ts'
 import { registerFinanceSeveranceRoutes } from './routes/finance-severance.ts'
 import { registerFinancePayrollParameterRoutes } from './routes/finance-payroll-parameters.ts'
+import { registerFinanceStaffDeductionRoutes } from './routes/finance-staff-deductions.ts'
+import { registerFinancePayrollPeriodRoutes } from './routes/finance-payroll-periods.ts'
 import { registerFinanceBudgetDraftRoutes } from './routes/finance-budget-drafts.ts'
 import { registerEnrollmentAlumniDocumentRoutes } from './routes/enrollment-alumni-documents.ts'
 import { registerFinanceMaterialSetRoutes } from './routes/finance-material-sets.ts'
 import { registerFinancePaidActivityRoutes } from './routes/finance-paid-activities.ts'
+import { registerFinancePayrollExportRoutes } from './routes/finance-payroll-exports.ts'
 import { registerFinanceStockCountRoutes } from './routes/finance-stock-counts.ts'
 import { registerFinanceOpeningWatchRoutes } from './routes/finance-opening-watch.ts'
 import { registerFinanceReferralRoutes } from './routes/finance-referrals.ts'
@@ -84,10 +89,13 @@ import { registerFinanceSupplierLedgerRoutes } from './routes/finance-supplier-l
 import { registerFinanceSupplierRoutes } from './routes/finance-suppliers.ts'
 import { registerFinanceSupplyRequestRoutes } from './routes/finance-supply-requests.ts'
 import { registerFinanceStakeholderRoutes } from './routes/finance-stakeholders.ts'
+import { registerFinanceStaffCertificateRoutes } from './routes/finance-staff-certificates.ts'
+import { registerFinanceStaffCostRoutes } from './routes/finance-staff-costs.ts'
 import { registerPaymentRoutes } from './routes/payments.ts'
 import { registerWithdrawalRoutes } from './routes/withdrawals.ts'
 import { registerProspectRoutes } from './routes/prospects.ts'
 import { registerProspectCampaignRoutes } from './routes/prospect-campaigns.ts'
+import { registerProspectDocumentRoutes } from './routes/prospect-documents.ts'
 import { registerProspectSeasonWatchRoutes } from './routes/prospect-season-watch.ts'
 // Onur: kayıt ve finans sonu
 import { createFfmpegTranscoder, type AudioTranscoder } from './services/audio-transcoder.ts'
@@ -527,6 +535,8 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerEnrollmentFunnelRoutes(app)
   registerProspectSeasonWatchRoutes(app)
   registerProspectCampaignRoutes(app)
+  registerProspectDocumentRoutes(app, storage)
+  registerEnrollmentDocumentRoutes(app)
   registerEnrollmentCertificateRoutes(app)
   registerFinancePayerChildrenRoutes(app)
   registerFinanceCorporateRoutes(app)
@@ -566,6 +576,12 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceStaffLeaveRoutes(app)
   registerFinancePaidActivityRoutes(app)
   registerEnrollmentAlumniDocumentRoutes(app)
+  registerFinanceStaffDeductionRoutes(app)
+  registerFinanceStaffCertificateRoutes(app)
+  registerFinancePayrollExportRoutes(app)
+  registerFinanceStaffCostRoutes(app)
+  registerFinanceMedicalReportRoutes(app)
+  registerFinancePayrollPeriodRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

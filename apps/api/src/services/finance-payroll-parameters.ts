@@ -12,6 +12,10 @@ import {
   type PayrollInstitutionSet,
   type PayrollResolvedSet,
 } from '@kampus/school-core/lib/finance-payroll-parameters.ts'
+import {
+  assertPayrollDaysUnlocked,
+  payrollParameterRange,
+} from '@kampus/school-core/lib/finance-payroll-periods.ts'
 
 import type { Database } from '../db/client.ts'
 import {
@@ -21,6 +25,7 @@ import {
   listPayrollParameterSets,
   updatePayrollParameterSet,
 } from '../db/finance-payroll-parameters.ts'
+import { lockedPayrollMonths } from '../db/finance-payroll-periods.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import {
@@ -35,7 +40,8 @@ import { auditWork } from './task-work.ts'
  * Bordro parametreleri (DOM-FIN-100; ON-197). Platform varsayılanı core'dadır (K-308); servis
  * kurumun kopyalarını yükler, core'la yıllık tabloyu ve geçerli seti çözer, kopyayı kurum kilidi
  * altında tek transaction'da yazar. Yürürlük başlangıcı kurumda tekildir (409). Denetim kaydına
- * alan adları yazılır, değerler yazılmaz. Rol ve modül denetimi rotadadır.
+ * alan adları yazılır, değerler yazılmaz. Onaylı bordro ayında geçerli seti değiştiren yazma 409
+ * `payroll_period_locked` olur (DOM-FIN-108, K-357). Rol ve modül denetimi rotadadır.
  */
 
 const ENTITY = 'payroll_parameter_sets'
@@ -111,9 +117,16 @@ export function createPayrollParameterSetCommand(
       load: async (tx) => {
         const values = payrollParameterSetSchema.parse(input)
         const taken = await isPayrollEffectiveFromTaken(tx, ctx.institutionId, values.effectiveFrom)
+        const sets = await listPayrollParameterSets(tx, ctx.institutionId)
+        const locked = await lockedPayrollMonths(tx, ctx.institutionId)
         return {
           run: () => {
             assertPayrollEffectiveFromFree(taken)
+            assertPayrollDaysUnlocked(
+              locked,
+              [payrollParameterRange(sets, values.effectiveFrom)],
+              'effectiveFrom',
+            )
             return values
           },
         }
@@ -158,11 +171,22 @@ export function updatePayrollParameterSetCommand(
           changes.effectiveFrom !== undefined &&
           changes.effectiveFrom !== current.effectiveFrom &&
           (await isPayrollEffectiveFromTaken(tx, ctx.institutionId, changes.effectiveFrom, id))
+        const sets = await listPayrollParameterSets(tx, ctx.institutionId)
+        const locked = await lockedPayrollMonths(tx, ctx.institutionId)
         return {
           // Birleşik setin doğrulaması `run` içindedir: hatası 400 `validation_failed` olur.
           run: () => {
             const merged = mergePayrollParameterUpdate(current, changes)
             assertPayrollEffectiveFromFree(taken)
+            // Eski ve (değiştiyse) yeni başlangıcın etki aralığı birlikte denetlenir.
+            assertPayrollDaysUnlocked(
+              locked,
+              [
+                payrollParameterRange(sets, current.effectiveFrom, id),
+                payrollParameterRange(sets, merged.values.effectiveFrom, id),
+              ],
+              'effectiveFrom',
+            )
             return merged
           },
         }
@@ -201,7 +225,18 @@ export function archivePayrollParameterSetCommand(
       load: async (tx) => {
         const current = await setOf(tx, ctx, id)
         if (current.version !== expectedVersion) throw new ConflictError()
-        return { run: () => null }
+        const sets = await listPayrollParameterSets(tx, ctx.institutionId)
+        const locked = await lockedPayrollMonths(tx, ctx.institutionId)
+        return {
+          run: () => {
+            assertPayrollDaysUnlocked(
+              locked,
+              [payrollParameterRange(sets, current.effectiveFrom, id)],
+              'effectiveFrom',
+            )
+            return null
+          },
+        }
       },
       after: async (tx) => {
         const saved = await updatePayrollParameterSet(tx, ctx.institutionId, {

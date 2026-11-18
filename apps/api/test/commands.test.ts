@@ -129,6 +129,12 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/ticketed-events/{eventId}/tickets',
   'POST /api/v1/finance/event-tickets/{ticketId}/pay',
   'POST /api/v1/finance/event-tickets/{ticketId}/cancel',
+  // Personel avansı taksit planı oluşturur; çift tıklama ikinci avansı açmaz
+  // (routes/finance-staff-deductions.ts; DOM-FIN-101, ON-199).
+  'POST /api/v1/finance/staff-advances',
+  // Personel belgesi yıl bazlı numara keser; çift tıklama ikinci belge açmaz
+  // (routes/finance-staff-certificates.ts; DOM-FIN-106).
+  'POST /api/v1/finance/staff-certificates',
   // Etkinlik bileti iadesinin ödendiği işareti ve girişi geri alma; çift tıklama ikinci iade ya da
   // ikinci geri alma izi yazmaz (routes/finance-event-tickets.ts; DOM-FIN-103, ON-345).
   'POST /api/v1/finance/event-tickets/{ticketId}/refund',

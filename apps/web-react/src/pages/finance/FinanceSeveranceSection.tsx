@@ -1,11 +1,20 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useState } from 'react'
-import { useForm } from 'react-hook-form'
+import { useEffect, useState } from 'react'
+import { useForm, useWatch, type UseFormReturn } from 'react-hook-form'
 import { isApiError } from '@kampus/api-client/errors.ts'
+import { usePayRateStaff } from '@kampus/react-shared/use-finance-pay-rates.ts'
 import {
   useSeveranceEstimate,
+  useSeverancePaySuggestion,
   type SeveranceEstimateResult,
+  type SeverancePaySuggestionResult,
 } from '@kampus/react-shared/use-finance-severance.ts'
+import { daySchema } from '@kampus/school-core/lib/domain.ts'
+import {
+  BENEFIT_FORM_LABELS,
+  PAY_RATE_TYPE_LABELS,
+  SEVERANCE_SUGGESTION_WARNINGS,
+} from '@kampus/school-core/lib/finance-pay-rates.ts'
 import {
   SEVERANCE_ESTIMATE_NOTE,
   SEVERANCE_EXIT_REASON_INFO,
@@ -14,7 +23,7 @@ import {
   severanceFacts,
   severanceNotes,
 } from '@kampus/school-core/lib/finance-severance.ts'
-import { dayKey } from '@kampus/school-core/lib/format.ts'
+import { dateLabel, dayKey, money } from '@kampus/school-core/lib/format.ts'
 import { FormField } from '@/components/FormField.tsx'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -33,18 +42,28 @@ import { SEVERANCE_ESTIMATE_TITLE } from '@/lib/pdf/templates/finance-severance.
 import { notify } from '@/lib/notify.ts'
 import { RootError } from '../management/FormParts.tsx'
 import { PdfDialogButton } from './CorporateParts.tsx'
+import { roleLabel } from './finance-fixed-asset-assignment-forms.ts'
 import {
   severanceBody,
   severanceDefaults,
   severanceFormField,
   severanceFormSchema,
+  severanceSuggestionFields,
   type SeveranceFormValues,
 } from './finance-severance-form.ts'
 
+/** Personel seçimi: ilk 100 personel ada göre (maskeli liste, denetime düşmez). */
+const STAFF_PAGE_SIZE = 100
+
+const dayText = (day: string) =>
+  dateLabel(`${day}T09:00:00.000Z`, { day: 'numeric', month: 'long', year: 'numeric' })
+
 /**
- * Kıdem ve ihbar hesaplayıcı (ON-205; DOM-FIN-094): Finans "Kıdem/ihbar hesaplayıcı" sekmesi, yalnız
- * yönetici (K-272). Girdiler elle yazılır; hesap sunucudadır ama hiçbir şey saklanmaz, form ve
- * sonuç yalnız bu ekranın durumundadır, adrese ve önbelleğe yazılmaz (K-273).
+ * Kıdem ve ihbar hesaplayıcı (ON-205, ON-341; DOM-FIN-094): Finans "Kıdem/ihbar hesaplayıcı"
+ * sekmesi, yalnız yönetici (K-272). Personel seçilirse çıkış günündeki ücret tanımı öneri olarak
+ * forma dolar, kullanıcı değiştirebilir (K-345); tavan ve vergi oranları kurumun bordro
+ * parametresindendir (K-344). Hesap saklanmaz; form, öneri ve sonuç yalnız bu ekranın durumundadır,
+ * adrese yazılmaz (K-273).
  */
 export function FinanceSeveranceSection() {
   const estimate = useSeveranceEstimate()
@@ -55,6 +74,10 @@ export function FinanceSeveranceSection() {
   })
   const errors = form.formState.errors
   const busy = estimate.isPending || form.formState.isSubmitting
+  const membershipId = useWatch({ control: form.control, name: 'membershipId' })
+  const endDate = useWatch({ control: form.control, name: 'endDate' })
+  const suggestionDay = daySchema.safeParse(endDate).success ? endDate : ''
+  const suggestion = useSeverancePaySuggestion(membershipId, suggestionDay)
 
   const onSubmit = form.handleSubmit(async (values) => {
     try {
@@ -87,8 +110,9 @@ export function FinanceSeveranceSection() {
           Kıdem/ihbar hesaplayıcı
         </h2>
         <p className="text-sm text-muted-foreground">
-          Ayrılan çalışanın kıdem ve ihbar tazminatını elle girilen ücretle tahmin edin. Girdiler ve
-          sonuç kaydedilmez.
+          Ayrılan çalışanın kıdem ve ihbar tazminatını tahmin edin. Personel seçerseniz çıkış
+          günündeki ücret tanımı öneri olarak dolar; tavan ve vergi oranları kurumun bordro
+          parametrelerinden alınır. Girdiler ve sonuç kaydedilmez.
         </p>
       </header>
       <div className="grid gap-6 px-6 pb-6">
@@ -101,6 +125,15 @@ export function FinanceSeveranceSection() {
           className="grid gap-4 md:grid-cols-2"
           onSubmit={(event) => void onSubmit(event)}
         >
+          <StaffPicker form={form} disabled={busy} />
+          <SuggestionStatus
+            selected={membershipId !== ''}
+            dayMissing={suggestionDay === ''}
+            loading={suggestion.isFetching}
+            failed={suggestion.isError}
+            data={suggestion.data?.data}
+            form={form}
+          />
           <FormField id="kidem-giris" label="İşe giriş günü" error={errors.startDate}>
             {(control) => (
               <Input {...control} type="date" {...form.register('startDate')} disabled={busy} />
@@ -196,6 +229,120 @@ export function FinanceSeveranceSection() {
       </div>
     </section>
   )
+}
+
+/** Personel seçimi (isteğe bağlı): kurumun etkin ve ayrılmış personeli, ada göre. */
+function StaffPicker({
+  form,
+  disabled,
+}: {
+  form: UseFormReturn<SeveranceFormValues>
+  disabled: boolean
+}) {
+  const staff = usePayRateStaff({ page: 1, pageSize: STAFF_PAGE_SIZE })
+  const rows = staff.data?.data ?? []
+  const total = staff.data?.meta.total ?? 0
+  return (
+    <FormField
+      id="kidem-personel"
+      label="Personel (isteğe bağlı)"
+      error={form.formState.errors.membershipId}
+      description={
+        total > STAFF_PAGE_SIZE
+          ? `İlk ${String(STAFF_PAGE_SIZE)} personel listelenir; diğerleri için ücreti elle girin.`
+          : 'Seçerseniz çıkış günündeki ücret tanımı öneri olarak dolar.'
+      }
+    >
+      {(control) => (
+        <NativeSelect
+          {...control}
+          {...form.register('membershipId')}
+          className="w-full"
+          disabled={disabled || staff.isPending}
+        >
+          <NativeSelectOption value="">Seçilmedi (ücreti elle gireceğim)</NativeSelectOption>
+          {rows.map((row) => (
+            <NativeSelectOption key={row.membershipId} value={row.membershipId}>
+              {`${row.name} · ${roleLabel(row.role)}${row.active ? '' : ' (ayrıldı)'}`}
+            </NativeSelectOption>
+          ))}
+        </NativeSelect>
+      )}
+    </FormField>
+  )
+}
+
+/**
+ * Öneri durumu ve forma doldurma (K-345). Yeni öneri geldiğinde (personel ya da çıkış günü
+ * değişince) ücret alanları bir kez dolar; kullanıcının sonraki değişikliği ezilmez.
+ */
+function SuggestionStatus({
+  selected,
+  dayMissing,
+  loading,
+  failed,
+  data,
+  form,
+}: {
+  selected: boolean
+  dayMissing: boolean
+  loading: boolean
+  failed: boolean
+  data: SeverancePaySuggestionResult | undefined
+  form: UseFormReturn<SeveranceFormValues>
+}) {
+  useEffect(() => {
+    if (!selected || data === undefined) return
+    const fields = severanceSuggestionFields(data)
+    if (fields === null) return
+    form.setValue('grossWage', fields.grossWage, { shouldDirty: true, shouldValidate: true })
+    form.setValue('regularBenefits', fields.regularBenefits, {
+      shouldDirty: true,
+      shouldValidate: true,
+    })
+  }, [data, form, selected])
+
+  if (!selected) return null
+  const message = dayMissing
+    ? 'Öneri için çıkış gününü girin.'
+    : loading
+      ? 'Ücret önerisi okunuyor…'
+      : failed
+        ? 'Ücret önerisi okunamadı; ücreti elle girin.'
+        : data === undefined
+          ? null
+          : suggestionText(data)
+  if (message === null) return null
+  const warning = data !== undefined && data.status !== 'suggested' && !loading
+  return (
+    <p
+      role="status"
+      aria-label="Ücret önerisi"
+      className={`rounded-lg border p-3 text-sm md:col-span-2 ${warning || failed ? 'border-destructive' : ''}`}
+    >
+      {message}
+    </p>
+  )
+}
+
+function suggestionText(data: SeverancePaySuggestionResult): string {
+  const warning = SEVERANCE_SUGGESTION_WARNINGS[data.status]
+  if (warning !== null) return warning
+  const wage = data.wage
+  const included = data.benefits.filter((item) => item.included)
+  const excluded = data.benefits.filter((item) => !item.included)
+  const parts = [
+    `Öneri dolduruldu: ${wage === null ? '' : PAY_RATE_TYPE_LABELS[wage.rateType]} ${money(data.grossWageCents ?? 0)}${wage === null ? '' : ` (${dayText(wage.startDate)} başlangıçlı tanım)`}`,
+    included.length === 0
+      ? 'nakdi yan hak yok'
+      : `nakdi yan haklar ${money(data.regularBenefitsCents ?? 0)} (${included.map((item) => PAY_RATE_TYPE_LABELS[item.rateType]).join(', ')})`,
+    ...(excluded.length === 0
+      ? []
+      : [
+          `${excluded.map((item) => PAY_RATE_TYPE_LABELS[item.rateType]).join(', ')} ${BENEFIT_FORM_LABELS.in_kind.toLocaleLowerCase('tr-TR')} olduğu için hariç`,
+        ]),
+  ]
+  return `${parts.join('; ')}. Tutarları değiştirebilirsiniz.`
 }
 
 const BREAKDOWN_COLUMNS = ['Kıdem', 'İhbar', 'Toplam'] as const

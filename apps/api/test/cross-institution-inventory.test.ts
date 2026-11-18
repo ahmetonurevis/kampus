@@ -2543,6 +2543,40 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: bordro programına aktarım (ON-202; DOM-FIN-105).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/payroll-exports/preview', 'ok(await preview(a.admin))'],
+        ['liste', 'POST /api/v1/finance/payroll-exports', 'aFile.body.includes(b.selin)'],
+        ['liste', 'GET /api/v1/finance/payroll-exports', '(await get(EXPORTS, a.admin))'],
+        ['gövde', 'POST /api/v1/finance/payroll-lesson-hours', 'institutionId: b.id'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/payroll-lesson-hours/:entryId',
+          "call('PATCH', bUrl, a.admin",
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/payroll-lesson-hours/:entryId',
+          "call('DELETE', bUrl, a.admin",
+        ],
+        ['liste', 'GET /api/v1/finance/payroll-export-profile', 'ok(await get(PROFILE, a.admin))'],
+        [
+          'gövde',
+          'PATCH /api/v1/finance/payroll-export-profile',
+          'profile: null, institutionId: b.id',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-payroll-exports.test.ts',
+        'başka kurumun ek ders saati ve dosyası 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

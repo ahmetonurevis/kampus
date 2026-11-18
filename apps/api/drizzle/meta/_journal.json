@@ -848,6 +848,13 @@
       "when": 1795031594130,
       "tag": "0120_create_staff_medical_reports",
       "breakpoints": true
+    },
+    {
+      "idx": 121,
+      "version": "7",
+      "when": 1795031610619,
+      "tag": "0121_create_payroll_periods",
+      "breakpoints": true
     }
   ]
 }

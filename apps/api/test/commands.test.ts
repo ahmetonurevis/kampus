@@ -143,6 +143,13 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // yazmaz (routes/finance-medical-reports.ts; DOM-FIN-110, ON-185).
   'POST /api/v1/finance/medical-reports',
   'POST /api/v1/finance/medical-reports/{reportId}/cancel',
+  // Bordro ayının onayı ve yeniden açılması kilidi değiştirir; düzeltme kaydı sonraki aya bordro
+  // girdisi yazar, iptali onu geri alır; çift tıklama ikinci kaydı açmaz
+  // (routes/finance-payroll-periods.ts; DOM-FIN-108, ON-200).
+  'POST /api/v1/finance/payroll-periods/{month}/approve',
+  'POST /api/v1/finance/payroll-periods/{month}/reopen',
+  'POST /api/v1/finance/payroll-periods/{month}/adjustments',
+  'POST /api/v1/finance/payroll-adjustments/{adjustmentId}/cancel',
 ]
 // Onur: kayıt ve finans sonu
 

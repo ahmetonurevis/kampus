@@ -2613,6 +2613,36 @@ const FINANCE: Readonly<Record<string, Proof>> = {
         ['gövde', 'POST /api/v1/finance/medical-reports', 'institutionId: b.id'],
         ['kayıt', 'PATCH /api/v1/finance/medical-reports/:reportId', "call('PATCH', bUrl, a.admin"],
         ['kayıt', 'POST /api/v1/finance/medical-reports/:reportId/cancel', '`${bUrl}/cancel`'],
+  // Onur: bordro onayı ve dönem kilidi (ON-200; DOM-FIN-108).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/payroll-periods', 'yearOf(a.admin)'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/payroll-periods/:month/approve',
+          "approved(a.admin, '2026-08')",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/payroll-periods/:month/reopen',
+          "reopen(a.admin, '2026-08'",
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/payroll-periods/:month/adjustments',
+          "listAdjustments(a.admin, '2026-08')",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/payroll-periods/:month/adjustments',
+          "createAdjustment(a.admin, '2026-08'",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/payroll-adjustments/:adjustmentId/cancel',
+          'cancelAdjustment(a.admin, bItem)',
+        ],
       ] as const
     ).map(([kind, key, marker]) => [
       key,
@@ -2621,6 +2651,8 @@ const FINANCE: Readonly<Record<string, Proof>> = {
         'başka kurumun personeli, ataması ve merkezi 404 ve B değişmez',
         'finance-medical-reports.test.ts',
         'başka kurumun personeli ve raporu 404 ve B değişmez',
+        'finance-payroll-periods.test.ts',
+        'başka kurumun dönemi ve düzeltmesi 404 ve B değişmez',
         marker,
       ),
     ]),

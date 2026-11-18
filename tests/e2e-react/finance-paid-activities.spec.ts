@@ -13,6 +13,8 @@ const ADMIN_URL = '/yonetici/finans?gorunum=gezi-etkinlik'
 const DESK_URL = '/onburo/tahsilat-takip?gorunum=gezi-etkinlik'
 const STUDENT = 'Deniz Yılmaz'
 const ACTIVITY = 'Test müze gezisi'
+const TRIP = 'Test izinli gezi'
+const SIBLING = 'Ece Yılmaz'
 
 const region = (page: Page, name: string | RegExp) => page.getByRole('region', { name })
 
@@ -63,6 +65,56 @@ test.describe('ON-142: gezi ve etkinlik ücretleri ekranı', () => {
     await expect(stop).toBeHidden()
     await expect(activities.getByText('İptal edildi')).toBeVisible()
     await expect(participants.getByRole('button', { name: 'Katılımcı ekle' })).toHaveCount(0)
+  })
+
+  test('DOM-FIN-112, K-369, K-370: veli izni bekleyen asil, dolu kontenjanda yedek; iptalde yedek asile geçer', async ({
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['onburo'], students: ['s1', 's2'] })
+    const page = await loginAs(school.user('yonetici'))
+    await page.goto(ADMIN_URL)
+
+    const activities = region(page, 'Gezi ve etkinlik ücretleri')
+    await activities.getByRole('button', { name: 'Etkinlik tanımla' }).click()
+    const form = page.getByRole('dialog', { name: 'Ücretli gezi ya da etkinlik' })
+    await form.getByLabel('Ad', { exact: true }).fill(TRIP)
+    await form.getByLabel('Kişi başı ücret (₺)').fill('500')
+    await form.getByLabel('Kontenjan').fill('1')
+    await form.getByLabel(/Veli izni zorunlu/).check()
+    await form.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(form).toBeHidden()
+
+    await activities.getByRole('button', { name: `${TRIP} katılımcıları` }).click()
+    const participants = region(page, `${TRIP} · katılımcılar`)
+    const add = async (name: string) => {
+      await participants.getByRole('button', { name: 'Katılımcı ekle' }).click()
+      const join = page.getByRole('dialog', { name: 'Katılımcı ekle' })
+      await join.getByLabel('Öğrenci', { exact: true }).selectOption({ label: name })
+      await join.getByRole('button', { name: 'Yaz' }).click()
+      await expect(join).toBeHidden()
+    }
+    const row = (name: string) => participants.getByRole('row', { name: new RegExp(name) })
+    await add(STUDENT)
+    await expect(row(STUDENT).getByText('İzin bekliyor')).toBeVisible()
+    await expect(row(STUDENT).getByText('Taksit yok')).toBeVisible()
+    await add(SIBLING)
+    await expect(row(SIBLING).getByText('Yedek 1')).toBeVisible()
+
+    await participants.getByRole('button', { name: `${STUDENT} veli iznini kaydet` }).click()
+    const consent = page.getByRole('dialog', { name: 'Veli iznini kaydet' })
+    await consent.getByLabel('İzni veren').fill('Ayşe Yılmaz')
+    await consent.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(consent).toBeHidden()
+    await expect(row(STUDENT).getByText('Asil', { exact: true })).toBeVisible()
+    await expect(row(STUDENT).getByText('Ödenmedi')).toBeVisible()
+
+    await participants.getByRole('button', { name: `${STUDENT} katılımını iptal et` }).click()
+    const cancel = page.getByRole('dialog', { name: 'Katılımı iptal et' })
+    await cancel.getByRole('button', { name: 'Katılımı iptal et' }).click()
+    await expect(cancel).toBeHidden()
+    await expect(row(SIBLING).getByText('İzin bekliyor')).toBeVisible()
+    await expect(activities.getByText('1 / 1')).toBeVisible()
   })
 
   test('K-300: ön büro listeyi görür, etkinlik tanımlayamaz; dar ekranda taşma yok', async ({

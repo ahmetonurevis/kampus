@@ -314,7 +314,7 @@ describe('gezi ve etkinlik ücreti uçları', () => {
     assert.deepEqual(audit?.changes, { fields: ['name', 'capacity'] })
   })
 
-  test('DOM-FIN-098, K-301: katılım sözleşmesiz etkinlik taksiti açar; mükerrer, dolu ve kapalı katılım reddedilir', async () => {
+  test('DOM-FIN-098, K-301: katılım sözleşmesiz etkinlik taksiti açar; mükerrer ve kapalı katılım reddedilir', async () => {
     const t = await institution()
     const activity = await create(t.cookie, { ...EARLY, capacity: 1 })
     assertError(
@@ -365,7 +365,6 @@ describe('gezi ve etkinlik ücreti uçları', () => {
 
     const before = await rowsOf(t.id)
     assertError(await join(t.cookie, activity.id), 409, 'paid_activity_participant_exists')
-    assertError(await join(t.cookie, activity.id, OTHER_ID), 409, 'paid_activity_full')
     assertError(
       await join(t.cookie, activity.id, 'test-yok'),
       422,

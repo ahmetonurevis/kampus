@@ -1,6 +1,21 @@
-import { and, asc, count, desc, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  ne,
+  sql,
+  type SQL,
+} from 'drizzle-orm'
 
 import type {
+  ConsentChannel,
+  ConsentStatus,
+  JoinedStatus,
   LateRefundRule,
   PaidActivityKind,
   PaidActivityStatus,
@@ -40,6 +55,10 @@ const BANK_JOIN = and(
   eq(bankAccounts.id, paidActivityParticipants.refundBankAccountId),
 )
 const studentName = sql<string | null>`${records.data} ->> 'name'`
+const studentClassId = sql<string | null>`${records.data} ->> 'classId'`
+const studentParentId = sql<string | null>`${records.data} ->> 'parentId'`
+/** Yer tutan katılım: asil ve izin bekleyen (K-369). */
+const SEAT_SQL = sql`${paidActivityParticipants.status} in ('active', 'awaiting_consent')`
 const labelOf = (bankName: string | null, iban: string | null) =>
   bankName === null || iban === null ? null : bankAccountLabel({ bankName, iban })
 
@@ -58,6 +77,8 @@ export interface StoredPaidActivity {
   lateRefundPercent: number | null
   lateCostCents: number | null
   externalRef: string | null
+  requiresConsent: boolean
+  permissionFormId: string | null
   status: PaidActivityStatus
   cancelledAt: Date | null
   cancelReason: string | null
@@ -77,6 +98,8 @@ const ACTIVITY_COLUMNS = {
   lateRefundPercent: paidActivities.lateRefundPercent,
   lateCostCents: paidActivities.lateCostCents,
   externalRef: paidActivities.externalRef,
+  requiresConsent: paidActivities.requiresConsent,
+  permissionFormId: paidActivities.permissionFormId,
   status: sql<PaidActivityStatus>`${paidActivities.status}`,
   cancelledAt: paidActivities.cancelledAt,
   cancelReason: paidActivities.cancelReason,
@@ -84,11 +107,14 @@ const ACTIVITY_COLUMNS = {
 }
 
 export interface ActivityCounts {
+  /** Yer tutan katılım (asil ve izin bekleyen). */
   participantCount: number
+  awaitingConsentCount: number
+  waitlistCount: number
   pendingRefundCount: number
 }
 
-/** Etkinlik başına iptal edilmemiş katılımcı ve ödenmemiş iade sayısı. */
+/** Etkinlik başına yer tutan, izin bekleyen, yedek katılım ve ödenmemiş iade sayısı. */
 export async function activityCounts(
   db: Database,
   institutionId: string,
@@ -98,7 +124,9 @@ export async function activityCounts(
   const rows = await db
     .select({
       activityId: paidActivityParticipants.activityId,
-      participantCount: sql<number>`count(*) filter (where ${paidActivityParticipants.status} = 'active')::int`,
+      participantCount: sql<number>`count(*) filter (where ${SEAT_SQL})::int`,
+      awaitingConsentCount: sql<number>`count(*) filter (where ${paidActivityParticipants.status} = 'awaiting_consent')::int`,
+      waitlistCount: sql<number>`count(*) filter (where ${paidActivityParticipants.status} = 'waitlisted')::int`,
       pendingRefundCount: sql<number>`count(*) filter (where ${paidActivityParticipants.refundCents} > 0 and ${paidActivityParticipants.refundPaidDate} is null)::int`,
     })
     .from(paidActivityParticipants)
@@ -109,12 +137,7 @@ export async function activityCounts(
       ),
     )
     .groupBy(paidActivityParticipants.activityId)
-  return new Map(
-    rows.map((row) => [
-      row.activityId,
-      { participantCount: row.participantCount, pendingRefundCount: row.pendingRefundCount },
-    ]),
-  )
+  return new Map(rows.map(({ activityId, ...counts }) => [activityId, counts]))
 }
 
 export async function listPaidActivities(
@@ -166,6 +189,8 @@ export async function insertPaidActivity(
     lateRefundPercent: number | null
     lateCostCents: number | null
     externalRef: string | null
+    requiresConsent: boolean
+    permissionFormId: string | null
     createdByUserId: string
     now: Date
   },
@@ -187,6 +212,7 @@ export async function updatePaidActivity(
     capacity: number
     joinDeadline: string
     externalRef: string | null
+    permissionFormId: string | null
     now: Date
   },
 ): Promise<boolean> {
@@ -197,6 +223,7 @@ export async function updatePaidActivity(
       capacity: input.capacity,
       joinDeadline: input.joinDeadline,
       externalRef: input.externalRef,
+      permissionFormId: input.permissionFormId,
       version: sql`${paidActivities.version} + 1`,
       updatedAt: input.now,
     })
@@ -246,10 +273,20 @@ export interface StoredParticipant {
   activityId: string
   studentId: string
   studentName: string | null
-  invoiceId: string
+  /** Öğrencinin sınıfı (`records` `students.classId`). */
+  classId: string | null
+  invoiceId: string | null
   feeCents: number
   joinedDate: string
   status: ParticipationStatus
+  waitlistPosition: number | null
+  promotedAt: Date | null
+  consentStatus: ConsentStatus
+  consentChannel: ConsentChannel | null
+  consentGrantorName: string | null
+  consentAt: Date | null
+  consentWithdrawnAt: Date | null
+  consentWithdrawalChannel: ConsentChannel | null
   cancelKind: ParticipationCancelKind | null
   cancelledDate: string | null
   paidCents: number | null
@@ -270,10 +307,19 @@ const PARTICIPANT_COLUMNS = {
   activityId: paidActivityParticipants.activityId,
   studentId: paidActivityParticipants.studentId,
   studentName,
+  classId: studentClassId,
   invoiceId: paidActivityParticipants.invoiceId,
   feeCents: paidActivityParticipants.feeCents,
   joinedDate: paidActivityParticipants.joinedDate,
   status: sql<ParticipationStatus>`${paidActivityParticipants.status}`,
+  waitlistPosition: paidActivityParticipants.waitlistPosition,
+  promotedAt: paidActivityParticipants.promotedAt,
+  consentStatus: sql<ConsentStatus>`${paidActivityParticipants.consentStatus}`,
+  consentChannel: sql<ConsentChannel | null>`${paidActivityParticipants.consentChannel}`,
+  consentGrantorName: paidActivityParticipants.consentGrantorName,
+  consentAt: paidActivityParticipants.consentAt,
+  consentWithdrawnAt: paidActivityParticipants.consentWithdrawnAt,
+  consentWithdrawalChannel: sql<ConsentChannel | null>`${paidActivityParticipants.consentWithdrawalChannel}`,
   cancelKind: sql<ParticipationCancelKind | null>`${paidActivityParticipants.cancelKind}`,
   cancelledDate: paidActivityParticipants.cancelledDate,
   paidCents: paidActivityParticipants.paidCents,
@@ -301,6 +347,7 @@ const toParticipant = ({ bankName, bankIban, ...row }: ParticipantRow): StoredPa
 
 export type ParticipantQuery = {
   status?: ParticipationStatus | undefined
+  consentStatus?: ConsentStatus | undefined
   refundStatus?: 'none' | 'pending' | 'paid' | undefined
   page: number
   pageSize: number
@@ -323,6 +370,9 @@ function participantFilter(
     liveParticipant(institutionId),
     eq(paidActivityParticipants.activityId, activityId),
     query.status === undefined ? undefined : eq(paidActivityParticipants.status, query.status),
+    query.consentStatus === undefined
+      ? undefined
+      : eq(paidActivityParticipants.consentStatus, query.consentStatus),
     refund,
   )
 }
@@ -341,8 +391,10 @@ export async function listParticipants(
     .leftJoin(records, STUDENT_JOIN)
     .leftJoin(bankAccounts, BANK_JOIN)
     .where(where)
+    // Asiller (izin bekleyenler dahil) ada göre, sonra yedekler sıralarına göre, en son iptaller.
     .orderBy(
-      asc(paidActivityParticipants.status),
+      sql`case ${paidActivityParticipants.status} when 'waitlisted' then 1 when 'cancelled' then 2 else 0 end`,
+      sql`case when ${paidActivityParticipants.status} = 'waitlisted' then ${paidActivityParticipants.waitlistPosition} end nulls first`,
       asc(studentName),
       asc(paidActivityParticipants.id),
     )
@@ -366,13 +418,13 @@ export async function findParticipant(
   return row ? toParticipant(row) : null
 }
 
-/** Etkinliğin iptal edilmemiş katılımları (kontenjan, mükerrer katılım ve kurum iptali). */
+/** Etkinliğin asil (taksiti açık) katılımları; taksit kimliği her zaman doludur. */
 export async function activeParticipants(
   db: Database,
   institutionId: string,
   activityId: string,
 ): Promise<{ id: string; studentId: string; invoiceId: string; feeCents: number }[]> {
-  return db
+  const rows = await db
     .select({
       id: paidActivityParticipants.id,
       studentId: paidActivityParticipants.studentId,
@@ -385,9 +437,93 @@ export async function activeParticipants(
         liveParticipant(institutionId),
         eq(paidActivityParticipants.activityId, activityId),
         eq(paidActivityParticipants.status, 'active'),
+        isNotNull(paidActivityParticipants.invoiceId),
       ),
     )
     .orderBy(asc(paidActivityParticipants.id))
+  return rows.flatMap(({ invoiceId, ...row }) =>
+    invoiceId === null ? [] : [{ ...row, invoiceId }],
+  )
+}
+
+export interface OpenParticipant {
+  id: string
+  studentId: string
+  invoiceId: string | null
+  feeCents: number
+  status: JoinedStatus
+  waitlistPosition: number | null
+  consentStatus: ConsentStatus
+  consentChannel: ConsentChannel | null
+  version: number
+}
+
+/**
+ * Etkinliğin iptal edilmemiş (asil, izin bekleyen, yedek) katılımları: kontenjan, mükerrer
+ * katılım, yedekten geçiş, izin eşitlemesi ve kurum iptali (K-369, K-370).
+ */
+export async function openParticipants(
+  db: Database,
+  institutionId: string,
+  activityId: string,
+): Promise<OpenParticipant[]> {
+  return db
+    .select({
+      id: paidActivityParticipants.id,
+      studentId: paidActivityParticipants.studentId,
+      invoiceId: paidActivityParticipants.invoiceId,
+      feeCents: paidActivityParticipants.feeCents,
+      status: sql<JoinedStatus>`${paidActivityParticipants.status}`,
+      waitlistPosition: paidActivityParticipants.waitlistPosition,
+      consentStatus: sql<ConsentStatus>`${paidActivityParticipants.consentStatus}`,
+      consentChannel: sql<ConsentChannel | null>`${paidActivityParticipants.consentChannel}`,
+      version: paidActivityParticipants.version,
+    })
+    .from(paidActivityParticipants)
+    .where(
+      and(
+        liveParticipant(institutionId),
+        eq(paidActivityParticipants.activityId, activityId),
+        ne(paidActivityParticipants.status, 'cancelled'),
+      ),
+    )
+    .orderBy(asc(paidActivityParticipants.id))
+}
+
+/** Etkinlikte verilmiş en büyük yedek numarası (iptal ve geçiş dahil; numara yeniden kullanılmaz). */
+export async function maxWaitlistPosition(
+  db: Database,
+  institutionId: string,
+  activityId: string,
+): Promise<number> {
+  const [row] = await db
+    .select({
+      max: sql<number>`coalesce(max(${paidActivityParticipants.waitlistPosition}), 0)::int`,
+    })
+    .from(paidActivityParticipants)
+    .where(and(liveParticipant(institutionId), eq(paidActivityParticipants.activityId, activityId)))
+  return row?.max ?? 0
+}
+
+/** Katılım listesinin (PDF ve CSV) satırları: iptal edilmemiş katılımlar, sınıf ve veli kimliğiyle. */
+export async function rosterParticipants(
+  db: Database,
+  institutionId: string,
+  activityId: string,
+): Promise<(StoredParticipant & { parentId: string | null })[]> {
+  const rows = await db
+    .select({ ...PARTICIPANT_COLUMNS, parentId: studentParentId })
+    .from(paidActivityParticipants)
+    .leftJoin(records, STUDENT_JOIN)
+    .leftJoin(bankAccounts, BANK_JOIN)
+    .where(
+      and(
+        liveParticipant(institutionId),
+        eq(paidActivityParticipants.activityId, activityId),
+        ne(paidActivityParticipants.status, 'cancelled'),
+      ),
+    )
+  return rows.map(({ parentId, ...row }) => ({ ...toParticipant(row), parentId }))
 }
 
 export async function insertParticipant(
@@ -397,9 +533,12 @@ export async function insertParticipant(
     id: string
     activityId: string
     studentId: string
-    invoiceId: string
+    invoiceId: string | null
     feeCents: number
     joinedDate: string
+    status: JoinedStatus
+    waitlistPosition: number | null
+    consentStatus: ConsentStatus
     createdByUserId: string
     now: Date
   },
@@ -410,7 +549,10 @@ export async function insertParticipant(
     .values({ institutionId, ...row, createdAt: now, updatedAt: now })
 }
 
-/** Yalnız iptal edilmemiş katılım (ve verilirse beklenen sürüm) iptal edilir; tutmazsa `false`. */
+/**
+ * Yalnız iptal edilmemiş katılım (ve verilirse beklenen sürüm) iptal edilir; tutmazsa `false`.
+ * İznin geri çekilmesinde (`withdrawal`) izin durumu da aynı satırda `withdrawn` olur (K-370).
+ */
 export async function markParticipantCancelled(
   tx: Database,
   institutionId: string,
@@ -426,11 +568,19 @@ export async function markParticipantCancelled(
     debtInvoiceId: string | null
     userId: string
     now: Date
+    withdrawal?: { channel: ConsentChannel }
   },
 ): Promise<boolean> {
   const rows = await tx
     .update(paidActivityParticipants)
     .set({
+      ...(input.withdrawal === undefined
+        ? {}
+        : {
+            consentStatus: 'withdrawn',
+            consentWithdrawnAt: input.now,
+            consentWithdrawalChannel: input.withdrawal.channel,
+          }),
       status: 'cancelled',
       cancelKind: input.cancelKind,
       cancelledDate: input.cancelledDate,
@@ -447,7 +597,79 @@ export async function markParticipantCancelled(
       and(
         liveParticipant(institutionId),
         eq(paidActivityParticipants.id, input.id),
-        eq(paidActivityParticipants.status, 'active'),
+        ne(paidActivityParticipants.status, 'cancelled'),
+        input.expectedVersion === null
+          ? undefined
+          : eq(paidActivityParticipants.version, input.expectedVersion),
+      ),
+    )
+    .returning({ id: paidActivityParticipants.id })
+  return rows.length === 1
+}
+
+/** Yedeği asile geçirir (K-369); yalnız yedek satır güncellenir, tutmazsa `false`. */
+export async function markParticipantPromoted(
+  tx: Database,
+  institutionId: string,
+  input: { id: string; status: 'active' | 'awaiting_consent'; invoiceId: string | null; now: Date },
+): Promise<boolean> {
+  const rows = await tx
+    .update(paidActivityParticipants)
+    .set({
+      status: input.status,
+      invoiceId: input.invoiceId,
+      promotedAt: input.now,
+      version: sql`${paidActivityParticipants.version} + 1`,
+      updatedAt: input.now,
+    })
+    .where(
+      and(
+        liveParticipant(institutionId),
+        eq(paidActivityParticipants.id, input.id),
+        eq(paidActivityParticipants.status, 'waitlisted'),
+      ),
+    )
+    .returning({ id: paidActivityParticipants.id })
+  return rows.length === 1
+}
+
+/**
+ * Veli iznini kaydeder (K-370); izin bekleyen asil asil olur ve taksiti yazılır. Yalnız izni bekleyen
+ * iptal edilmemiş satır (ve verilirse beklenen sürüm) güncellenir; tutmazsa `false`.
+ */
+export async function markParticipantConsentGranted(
+  tx: Database,
+  institutionId: string,
+  input: {
+    id: string
+    expectedVersion: number | null
+    status: JoinedStatus
+    invoiceId: string | null
+    channel: ConsentChannel
+    grantorName: string | null
+    userId: string
+    now: Date
+  },
+): Promise<boolean> {
+  const rows = await tx
+    .update(paidActivityParticipants)
+    .set({
+      status: input.status,
+      ...(input.invoiceId === null ? {} : { invoiceId: input.invoiceId }),
+      consentStatus: 'granted',
+      consentChannel: input.channel,
+      consentGrantorName: input.grantorName,
+      consentAt: input.now,
+      consentRecordedByUserId: input.userId,
+      version: sql`${paidActivityParticipants.version} + 1`,
+      updatedAt: input.now,
+    })
+    .where(
+      and(
+        liveParticipant(institutionId),
+        eq(paidActivityParticipants.id, input.id),
+        ne(paidActivityParticipants.status, 'cancelled'),
+        eq(paidActivityParticipants.consentStatus, 'pending'),
         input.expectedVersion === null
           ? undefined
           : eq(paidActivityParticipants.version, input.expectedVersion),
@@ -581,9 +803,10 @@ export async function cancelledActivityInvoiceIds(
         liveParticipant(institutionId),
         eq(paidActivityParticipants.studentId, studentId),
         eq(paidActivityParticipants.status, 'cancelled'),
+        isNotNull(paidActivityParticipants.invoiceId),
       ),
     )
-  return new Set(rows.map((row) => row.invoiceId))
+  return new Set(rows.flatMap((row) => (row.invoiceId === null ? [] : [row.invoiceId])))
 }
 
 /** O gün ödenen katılım iadeleri (gün sonu, M-13); IBAN ve hesap sahibi seçilmez. */

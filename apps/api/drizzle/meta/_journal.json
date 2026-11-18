@@ -792,6 +792,13 @@
       "when": 1794838469020,
       "tag": "0112_create_event_tickets",
       "breakpoints": true
+    },
+    {
+      "idx": 113,
+      "version": "7",
+      "when": 1794911803429,
+      "tag": "0113_paid_activity_waitlist",
+      "breakpoints": true
     }
   ]
 }

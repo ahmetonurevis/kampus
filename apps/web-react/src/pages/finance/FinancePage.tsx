@@ -155,6 +155,9 @@ const FinanceStaffCertificatesSection = lazy(async () => ({
 const FinancePayrollExportSection = lazy(async () => ({
   default: (await import('./FinancePayrollExportSection.tsx')).FinancePayrollExportSection,
 }))
+const FinanceMedicalReportsSection = lazy(async () => ({
+  default: (await import('./FinanceMedicalReportsSection.tsx')).FinanceMedicalReportsSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -206,6 +209,7 @@ const VIEWS = {
   staffDeductions: { label: 'Avans ve kesintiler', param: 'avans-kesinti' },
   staffCertificates: { label: 'Personel belgeleri', param: 'personel-belgesi' },
   payrollExport: { label: 'Bordro aktarımı', param: 'bordro-aktarim' },
+  medicalReports: { label: 'Sağlık raporları', param: 'saglik-raporu' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -244,6 +248,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Etkinlik biletleri (DOM-FIN-103) ikisine açıktır; etkinliği yönetici açar (K-324).
  * Avans ve kesintiler (DOM-FIN-101) yalnız yöneticidedir; icra bilgisi hassastır (K-315).
  * Personel belgeleri (DOM-FIN-106) yalnız yöneticidedir; belge ücret ve kimlik no içerir (K-342).
+ * Sağlık raporları (DOM-FIN-110) yalnız yöneticidedir; sağlık verisi özel niteliklidir (K-363).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -258,6 +263,7 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'fixedAssets' ||
       value === 'severance' ||
       value === 'freeTuition' ||
+      value === 'medicalReports' ||
       value === 'payrollExport' ||
       value === 'staffCertificates' ||
       value === 'staffDeductions' ||
@@ -459,6 +465,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'staffDeductions' ? <FinanceStaffDeductionsSection /> : null}
         {tab === 'staffCertificates' ? <FinanceStaffCertificatesSection /> : null}
         {tab === 'payrollExport' ? <FinancePayrollExportSection /> : null}
+        {tab === 'medicalReports' ? <FinanceMedicalReportsSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

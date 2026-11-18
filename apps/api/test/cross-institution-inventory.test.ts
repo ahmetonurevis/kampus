@@ -2604,12 +2604,23 @@ const FINANCE: Readonly<Record<string, Proof>> = {
           'POST /api/v1/finance/staff-cost-allocations/:allocationId/cancel',
           'cancel(a.admin, bAllocation',
         ],
+  // Onur: personel sağlık raporu (ON-185; DOM-FIN-110).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/medical-reports', 'listOf(a.admin)'],
+        ['liste', 'GET /api/v1/finance/medical-report-summary', 'summaryOf(a.admin)'],
+        ['gövde', 'POST /api/v1/finance/medical-reports', 'institutionId: b.id'],
+        ['kayıt', 'PATCH /api/v1/finance/medical-reports/:reportId', "call('PATCH', bUrl, a.admin"],
+        ['kayıt', 'POST /api/v1/finance/medical-reports/:reportId/cancel', '`${bUrl}/cancel`'],
       ] as const
     ).map(([kind, key, marker]) => [
       key,
       proof(kind)(
         'finance-staff-costs.test.ts',
         'başka kurumun personeli, ataması ve merkezi 404 ve B değişmez',
+        'finance-medical-reports.test.ts',
+        'başka kurumun personeli ve raporu 404 ve B değişmez',
         marker,
       ),
     ]),

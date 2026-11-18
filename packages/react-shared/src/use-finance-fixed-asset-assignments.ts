@@ -4,6 +4,7 @@ import { requireIfMatch, type CommandHeaders } from './commands.ts'
 import { useApiCommand } from './use-api-command.ts'
 import { useApiQuery } from './use-api-query.ts'
 import { FIXED_ASSETS_KEY } from './use-finance-fixed-assets.ts'
+import { STAFF_SEPARATIONS_KEY } from './use-finance-staff-separations.ts'
 import { useFinanceListQuery } from './use-finance-list-query.ts'
 
 // Demirbaş zimmeti kancaları (`/finance/fixed-asset-assignments`; DOM-FIN-086, ON-236). Anahtarlar
@@ -93,7 +94,8 @@ export function useReturnFixedAsset() {
         },
         body: input.body,
       }),
-    invalidates: [FIXED_ASSETS_KEY],
+    // İade işten ayrılış dosyasının zimmet adımını da değiştirir (DOM-FIN-118).
+    invalidates: [FIXED_ASSETS_KEY, STAFF_SEPARATIONS_KEY],
     version: (input) => input.version,
     messages: MESSAGES,
     exclusive: true,

@@ -176,6 +176,9 @@ const FinanceTripPlansSection = lazy(async () => ({
 const FinanceStaffDocumentsSection = lazy(async () => ({
   default: (await import('./FinanceStaffDocumentsSection.tsx')).FinanceStaffDocumentsSection,
 }))
+const FinanceStaffSeparationsSection = lazy(async () => ({
+  default: (await import('./FinanceStaffSeparationsSection.tsx')).FinanceStaffSeparationsSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -234,6 +237,7 @@ const VIEWS = {
   workPermits: { label: 'Çalışma onayları', param: 'calisma-onayi' },
   tripPlans: { label: 'Gezi planları', param: 'gezi-plani' },
   staffDocuments: { label: 'Özlük belgeleri', param: 'ozluk-belgeleri' },
+  staffSeparations: { label: 'İşten ayrılış', param: 'isten-ayrilis' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -279,6 +283,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Çalışma onayları (DOM-FIN-114) yalnız yöneticidedir; öğretmen özlük verisidir (K-377).
  * Gezi planları (DOM-FIN-111) ikisine açıktır; ön büro taslak yazar, yönetici onaylar (K-367).
  * Özlük belgeleri (DOM-FIN-113) ikisine açıktır; tür ayarı ve özel nitelikli belge yöneticide (K-374).
+ * İşten ayrılış (DOM-FIN-118) yalnız yöneticidedir; dosya avans, icra ve izin bilgisi taşır (K-403).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -292,6 +297,7 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'supplierLedger' ||
       value === 'fixedAssets' ||
       value === 'severance' ||
+      value === 'staffSeparations' ||
       value === 'freeTuition' ||
       value === 'workPermits' ||
       value === 'sgkPreparation' ||
@@ -506,6 +512,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'workPermits' ? <FinanceWorkPermitsSection /> : null}
         {tab === 'tripPlans' ? <FinanceTripPlansSection /> : null}
         {tab === 'staffDocuments' ? <FinanceStaffDocumentsSection isManager={isManager} /> : null}
+        {tab === 'staffSeparations' ? <FinanceStaffSeparationsSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

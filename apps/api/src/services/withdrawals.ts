@@ -4,6 +4,12 @@ import { requireAuthorized } from '@kampus/school-core/lib/authorize.ts'
 import { cancelledRenewalContractIds } from '@kampus/school-core/lib/finance-referrals.ts'
 import { scholarshipEndClawbackInvoiceIds } from '@kampus/school-core/lib/finance-scholarship-revocation.ts'
 import { cancelledRenewalScholarshipYears } from '@kampus/school-core/lib/finance-scholarships.ts'
+import type { State } from '@kampus/school-core/data/seed.ts'
+import {
+  holdsSeat,
+  type ParticipationStatus,
+} from '@kampus/school-core/lib/finance-paid-activities.ts'
+import type { Promotion } from '@kampus/school-core/lib/finance-paid-activity-participants.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 import {
   quoteWithdrawalWithFollowups,
@@ -23,8 +29,12 @@ import { isFinanceDayClosed } from '../db/finance-day-closings.ts'
 import { studentFreeTuitionCoverage } from '../db/finance-free-tuition.ts'
 import { insertPackageHourEntry, loadWithdrawalPackageSales } from '../db/finance-packages.ts'
 import {
+  findPaidActivity,
   markParticipantCancelled,
+  openParticipants,
   withdrawalParticipations,
+  type OpenParticipant,
+  type StoredPaidActivity,
 } from '../db/finance-paid-activities.ts'
 import { listStudentScholarshipEnds } from '../db/finance-scholarships.ts'
 import { allocatedByInvoice, listBankAccounts, paymentTotal } from '../db/payments.ts'
@@ -41,6 +51,12 @@ import {
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { environment, type CommandOptions } from './commands.ts'
+import {
+  cancelFields,
+  promoteWaitlist,
+  promotionPreview,
+  writePromotions,
+} from './finance-paid-activities.ts'
 import { applyWithdrawalToReferralRewards } from './finance-referrals.ts'
 import { archiveCancelledRenewalAwards } from './finance-scholarships.ts'
 import { notify } from './notify.ts'
@@ -49,6 +65,7 @@ import {
   runReadOnly,
   type CommandResponse,
   type IdempotencyRequest,
+  type LoadScope,
   FINANCE_TABLE_STORES,
 } from './operation-runner.ts'
 import { studentFinanceScope } from './payments.ts'
@@ -58,8 +75,10 @@ import { auditWork } from './task-work.ts'
  * Ayrılış ve iade servisi (ADR 0006 karar 10; docs/domain/finans.md DOM-FIN-040, -041; IST-110).
  * Kural core `lib/withdrawals.ts` ve `lib/withdrawal-followups.ts`'tedir. Öğrenci, taksit, bağlı
  * kayıt, kalan paket saatinin iade hareketi, iade kaydı, kimlik arşivi, iptal edilen burslu
- * yenilemenin burs ve fon payı (K-117) ve ayrılışla iptal edilen etkinlik katılımları (K-348)
- * tek transaction'dadır. Döküm, IBAN ve gerekçe loglanmaz;
+ * yenilemenin burs ve fon payı (K-117), ayrılışla iptal edilen etkinlik katılımları (K-348; yedek
+ * ve izin bekleyen K-395) ve boşalan yere geçen yedekler (K-369) tek transaction'dadır. Ayrılış
+ * geri alınamaz; geri alma eklenirse iptal edilen katılımlar geri gelmez (K-395). Döküm, IBAN ve
+ * gerekçe loglanmaz;
  * denetime yalnız alan adları düşer. İade ödendi bildirimi (`refund_paid`) ödemeyle aynı
  * transaction'dadır, yalnız ayrılış kimliğini taşır.
  */
@@ -219,9 +238,14 @@ async function accountContext(
   }
 }
 
+/** Ayrılışla kapanan katılımın denetimdeki gerekçe kodu (K-395); iptal türü katılımcıdır. */
+export const WITHDRAWAL_CANCEL_REASON = 'student_withdrawal'
+
 /**
- * Ayrılışla iptal edilen etkinlik katılımlarını yazar (K-348): katılımcı iptaliyle aynı alanlar,
- * iade katılım kaydından ödenir (K-303). Kurum kilidi altında okunduğu için sürüm beklenmez.
+ * Ayrılışla iptal edilen etkinlik katılımlarını yazar (K-348, K-395): katılımcı iptaliyle aynı
+ * alanlar, iade katılım kaydından ödenir (K-303); yedek ve izin bekleyen parasız kapanır. Denetim
+ * `paid_activity.participant_cancel`, gerekçe kodu `student_withdrawal`. Kurum kilidi altında
+ * okunduğu için sürüm beklenmez.
  */
 async function cancelActivityParticipations(
   tx: Database,
@@ -237,23 +261,94 @@ async function cancelActivityParticipations(
       now: ctx.now,
     })
     if (!saved) throw new ConflictError()
-    await auditWork(
-      tx,
-      ctx,
-      'paid_activity.participant_cancel',
-      { type: 'paid_activity_participants', id: participantId },
-      [
-        'status',
-        'cancelKind',
-        'cancelledDate',
-        'paidCents',
-        'retainedCents',
-        'refundCents',
-        ...(plan.closedInvoiceId === null ? [] : ['closedInvoiceId']),
-        ...(plan.debtInvoiceId === null ? [] : ['debtInvoiceId']),
-      ],
-    )
+    await tx.insert(auditLog).values({
+      institutionId: ctx.institutionId,
+      actorUserId: ctx.actor.userId,
+      actorRole: ctx.actor.role,
+      action: 'paid_activity.participant_cancel',
+      entityType: 'paid_activity_participants',
+      entityId: participantId,
+      changes: { fields: cancelFields(plan), reason: WITHDRAWAL_CANCEL_REASON },
+      createdAt: ctx.now,
+    })
   }
+}
+
+interface SeatContext {
+  activity: StoredPaidActivity
+  open: OpenParticipant[]
+}
+
+/**
+ * Öğrencinin yer tuttuğu (asil, izin bekleyen), günü bugün ya da sonra olan ve iptal edilmemiş
+ * etkinlikler; katılımları kilit altında ya da kilitten önceki önizlemede okunur. Ayrılış yeri
+ * boşaltırsa sıradaki yedek aynı işlemde geçer (K-369); günü geçmiş etkinlikte geçiş olmaz.
+ */
+async function seatContexts(
+  db: Database,
+  ctx: ServiceContext,
+  participations: readonly {
+    activityId: string
+    status: ParticipationStatus
+    activityDate: string
+  }[],
+  today: string,
+): Promise<Map<string, SeatContext>> {
+  const activityIds = new Set(
+    participations
+      .filter((item) => holdsSeat(item.status) && item.activityDate >= today)
+      .map((item) => item.activityId),
+  )
+  const seats = new Map<string, SeatContext>()
+  for (const activityId of activityIds) {
+    const activity = await findPaidActivity(db, ctx.institutionId, activityId)
+    if (activity === null || activity.status === 'cancelled') continue
+    seats.set(activityId, {
+      activity,
+      open: await openParticipants(db, ctx.institutionId, activityId),
+    })
+  }
+  return seats
+}
+
+/**
+ * Kilitten önce: ayrılış yer boşaltırsa asile geçecek yedeklerin öğrencileri, taksitleri yüklensin
+ * diye. Ayrılış gününden bağımsız üst kümedir; kilit altında aday değiştiyse 409.
+ */
+async function promotionStudentIds(
+  ctx: ServiceContext,
+  studentId: string,
+  today: string,
+): Promise<string[]> {
+  const rows = await withdrawalParticipations(ctx.db, ctx.institutionId, studentId)
+  const seats = await seatContexts(ctx.db, ctx, rows, today)
+  return [...seats.values()].flatMap(({ activity, open }) =>
+    promotionPreview(activity, open, { freed: 1, today }),
+  )
+}
+
+/**
+ * Ayrılışla boşalan yerlere yedekleri geçirir (K-369): iptal edilen katılımlar çıkarılmış son
+ * durumdan; etkin olmayan öğrencinin yedeği atlanır (K-396). State'i değiştirir.
+ */
+function withdrawalPromotions(
+  state: State,
+  cancels: readonly WithdrawalActivityCancel[],
+  seats: ReadonlyMap<string, SeatContext>,
+  context: { today: string; makeId: (prefix: string) => string; loaded: ReadonlySet<string> },
+): Promotion[] {
+  const cancelled = new Set(cancels.map((item) => item.participantId))
+  const freed = new Set(cancels.filter((item) => item.freesSeat).map((item) => item.activityId))
+  return [...freed].flatMap((activityId) => {
+    const seat = seats.get(activityId)
+    if (seat === undefined) return []
+    return promoteWaitlist(
+      state,
+      seat.activity,
+      seat.open.filter((item) => !cancelled.has(item.id)),
+      context,
+    )
+  })
 }
 
 /**
@@ -311,14 +406,28 @@ export function quoteWithdrawalFor(ctx: ServiceContext, studentId: string, input
   })
 }
 
-/** Ayrılışı onaylar ve uygular; iade kaydı aynı işlemde oluşur (DOM-FIN-041, DOM-KAY-024). 201. */
-export function withdrawStudentCommand(
+/**
+ * Ayrılışı onaylar ve uygular; iade kaydı aynı işlemde oluşur (DOM-FIN-041, DOM-KAY-024). Boşalan
+ * etkinlik yerine geçecek yedeklerin taksitleri kilitten önce okunan plana göre yüklenir (K-369).
+ * 201.
+ */
+export async function withdrawStudentCommand(
   ctx: ServiceContext,
   studentId: string,
   input: unknown,
   options: CommandOptions,
 ): Promise<CommandResponse> {
   const id = randomUUID()
+  const today = dayKey(ctx.now)
+  const loaded = new Set(await promotionStudentIds(ctx, studentId, today))
+  const invoiceScope: LoadScope =
+    loaded.size === 0
+      ? studentFinanceScope(studentId)
+      : {
+          match: [
+            { kind: 'equals', field: 'studentId', values: [...new Set([studentId, ...loaded])] },
+          ],
+        }
   let result: WithdrawalView | undefined
   return runCommand(
     ctx,
@@ -326,15 +435,26 @@ export function withdrawStudentCommand(
       action: 'student.withdraw.records',
       collections: SPEC.collections,
       stores: FINANCE_TABLE_STORES,
-      // Ayrılış yalnız öğrencinin sözleşme zincirine ve taksitlerine dokunur (DOM-FIN-040, -041).
+      // Ayrılış öğrencinin sözleşme zincirine ve taksitlerine dokunur (DOM-FIN-040, -041); boşalan
+      // etkinlik yerine geçen yedeğin taksiti açılır (K-369).
       loadScope: {
-        invoices: studentFinanceScope(studentId),
+        invoices: invoiceScope,
         contracts: studentFinanceScope(studentId),
       },
       entity: { type: 'student_withdrawals', id },
       load: async (tx) => {
         const { actor, institutionType, scalars } = await environment(tx, ctx, SPEC)
         const account = await accountContext(tx, ctx, studentId)
+        const seats = await seatContexts(
+          tx,
+          ctx,
+          (account.participations ?? []).map((item) => ({
+            activityId: item.activityId,
+            status: item.status,
+            activityDate: item.activity.activityDate,
+          })),
+          today,
+        )
         return {
           scalars,
           run: (state, { now, makeId }) => {
@@ -348,6 +468,11 @@ export function withdrawStudentCommand(
               ...plan,
               cancelledContractIds: cancelledRenewalContractIds(state, studentId),
               cancelledScholarshipYears: cancelledRenewalScholarshipYears(state, studentId),
+              promotions: withdrawalPromotions(state, plan.activityCancels, seats, {
+                today,
+                makeId,
+                loaded,
+              }),
             }
           },
         }
@@ -374,6 +499,7 @@ export function withdrawStudentCommand(
         await applyWithdrawalToReferralRewards(tx, ctx, plan)
         await archiveCancelledRenewalAwards(tx, ctx, plan.studentId, plan.cancelledScholarshipYears)
         await cancelActivityParticipations(tx, ctx, plan.activityCancels)
+        await writePromotions(tx, ctx, plan.promotions)
         await audit(tx, ctx, 'student.withdraw', id, [
           'withdrawalDate',
           'reason',

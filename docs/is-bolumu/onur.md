@@ -429,9 +429,9 @@ Ara nokta: yeni öğretim yılı açıldı; pilot okul tam yıl, dil okulu ve ye
 
 ### K1 · Kayıt ve CRM · genişleme
 
-| ID     | Görev                                                                                      | Boyut | Durum       | Dal / commit    | Not                                                                      |
-| ------ | ------------------------------------------------------------------------------------------ | ----- | ----------- | --------------- | ------------------------------------------------------------------------ |
-| ON-263 | Ön başvuruda belge yükleme: kimlik, karne, sağlık raporu yükleme, eksik belge hatırlatması | M     | çalışılıyor | onur/aday-belge | KVKK: sağlık raporu özel nitelikli (IST-020); bağımlılık: Platform dosya |
+| ID     | Görev                                                                                      | Boyut | Durum | Dal / commit | Not                                                                                                    |
+| ------ | ------------------------------------------------------------------------------------------ | ----- | ----- | ------------ | ------------------------------------------------------------------------------------------------------ |
+| ON-263 | Ön başvuruda belge yükleme: kimlik, karne, sağlık raporu yükleme, eksik belge hatırlatması | M     | bitti | 129b1e69     | belge türü ayarı, sağlık raporu rızalı ve dar yetkili, eksik belge rozeti; migration 0114; DOM-KAY-043 |
 
 ### K2 · Finans · genişleme
 

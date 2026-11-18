@@ -85,9 +85,13 @@ export const SGK_REASON_LABELS = Object.fromEntries(
 
 /** Birleşik kodlar: elle seçilmez, ayda birden fazla neden olunca hesaplanır. */
 export const SGK_COMBINED_REASON_CODES = ['12', '24', '27'] as const
+export type SgkSelectableReasonCode = Exclude<
+  SgkReasonCode,
+  (typeof SGK_COMBINED_REASON_CODES)[number]
+>
 export const SGK_SELECTABLE_REASON_CODES = SGK_REASON_CODES.filter(
   (code) => !(SGK_COMBINED_REASON_CODES as readonly string[]).includes(code),
-) as [SgkReasonCode, ...SgkReasonCode[]]
+) as [SgkSelectableReasonCode, ...SgkSelectableReasonCode[]]
 
 /** "01 · İstirahat". */
 export const sgkReasonLabel = (code: SgkReasonCode) => `${code} · ${SGK_REASON_LABELS[code]}`

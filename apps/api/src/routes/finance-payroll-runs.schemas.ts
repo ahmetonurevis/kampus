@@ -28,7 +28,7 @@ export const carryoverListQuery = z.strictObject({
     .describe('Devir yılı'),
 })
 
-const earningSchema = z.object({
+export const earningSchema = z.object({
   kind: z.enum(PAYROLL_EARNING_KINDS).describe('`wage`, `lesson`, `benefit`, `adjustment`'),
   code: z.string().describe('Ücret türü, ek ders türü, yan hak türü ya da düzeltme kalemi'),
   // kvkk: K (ücret)

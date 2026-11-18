@@ -237880,6 +237880,1287 @@
         }
       }
     },
+    "/api/v1/finance/staff-retention-policies": {
+      "get": {
+        "operationId": "getStaffRetentionPolicies",
+        "summary": "Özlük verisi saklama politikası",
+        "tags": [
+          "finance-staff-retention"
+        ],
+        "description": "Altı veri kategorisinin (istirahat raporları, sağlık raporu belgeleri, adli sicil kayıtları, özlük dosyası, izin kayıtları, mali kayıtlar) ayrılış sonrası saklama süresi, yasal en az süresi, başlangıç olayı ve imha yöntemi. Ayarlanmamış kategori yasal en az süreyi kullanır (`customized: false`; K-415). Süreler **doğrulanmalı** (H-89, M-85). Rol: yalnız `yonetici` (ön büro, öğretmen, veli, öğrenci 403). Modül `finance`.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "category": {
+                            "type": "string",
+                            "enum": [
+                              "sick_leave_reports",
+                              "health_reports",
+                              "criminal_records",
+                              "personnel_file",
+                              "leave_records",
+                              "payroll_records"
+                            ],
+                            "description": "`sick_leave_reports` istirahat raporları, `health_reports` sağlık raporu belgeleri, `criminal_records` adli sicil kayıtları, `personnel_file` özlük dosyası, `leave_records` izin kayıtları, `payroll_records` mali kayıtlar"
+                          },
+                          "retentionMonths": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Geçerli saklama süresi (ay)"
+                          },
+                          "legalMinimumMonths": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Yasal en az süre (ay); varsayılan budur, altına inilemez"
+                          },
+                          "maximumMonths": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Girilebilecek en uzun süre (ay)"
+                          },
+                          "startEvent": {
+                            "type": "string",
+                            "enum": [
+                              "separation_day",
+                              "year_after_separation"
+                            ],
+                            "description": "`separation_day` ayrılış günü, `year_after_separation` ayrılış yılını izleyen yıl başı"
+                          },
+                          "method": {
+                            "type": "string",
+                            "enum": [
+                              "delete",
+                              "anonymize"
+                            ],
+                            "description": "`delete` fiziksel silme, `anonymize` kişi düzeyinde silinerek anonimleştirme (K-416)"
+                          },
+                          "special": {
+                            "type": "boolean",
+                            "description": "Özel nitelikli kişisel veri (KVKK md. 6)"
+                          },
+                          "customized": {
+                            "type": "boolean",
+                            "description": "Kurum ayarı mı (`false` ise yasal en az süre)"
+                          },
+                          "updatedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "category",
+                          "retentionMonths",
+                          "legalMinimumMonths",
+                          "maximumMonths",
+                          "startEvent",
+                          "method",
+                          "special",
+                          "customized",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateStaffRetentionPolicies",
+        "summary": "Özlük verisi saklama sürelerini değiştir",
+        "tags": [
+          "finance-staff-retention"
+        ],
+        "description": "Gönderilen kategorilerin süresi (ay, en çok 360) yazılır; `null` yasal en az süreye döner. Yasal en az sürenin altı 400 (K-415). Süre değişikliği yalnız henüz imha edilmemiş kayıtların imha gününü değiştirir. Denetim `finance.staff_retention.update` (kategori adları). `Idempotency-Key` isteğe bağlı. Rol: yalnız `yonetici` (ön büro, öğretmen, veli, öğrenci 403). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sick_leave_reports": {
+                    "description": "İstirahat raporları",
+                    "type": "object",
+                    "properties": {
+                      "retentionMonths": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 360
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "Saklama süresi (ay); `null` yasal en az süreye (varsayılan) döner"
+                      }
+                    },
+                    "required": [
+                      "retentionMonths"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "health_reports": {
+                    "description": "Sağlık raporu belgeleri",
+                    "type": "object",
+                    "properties": {
+                      "retentionMonths": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 360
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "Saklama süresi (ay); `null` yasal en az süreye (varsayılan) döner"
+                      }
+                    },
+                    "required": [
+                      "retentionMonths"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "criminal_records": {
+                    "description": "Adli sicil kayıtları",
+                    "type": "object",
+                    "properties": {
+                      "retentionMonths": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 360
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "Saklama süresi (ay); `null` yasal en az süreye (varsayılan) döner"
+                      }
+                    },
+                    "required": [
+                      "retentionMonths"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "personnel_file": {
+                    "description": "Özlük dosyası",
+                    "type": "object",
+                    "properties": {
+                      "retentionMonths": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 360
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "Saklama süresi (ay); `null` yasal en az süreye (varsayılan) döner"
+                      }
+                    },
+                    "required": [
+                      "retentionMonths"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "leave_records": {
+                    "description": "İzin kayıtları",
+                    "type": "object",
+                    "properties": {
+                      "retentionMonths": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 360
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "Saklama süresi (ay); `null` yasal en az süreye (varsayılan) döner"
+                      }
+                    },
+                    "required": [
+                      "retentionMonths"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "payroll_records": {
+                    "description": "Mali kayıtlar",
+                    "type": "object",
+                    "properties": {
+                      "retentionMonths": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 360
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "Saklama süresi (ay); `null` yasal en az süreye (varsayılan) döner"
+                      }
+                    },
+                    "required": [
+                      "retentionMonths"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "category": {
+                            "type": "string",
+                            "enum": [
+                              "sick_leave_reports",
+                              "health_reports",
+                              "criminal_records",
+                              "personnel_file",
+                              "leave_records",
+                              "payroll_records"
+                            ],
+                            "description": "`sick_leave_reports` istirahat raporları, `health_reports` sağlık raporu belgeleri, `criminal_records` adli sicil kayıtları, `personnel_file` özlük dosyası, `leave_records` izin kayıtları, `payroll_records` mali kayıtlar"
+                          },
+                          "retentionMonths": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Geçerli saklama süresi (ay)"
+                          },
+                          "legalMinimumMonths": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Yasal en az süre (ay); varsayılan budur, altına inilemez"
+                          },
+                          "maximumMonths": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Girilebilecek en uzun süre (ay)"
+                          },
+                          "startEvent": {
+                            "type": "string",
+                            "enum": [
+                              "separation_day",
+                              "year_after_separation"
+                            ],
+                            "description": "`separation_day` ayrılış günü, `year_after_separation` ayrılış yılını izleyen yıl başı"
+                          },
+                          "method": {
+                            "type": "string",
+                            "enum": [
+                              "delete",
+                              "anonymize"
+                            ],
+                            "description": "`delete` fiziksel silme, `anonymize` kişi düzeyinde silinerek anonimleştirme (K-416)"
+                          },
+                          "special": {
+                            "type": "boolean",
+                            "description": "Özel nitelikli kişisel veri (KVKK md. 6)"
+                          },
+                          "customized": {
+                            "type": "boolean",
+                            "description": "Kurum ayarı mı (`false` ise yasal en az süre)"
+                          },
+                          "updatedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "category",
+                          "retentionMonths",
+                          "legalMinimumMonths",
+                          "maximumMonths",
+                          "startEvent",
+                          "method",
+                          "special",
+                          "customized",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/staff-retention-candidates": {
+      "get": {
+        "operationId": "listStaffRetentionCandidates",
+        "summary": "İmha adayları",
+        "tags": [
+          "finance-staff-retention"
+        ],
+        "description": "Pasifleştirilmiş (ayrılmış) personel × kaydı bulunan veri kategorisi: ayrılış günü, kayıt sayısı, imha edilebileceği ilk gün ve kalan gün. Süresi dolanlar (`status: due`) önce, sonra imha günü. Ayrılış günü üyeliğin pasifleştirildiği Europe/Istanbul günüdür; yeniden etkinleştirilen personel aday olmaz (K-415). Ad, kategori ve durumla süzülür, sayfalıdır. Rol: yalnız `yonetici` (ön büro, öğretmen, veli, öğrenci 403). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Personel adında arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "sick_leave_reports",
+                "health_reports",
+                "criminal_records",
+                "personnel_file",
+                "leave_records",
+                "payroll_records"
+              ]
+            },
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "description": "`sick_leave_reports` istirahat raporları, `health_reports` sağlık raporu belgeleri, `criminal_records` adli sicil kayıtları, `personnel_file` özlük dosyası, `leave_records` izin kayıtları, `payroll_records` mali kayıtlar"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "due",
+                "waiting"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "`due` yalnız süresi dolan, `waiting` yalnız süresi süren"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "membershipId": {
+                            "type": "string",
+                            "description": "Ayrılmış personelin kurum üyeliği"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "role": {
+                            "type": "string",
+                            "description": "Ayrılıştaki rol (`yonetici`, `ogretmen`, `onburo`)"
+                          },
+                          "separationDate": {
+                            "type": "string",
+                            "description": "Ayrılış günü: pasifleştirildiği Europe/Istanbul günü"
+                          },
+                          "category": {
+                            "type": "string",
+                            "enum": [
+                              "sick_leave_reports",
+                              "health_reports",
+                              "criminal_records",
+                              "personnel_file",
+                              "leave_records",
+                              "payroll_records"
+                            ],
+                            "description": "`sick_leave_reports` istirahat raporları, `health_reports` sağlık raporu belgeleri, `criminal_records` adli sicil kayıtları, `personnel_file` özlük dosyası, `leave_records` izin kayıtları, `payroll_records` mali kayıtlar"
+                          },
+                          "method": {
+                            "type": "string",
+                            "enum": [
+                              "delete",
+                              "anonymize"
+                            ],
+                            "description": "`delete` fiziksel silme, `anonymize` kişi düzeyinde silinerek anonimleştirme (K-416)"
+                          },
+                          "special": {
+                            "type": "boolean"
+                          },
+                          "recordCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Kategoride imha edilecek kayıt sayısı"
+                          },
+                          "retentionMonths": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "dueDate": {
+                            "type": "string",
+                            "description": "İmha edilebileceği ilk gün (dahil)"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "due",
+                              "waiting"
+                            ],
+                            "description": "`due` süre doldu, imha edilebilir; `waiting` süre sürüyor"
+                          },
+                          "daysLeft": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "İmhaya kalan gün; dolmuşsa 0 ya da eksi"
+                          }
+                        },
+                        "required": [
+                          "membershipId",
+                          "name",
+                          "role",
+                          "separationDate",
+                          "category",
+                          "method",
+                          "special",
+                          "recordCount",
+                          "retentionMonths",
+                          "dueDate",
+                          "status",
+                          "daysLeft"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/staff-data-destructions": {
+      "get": {
+        "operationId": "listStaffDataDestructions",
+        "summary": "İmha kayıtları",
+        "tags": [
+          "finance-staff-retention"
+        ],
+        "description": "Onaylı imhaların kaydı, en yeni önce: kategori, yöntem, kayıt ve dosya sayısı, uygulanan süre, imha eden ve an. İmha edilen personelin kimliği ve adı tutulmaz; kayıt değişmez ve silinmez (K-417). Rol: yalnız `yonetici` (ön büro, öğretmen, veli, öğrenci 403). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "sick_leave_reports",
+                "health_reports",
+                "criminal_records",
+                "personnel_file",
+                "leave_records",
+                "payroll_records"
+              ]
+            },
+            "in": "query",
+            "name": "category",
+            "required": false,
+            "description": "`sick_leave_reports` istirahat raporları, `health_reports` sağlık raporu belgeleri, `criminal_records` adli sicil kayıtları, `personnel_file` özlük dosyası, `leave_records` izin kayıtları, `payroll_records` mali kayıtlar"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "category": {
+                            "type": "string",
+                            "enum": [
+                              "sick_leave_reports",
+                              "health_reports",
+                              "criminal_records",
+                              "personnel_file",
+                              "leave_records",
+                              "payroll_records"
+                            ],
+                            "description": "`sick_leave_reports` istirahat raporları, `health_reports` sağlık raporu belgeleri, `criminal_records` adli sicil kayıtları, `personnel_file` özlük dosyası, `leave_records` izin kayıtları, `payroll_records` mali kayıtlar"
+                          },
+                          "method": {
+                            "type": "string",
+                            "enum": [
+                              "delete",
+                              "anonymize"
+                            ],
+                            "description": "`delete` fiziksel silme, `anonymize` kişi düzeyinde silinerek anonimleştirme (K-416)"
+                          },
+                          "recordCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "İmha edilen kayıt sayısı"
+                          },
+                          "fileCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "İmhaya işaretlenen dosya sayısı"
+                          },
+                          "retentionMonths": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Uygulanan saklama süresi (ay)"
+                          },
+                          "startEvent": {
+                            "type": "string",
+                            "enum": [
+                              "separation_day",
+                              "year_after_separation"
+                            ],
+                            "description": "`separation_day` ayrılış günü, `year_after_separation` ayrılış yılını izleyen yıl başı"
+                          },
+                          "destroyedAt": {
+                            "type": "string"
+                          },
+                          "destroyedByUserId": {
+                            "type": "string",
+                            "description": "İmhayı onaylayan yönetici"
+                          },
+                          "destroyedByName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "category",
+                          "method",
+                          "recordCount",
+                          "fileCount",
+                          "retentionMonths",
+                          "startEvent",
+                          "destroyedAt",
+                          "destroyedByUserId",
+                          "destroyedByName"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "destroyStaffData",
+        "summary": "Özlük verisini imha et",
+        "tags": [
+          "finance-staff-retention"
+        ],
+        "description": "Ayrılmış personelin bir kategorideki bütün kayıtlarını (iptal edilmişler dahil) imha eder (K-416): istirahat raporu, sağlık raporu, adli sicil, özlük dosyası ve izin kayıtları fiziksel silinir; mali kayıtlar kişi düzeyinde silinerek anonimleşir (onaylı bordro dönemi ve aktarım özetleri kişisiz kalır). Bağlı dosyaların saklama sonu şimdiye çekilir, nesneyi platformun saklama sonu imhası siler. Aynı işlemde kişisel veri içermeyen imha kaydı ve `finance.staff_data.destroy` denetimi yazılır. Olmayan, başka kurumun ya da personel olmayan üyelik 404; etkin personel 422 `staff_retention_member_active`; süresi dolmamış kategori 422 `staff_retention_not_due`; kaydı olmayan kategori 422 `staff_retention_nothing_to_destroy`. Taze oturum ister (eskiyse 403 `reauthentication_required`); `Idempotency-Key` zorunlu. Geri alınamaz. Rol: yalnız `yonetici` (ön büro, öğretmen, veli, öğrenci 403). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "membershipId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Verisi imha edilecek ayrılmış personelin kurum üyeliği"
+                  },
+                  "category": {
+                    "type": "string",
+                    "enum": [
+                      "sick_leave_reports",
+                      "health_reports",
+                      "criminal_records",
+                      "personnel_file",
+                      "leave_records",
+                      "payroll_records"
+                    ],
+                    "description": "`sick_leave_reports` istirahat raporları, `health_reports` sağlık raporu belgeleri, `criminal_records` adli sicil kayıtları, `personnel_file` özlük dosyası, `leave_records` izin kayıtları, `payroll_records` mali kayıtlar"
+                  }
+                },
+                "required": [
+                  "membershipId",
+                  "category"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "category": {
+                          "type": "string",
+                          "enum": [
+                            "sick_leave_reports",
+                            "health_reports",
+                            "criminal_records",
+                            "personnel_file",
+                            "leave_records",
+                            "payroll_records"
+                          ],
+                          "description": "`sick_leave_reports` istirahat raporları, `health_reports` sağlık raporu belgeleri, `criminal_records` adli sicil kayıtları, `personnel_file` özlük dosyası, `leave_records` izin kayıtları, `payroll_records` mali kayıtlar"
+                        },
+                        "method": {
+                          "type": "string",
+                          "enum": [
+                            "delete",
+                            "anonymize"
+                          ],
+                          "description": "`delete` fiziksel silme, `anonymize` kişi düzeyinde silinerek anonimleştirme (K-416)"
+                        },
+                        "recordCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "İmha edilen kayıt sayısı"
+                        },
+                        "fileCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "İmhaya işaretlenen dosya sayısı"
+                        },
+                        "retentionMonths": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Uygulanan saklama süresi (ay)"
+                        },
+                        "startEvent": {
+                          "type": "string",
+                          "enum": [
+                            "separation_day",
+                            "year_after_separation"
+                          ],
+                          "description": "`separation_day` ayrılış günü, `year_after_separation` ayrılış yılını izleyen yıl başı"
+                        },
+                        "destroyedAt": {
+                          "type": "string"
+                        },
+                        "destroyedByUserId": {
+                          "type": "string",
+                          "description": "İmhayı onaylayan yönetici"
+                        },
+                        "destroyedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "category",
+                        "method",
+                        "recordCount",
+                        "fileCount",
+                        "retentionMonths",
+                        "startEvent",
+                        "destroyedAt",
+                        "destroyedByUserId",
+                        "destroyedByName"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

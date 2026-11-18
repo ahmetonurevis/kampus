@@ -165,6 +165,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // Gezi planı taslağı numaralı plan açar; çift tıklama ikinci planı açmaz
   // (routes/finance-trip-plans.ts; DOM-FIN-111, ON-155).
   'POST /api/v1/finance/trip-plans',
+  // Özlük verisi imhası geri alınamaz; çift tıklama ikinci imha kaydı yazmaz
+  // (routes/finance-staff-retention.ts; DOM-FIN-122, ON-176).
+  'POST /api/v1/finance/staff-data-destructions',
 ]
 // Onur: kayıt ve finans sonu
 

@@ -1,38 +1,23 @@
-import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
-import { useForm, useWatch } from 'react-hook-form'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import {
   useCancelPaidActivity,
-  useCancelPaidActivityParticipation,
   useCreatePaidActivity,
-  useJoinPaidActivity,
   usePaidActivities,
-  usePaidActivityParticipants,
-  usePayPaidActivityRefund,
-  type PaidActivityParticipant,
   type PaidActivityRow,
 } from '@kampus/react-shared/use-finance-paid-activities.ts'
-import { useBankAccounts } from '@kampus/react-shared/use-payment-commands.ts'
-import { REAUTHENTICATION_CODE } from '@kampus/react-shared/use-withdrawals.ts'
+import { useAllPermissionForms } from '@kampus/react-shared/use-permission-forms.ts'
 import {
   LATE_REFUND_RULE_LABELS,
   LATE_REFUND_RULES,
   PAID_ACTIVITY_KIND_LABELS,
   PAID_ACTIVITY_KINDS,
   PAID_ACTIVITY_STATUS_LABELS,
-  PARTICIPATION_PAYMENT_STATUS_LABELS,
-  PARTICIPATION_REFUND_STATUS_LABELS,
   type LateRefundRule,
   type PaidActivityKind,
 } from '@kampus/school-core/lib/finance-paid-activities.ts'
 import { dateLabel, dayKey, money } from '@kampus/school-core/lib/format.ts'
-import { bankAccountLabel, parseAmountInput } from '@kampus/school-core/lib/payments.ts'
-import {
-  payRefundSchema,
-  type PayRefundInput,
-  type PayRefundOutput,
-} from '@kampus/school-core/lib/withdrawals.ts'
-import { ReauthModal } from '@/auth/ReauthModal.tsx'
+import { parseAmountInput } from '@kampus/school-core/lib/payments.ts'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { FormField } from '@/components/FormField.tsx'
 import { Icon } from '@/components/Icon.tsx'
@@ -40,14 +25,14 @@ import { Modal } from '@/components/Modal.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
-import { useCoreAll } from '@/hooks/use-core-collection.ts'
-import { useEnrollmentLearner } from '@/hooks/use-enrollment-learner.ts'
 import { useListState } from '@/hooks/use-list-state.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { notify } from '@/lib/notify.ts'
-import { SummaryLoading } from '../management/SummaryParts.tsx'
+import { ParticipantsPanel } from './FinancePaidActivityParticipants.tsx'
 
 /**
  * Gezi ve etkinlik ücretleri (DOM-FIN-098; ON-142; K-300…K-303). Yönetici ücretli gezi ya da
@@ -59,19 +44,9 @@ import { SummaryLoading } from '../management/SummaryParts.tsx'
 
 const NO_SORT: readonly string[] = []
 const ACTIVITY_MOBILE = ['name', 'activityDate', 'status']
-const PARTICIPANT_MOBILE = ['studentName', 'payment', 'status']
 const dayText = (day: string) => dateLabel(`${day}T09:00:00.000Z`, { year: 'numeric' })
 
 type ActivityRow = PaidActivityRow & Record<string, unknown>
-type ParticipantRow = PaidActivityParticipant & { name: string } & Record<string, unknown>
-
-function refundRuleText(row: PaidActivityRow): string {
-  const late =
-    row.lateRefundRule === 'percent'
-      ? `sonra ücretin %${String(row.lateRefundPercent ?? 0)}'i iade edilir`
-      : `sonra kişi başı ${money(row.lateCostCents ?? 0)} masraf düşülür`
-  return `${dayText(row.cancelDeadline)} gününe kadar iptalde tam iade, ${late}.`
-}
 
 export function FinancePaidActivitiesSection({ isManager }: { isManager: boolean }) {
   const list = useListState('gezi-etkinlik')
@@ -93,7 +68,8 @@ export function FinancePaidActivitiesSection({ isManager }: { isManager: boolean
       {
         key: 'participantCount',
         label: 'Katılımcı',
-        cell: (row) => `${String(row.participantCount)} / ${String(row.capacity)}`,
+        cell: (row) =>
+          `${String(row.participantCount)} / ${String(row.capacity)}${row.waitlistCount > 0 ? ` · ${String(row.waitlistCount)} yedek` : ''}`,
       },
       {
         key: 'status',
@@ -190,160 +166,6 @@ export function FinancePaidActivitiesSection({ isManager }: { isManager: boolean
   )
 }
 
-function ParticipantsPanel({
-  activity,
-  isManager,
-}: {
-  activity: PaidActivityRow
-  isManager: boolean
-}) {
-  const learner = useEnrollmentLearner()
-  const list = useListState('gezi-katilimcilar', { resetKey: activity.id })
-  const participants = usePaidActivityParticipants(activity.id, {
-    page: list.state.page,
-    pageSize: list.state.pageSize,
-  })
-  const [joining, setJoining] = useState(false)
-  const [cancelling, setCancelling] = useState<ParticipantRow | null>(null)
-  const [refunding, setRefunding] = useState<ParticipantRow | null>(null)
-  const rows = useMemo(
-    () =>
-      participants.data?.data.map((item): ParticipantRow => ({
-        ...item,
-        name: item.studentName ?? '—',
-      })),
-    [participants.data],
-  )
-  const columns = useMemo<DataColumn<ParticipantRow>[]>(
-    () => [
-      { key: 'studentName', label: learner.title, cell: (row) => row.name },
-      {
-        key: 'payment',
-        label: 'Ödeme',
-        cell: (row) => (
-          <span className="flex flex-wrap items-center gap-2">
-            <StatusBadge text={PARTICIPATION_PAYMENT_STATUS_LABELS[row.paymentStatus]} />
-            <span className="text-sm text-muted-foreground">
-              {money(row.collectedCents)} / {money(row.amountCents)}
-            </span>
-          </span>
-        ),
-      },
-      {
-        key: 'status',
-        label: 'Katılım',
-        cell: (row) =>
-          row.status === 'active' ? (
-            <StatusBadge text="Katılıyor" tone="green" />
-          ) : (
-            <StatusBadge
-              text={`İptal · ${row.cancelledDate ? dayText(row.cancelledDate) : ''}`}
-              tone="gray"
-            />
-          ),
-      },
-      {
-        key: 'refund',
-        label: 'İade',
-        cell: (row) =>
-          row.status === 'active' ? (
-            '—'
-          ) : (
-            <span className="grid gap-1">
-              <StatusBadge
-                text={PARTICIPATION_REFUND_STATUS_LABELS[row.refundStatus]}
-                tone={row.refundStatus === 'pending' ? 'amber' : 'gray'}
-              />
-              <span className="text-sm text-muted-foreground">
-                İade {money(row.refundCents)} · kesinti {money(row.retainedCents ?? 0)}
-              </span>
-            </span>
-          ),
-      },
-      {
-        key: ACTIONS_KEY,
-        label: 'İşlemler',
-        cell: (row) => (
-          <div className="flex flex-wrap gap-2">
-            {row.status === 'active' && activity.status === 'open' ? (
-              <Button
-                size="sm"
-                variant="secondary"
-                aria-label={`${row.name} katılımını iptal et`}
-                onClick={() => setCancelling(row)}
-              >
-                Katılımı iptal et
-              </Button>
-            ) : null}
-            {isManager && row.refundStatus === 'pending' ? (
-              <Button
-                size="sm"
-                variant="secondary"
-                aria-label={`${row.name} iadesini öde`}
-                onClick={() => setRefunding(row)}
-              >
-                İadeyi öde
-              </Button>
-            ) : null}
-          </div>
-        ),
-      },
-    ],
-    [activity.status, isManager, learner],
-  )
-  return (
-    <section
-      aria-labelledby="gezi-katilimci-baslik"
-      className="panel overflow-hidden rounded-card border bg-surface"
-    >
-      <header className="panel-heading flex flex-wrap items-start justify-between gap-3 px-6 pt-6 pb-2">
-        <div>
-          <h2 id="gezi-katilimci-baslik" className="text-lg font-semibold">
-            {activity.name} · katılımcılar
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            {dayText(activity.activityDate)} · kişi başı {money(activity.feeCents)} · son katılım{' '}
-            {dayText(activity.joinDeadline)}. {refundRuleText(activity)}
-          </p>
-        </div>
-        {activity.status === 'open' ? (
-          <Button onClick={() => setJoining(true)}>
-            <Icon name="Plus" size={17} aria-hidden="true" />
-            Katılımcı ekle
-          </Button>
-        ) : null}
-      </header>
-      <ServerDataTable
-        list={list}
-        rows={rows}
-        total={participants.data?.meta.total ?? 0}
-        sortable={NO_SORT}
-        columns={columns}
-        mobileColumns={PARTICIPANT_MOBILE}
-        caption={`${activity.name} katılımcıları`}
-        search={false}
-        empty="Henüz katılımcı yok."
-        loading={participants.isPending}
-        fetching={participants.isFetching && !participants.isPending}
-        error={
-          participants.error ? (
-            <QueryError error={participants.error} onRetry={() => void participants.refetch()} />
-          ) : undefined
-        }
-      />
-      {joining ? <JoinModal activity={activity} onClose={() => setJoining(false)} /> : null}
-      {cancelling ? (
-        <CancelParticipantModal
-          activity={activity}
-          row={cancelling}
-          onClose={() => setCancelling(null)}
-        />
-      ) : null}
-      {refunding ? <RefundModal row={refunding} onClose={() => setRefunding(null)} /> : null}
-    </section>
-  )
-}
-
 function ModalFooter({
   busy,
   form,
@@ -387,6 +209,8 @@ interface ActivityForm {
   lateRefundPercent: string
   lateCost: string
   externalRef: string
+  requiresConsent: boolean
+  permissionFormId: string
 }
 type ActivityField = keyof ActivityForm
 const SERVER_FIELDS: Readonly<Record<string, ActivityField>> = {
@@ -401,6 +225,8 @@ const SERVER_FIELDS: Readonly<Record<string, ActivityField>> = {
   lateRefundPercent: 'lateRefundPercent',
   lateCostCents: 'lateCost',
   externalRef: 'externalRef',
+  requiresConsent: 'requiresConsent',
+  permissionFormId: 'permissionFormId',
 }
 
 function CreateActivityModal({ onClose }: { onClose: () => void }) {
@@ -419,9 +245,13 @@ function CreateActivityModal({ onClose }: { onClose: () => void }) {
       lateRefundPercent: '0',
       lateCost: '',
       externalRef: '',
+      requiresConsent: false,
+      permissionFormId: '',
     },
   })
   const rule = useWatch({ control: form.control, name: 'lateRefundRule' })
+  const requiresConsent = useWatch({ control: form.control, name: 'requiresConsent' })
+  const forms = useAllPermissionForms({ status: 'open' }, { enabled: requiresConsent })
   const busy = create.isPending || form.formState.isSubmitting
   const errors = form.formState.errors
   const onSubmit = form.handleSubmit(async (values) => {
@@ -452,6 +282,9 @@ function CreateActivityModal({ onClose }: { onClose: () => void }) {
           values.lateRefundRule === 'percent' ? Number(values.lateRefundPercent) : null,
         lateCostCents,
         externalRef: values.externalRef.trim() === '' ? null : values.externalRef.trim(),
+        requiresConsent: values.requiresConsent,
+        permissionFormId:
+          values.requiresConsent && values.permissionFormId !== '' ? values.permissionFormId : null,
       },
       {
         setError: (name, error) => {
@@ -623,6 +456,49 @@ function CreateActivityModal({ onClose }: { onClose: () => void }) {
         >
           {(control) => <Input {...control} {...form.register('externalRef')} disabled={busy} />}
         </FormField>
+        <Controller
+          control={form.control}
+          name="requiresConsent"
+          render={({ field }) => (
+            <div className="flex items-start gap-2 sm:col-span-2">
+              <Checkbox
+                id="gezi-veli-izni"
+                checked={field.value}
+                onCheckedChange={(checked) => field.onChange(checked === true)}
+                onBlur={field.onBlur}
+                disabled={busy}
+              />
+              <Label htmlFor="gezi-veli-izni" className="text-sm leading-snug">
+                Veli izni zorunlu (izin gelene kadar katılım “izin bekliyor” kalır, taksit izinle
+                açılır)
+              </Label>
+            </div>
+          )}
+        />
+        {requiresConsent ? (
+          <FormField
+            id="gezi-izin-formu"
+            label="Dijital izin formu (isteğe bağlı)"
+            error={errors.permissionFormId}
+            description="Bağlanırsa formdaki onay ve retler “İzinleri formdan eşitle” ile katılıma yansır."
+          >
+            {(control) => (
+              <NativeSelect
+                {...control}
+                {...form.register('permissionFormId')}
+                className="w-full"
+                disabled={busy}
+              >
+                <NativeSelectOption value="">Form bağlama</NativeSelectOption>
+                {(forms.data ?? []).map((item) => (
+                  <NativeSelectOption key={item.id} value={item.id}>
+                    {item.title}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+            )}
+          </FormField>
+        ) : null}
         <div className="sm:col-span-2">
           <RootError message={errors.root?.server?.message} />
         </div>
@@ -683,282 +559,6 @@ function CancelActivityModal({
         </FormField>
         <RootError message={form.formState.errors.root?.server?.message} />
       </form>
-    </Modal>
-  )
-}
-
-function JoinModal({ activity, onClose }: { activity: PaidActivityRow; onClose: () => void }) {
-  const learner = useEnrollmentLearner()
-  const students = useCoreAll('students')
-  const join = useJoinPaidActivity()
-  const form = useForm<{ studentId: string }>({ defaultValues: { studentId: '' } })
-  const busy = join.isPending || form.formState.isSubmitting
-  const options = (students.data ?? [])
-    .filter((item) => item.record.isActive)
-    .sort((a, b) => a.record.name.localeCompare(b.record.name, 'tr'))
-  const onSubmit = form.handleSubmit(async ({ studentId }) => {
-    const outcome = await join.submit(
-      { activityId: activity.id, studentId },
-      {
-        setError: (name, error) =>
-          name === 'studentId'
-            ? form.setError('studentId', error, { shouldFocus: true })
-            : form.setError('root.server', error),
-      },
-    )
-    if (outcome.status === 'success') {
-      notify.success(`Katılım yazıldı; ${money(activity.feeCents)} taksit açıldı.`)
-      onClose()
-    }
-  })
-  return (
-    <Modal
-      open
-      onOpenChange={(open) => (open ? undefined : onClose())}
-      title="Katılımcı ekle"
-      description={`${activity.name}: ${learner.dative} ${money(activity.feeCents)} tutarında, ${dayText(activity.joinDeadline)} vadeli taksit açılır.`}
-      footer={<ModalFooter busy={busy} form="gezi-katilim-formu" submit="Yaz" onClose={onClose} />}
-    >
-      <form
-        id="gezi-katilim-formu"
-        noValidate
-        onSubmit={(event) => void onSubmit(event)}
-        className="grid gap-4"
-      >
-        <FormField
-          id="gezi-katilim-ogrenci"
-          label={learner.title}
-          error={form.formState.errors.studentId}
-        >
-          {(control) => (
-            <NativeSelect
-              {...control}
-              {...form.register('studentId', { required: `${learner.title} seçin.` })}
-              className="w-full"
-              disabled={busy || !students.data}
-            >
-              <NativeSelectOption value="">{learner.title} seçin</NativeSelectOption>
-              {options.map((item) => (
-                <NativeSelectOption key={item.id} value={item.id}>
-                  {item.record.name}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-          )}
-        </FormField>
-        <RootError message={form.formState.errors.root?.server?.message} />
-      </form>
-    </Modal>
-  )
-}
-
-function CancelParticipantModal({
-  activity,
-  row,
-  onClose,
-}: {
-  activity: PaidActivityRow
-  row: ParticipantRow
-  onClose: () => void
-}) {
-  const cancel = useCancelPaidActivityParticipation()
-  const [today] = useState(() => dayKey(Date.now()))
-  const onTime = today <= activity.cancelDeadline
-  async function confirm() {
-    const outcome = await cancel.submit({ participantId: row.id, version: row.version })
-    if (outcome.status === 'success') {
-      const { refundCents, debtInvoiceId } = outcome.data.data
-      notify.success(
-        refundCents > 0
-          ? `Katılım iptal edildi; ${money(refundCents)} iade kaydı açıldı.`
-          : debtInvoiceId
-            ? 'Katılım iptal edildi; kalan kesinti için taksit açıldı.'
-            : 'Katılım iptal edildi.',
-      )
-      onClose()
-    } else if (outcome.status === 'failed') onClose()
-  }
-  return (
-    <Modal
-      open
-      onOpenChange={(open) => (open ? undefined : onClose())}
-      title="Katılımı iptal et"
-      description={`${row.name}: ${
-        onTime
-          ? 'son iptal günü geçmedi, tam iade yapılır.'
-          : `son iptal günü geçti; ${refundRuleText(activity)}`
-      } Ödenmemiş taksit kapanır.`}
-      footer={
-        <>
-          <Button variant="secondary" onClick={onClose} disabled={cancel.isPending}>
-            Vazgeç
-          </Button>
-          <Button
-            onClick={() => void confirm()}
-            disabled={cancel.isPending}
-            aria-busy={cancel.isPending || undefined}
-          >
-            Katılımı iptal et
-          </Button>
-        </>
-      }
-    >
-      <p className="text-sm text-muted-foreground">
-        Alınan tutar: {money(row.collectedCents)} / {money(row.amountCents)}.
-      </p>
-    </Modal>
-  )
-}
-
-function RefundModal({ row, onClose }: { row: ParticipantRow; onClose: () => void }) {
-  const accounts = useBankAccounts()
-  if (accounts.isPending)
-    return (
-      <Modal open onOpenChange={(open) => (open ? undefined : onClose())} title="İadeyi öde">
-        <SummaryLoading />
-      </Modal>
-    )
-  return <RefundFormModal row={row} onClose={onClose} accounts={accounts.data?.data ?? []} />
-}
-
-function RefundFormModal({
-  row,
-  onClose,
-  accounts,
-}: {
-  row: ParticipantRow
-  onClose: () => void
-  accounts: readonly { id: string; bankName: string; iban: string }[]
-}) {
-  const pay = usePayPaidActivityRefund()
-  const [today] = useState(() => dayKey(Date.now()))
-  const [reauth, setReauth] = useState(false)
-  const form = useForm<PayRefundInput, unknown, PayRefundOutput>({
-    resolver: zodResolver(payRefundSchema),
-    defaultValues: {
-      paidDate: today,
-      iban: '',
-      accountHolder: '',
-      bankAccountId: accounts[0]?.id ?? '',
-    },
-  })
-  const busy = pay.isPending || form.formState.isSubmitting
-  const errors = form.formState.errors
-  async function send(values: PayRefundOutput) {
-    const outcome = await pay.submit(
-      { participantId: row.id, version: row.version, body: values },
-      {
-        setError: (name, error) => {
-          if (
-            name === 'iban' ||
-            name === 'accountHolder' ||
-            name === 'paidDate' ||
-            name === 'bankAccountId'
-          )
-            form.setError(name, error)
-          else form.setError('root.server', error)
-        },
-      },
-    )
-    if (outcome.status === 'success') {
-      notify.success('İade ödendi olarak kaydedildi.')
-      onClose()
-    } else if (outcome.status === 'failed') {
-      if (outcome.error.code === REAUTHENTICATION_CODE) setReauth(true)
-      else if (outcome.error.code === 'version_conflict') onClose()
-    }
-  }
-  const onSubmit = form.handleSubmit((values) => send(values))
-  return (
-    <Modal
-      open
-      onOpenChange={(open) => (open ? undefined : onClose())}
-      title="İadeyi öde"
-      description={`${row.name} · ${money(row.refundCents)}. Ödenen iade değiştirilemez; ödeme gününün gün sonuna iade ödemesi olarak girer.`}
-      footer={
-        <ModalFooter
-          busy={busy}
-          form="gezi-iade-formu"
-          submit="Ödendi olarak kaydet"
-          onClose={onClose}
-        />
-      }
-    >
-      <form
-        id="gezi-iade-formu"
-        noValidate
-        onSubmit={(event) => void onSubmit(event)}
-        className="grid gap-4"
-      >
-        <FormField id="gezi-iade-tarih" label="Ödeme tarihi" error={errors.paidDate}>
-          {(control) => (
-            <Input
-              {...control}
-              {...form.register('paidDate')}
-              type="date"
-              min={row.cancelledDate ?? undefined}
-              max={today}
-              disabled={busy}
-            />
-          )}
-        </FormField>
-        <FormField
-          id="gezi-iade-hesap"
-          label="Kurum banka hesabı"
-          error={errors.bankAccountId}
-          description={
-            accounts.length === 0
-              ? 'Tanımlı banka hesabı yok; Ayarlar’dan hesap ekleyin.'
-              : 'İadenin çıktığı bildirilmiş hesap.'
-          }
-        >
-          {(control) => (
-            <NativeSelect
-              {...control}
-              {...form.register('bankAccountId')}
-              className="w-full"
-              disabled={busy}
-            >
-              <NativeSelectOption value="">Hesap seçin</NativeSelectOption>
-              {accounts.map((account) => (
-                <NativeSelectOption key={account.id} value={account.id}>
-                  {bankAccountLabel(account)}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-          )}
-        </FormField>
-        <FormField id="gezi-iade-iban" label="IBAN" error={errors.iban}>
-          {(control) => (
-            <Input {...control} {...form.register('iban')} autoComplete="off" disabled={busy} />
-          )}
-        </FormField>
-        <FormField
-          id="gezi-iade-sahip"
-          label="Hesap sahibi"
-          error={errors.accountHolder}
-          description="Öğrencinin kayıtlı velisi; velisi yoksa kendisi."
-        >
-          {(control) => (
-            <Input
-              {...control}
-              {...form.register('accountHolder')}
-              autoComplete="off"
-              disabled={busy}
-            />
-          )}
-        </FormField>
-        <RootError message={errors.root?.server?.message} />
-      </form>
-      {reauth ? (
-        <ReauthModal
-          onCancel={() => setReauth(false)}
-          onDone={() => {
-            setReauth(false)
-            void onSubmit()
-          }}
-        />
-      ) : null}
     </Modal>
   )
 }

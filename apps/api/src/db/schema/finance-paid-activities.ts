@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm'
 import {
   bigint,
+  boolean,
   check,
   date,
   foreignKey,
@@ -15,6 +16,8 @@ import {
 } from 'drizzle-orm/pg-core'
 
 import {
+  CONSENT_CHANNELS,
+  CONSENT_STATUSES,
   LATE_REFUND_RULES,
   PAID_ACTIVITY_KINDS,
   PAID_ACTIVITY_STATUSES,
@@ -30,7 +33,9 @@ import { bankAccounts } from './payments.ts'
  * Gezi ve etkinlik ücreti (DOM-FIN-098; ON-142; K-300…K-303): ücretli etkinlik ve katılımcıları.
  * Katılımın taksiti `invoices`'tadır (`fee_kind = 'activity'`); `student_id` ve taksit kimlikleri
  * `records` kimlikleridir, yabancı anahtar değildir. `external_ref` gezi planına (ON-155) bağlanacak
- * boş alandır.
+ * boş alandır. Yedek listesi ve veli izni DOM-FIN-112 (ON-156; K-369…K-371): yedek ve izin bekleyen
+ * katılımın taksiti yoktur; `permission_form_id` dijital izin formunun (`records` `permissionForms`,
+ * IST-067) kimliğidir, yabancı anahtar değildir.
  */
 export const paidActivities = pgTable(
   'paid_activities',
@@ -51,6 +56,8 @@ export const paidActivities = pgTable(
     lateRefundPercent: integer('late_refund_percent'),
     lateCostCents: bigint('late_cost_cents', { mode: 'number' }),
     externalRef: text('external_ref'),
+    requiresConsent: boolean('requires_consent').notNull().default(false),
+    permissionFormId: text('permission_form_id'),
     status: text('status').notNull().default('open'),
     cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
     cancelReason: text('cancel_reason'),
@@ -87,6 +94,10 @@ export const paidActivities = pgTable(
         and (${table.cancelledAt} is null) = (${table.cancelReason} is null)
         and (${table.cancelledAt} is null) = (${table.cancelledByUserId} is null)`,
     ),
+    check(
+      'paid_activities_permission_form_check',
+      sql`${table.permissionFormId} is null or ${table.requiresConsent}`,
+    ),
     index('paid_activities_date_idx').on(table.institutionId, table.activityDate),
   ],
 )
@@ -101,12 +112,24 @@ export const paidActivityParticipants = pgTable(
     activityId: uuid('activity_id').notNull(),
     // kvkk: K
     studentId: text('student_id').notNull(),
-    invoiceId: text('invoice_id').notNull(),
+    // Yedek ve izin bekleyen katılımda taksit yoktur (K-369, K-370).
+    invoiceId: text('invoice_id'),
     // kvkk: Ç
     feeCents: bigint('fee_cents', { mode: 'number' }).notNull(),
     currency: text('currency').notNull().default('TRY'),
     joinedDate: date('joined_date').notNull(),
     status: text('status').notNull().default('active'),
+    waitlistPosition: integer('waitlist_position'),
+    promotedAt: timestamp('promoted_at', { withTimezone: true }),
+    consentStatus: text('consent_status').notNull().default('not_required'),
+    consentChannel: text('consent_channel'),
+    // kvkk: K
+    consentGrantorName: text('consent_grantor_name'),
+    consentAt: timestamp('consent_at', { withTimezone: true }),
+    // kvkk: K
+    consentRecordedByUserId: text('consent_recorded_by_user_id'),
+    consentWithdrawnAt: timestamp('consent_withdrawn_at', { withTimezone: true }),
+    consentWithdrawalChannel: text('consent_withdrawal_channel'),
     cancelKind: text('cancel_kind'),
     cancelledDate: date('cancelled_date'),
     // kvkk: Ç
@@ -153,6 +176,34 @@ export const paidActivityParticipants = pgTable(
     ),
     check('paid_activity_participants_currency_check', sql`${table.currency} = 'TRY'`),
     check(
+      'paid_activity_participants_invoice_check',
+      sql`(${table.status} <> 'active' or ${table.invoiceId} is not null)
+        and (${table.status} not in ('waitlisted', 'awaiting_consent') or ${table.invoiceId} is null)`,
+    ),
+    check(
+      'paid_activity_participants_waitlist_check',
+      sql`(${table.status} <> 'waitlisted' or ${table.waitlistPosition} is not null)
+        and (${table.waitlistPosition} is null or ${table.waitlistPosition} > 0)`,
+    ),
+    check(
+      'paid_activity_participants_consent_status_check',
+      oneOf(table.consentStatus, CONSENT_STATUSES),
+    ),
+    check(
+      'paid_activity_participants_consent_channel_check',
+      sql`${oneOf(table.consentChannel, CONSENT_CHANNELS)} and ${oneOf(table.consentWithdrawalChannel, CONSENT_CHANNELS)}`,
+    ),
+    check(
+      'paid_activity_participants_consent_check',
+      sql`(${table.consentChannel} is null) = (${table.consentAt} is null)
+        and (${table.consentAt} is null) = (${table.consentRecordedByUserId} is null)
+        and (${table.consentStatus} <> 'granted' or ${table.consentAt} is not null)
+        and (${table.consentStatus} = 'withdrawn') = (${table.consentWithdrawnAt} is not null)
+        and (${table.consentWithdrawnAt} is null) = (${table.consentWithdrawalChannel} is null)
+        and (${table.status} <> 'awaiting_consent' or ${table.consentStatus} = 'pending')
+        and (${table.consentStatus} <> 'withdrawn' or ${table.status} = 'cancelled')`,
+    ),
+    check(
       'paid_activity_participants_cancel_check',
       sql`(${table.status} = 'cancelled') = (${table.cancelledDate} is not null)
         and (${table.cancelledDate} is null) = (${table.cancelKind} is null)
@@ -175,10 +226,15 @@ export const paidActivityParticipants = pgTable(
         and (${table.refundPaidDate} is null) = (${table.refundBankAccountId} is null)
         and (${table.refundPaidDate} is null or ${table.refundCents} > 0)`,
     ),
-    // Öğrencinin bir etkinlikte tek iptal edilmemiş katılımı olur (K-301).
+    // Öğrencinin bir etkinlikte tek iptal edilmemiş (asil, izin bekleyen ya da yedek) katılımı
+    // olur (K-301, K-369).
     uniqueIndex('paid_activity_participants_student_key')
       .on(table.institutionId, table.activityId, table.studentId)
-      .where(sql`${table.status} = 'active' and ${table.archivedAt} is null`),
+      .where(sql`${table.status} <> 'cancelled' and ${table.archivedAt} is null`),
+    // Yedek sıra numarası etkinlikte yeniden kullanılmaz (K-369).
+    uniqueIndex('paid_activity_participants_waitlist_key')
+      .on(table.institutionId, table.activityId, table.waitlistPosition)
+      .where(sql`${table.waitlistPosition} is not null and ${table.archivedAt} is null`),
     index('paid_activity_participants_activity_idx').on(table.institutionId, table.activityId),
     index('paid_activity_participants_student_idx').on(table.institutionId, table.studentId),
     index('paid_activity_participants_refund_bank_account_idx')

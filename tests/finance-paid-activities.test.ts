@@ -189,7 +189,7 @@ test('DOM-FIN-098, K-301: katılım öğrenciye sözleşmesiz etkinlik taksiti a
   assert.equal(plan.feeCents, INPUT.feeCents)
 })
 
-test('DOM-FIN-098, K-301: kapalı, dolu, mükerrer ve geçersiz katılımda taksit yazılmaz', () => {
+test('DOM-FIN-098, K-301: kapalı, mükerrer ve geçersiz katılımda taksit yazılmaz', () => {
   const reject = (
     activity: PaidActivityTerms,
     input: unknown,
@@ -226,13 +226,6 @@ test('DOM-FIN-098, K-301: kapalı, dolu, mükerrer ve geçersiz katılımda taks
     { studentId: STUDENT_ID },
     [STUDENT_ID],
     'paid_activity_participant_exists',
-    'conflict',
-  )
-  reject(
-    terms({ capacity: 1 }),
-    { studentId: STUDENT_ID },
-    ['s-other'],
-    'paid_activity_full',
     'conflict',
   )
   const state = freshState()
@@ -307,7 +300,7 @@ function cancelled(
     {
       today: options.today ?? TODAY,
       kind: options.kind ?? 'participant',
-      allocated: new Map([[plan.invoiceId, options.paid ?? 0]]),
+      allocated: new Map([[plan.invoiceId ?? '', options.paid ?? 0]]),
       makeId,
     },
   )

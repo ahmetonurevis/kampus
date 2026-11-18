@@ -54,17 +54,72 @@ export const PAID_ACTIVITY_STATUS_LABELS = {
   cancelled: 'İptal edildi',
 } as const satisfies Record<PaidActivityStatus, string>
 
-export const PARTICIPATION_STATUSES = ['active', 'cancelled'] as const
+/**
+ * Katılım durumu (K-301, K-369, K-370): `active` asil ve taksiti açık; `awaiting_consent` asil,
+ * yeri ayrılmış ama veli izni gelmediği için taksiti açılmamış; `waitlisted` yedek (yer ve taksit
+ * yok); `cancelled` iptal. Kontenjanı asiller ve izin bekleyenler doldurur.
+ */
+export const PARTICIPATION_STATUSES = [
+  'active',
+  'awaiting_consent',
+  'waitlisted',
+  'cancelled',
+] as const
 export type ParticipationStatus = (typeof PARTICIPATION_STATUSES)[number]
+export const PARTICIPATION_STATUS_LABELS = {
+  active: 'Asil',
+  awaiting_consent: 'İzin bekliyor',
+  waitlisted: 'Yedek',
+  cancelled: 'İptal',
+} as const satisfies Record<ParticipationStatus, string>
+/** Kontenjandan yer tutan durumlar (K-369). */
+export const SEAT_STATUSES = [
+  'active',
+  'awaiting_consent',
+] as const satisfies readonly ParticipationStatus[]
+export const holdsSeat = (status: ParticipationStatus) =>
+  (SEAT_STATUSES as readonly ParticipationStatus[]).includes(status)
 
-/** İptali kim yaptı: katılımcı (kural uygulanır) ya da kurum etkinliği iptal etti (tam iade). */
-export const PARTICIPATION_CANCEL_KINDS = ['participant', 'activity'] as const
+/**
+ * İptali kim yaptı: katılımcı (kural uygulanır), kurum etkinliği iptal etti (tam iade) ya da veli
+ * izni geri çekildi ya da reddedildi (katılımcı iptali gibi K-302 kuralı; K-370).
+ */
+export const PARTICIPATION_CANCEL_KINDS = ['participant', 'activity', 'consent'] as const
 export type ParticipationCancelKind = (typeof PARTICIPATION_CANCEL_KINDS)[number]
 
+/**
+ * Veli izni (K-370): etkinlik izin istemiyorsa `not_required`; isteniyorsa `pending` (bekliyor),
+ * `granted` (alındı) ya da `withdrawn` (geri çekildi ya da reddedildi; katılım iptal edilir).
+ */
+export const CONSENT_STATUSES = ['not_required', 'pending', 'granted', 'withdrawn'] as const
+export type ConsentStatus = (typeof CONSENT_STATUSES)[number]
+export const CONSENT_STATUS_LABELS = {
+  not_required: 'İzin gerekmiyor',
+  pending: 'İzin bekleniyor',
+  granted: 'İzin alındı',
+  withdrawn: 'İzin geri çekildi',
+} as const satisfies Record<ConsentStatus, string>
+/** İznin geldiği kanal: dijital izin formu (IST-067) ya da personelin girdiği kâğıt, telefon, yüz yüze. */
+export const CONSENT_CHANNELS = ['permission_form', 'paper', 'phone', 'in_person'] as const
+export type ConsentChannel = (typeof CONSENT_CHANNELS)[number]
+export const CONSENT_CHANNEL_LABELS = {
+  permission_form: 'Dijital izin formu',
+  paper: 'Kâğıt izin dilekçesi',
+  phone: 'Telefon',
+  in_person: 'Yüz yüze',
+} as const satisfies Record<ConsentChannel, string>
+/** Personelin elle girebildiği kanallar; dijital form yalnız eşitlemeyle gelir. */
+export const MANUAL_CONSENT_CHANNELS = [
+  'paper',
+  'phone',
+  'in_person',
+] as const satisfies readonly ConsentChannel[]
+
 /** Katılımcının ödeme durumu; saklanmaz, taksit ve tahsilattan türetilir (DOM-FIN-030). */
-export const PARTICIPATION_PAYMENT_STATUSES = ['unpaid', 'partial', 'paid'] as const
+export const PARTICIPATION_PAYMENT_STATUSES = ['not_billed', 'unpaid', 'partial', 'paid'] as const
 export type ParticipationPaymentStatus = (typeof PARTICIPATION_PAYMENT_STATUSES)[number]
 export const PARTICIPATION_PAYMENT_STATUS_LABELS = {
+  not_billed: 'Taksit yok',
   unpaid: 'Ödenmedi',
   partial: 'Kısmi',
   paid: 'Ödendi',
@@ -84,6 +139,8 @@ export const PAID_ACTIVITY_CAPACITY_MAX = 2000
 export const PAID_ACTIVITY_FEE_MAX = 10_000_000
 export const PAID_ACTIVITY_CANCEL_REASON_MIN = 5
 export const PAID_ACTIVITY_CANCEL_REASON_MAX = 500
+/** Etkinlik başına iptal edilmemiş yedek üst sınırı (K-369). */
+export const PAID_ACTIVITY_WAITLIST_MAX = 500
 
 const DAY_TIME = 'T09:00:00.000Z'
 
@@ -110,6 +167,12 @@ const centsSchema = (label: string) =>
     .number(`${label} girin.`)
     .int(`${label} kuruş cinsinden tam sayı olmalıdır.`)
     .max(PAID_ACTIVITY_FEE_MAX, `${label} en çok 100.000 ₺ olabilir.`)
+const permissionFormIdSchema = z
+  .string('İzin formunu seçin.')
+  .trim()
+  .min(1, 'İzin formunu seçin ya da boş bırakın.')
+  .max(PAID_ACTIVITY_REF_MAX, 'İzin formu kimliği geçersiz.')
+  .nullable()
 const externalRefSchema = z
   .string()
   .trim()
@@ -138,8 +201,18 @@ export const paidActivitySchema = z
     lateCostCents: centsSchema('Kişi başı masrafı').min(0, 'Masraf eksi olamaz.').nullable(),
     /** Gezi planı (ON-155) ya da başka kaynak kaydı; plan gelince bağlanır. */
     externalRef: externalRefSchema.default(null),
+    /** Katılım veli izni ister (K-370): izinsiz asil "izin bekliyor" olur, taksiti izinle açılır. */
+    requiresConsent: z.boolean('Veli izni seçeneğini belirtin.').default(false),
+    /** İznin okunacağı dijital izin formu (IST-067, `permissionForms`); yalnız izin isteyen etkinlikte. */
+    permissionFormId: permissionFormIdSchema.default(null),
   })
   .superRefine((value, ctx) => {
+    if (value.permissionFormId !== null && !value.requiresConsent)
+      ctx.addIssue({
+        code: 'custom',
+        path: ['permissionFormId'],
+        message: 'İzin formu yalnız veli izni isteyen etkinliğe bağlanır.',
+      })
     if (value.joinDeadline > value.activityDate)
       ctx.addIssue({
         code: 'custom',
@@ -193,6 +266,7 @@ export const updatePaidActivitySchema = z
     capacity: capacitySchema.optional(),
     joinDeadline: daySchema.optional(),
     externalRef: externalRefSchema.optional(),
+    permissionFormId: permissionFormIdSchema.optional(),
   })
   .refine((value) => Object.keys(value).length > 0, 'Değiştirilecek bir alan girin.')
 export type UpdatePaidActivityInput = z.input<typeof updatePaidActivitySchema>
@@ -230,6 +304,8 @@ export interface PaidActivityTerms {
   lateRefundRule: LateRefundRule
   lateRefundPercent: number | null
   lateCostCents: number | null
+  /** Katılım veli izni ister (K-370); alanı olmayan etkinlik istemez. */
+  requiresConsent?: boolean
 }
 
 /** Etkinlik tanımı (K-300): etkinlik günü geçmiş olamaz; kurallar şemadadır. */
@@ -243,14 +319,17 @@ export function planPaidActivity(input: unknown, today: string): PaidActivityOut
 }
 
 /**
- * Etkinlik düzeltmesi (K-300): ad, kontenjan, son katılım günü ve dış referans. Kontenjan iptal
- * edilmemiş katılımcı sayısının altına inemez; son katılım günü etkinlik gününü geçemez. İptal
- * edilmiş etkinlik düzeltilmez.
+ * Etkinlik düzeltmesi (K-300): ad, kontenjan, son katılım günü, dış referans ve izin formu.
+ * Kontenjan yer tutan katılımcı (asil ve izin bekleyen) sayısının altına inemez; artarsa yedekler
+ * sırayla asile geçer (K-369, servis). Son katılım günü etkinlik gününü geçemez. İzin formu yalnız
+ * veli izni isteyen etkinliğe bağlanır (K-370). İptal edilmiş etkinlik düzeltilmez.
  */
 export function planPaidActivityUpdate(
   activity: Pick<PaidActivityTerms, 'status' | 'activityDate' | 'capacity' | 'joinDeadline'> & {
     name: string
     externalRef: string | null
+    requiresConsent?: boolean
+    permissionFormId?: string | null
   },
   input: unknown,
   context: { activeCount: number },
@@ -272,14 +351,29 @@ export function planPaidActivityUpdate(
       'Son katılım günü etkinlik gününden sonra olamaz.',
       { path: ['joinDeadline'] },
     )
+  if (
+    data.permissionFormId !== undefined &&
+    data.permissionFormId !== null &&
+    activity.requiresConsent !== true
+  )
+    throw new DomainError(
+      'paid_activity_consent_not_required',
+      'İzin formu yalnız veli izni isteyen etkinliğe bağlanır.',
+      { path: ['permissionFormId'] },
+    )
   const next = {
     name: data.name ?? activity.name,
     capacity: data.capacity ?? activity.capacity,
     joinDeadline: data.joinDeadline ?? activity.joinDeadline,
     externalRef: data.externalRef === undefined ? activity.externalRef : data.externalRef,
+    permissionFormId:
+      data.permissionFormId === undefined
+        ? (activity.permissionFormId ?? null)
+        : data.permissionFormId,
   }
+  const current = { ...activity, permissionFormId: activity.permissionFormId ?? null }
   const changed = (Object.keys(next) as (keyof typeof next)[]).filter(
-    (field) => next[field] !== activity[field],
+    (field) => next[field] !== current[field],
   )
   if (changed.length === 0)
     throw new DomainError('paid_activity_unchanged', 'Değişiklik yok.', { kind: 'rule' })
@@ -312,7 +406,8 @@ function nextInstallment(state: Pick<State, 'invoices'>, studentId: string): num
   )
 }
 
-function activityInvoice(
+/** Katılım taksiti (K-301): sözleşmesiz, tür `activity`, numara öğrencinin taksitlerinden devam eder. */
+export function activityInvoice(
   state: Pick<State, 'invoices'>,
   input: { id: string; studentId: string; amount: number; dueDate: string },
 ): Invoice {
@@ -329,17 +424,120 @@ function activityInvoice(
   }
 }
 
+/**
+ * Katılım taksitini State'e yazar; vade son katılım günü, o gün geçtiyse (yedekten geçiş ya da geç
+ * gelen izin) bugündür (K-369, K-370).
+ */
+export function openActivityInvoice(
+  state: Pick<State, 'invoices'>,
+  activity: Pick<PaidActivityTerms, 'feeCents' | 'joinDeadline'>,
+  studentId: string,
+  context: { today: string; makeId: (prefix: string) => string },
+): string {
+  const invoice = activityInvoice(state, {
+    id: context.makeId('inv'),
+    studentId,
+    amount: activity.feeCents,
+    dueDate: context.today > activity.joinDeadline ? context.today : activity.joinDeadline,
+  })
+  state.invoices.push(invoice)
+  return invoice.id
+}
+
+/** Yazılan katılımın durumu: asil, izin bekleyen asil ya da yedek. */
+export type JoinedStatus = Exclude<ParticipationStatus, 'cancelled'>
+
 export interface JoinPlan {
   studentId: string
-  invoiceId: string
+  status: JoinedStatus
+  consentStatus: Extract<ConsentStatus, 'not_required' | 'pending'>
+  /** Yalnız izin gerekmeyen ya da izni alınmış asilde açılan taksit; yedekte ve izin bekleyende yok. */
+  invoiceId: string | null
   feeCents: number
+  /** Yedek sıra numarası (etkinlikte artan, yeniden kullanılmaz); asilde `null`. */
+  waitlistPosition: number | null
+}
+
+/** Etkinliğin o anki yer durumu (kurum kilidi altında okunur). */
+export interface SeatCounts {
+  /** Yer tutan (asil ve izin bekleyen) katılım sayısı. */
+  seatCount: number
+  /** İptal edilmemiş yedek sayısı. */
+  waitlistCount: number
+  /** Sıradaki yedek numarası. */
+  nextWaitlistPosition: number
+}
+
+/** Katılım yazılabilir mi (K-301): etkinlik açık ve son katılım günü geçmemiş. */
+export function assertJoinOpen(
+  activity: Pick<PaidActivityTerms, 'status' | 'joinDeadline'>,
+  today: string,
+) {
+  if (activity.status === 'cancelled')
+    throw new DomainError('paid_activity_cancelled', 'İptal edilmiş etkinliğe katılım yazılmaz.', {
+      kind: 'conflict',
+    })
+  if (today > activity.joinDeadline)
+    throw new DomainError(
+      'paid_activity_join_closed',
+      'Son katılım günü geçti; bu etkinliğe katılım yazılmaz.',
+    )
 }
 
 /**
- * Katılım (K-301): öğrenciye kişi başı ücret kadar sözleşmesiz taksit açar; vade son katılım
- * günüdür. Etkinlik açık, bugün son katılım gününü geçmemiş, öğrenci kurumda etkin olmalıdır.
- * Kontenjan iptal edilmemiş katılımlarla sayılır; aynı öğrencinin iptal edilmemiş ikinci katılımı
- * yazılmaz. State'i değiştirir; denetimler yazımdan öncedir.
+ * Yeni katılımın yeri (K-369, K-370): kontenjanda yer varsa asil (izin istenen etkinlikte "izin
+ * bekliyor"), yoksa sıradaki numarayla yedek. Yedek listesi doluysa 409. `counts` yerinde artar
+ * (toplu eklemede sıradaki öğrenci güncel sayıyı görür).
+ */
+export function claimSeat(
+  activity: Pick<PaidActivityTerms, 'capacity' | 'requiresConsent'>,
+  counts: SeatCounts,
+): { status: JoinedStatus; waitlistPosition: number | null } {
+  if (counts.seatCount < activity.capacity) {
+    counts.seatCount += 1
+    return {
+      status: activity.requiresConsent === true ? 'awaiting_consent' : 'active',
+      waitlistPosition: null,
+    }
+  }
+  if (counts.waitlistCount >= PAID_ACTIVITY_WAITLIST_MAX)
+    throw new DomainError(
+      'paid_activity_waitlist_full',
+      `Kontenjan ve yedek listesi dolu (en çok ${String(PAID_ACTIVITY_WAITLIST_MAX)} yedek); katılım yazılmaz.`,
+      { kind: 'conflict' },
+    )
+  const waitlistPosition = counts.nextWaitlistPosition
+  counts.waitlistCount += 1
+  counts.nextWaitlistPosition += 1
+  return { status: 'waitlisted', waitlistPosition }
+}
+
+/** Yeri belli katılımın planı; asilde izin gerekmiyorsa taksit açılır. */
+export function joinPlanFor(
+  state: Pick<State, 'invoices'>,
+  activity: PaidActivityTerms,
+  studentId: string,
+  seat: { status: JoinedStatus; waitlistPosition: number | null },
+  context: { today: string; makeId: (prefix: string) => string },
+): JoinPlan {
+  return {
+    studentId,
+    status: seat.status,
+    consentStatus: activity.requiresConsent === true ? 'pending' : 'not_required',
+    invoiceId:
+      seat.status === 'active' ? openActivityInvoice(state, activity, studentId, context) : null,
+    feeCents: activity.feeCents,
+    waitlistPosition: seat.waitlistPosition,
+  }
+}
+
+/**
+ * Katılım (K-301, K-369, K-370): etkinlik açık, bugün son katılım gününü geçmemiş, öğrenci kurumda
+ * etkin olmalıdır; aynı öğrencinin iptal edilmemiş (asil, izin bekleyen ya da yedek) ikinci katılımı
+ * yazılmaz. Kontenjanda yer varsa asil olur ve öğrenciye kişi başı ücret kadar sözleşmesiz taksit
+ * açılır (vade son katılım günü); etkinlik veli izni istiyorsa taksit izinle açılır, katılım "izin
+ * bekliyor" olur. Kontenjan doluysa yedek sıra numarasıyla yazılır, taksit açılmaz. State'i
+ * değiştirir; denetimler yazımdan öncedir.
  */
 export function applyPaidActivityJoin(
   state: Pick<State, 'students' | 'invoices'>,
@@ -347,22 +545,17 @@ export function applyPaidActivityJoin(
   input: unknown,
   context: {
     today: string
+    /** İptal edilmemiş katılımı olan öğrenciler. */
     activeStudentIds: ReadonlySet<string>
+    /** Yer durumu; verilmezse bütün iptal edilmemiş katılımlar yer tutar, yedek yoktur. */
+    counts?: SeatCounts
     makeId: (prefix: string) => string
     institutionType?: InstitutionType
   },
 ): JoinPlan {
   const { studentId } = joinPaidActivitySchema.parse(input)
   const learner = learnerWords(context.institutionType)
-  if (activity.status === 'cancelled')
-    throw new DomainError('paid_activity_cancelled', 'İptal edilmiş etkinliğe katılım yazılmaz.', {
-      kind: 'conflict',
-    })
-  if (context.today > activity.joinDeadline)
-    throw new DomainError(
-      'paid_activity_join_closed',
-      'Son katılım günü geçti; bu etkinliğe katılım yazılmaz.',
-    )
+  assertJoinOpen(activity, context.today)
   const student = state.students.find((item) => item.id === studentId)
   if (!student || (student as { isActive?: boolean }).isActive === false)
     throw new DomainError(
@@ -373,23 +566,16 @@ export function applyPaidActivityJoin(
   if (context.activeStudentIds.has(studentId))
     throw new DomainError(
       'paid_activity_participant_exists',
-      `${learner.title} bu etkinliğe zaten katılıyor.`,
+      `${learner.title} bu etkinliğe zaten yazılı.`,
       { kind: 'conflict', path: ['studentId'] },
     )
-  if (context.activeStudentIds.size >= activity.capacity)
-    throw new DomainError(
-      'paid_activity_full',
-      `Kontenjan dolu (${String(activity.capacity)} kişi); katılım yazılmaz.`,
-      { kind: 'conflict' },
-    )
-  const invoice = activityInvoice(state, {
-    id: context.makeId('inv'),
-    studentId,
-    amount: activity.feeCents,
-    dueDate: activity.joinDeadline,
-  })
-  state.invoices.push(invoice)
-  return { studentId, invoiceId: invoice.id, feeCents: activity.feeCents }
+  const counts = context.counts ?? {
+    seatCount: context.activeStudentIds.size,
+    waitlistCount: 0,
+    nextWaitlistPosition: 1,
+  }
+  const seat = claimSeat(activity, { ...counts })
+  return joinPlanFor(state, activity, studentId, seat, context)
 }
 
 /**
@@ -431,7 +617,8 @@ export interface ParticipationCancelPlan {
  * Katılımın iptali (K-302). Tam ödenmiş taksit kalır ve ödenenin kesintiyi aşan kısmı iade kaydı
  * olur. Bütünüyle ödenmemiş taksit kapanır (ücretsiz okutma ve ayrılıştaki gibi listeden düşer):
  * alınmış kısım kesintiyi aşıyorsa fark iade edilir, kesintiden azsa kalan kesinti aynı gün vadeli
- * yeni taksit olur. Katılım iptal edilmişse ya da taksiti bulunamazsa hiçbir şey değişmez.
+ * yeni taksit olur. Taksiti açılmamış katılım (yedek ve izin bekleyen, K-369, K-370) parasız
+ * kapanır. Katılım iptal edilmişse ya da taksiti bulunamazsa hiçbir şey değişmez.
  */
 export function applyParticipationCancel(
   state: Pick<State, 'invoices'>,
@@ -442,7 +629,7 @@ export function applyParticipationCancel(
   participation: {
     studentId: string
     status: ParticipationStatus
-    invoiceId: string
+    invoiceId: string | null
     feeCents: number
   },
   context: {
@@ -460,6 +647,16 @@ export function applyParticipationCancel(
         kind: 'conflict',
       },
     )
+  if (participation.invoiceId === null)
+    return {
+      cancelKind: context.kind,
+      cancelledDate: context.today,
+      paidCents: 0,
+      retainedCents: 0,
+      refundCents: 0,
+      closedInvoiceId: null,
+      debtInvoiceId: null,
+    }
   const invoice = state.invoices.find((item) => item.id === participation.invoiceId)
   if (!invoice)
     throw new DomainError(
@@ -510,11 +707,13 @@ export function applyParticipationCancel(
   }
 }
 
+/** Ödeme durumu; taksiti açılmamış katılım (yedek, izin bekleyen) `not_billed`. */
 export const participationPaymentStatus = (
   amountCents: number,
   paidCents: number,
+  billed = true,
 ): ParticipationPaymentStatus =>
-  paidCents >= amountCents ? 'paid' : paidCents > 0 ? 'partial' : 'unpaid'
+  !billed ? 'not_billed' : paidCents >= amountCents ? 'paid' : paidCents > 0 ? 'partial' : 'unpaid'
 
 export const participationRefundStatus = (row: {
   refundCents: number

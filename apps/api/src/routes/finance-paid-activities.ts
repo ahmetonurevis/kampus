@@ -1,4 +1,9 @@
-import type { FastifyInstance, FastifyReply, preValidationAsyncHookHandler } from 'fastify'
+import type {
+  FastifyInstance,
+  FastifyReply,
+  FastifyRequest,
+  preValidationAsyncHookHandler,
+} from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 
 import {
@@ -10,6 +15,11 @@ import {
   paidActivitySchema,
   updatePaidActivitySchema,
 } from '@kampus/school-core/lib/finance-paid-activities.ts'
+import {
+  bulkJoinPaidActivitySchema,
+  grantConsentSchema,
+  withdrawConsentSchema,
+} from '@kampus/school-core/lib/finance-paid-activity-participants.ts'
 import { payRefundSchema } from '@kampus/school-core/lib/withdrawals.ts'
 
 import type { Role } from '../auth.ts'
@@ -25,10 +35,19 @@ import {
   payParticipationRefundCommand,
   updatePaidActivityCommand,
 } from '../services/finance-paid-activities.ts'
+import {
+  bulkJoinPaidActivityCommand,
+  grantConsentCommand,
+  paidActivityRosterCsvFor,
+  paidActivityRosterFor,
+  syncConsentsCommand,
+} from '../services/finance-paid-activity-participants.ts'
 import type { CommandResponse } from '../services/operation-runner.ts'
 import { captureInput, options, rejectIfMatch, requireIfMatch } from './commands.ts'
 import { commandErrors, commandHeadersSchema } from './commands.schemas.ts'
 import {
+  bulkJoinResponse,
+  consentSyncResponse,
   paidActivityListResponse,
   paidActivityParams,
   paidActivityQuery,
@@ -37,6 +56,7 @@ import {
   participantParams,
   participantQuery,
   participantResponse,
+  rosterResponse,
 } from './finance-paid-activities.schemas.ts'
 
 /**
@@ -52,6 +72,8 @@ const MANAGER = 'Rol: `yonetici` (K-300). Modül `finance`.'
 const ACTIVITIES = '/api/v1/finance/paid-activities'
 const PARTICIPANTS = '/api/v1/finance/paid-activity-participants'
 const tags = ['finance-paid-activities']
+const ROSTER_PER_MINUTE = 10
+const wantsCsv = (request: FastifyRequest) => (request.headers.accept ?? '').includes('text/csv')
 
 function sendBody(reply: FastifyReply, result: CommandResponse): unknown {
   if (result.replayed) reply.header('idempotent-replayed', 'true')
@@ -105,7 +127,7 @@ export function registerFinancePaidActivityRoutes(app: FastifyInstance) {
         operationId: 'createPaidActivity',
         tags,
         summary: 'Ücretli gezi ya da etkinlik tanımla',
-        description: `Ad, tür (\`trip\`, \`event\`), gün (geçmiş olamaz: 422 \`paid_activity_date_past\`), kişi başı ücret, son katılım ve son iptal günü (etkinlik gününden sonra olamaz), kontenjan ve geç iptalin kuralı: \`percent\` (\`lateRefundPercent\` 0–100 iade) ya da \`cost\` (\`lateCostCents\` kişi başı masraf düşülür, en çok ücret). İsteğe bağlı \`externalRef\` gezi planına bağlanacak alandır (K-300). Ücret, gün ve iade koşulları sonradan değişmez. ${MANAGER}`,
+        description: `Ad, tür (\`trip\`, \`event\`), gün (geçmiş olamaz: 422 \`paid_activity_date_past\`), kişi başı ücret, son katılım ve son iptal günü (etkinlik gününden sonra olamaz), kontenjan ve geç iptalin kuralı: \`percent\` (\`lateRefundPercent\` 0–100 iade) ya da \`cost\` (\`lateCostCents\` kişi başı masraf düşülür, en çok ücret). İsteğe bağlı \`externalRef\` gezi planına bağlanacak alandır (K-300). \`requiresConsent\` katılımı veli iznine bağlar; \`permissionFormId\` iznin okunacağı dijital izin formudur (yalnız izin isteyen etkinlikte; iletişim modülü kapalı, form yok, iptal ya da arşivse 422 \`paid_activity_permission_form_not_found\`; K-370). Ücret, gün ve iade koşulları sonradan değişmez. ${MANAGER}`,
         headers: commandHeadersSchema('optional', { ifMatch: false }),
         body: paidActivitySchema,
         response: { 201: paidActivityResponse, ...commandErrors },
@@ -149,7 +171,7 @@ export function registerFinancePaidActivityRoutes(app: FastifyInstance) {
         operationId: 'updatePaidActivity',
         tags,
         summary: 'Etkinliği düzelt',
-        description: `Ad, kontenjan (katılımcı sayısının altına inemez: 422 \`paid_activity_capacity_below_participants\`), son katılım günü (etkinlik gününü geçemez: 422 \`paid_activity_join_after_date\`) ve dış referans. İptal edilmiş etkinlik 409 \`paid_activity_cancelled\`; değişiklik yoksa 422 \`paid_activity_unchanged\`. \`If-Match\` zorunlu. ${MANAGER}`,
+        description: `Ad, kontenjan (yer tutan katılım sayısının altına inemez: 422 \`paid_activity_capacity_below_participants\`; artarsa yedekler sırayla asile geçer, K-369), izin formu (\`permissionFormId\`; yalnız veli izni isteyen etkinlikte, değilse 422 \`paid_activity_consent_not_required\`; kullanılamıyorsa 422 \`paid_activity_permission_form_not_found\`), son katılım günü (etkinlik gününü geçemez: 422 \`paid_activity_join_after_date\`) ve dış referans. İptal edilmiş etkinlik 409 \`paid_activity_cancelled\`; değişiklik yoksa 422 \`paid_activity_unchanged\`. \`If-Match\` zorunlu. ${MANAGER}`,
         headers: commandHeadersSchema('optional', { ifMatch: 'required' }),
         params: paidActivityParams,
         body: updatePaidActivitySchema,
@@ -205,7 +227,7 @@ export function registerFinancePaidActivityRoutes(app: FastifyInstance) {
         operationId: 'listPaidActivityParticipants',
         tags,
         summary: 'Katılımcılar ve ödeme durumu',
-        description: `Önce iptal edilmemiş katılımlar, ada göre. Satırda taksit tutarı, alınan tutar ve ödeme durumu (taksit ve iptal edilmemiş tahsilattan türetilir, DOM-FIN-030), iptal edilmişte kesinti, iade ve iade durumu; IBAN yalnız son dört hane. Olmayan ya da başka kurumun etkinliği 404. ${READERS}`,
+        description: `Önce asiller (izin bekleyenler dahil) ada göre, sonra yedekler sıralarına göre, en son iptaller; \`status\` (\`active\`, \`awaiting_consent\`, \`waitlisted\`, \`cancelled\`), \`consentStatus\` ve \`refundStatus\` süzer (DOM-FIN-112). Satırda sınıf, yedek sırası, veli izni ve bağlı izin formundaki durum (\`permissionStatus\`). Satırda taksit tutarı, alınan tutar ve ödeme durumu (taksit ve iptal edilmemiş tahsilattan türetilir, DOM-FIN-030), iptal edilmişte kesinti, iade ve iade durumu; IBAN yalnız son dört hane. Olmayan ya da başka kurumun etkinliği 404. ${READERS}`,
         params: paidActivityParams,
         querystring: participantQuery,
         response: { 200: participantListResponse, ...commandErrors },
@@ -230,7 +252,7 @@ export function registerFinancePaidActivityRoutes(app: FastifyInstance) {
         operationId: 'joinPaidActivity',
         tags,
         summary: 'Öğrenciyi etkinliğe yaz',
-        description: `Öğrenciye kişi başı ücret kadar sözleşmesiz taksit açar (\`feeKind: activity\`, vade son katılım günü; K-301); veli ekranında borç olarak görünür. İptal edilmiş etkinlik 409 \`paid_activity_cancelled\`, son katılım günü geçtiyse 422 \`paid_activity_join_closed\`, olmayan ya da etkin olmayan öğrenci 422 \`paid_activity_student_not_found\`, iptal edilmemiş katılımı olan öğrenci 409 \`paid_activity_participant_exists\`, kontenjan doluysa 409 \`paid_activity_full\`. \`Idempotency-Key\` zorunlu. Olmayan ya da başka kurumun etkinliği 404. ${READERS}`,
+        description: `Kontenjanda yer varsa asil: öğrenciye kişi başı ücret kadar sözleşmesiz taksit açar (\`feeKind: activity\`, vade son katılım günü; K-301), veli ekranında borç olarak görünür; etkinlik veli izni istiyorsa katılım \`awaiting_consent\` olur, taksit izinle açılır (K-370). Kontenjan doluysa sıra numarasıyla yedek (\`waitlisted\`, taksit yok; K-369); yedek listesi doluysa (500) 409 \`paid_activity_waitlist_full\`. İptal edilmiş etkinlik 409 \`paid_activity_cancelled\`, son katılım günü geçtiyse 422 \`paid_activity_join_closed\`, olmayan ya da etkin olmayan öğrenci 422 \`paid_activity_student_not_found\`, iptal edilmemiş katılımı olan öğrenci 409 \`paid_activity_participant_exists\`. \`Idempotency-Key\` zorunlu. Olmayan ya da başka kurumun etkinliği 404. ${READERS}`,
         headers: commandHeadersSchema('required', { ifMatch: false }),
         params: paidActivityParams,
         body: joinPaidActivitySchema,
@@ -256,7 +278,7 @@ export function registerFinancePaidActivityRoutes(app: FastifyInstance) {
         operationId: 'cancelPaidActivityParticipation',
         tags,
         summary: 'Katılımı iptal et',
-        description: `Son iptal gününe kadar (dahil) tam iade; sonra etkinliğin kuralı: oran kadar iade ya da kişi başı masraf düşülür (K-302). Tam ödenmiş taksit kalır, ödenenin kesintiyi aşan kısmı iade kaydı olur; bütünüyle ödenmemiş taksit kapanır, alınan tutar kesintiyi aşarsa fark iade edilir, azsa kalan kesinti bugün vadeli yeni taksit olur. İptal edilmiş katılım 409 \`paid_activity_participation_cancelled\`. \`If-Match\` ve \`Idempotency-Key\` zorunlu. ${READERS}`,
+        description: `Yer boşalırsa en küçük sıra numaralı yedek aynı işlemde asile geçer, taksiti o anda açılır (K-369). Taksiti olmayan (yedek, izin bekleyen) katılım parasız kapanır. Son iptal gününe kadar (dahil) tam iade; sonra etkinliğin kuralı: oran kadar iade ya da kişi başı masraf düşülür (K-302). Tam ödenmiş taksit kalır, ödenenin kesintiyi aşan kısmı iade kaydı olur; bütünüyle ödenmemiş taksit kapanır, alınan tutar kesintiyi aşarsa fark iade edilir, azsa kalan kesinti bugün vadeli yeni taksit olur. İptal edilmiş katılım 409 \`paid_activity_participation_cancelled\`. \`If-Match\` ve \`Idempotency-Key\` zorunlu. ${READERS}`,
         headers: commandHeadersSchema('required', { ifMatch: 'required' }),
         params: participantParams,
         response: { 200: participantResponse, ...commandErrors },
@@ -302,6 +324,149 @@ export function registerFinancePaidActivityRoutes(app: FastifyInstance) {
         request.commandInput,
         expected(opts.expectedVersion),
         opts.idempotency,
+      )
+      return participantResponse.parse(sendBody(reply, result))
+    },
+  )
+
+  typed.post(
+    `${ACTIVITIES}/:activityId/participants/bulk`,
+    {
+      preValidation: [...guarded(PAID_ACTIVITY_JOIN_ROLES), rejectIfMatch(), captureInput()],
+      schema: {
+        operationId: 'bulkJoinPaidActivity',
+        tags,
+        summary: 'Sınıf seçerek toplu katılım yaz',
+        description: `Seçilen sınıfların (1–20) etkin öğrencileri ada göre yazılır: kontenjan dolana kadar asil (taksit açılır; veli izni isteyen etkinlikte izin bekliyor), aşan kısım sıra numarasıyla yedek; zaten katılımı olan atlanır (K-371, K-369). Sınıf yoksa 422 \`paid_activity_class_not_found\`, öğrenci yoksa 422 \`paid_activity_bulk_empty\`, 500'den fazlaysa 422 \`paid_activity_bulk_too_large\`, yedek listesi dolarsa hiçbiri yazılmaz (409 \`paid_activity_waitlist_full\`). \`Idempotency-Key\` zorunlu. Olmayan ya da başka kurumun etkinliği 404. ${READERS}`,
+        headers: commandHeadersSchema('required', { ifMatch: false }),
+        params: paidActivityParams,
+        body: bulkJoinPaidActivitySchema,
+        response: { 201: bulkJoinResponse, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const result = await bulkJoinPaidActivityCommand(
+        contextOf(request),
+        request.params.activityId,
+        request.commandInput,
+        options(request, 'required').idempotency,
+      )
+      return bulkJoinResponse.parse(sendBody(reply, result))
+    },
+  )
+
+  typed.post(
+    `${ACTIVITIES}/:activityId/consents/sync`,
+    {
+      preValidation: [...guarded(PAID_ACTIVITY_JOIN_ROLES), rejectIfMatch()],
+      schema: {
+        operationId: 'syncPaidActivityConsents',
+        tags,
+        summary: 'Veli izinlerini izin formundan eşitle',
+        description: `Bağlı dijital izin formunda (IST-067) onaylananların izni alınır, izin bekleyen asilin taksiti açılır; formda reddedilenlerin (izin bekleyen ya da izni formdan gelmiş) katılımı K-302 kuralıyla iptal edilir, boşalan yere yedek geçer (K-370, K-369). Elle girilen izin formdaki retle düşmez. Form bağlı değilse 422 \`paid_activity_permission_form_missing\`, kullanılamıyorsa 422 \`paid_activity_permission_form_not_found\`. \`Idempotency-Key\` zorunlu. ${READERS}`,
+        headers: commandHeadersSchema('required', { ifMatch: false }),
+        params: paidActivityParams,
+        response: { 200: consentSyncResponse, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const result = await syncConsentsCommand(
+        contextOf(request),
+        request.params.activityId,
+        options(request, 'required').idempotency,
+      )
+      return consentSyncResponse.parse(sendBody(reply, result))
+    },
+  )
+
+  typed.get(
+    `${ACTIVITIES}/:activityId/roster`,
+    {
+      config: {
+        rateLimit: {
+          max: ROSTER_PER_MINUTE,
+          timeWindow: '1 minute',
+          hook: 'preHandler' as const,
+          keyGenerator: (request: FastifyRequest) =>
+            `paid-activity-roster:${request.auth?.userId ?? request.ip}`,
+        },
+      },
+      preValidation: [...guarded(PAID_ACTIVITY_READ_ROLES), app.requireFreshSession],
+      schema: {
+        operationId: 'getPaidActivityRoster',
+        tags,
+        summary: 'Basılabilir katılım listesi',
+        description: `İptal edilmemiş katılımlar: asiller ada göre, sonra yedekler sırasıyla; öğrenci, sınıf, veli telefonu (yalnız maskeli), katılım, veli izni ve ödeme (K-371). Web PDF'i bu veriden üretir. \`Accept: text/csv\` aynı listeyi CSV verir (\`;\` ayırıcı, UTF-8 BOM, formül kaçışı). Tam telefon, IBAN ve izni verenin adı dönmez. Öğrenci adı taşıdığı için taze oturum ister (eskiyse 403 \`reauthentication_required\`), kullanıcı başına 10/dk, denetim \`finance.paid_activity_roster_export\`. Olmayan ya da başka kurumun etkinliği 404. ${READERS}`,
+        params: paidActivityParams,
+        // CSV gövdesi `reply.serializer` ile gider; şemada yalnız JSON durur.
+        response: { 200: rosterResponse, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const ctx = contextOf(request)
+      if (wantsCsv(request)) {
+        const { csv, filename } = await paidActivityRosterCsvFor(ctx, request.params.activityId)
+        return (reply as FastifyReply)
+          .type('text/csv; charset=utf-8')
+          .header('content-disposition', `attachment; filename="${filename}"`)
+          .serializer((payload: unknown) => String(payload))
+          .send(`\uFEFF${csv}`)
+      }
+      return { data: await paidActivityRosterFor(ctx, request.params.activityId) }
+    },
+  )
+
+  typed.post(
+    `${PARTICIPANTS}/:participantId/consent`,
+    {
+      preValidation: [...guarded(PAID_ACTIVITY_JOIN_ROLES), requireIfMatch(), captureInput()],
+      schema: {
+        operationId: 'grantPaidActivityConsent',
+        tags,
+        summary: 'Veli iznini kaydet',
+        description: `Personelin aldığı izin: kanal (\`paper\`, \`phone\`, \`in_person\`) ve izni veren kişinin adı (2–120). İzin bekleyen asil asil olur ve taksiti açılır (vade son katılım günü, geçtiyse bugün); yedeğin izni kaydedilir (K-370). Etkinlik izin istemiyorsa 422 \`paid_activity_consent_not_required\`, etkinlik günü geçtiyse 422 \`paid_activity_consent_closed\`, izin zaten kayıtlıysa 409 \`paid_activity_consent_recorded\`, katılım iptalse 409 \`paid_activity_participation_cancelled\`. \`If-Match\` ve \`Idempotency-Key\` zorunlu. ${READERS}`,
+        headers: commandHeadersSchema('required', { ifMatch: 'required' }),
+        params: participantParams,
+        body: grantConsentSchema,
+        response: { 200: participantResponse, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const opts = options(request, 'required')
+      const result = await grantConsentCommand(
+        contextOf(request),
+        request.params.participantId,
+        request.commandInput,
+        expected(opts.expectedVersion),
+        opts.idempotency,
+      )
+      return participantResponse.parse(sendBody(reply, result))
+    },
+  )
+
+  typed.post(
+    `${PARTICIPANTS}/:participantId/consent-withdraw`,
+    {
+      preValidation: [...guarded(PAID_ACTIVITY_JOIN_ROLES), requireIfMatch(), captureInput()],
+      schema: {
+        operationId: 'withdrawPaidActivityConsent',
+        tags,
+        summary: 'Veli izninin geri çekildiğini kaydet',
+        description: `Kanal (\`paper\`, \`phone\`, \`in_person\`) ile. Katılım "izin geri çekildi" gerekçesiyle (\`cancelKind: consent\`) iptal edilir; iade katılımcı iptali gibi K-302 kuralıyladır, yer boşalırsa sıradaki yedek asile geçer (K-370, K-369). Etkinlik izin istemiyorsa 422 \`paid_activity_consent_not_required\`, iptal edilmiş katılım 409. \`If-Match\` ve \`Idempotency-Key\` zorunlu. ${READERS}`,
+        headers: commandHeadersSchema('required', { ifMatch: 'required' }),
+        params: participantParams,
+        body: withdrawConsentSchema,
+        response: { 200: participantResponse, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const opts = options(request, 'required')
+      const result = await cancelParticipationCommand(
+        contextOf(request),
+        request.params.participantId,
+        expected(opts.expectedVersion),
+        opts.idempotency,
+        { kind: 'consent', input: request.commandInput },
       )
       return participantResponse.parse(sendBody(reply, result))
     },

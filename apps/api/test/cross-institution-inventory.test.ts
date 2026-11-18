@@ -2821,6 +2821,45 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: gezi katılımcı yönetimi (ON-156; DOM-FIN-112).
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'kayıt',
+          'POST /api/v1/finance/paid-activities/:activityId/participants/bulk',
+          "bulk(a.cookie, bActivity.id, ['c1'])",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/paid-activities/:activityId/consents/sync',
+          'sync(a.cookie, bActivity.id)',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/paid-activities/:activityId/roster',
+          'roster(a.cookie, bActivity.id)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/paid-activity-participants/:participantId/consent',
+          'grant(a.cookie, bParticipant)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/paid-activity-participants/:participantId/consent-withdraw',
+          'withdraw(a.cookie, bParticipant)',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-paid-activity-waitlist.test.ts',
+        'DOM-FIN-112: başka kurumun etkinliği ve katılımı yeni uçlarda 404, B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

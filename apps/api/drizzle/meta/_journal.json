@@ -890,6 +890,13 @@
       "when": 1795033139779,
       "tag": "0126_create_staff_documents",
       "breakpoints": true
+    },
+    {
+      "idx": 127,
+      "version": "7",
+      "when": 1795033196738,
+      "tag": "0127_paid_activity_waitlist",
+      "breakpoints": true
     }
   ]
 }

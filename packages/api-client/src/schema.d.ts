@@ -8607,7 +8607,7 @@ export interface paths {
         put?: never;
         /**
          * Ücretli gezi ya da etkinlik tanımla
-         * @description Ad, tür (`trip`, `event`), gün (geçmiş olamaz: 422 `paid_activity_date_past`), kişi başı ücret, son katılım ve son iptal günü (etkinlik gününden sonra olamaz), kontenjan ve geç iptalin kuralı: `percent` (`lateRefundPercent` 0–100 iade) ya da `cost` (`lateCostCents` kişi başı masraf düşülür, en çok ücret). İsteğe bağlı `externalRef` gezi planına bağlanacak alandır (K-300). Ücret, gün ve iade koşulları sonradan değişmez. Rol: `yonetici` (K-300). Modül `finance`.
+         * @description Ad, tür (`trip`, `event`), gün (geçmiş olamaz: 422 `paid_activity_date_past`), kişi başı ücret, son katılım ve son iptal günü (etkinlik gününden sonra olamaz), kontenjan ve geç iptalin kuralı: `percent` (`lateRefundPercent` 0–100 iade) ya da `cost` (`lateCostCents` kişi başı masraf düşülür, en çok ücret). İsteğe bağlı `externalRef` gezi planına bağlanacak alandır (K-300). `requiresConsent` katılımı veli iznine bağlar; `permissionFormId` iznin okunacağı dijital izin formudur (yalnız izin isteyen etkinlikte; iletişim modülü kapalı, form yok, iptal ya da arşivse 422 `paid_activity_permission_form_not_found`; K-370). Ücret, gün ve iade koşulları sonradan değişmez. Rol: `yonetici` (K-300). Modül `finance`.
          */
         post: operations["createPaidActivity"];
         delete?: never;
@@ -8635,7 +8635,7 @@ export interface paths {
         head?: never;
         /**
          * Etkinliği düzelt
-         * @description Ad, kontenjan (katılımcı sayısının altına inemez: 422 `paid_activity_capacity_below_participants`), son katılım günü (etkinlik gününü geçemez: 422 `paid_activity_join_after_date`) ve dış referans. İptal edilmiş etkinlik 409 `paid_activity_cancelled`; değişiklik yoksa 422 `paid_activity_unchanged`. `If-Match` zorunlu. Rol: `yonetici` (K-300). Modül `finance`.
+         * @description Ad, kontenjan (yer tutan katılım sayısının altına inemez: 422 `paid_activity_capacity_below_participants`; artarsa yedekler sırayla asile geçer, K-369), izin formu (`permissionFormId`; yalnız veli izni isteyen etkinlikte, değilse 422 `paid_activity_consent_not_required`; kullanılamıyorsa 422 `paid_activity_permission_form_not_found`), son katılım günü (etkinlik gününü geçemez: 422 `paid_activity_join_after_date`) ve dış referans. İptal edilmiş etkinlik 409 `paid_activity_cancelled`; değişiklik yoksa 422 `paid_activity_unchanged`. `If-Match` zorunlu. Rol: `yonetici` (K-300). Modül `finance`.
          */
         patch: operations["updatePaidActivity"];
         trace?: never;
@@ -8669,13 +8669,13 @@ export interface paths {
         };
         /**
          * Katılımcılar ve ödeme durumu
-         * @description Önce iptal edilmemiş katılımlar, ada göre. Satırda taksit tutarı, alınan tutar ve ödeme durumu (taksit ve iptal edilmemiş tahsilattan türetilir, DOM-FIN-030), iptal edilmişte kesinti, iade ve iade durumu; IBAN yalnız son dört hane. Olmayan ya da başka kurumun etkinliği 404. Roller: `yonetici`, `onburo` (K-300). Modül `finance`.
+         * @description Önce asiller (izin bekleyenler dahil) ada göre, sonra yedekler sıralarına göre, en son iptaller; `status` (`active`, `awaiting_consent`, `waitlisted`, `cancelled`), `consentStatus` ve `refundStatus` süzer (DOM-FIN-112). Satırda sınıf, yedek sırası, veli izni ve bağlı izin formundaki durum (`permissionStatus`). Satırda taksit tutarı, alınan tutar ve ödeme durumu (taksit ve iptal edilmemiş tahsilattan türetilir, DOM-FIN-030), iptal edilmişte kesinti, iade ve iade durumu; IBAN yalnız son dört hane. Olmayan ya da başka kurumun etkinliği 404. Roller: `yonetici`, `onburo` (K-300). Modül `finance`.
          */
         get: operations["listPaidActivityParticipants"];
         put?: never;
         /**
          * Öğrenciyi etkinliğe yaz
-         * @description Öğrenciye kişi başı ücret kadar sözleşmesiz taksit açar (`feeKind: activity`, vade son katılım günü; K-301); veli ekranında borç olarak görünür. İptal edilmiş etkinlik 409 `paid_activity_cancelled`, son katılım günü geçtiyse 422 `paid_activity_join_closed`, olmayan ya da etkin olmayan öğrenci 422 `paid_activity_student_not_found`, iptal edilmemiş katılımı olan öğrenci 409 `paid_activity_participant_exists`, kontenjan doluysa 409 `paid_activity_full`. `Idempotency-Key` zorunlu. Olmayan ya da başka kurumun etkinliği 404. Roller: `yonetici`, `onburo` (K-300). Modül `finance`.
+         * @description Kontenjanda yer varsa asil: öğrenciye kişi başı ücret kadar sözleşmesiz taksit açar (`feeKind: activity`, vade son katılım günü; K-301), veli ekranında borç olarak görünür; etkinlik veli izni istiyorsa katılım `awaiting_consent` olur, taksit izinle açılır (K-370). Kontenjan doluysa sıra numarasıyla yedek (`waitlisted`, taksit yok; K-369); yedek listesi doluysa (500) 409 `paid_activity_waitlist_full`. İptal edilmiş etkinlik 409 `paid_activity_cancelled`, son katılım günü geçtiyse 422 `paid_activity_join_closed`, olmayan ya da etkin olmayan öğrenci 422 `paid_activity_student_not_found`, iptal edilmemiş katılımı olan öğrenci 409 `paid_activity_participant_exists`. `Idempotency-Key` zorunlu. Olmayan ya da başka kurumun etkinliği 404. Roller: `yonetici`, `onburo` (K-300). Modül `finance`.
          */
         post: operations["joinPaidActivity"];
         delete?: never;
@@ -8695,7 +8695,7 @@ export interface paths {
         put?: never;
         /**
          * Katılımı iptal et
-         * @description Son iptal gününe kadar (dahil) tam iade; sonra etkinliğin kuralı: oran kadar iade ya da kişi başı masraf düşülür (K-302). Tam ödenmiş taksit kalır, ödenenin kesintiyi aşan kısmı iade kaydı olur; bütünüyle ödenmemiş taksit kapanır, alınan tutar kesintiyi aşarsa fark iade edilir, azsa kalan kesinti bugün vadeli yeni taksit olur. İptal edilmiş katılım 409 `paid_activity_participation_cancelled`. `If-Match` ve `Idempotency-Key` zorunlu. Roller: `yonetici`, `onburo` (K-300). Modül `finance`.
+         * @description Yer boşalırsa en küçük sıra numaralı yedek aynı işlemde asile geçer, taksiti o anda açılır (K-369). Taksiti olmayan (yedek, izin bekleyen) katılım parasız kapanır. Son iptal gününe kadar (dahil) tam iade; sonra etkinliğin kuralı: oran kadar iade ya da kişi başı masraf düşülür (K-302). Tam ödenmiş taksit kalır, ödenenin kesintiyi aşan kısmı iade kaydı olur; bütünüyle ödenmemiş taksit kapanır, alınan tutar kesintiyi aşarsa fark iade edilir, azsa kalan kesinti bugün vadeli yeni taksit olur. İptal edilmiş katılım 409 `paid_activity_participation_cancelled`. `If-Match` ve `Idempotency-Key` zorunlu. Roller: `yonetici`, `onburo` (K-300). Modül `finance`.
          */
         post: operations["cancelPaidActivityParticipation"];
         delete?: never;
@@ -8718,6 +8718,106 @@ export interface paths {
          * @description Ayrılış iadesinin kurallarıyla (DOM-FIN-041, K-303): hesap sahibi öğrencinin kayıtlı velisi (velisi yoksa kendisi) değilse 422 `refund_holder_mismatch`, kurum hesabı geçersizse 422 `refund_bank_account_invalid`, ödeme günü kapatılmışsa 422 `finance_day_closed`, iptal gününden önce 422 `paid_activity_refund_before_cancel`, iade yoksa 409 `paid_activity_refund_not_due`, ödenmişse 409 `refund_already_paid`. İade ödeme gününün gün sonuna girer (M-13). Taze oturum; `If-Match` ve `Idempotency-Key` zorunlu; anahtar kaydı maskeli IBAN ve hesap sahibini saklamaz. Rol: `yonetici` (K-300). Modül `finance`.
          */
         post: operations["payPaidActivityRefund"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/paid-activities/{activityId}/participants/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sınıf seçerek toplu katılım yaz
+         * @description Seçilen sınıfların (1–20) etkin öğrencileri ada göre yazılır: kontenjan dolana kadar asil (taksit açılır; veli izni isteyen etkinlikte izin bekliyor), aşan kısım sıra numarasıyla yedek; zaten katılımı olan atlanır (K-371, K-369). Sınıf yoksa 422 `paid_activity_class_not_found`, öğrenci yoksa 422 `paid_activity_bulk_empty`, 500'den fazlaysa 422 `paid_activity_bulk_too_large`, yedek listesi dolarsa hiçbiri yazılmaz (409 `paid_activity_waitlist_full`). `Idempotency-Key` zorunlu. Olmayan ya da başka kurumun etkinliği 404. Roller: `yonetici`, `onburo` (K-300). Modül `finance`.
+         */
+        post: operations["bulkJoinPaidActivity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/paid-activities/{activityId}/consents/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Veli izinlerini izin formundan eşitle
+         * @description Bağlı dijital izin formunda (IST-067) onaylananların izni alınır, izin bekleyen asilin taksiti açılır; formda reddedilenlerin (izin bekleyen ya da izni formdan gelmiş) katılımı K-302 kuralıyla iptal edilir, boşalan yere yedek geçer (K-370, K-369). Elle girilen izin formdaki retle düşmez. Form bağlı değilse 422 `paid_activity_permission_form_missing`, kullanılamıyorsa 422 `paid_activity_permission_form_not_found`. `Idempotency-Key` zorunlu. Roller: `yonetici`, `onburo` (K-300). Modül `finance`.
+         */
+        post: operations["syncPaidActivityConsents"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/paid-activities/{activityId}/roster": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Basılabilir katılım listesi
+         * @description İptal edilmemiş katılımlar: asiller ada göre, sonra yedekler sırasıyla; öğrenci, sınıf, veli telefonu (yalnız maskeli), katılım, veli izni ve ödeme (K-371). Web PDF'i bu veriden üretir. `Accept: text/csv` aynı listeyi CSV verir (`;` ayırıcı, UTF-8 BOM, formül kaçışı). Tam telefon, IBAN ve izni verenin adı dönmez. Öğrenci adı taşıdığı için taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, denetim `finance.paid_activity_roster_export`. Olmayan ya da başka kurumun etkinliği 404. Roller: `yonetici`, `onburo` (K-300). Modül `finance`.
+         */
+        get: operations["getPaidActivityRoster"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/paid-activity-participants/{participantId}/consent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Veli iznini kaydet
+         * @description Personelin aldığı izin: kanal (`paper`, `phone`, `in_person`) ve izni veren kişinin adı (2–120). İzin bekleyen asil asil olur ve taksiti açılır (vade son katılım günü, geçtiyse bugün); yedeğin izni kaydedilir (K-370). Etkinlik izin istemiyorsa 422 `paid_activity_consent_not_required`, etkinlik günü geçtiyse 422 `paid_activity_consent_closed`, izin zaten kayıtlıysa 409 `paid_activity_consent_recorded`, katılım iptalse 409 `paid_activity_participation_cancelled`. `If-Match` ve `Idempotency-Key` zorunlu. Roller: `yonetici`, `onburo` (K-300). Modül `finance`.
+         */
+        post: operations["grantPaidActivityConsent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/paid-activity-participants/{participantId}/consent-withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Veli izninin geri çekildiğini kaydet
+         * @description Kanal (`paper`, `phone`, `in_person`) ile. Katılım "izin geri çekildi" gerekçesiyle (`cancelKind: consent`) iptal edilir; iade katılımcı iptali gibi K-302 kuralıyladır, yer boşalırsa sıradaki yedek asile geçer (K-370, K-369). Etkinlik izin istemiyorsa 422 `paid_activity_consent_not_required`, iptal edilmiş katılım 409. `If-Match` ve `Idempotency-Key` zorunlu. Roller: `yonetici`, `onburo` (K-300). Modül `finance`.
+         */
+        post: operations["withdrawPaidActivityConsent"];
         delete?: never;
         options?: never;
         head?: never;
@@ -92894,12 +92994,20 @@ export interface operations {
                             lateCostCents: number | null;
                             /** @description Gezi planı ya da başka kaynak kaydı (ON-155) */
                             externalRef: string | null;
+                            /** @description Katılım veli izni ister (K-370) */
+                            requiresConsent: boolean;
+                            /** @description İznin okunduğu dijital izin formu (IST-067, `permissionForms`) */
+                            permissionFormId: string | null;
                             /** @enum {string} */
                             status: "open" | "cancelled";
                             cancelledAt: string | null;
                             cancelReason: string | null;
-                            /** @description İptal edilmemiş katılımcı sayısı */
+                            /** @description Kontenjandan yer tutan katılım: asil ve izin bekleyen (K-369) */
                             participantCount: number;
+                            /** @description Veli izni bekleyen asil sayısı (K-370) */
+                            awaitingConsentCount: number;
+                            /** @description İptal edilmemiş yedek sayısı (K-369) */
+                            waitlistCount: number;
                             /** @description Ödenmemiş iade sayısı */
                             pendingRefundCount: number;
                             /** @description `If-Match` için kayıt sürümü */
@@ -93010,6 +93118,10 @@ export interface operations {
                     lateCostCents: number | null;
                     /** @default null */
                     externalRef?: string | null;
+                    /** @default false */
+                    requiresConsent?: boolean;
+                    /** @default null */
+                    permissionFormId?: string | null;
                 };
             };
         };
@@ -93047,12 +93159,20 @@ export interface operations {
                             lateCostCents: number | null;
                             /** @description Gezi planı ya da başka kaynak kaydı (ON-155) */
                             externalRef: string | null;
+                            /** @description Katılım veli izni ister (K-370) */
+                            requiresConsent: boolean;
+                            /** @description İznin okunduğu dijital izin formu (IST-067, `permissionForms`) */
+                            permissionFormId: string | null;
                             /** @enum {string} */
                             status: "open" | "cancelled";
                             cancelledAt: string | null;
                             cancelReason: string | null;
-                            /** @description İptal edilmemiş katılımcı sayısı */
+                            /** @description Kontenjandan yer tutan katılım: asil ve izin bekleyen (K-369) */
                             participantCount: number;
+                            /** @description Veli izni bekleyen asil sayısı (K-370) */
+                            awaitingConsentCount: number;
+                            /** @description İptal edilmemiş yedek sayısı (K-369) */
+                            waitlistCount: number;
                             /** @description Ödenmemiş iade sayısı */
                             pendingRefundCount: number;
                             /** @description `If-Match` için kayıt sürümü */
@@ -93179,12 +93299,20 @@ export interface operations {
                             lateCostCents: number | null;
                             /** @description Gezi planı ya da başka kaynak kaydı (ON-155) */
                             externalRef: string | null;
+                            /** @description Katılım veli izni ister (K-370) */
+                            requiresConsent: boolean;
+                            /** @description İznin okunduğu dijital izin formu (IST-067, `permissionForms`) */
+                            permissionFormId: string | null;
                             /** @enum {string} */
                             status: "open" | "cancelled";
                             cancelledAt: string | null;
                             cancelReason: string | null;
-                            /** @description İptal edilmemiş katılımcı sayısı */
+                            /** @description Kontenjandan yer tutan katılım: asil ve izin bekleyen (K-369) */
                             participantCount: number;
+                            /** @description Veli izni bekleyen asil sayısı (K-370) */
+                            awaitingConsentCount: number;
+                            /** @description İptal edilmemiş yedek sayısı (K-369) */
+                            waitlistCount: number;
                             /** @description Ödenmemiş iade sayısı */
                             pendingRefundCount: number;
                             /** @description `If-Match` için kayıt sürümü */
@@ -93288,6 +93416,7 @@ export interface operations {
                     capacity?: number;
                     joinDeadline?: string;
                     externalRef?: string | null;
+                    permissionFormId?: string | null;
                 };
             };
         };
@@ -93325,12 +93454,20 @@ export interface operations {
                             lateCostCents: number | null;
                             /** @description Gezi planı ya da başka kaynak kaydı (ON-155) */
                             externalRef: string | null;
+                            /** @description Katılım veli izni ister (K-370) */
+                            requiresConsent: boolean;
+                            /** @description İznin okunduğu dijital izin formu (IST-067, `permissionForms`) */
+                            permissionFormId: string | null;
                             /** @enum {string} */
                             status: "open" | "cancelled";
                             cancelledAt: string | null;
                             cancelReason: string | null;
-                            /** @description İptal edilmemiş katılımcı sayısı */
+                            /** @description Kontenjandan yer tutan katılım: asil ve izin bekleyen (K-369) */
                             participantCount: number;
+                            /** @description Veli izni bekleyen asil sayısı (K-370) */
+                            awaitingConsentCount: number;
+                            /** @description İptal edilmemiş yedek sayısı (K-369) */
+                            waitlistCount: number;
                             /** @description Ödenmemiş iade sayısı */
                             pendingRefundCount: number;
                             /** @description `If-Match` için kayıt sürümü */
@@ -93468,12 +93605,20 @@ export interface operations {
                             lateCostCents: number | null;
                             /** @description Gezi planı ya da başka kaynak kaydı (ON-155) */
                             externalRef: string | null;
+                            /** @description Katılım veli izni ister (K-370) */
+                            requiresConsent: boolean;
+                            /** @description İznin okunduğu dijital izin formu (IST-067, `permissionForms`) */
+                            permissionFormId: string | null;
                             /** @enum {string} */
                             status: "open" | "cancelled";
                             cancelledAt: string | null;
                             cancelReason: string | null;
-                            /** @description İptal edilmemiş katılımcı sayısı */
+                            /** @description Kontenjandan yer tutan katılım: asil ve izin bekleyen (K-369) */
                             participantCount: number;
+                            /** @description Veli izni bekleyen asil sayısı (K-370) */
+                            awaitingConsentCount: number;
+                            /** @description İptal edilmemiş yedek sayısı (K-369) */
+                            waitlistCount: number;
                             /** @description Ödenmemiş iade sayısı */
                             pendingRefundCount: number;
                             /** @description `If-Match` için kayıt sürümü */
@@ -93564,7 +93709,9 @@ export interface operations {
                 /** @description Sayfa boyutu (≤ 100) */
                 pageSize?: number;
                 /** @description Katılım durumu */
-                status?: "active" | "cancelled";
+                status?: "active" | "awaiting_consent" | "waitlisted" | "cancelled";
+                /** @description Veli izni durumu */
+                consentStatus?: "not_required" | "pending" | "granted" | "withdrawn";
                 /** @description İade durumu */
                 refundStatus?: "none" | "pending" | "paid";
             };
@@ -93588,20 +93735,44 @@ export interface operations {
                             activityId: string;
                             studentId: string;
                             studentName: string | null;
-                            /** @description Katılım taksiti (`feeKind: activity`) */
-                            invoiceId: string;
+                            classId: string | null;
+                            className: string | null;
+                            /** @description Katılım taksiti (`feeKind: activity`); yedek ve izin bekleyende yok */
+                            invoiceId: string | null;
                             feeCents: number;
                             joinedDate: string;
-                            /** @enum {string} */
-                            status: "active" | "cancelled";
+                            /**
+                             * @description `active` asil, `awaiting_consent` asil ama veli izni bekleniyor (taksit yok), `waitlisted` yedek, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            status: "active" | "awaiting_consent" | "waitlisted" | "cancelled";
+                            /** @description Yedek sıra numarası (değişmez) */
+                            waitlistPosition: number | null;
+                            /** @description Yedeğin güncel sırası (1’den) */
+                            waitlistRank: number | null;
+                            /** @description Yedekten asile geçiş anı */
+                            promotedAt: string | null;
+                            /**
+                             * @description Veli izni (K-370)
+                             * @enum {string}
+                             */
+                            consentStatus: "not_required" | "pending" | "granted" | "withdrawn";
+                            consentChannel: ("permission_form" | "paper" | "phone" | "in_person") | null;
+                            /** @description Elle girilen izinde izni veren kişi */
+                            consentGrantorName: string | null;
+                            consentAt: string | null;
+                            consentWithdrawnAt: string | null;
+                            consentWithdrawalChannel: ("permission_form" | "paper" | "phone" | "in_person") | null;
+                            /** @description Bağlı izin formundaki durum; form bağlı değil ya da kullanılamıyorsa `null` */
+                            permissionStatus: ("pending" | "approved" | "rejected" | "not_targeted") | null;
                             /** @description Katılım taksitinin tutarı */
                             amountCents: number;
                             /** @description Taksite alınan tutar; iptal edilmişte iptal anındaki değer */
                             collectedCents: number;
                             /** @enum {string} */
-                            paymentStatus: "unpaid" | "partial" | "paid";
+                            paymentStatus: "not_billed" | "unpaid" | "partial" | "paid";
                             /** @description `participant` katılımcı iptali, `activity` kurum etkinliği iptal etti */
-                            cancelKind: ("participant" | "activity") | null;
+                            cancelKind: ("participant" | "activity" | "consent") | null;
                             cancelledDate: string | null;
                             /** @description İptal anında alınmış tutar */
                             paidCents: number | null;
@@ -93734,20 +93905,44 @@ export interface operations {
                             activityId: string;
                             studentId: string;
                             studentName: string | null;
-                            /** @description Katılım taksiti (`feeKind: activity`) */
-                            invoiceId: string;
+                            classId: string | null;
+                            className: string | null;
+                            /** @description Katılım taksiti (`feeKind: activity`); yedek ve izin bekleyende yok */
+                            invoiceId: string | null;
                             feeCents: number;
                             joinedDate: string;
-                            /** @enum {string} */
-                            status: "active" | "cancelled";
+                            /**
+                             * @description `active` asil, `awaiting_consent` asil ama veli izni bekleniyor (taksit yok), `waitlisted` yedek, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            status: "active" | "awaiting_consent" | "waitlisted" | "cancelled";
+                            /** @description Yedek sıra numarası (değişmez) */
+                            waitlistPosition: number | null;
+                            /** @description Yedeğin güncel sırası (1’den) */
+                            waitlistRank: number | null;
+                            /** @description Yedekten asile geçiş anı */
+                            promotedAt: string | null;
+                            /**
+                             * @description Veli izni (K-370)
+                             * @enum {string}
+                             */
+                            consentStatus: "not_required" | "pending" | "granted" | "withdrawn";
+                            consentChannel: ("permission_form" | "paper" | "phone" | "in_person") | null;
+                            /** @description Elle girilen izinde izni veren kişi */
+                            consentGrantorName: string | null;
+                            consentAt: string | null;
+                            consentWithdrawnAt: string | null;
+                            consentWithdrawalChannel: ("permission_form" | "paper" | "phone" | "in_person") | null;
+                            /** @description Bağlı izin formundaki durum; form bağlı değil ya da kullanılamıyorsa `null` */
+                            permissionStatus: ("pending" | "approved" | "rejected" | "not_targeted") | null;
                             /** @description Katılım taksitinin tutarı */
                             amountCents: number;
                             /** @description Taksite alınan tutar; iptal edilmişte iptal anındaki değer */
                             collectedCents: number;
                             /** @enum {string} */
-                            paymentStatus: "unpaid" | "partial" | "paid";
+                            paymentStatus: "not_billed" | "unpaid" | "partial" | "paid";
                             /** @description `participant` katılımcı iptali, `activity` kurum etkinliği iptal etti */
-                            cancelKind: ("participant" | "activity") | null;
+                            cancelKind: ("participant" | "activity" | "consent") | null;
                             cancelledDate: string | null;
                             /** @description İptal anında alınmış tutar */
                             paidCents: number | null;
@@ -93875,20 +94070,44 @@ export interface operations {
                             activityId: string;
                             studentId: string;
                             studentName: string | null;
-                            /** @description Katılım taksiti (`feeKind: activity`) */
-                            invoiceId: string;
+                            classId: string | null;
+                            className: string | null;
+                            /** @description Katılım taksiti (`feeKind: activity`); yedek ve izin bekleyende yok */
+                            invoiceId: string | null;
                             feeCents: number;
                             joinedDate: string;
-                            /** @enum {string} */
-                            status: "active" | "cancelled";
+                            /**
+                             * @description `active` asil, `awaiting_consent` asil ama veli izni bekleniyor (taksit yok), `waitlisted` yedek, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            status: "active" | "awaiting_consent" | "waitlisted" | "cancelled";
+                            /** @description Yedek sıra numarası (değişmez) */
+                            waitlistPosition: number | null;
+                            /** @description Yedeğin güncel sırası (1’den) */
+                            waitlistRank: number | null;
+                            /** @description Yedekten asile geçiş anı */
+                            promotedAt: string | null;
+                            /**
+                             * @description Veli izni (K-370)
+                             * @enum {string}
+                             */
+                            consentStatus: "not_required" | "pending" | "granted" | "withdrawn";
+                            consentChannel: ("permission_form" | "paper" | "phone" | "in_person") | null;
+                            /** @description Elle girilen izinde izni veren kişi */
+                            consentGrantorName: string | null;
+                            consentAt: string | null;
+                            consentWithdrawnAt: string | null;
+                            consentWithdrawalChannel: ("permission_form" | "paper" | "phone" | "in_person") | null;
+                            /** @description Bağlı izin formundaki durum; form bağlı değil ya da kullanılamıyorsa `null` */
+                            permissionStatus: ("pending" | "approved" | "rejected" | "not_targeted") | null;
                             /** @description Katılım taksitinin tutarı */
                             amountCents: number;
                             /** @description Taksite alınan tutar; iptal edilmişte iptal anındaki değer */
                             collectedCents: number;
                             /** @enum {string} */
-                            paymentStatus: "unpaid" | "partial" | "paid";
+                            paymentStatus: "not_billed" | "unpaid" | "partial" | "paid";
                             /** @description `participant` katılımcı iptali, `activity` kurum etkinliği iptal etti */
-                            cancelKind: ("participant" | "activity") | null;
+                            cancelKind: ("participant" | "activity" | "consent") | null;
                             cancelledDate: string | null;
                             /** @description İptal anında alınmış tutar */
                             paidCents: number | null;
@@ -94026,20 +94245,857 @@ export interface operations {
                             activityId: string;
                             studentId: string;
                             studentName: string | null;
-                            /** @description Katılım taksiti (`feeKind: activity`) */
-                            invoiceId: string;
+                            classId: string | null;
+                            className: string | null;
+                            /** @description Katılım taksiti (`feeKind: activity`); yedek ve izin bekleyende yok */
+                            invoiceId: string | null;
                             feeCents: number;
                             joinedDate: string;
-                            /** @enum {string} */
-                            status: "active" | "cancelled";
+                            /**
+                             * @description `active` asil, `awaiting_consent` asil ama veli izni bekleniyor (taksit yok), `waitlisted` yedek, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            status: "active" | "awaiting_consent" | "waitlisted" | "cancelled";
+                            /** @description Yedek sıra numarası (değişmez) */
+                            waitlistPosition: number | null;
+                            /** @description Yedeğin güncel sırası (1’den) */
+                            waitlistRank: number | null;
+                            /** @description Yedekten asile geçiş anı */
+                            promotedAt: string | null;
+                            /**
+                             * @description Veli izni (K-370)
+                             * @enum {string}
+                             */
+                            consentStatus: "not_required" | "pending" | "granted" | "withdrawn";
+                            consentChannel: ("permission_form" | "paper" | "phone" | "in_person") | null;
+                            /** @description Elle girilen izinde izni veren kişi */
+                            consentGrantorName: string | null;
+                            consentAt: string | null;
+                            consentWithdrawnAt: string | null;
+                            consentWithdrawalChannel: ("permission_form" | "paper" | "phone" | "in_person") | null;
+                            /** @description Bağlı izin formundaki durum; form bağlı değil ya da kullanılamıyorsa `null` */
+                            permissionStatus: ("pending" | "approved" | "rejected" | "not_targeted") | null;
                             /** @description Katılım taksitinin tutarı */
                             amountCents: number;
                             /** @description Taksite alınan tutar; iptal edilmişte iptal anındaki değer */
                             collectedCents: number;
                             /** @enum {string} */
-                            paymentStatus: "unpaid" | "partial" | "paid";
+                            paymentStatus: "not_billed" | "unpaid" | "partial" | "paid";
                             /** @description `participant` katılımcı iptali, `activity` kurum etkinliği iptal etti */
-                            cancelKind: ("participant" | "activity") | null;
+                            cancelKind: ("participant" | "activity" | "consent") | null;
+                            cancelledDate: string | null;
+                            /** @description İptal anında alınmış tutar */
+                            paidCents: number | null;
+                            /** @description Katılımcıda kalan kesinti */
+                            retainedCents: number | null;
+                            /** @description İade edilecek tutar */
+                            refundCents: number;
+                            /** @description İptalde kapanan taksit */
+                            closedInvoiceId: string | null;
+                            /** @description Kesinti alınandan fazlaysa açılan taksit */
+                            debtInvoiceId: string | null;
+                            /** @enum {string} */
+                            refundStatus: "none" | "pending" | "paid";
+                            refundPaidDate: string | null;
+                            /** @description Yalnız son dört hane */
+                            maskedIban: string | null;
+                            refundAccountHolder: string | null;
+                            refundBankAccountId: string | null;
+                            refundBankAccountLabel: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    bulkJoinPaidActivity: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                activityId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    classIds: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            activity: {
+                                id: string;
+                                /**
+                                 * @description `trip` gezi, `event` etkinlik
+                                 * @enum {string}
+                                 */
+                                kind: "trip" | "event";
+                                name: string;
+                                /** @description Etkinlik günü (YYYY-MM-DD) */
+                                activityDate: string;
+                                /** @description Kişi başı ücret, kuruş */
+                                feeCents: number;
+                                /** @description Son katılım günü (dahil); katılım taksitinin vadesi */
+                                joinDeadline: string;
+                                /** @description Son iptal günü (dahil); bu güne kadar tam iade */
+                                cancelDeadline: string;
+                                capacity: number;
+                                /**
+                                 * @description Geç iptal: `percent` oran kadar iade, `cost` masraf düşülür
+                                 * @enum {string}
+                                 */
+                                lateRefundRule: "percent" | "cost";
+                                lateRefundPercent: number | null;
+                                lateCostCents: number | null;
+                                /** @description Gezi planı ya da başka kaynak kaydı (ON-155) */
+                                externalRef: string | null;
+                                /** @description Katılım veli izni ister (K-370) */
+                                requiresConsent: boolean;
+                                /** @description İznin okunduğu dijital izin formu (IST-067, `permissionForms`) */
+                                permissionFormId: string | null;
+                                /** @enum {string} */
+                                status: "open" | "cancelled";
+                                cancelledAt: string | null;
+                                cancelReason: string | null;
+                                /** @description Kontenjandan yer tutan katılım: asil ve izin bekleyen (K-369) */
+                                participantCount: number;
+                                /** @description Veli izni bekleyen asil sayısı (K-370) */
+                                awaitingConsentCount: number;
+                                /** @description İptal edilmemiş yedek sayısı (K-369) */
+                                waitlistCount: number;
+                                /** @description Ödenmemiş iade sayısı */
+                                pendingRefundCount: number;
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                            };
+                            participantIds: string[];
+                            /** @description Asil yazılan (taksit açılan) */
+                            activeCount: number;
+                            /** @description Asil, veli izni bekleyen */
+                            awaitingConsentCount: number;
+                            /** @description Yedeğe yazılan */
+                            waitlistedCount: number;
+                            /** @description Zaten katılımı olduğu için atlanan */
+                            skippedStudentIds: string[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    syncPaidActivityConsents: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                activityId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            activity: {
+                                id: string;
+                                /**
+                                 * @description `trip` gezi, `event` etkinlik
+                                 * @enum {string}
+                                 */
+                                kind: "trip" | "event";
+                                name: string;
+                                /** @description Etkinlik günü (YYYY-MM-DD) */
+                                activityDate: string;
+                                /** @description Kişi başı ücret, kuruş */
+                                feeCents: number;
+                                /** @description Son katılım günü (dahil); katılım taksitinin vadesi */
+                                joinDeadline: string;
+                                /** @description Son iptal günü (dahil); bu güne kadar tam iade */
+                                cancelDeadline: string;
+                                capacity: number;
+                                /**
+                                 * @description Geç iptal: `percent` oran kadar iade, `cost` masraf düşülür
+                                 * @enum {string}
+                                 */
+                                lateRefundRule: "percent" | "cost";
+                                lateRefundPercent: number | null;
+                                lateCostCents: number | null;
+                                /** @description Gezi planı ya da başka kaynak kaydı (ON-155) */
+                                externalRef: string | null;
+                                /** @description Katılım veli izni ister (K-370) */
+                                requiresConsent: boolean;
+                                /** @description İznin okunduğu dijital izin formu (IST-067, `permissionForms`) */
+                                permissionFormId: string | null;
+                                /** @enum {string} */
+                                status: "open" | "cancelled";
+                                cancelledAt: string | null;
+                                cancelReason: string | null;
+                                /** @description Kontenjandan yer tutan katılım: asil ve izin bekleyen (K-369) */
+                                participantCount: number;
+                                /** @description Veli izni bekleyen asil sayısı (K-370) */
+                                awaitingConsentCount: number;
+                                /** @description İptal edilmemiş yedek sayısı (K-369) */
+                                waitlistCount: number;
+                                /** @description Ödenmemiş iade sayısı */
+                                pendingRefundCount: number;
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                            };
+                            grantedCount: number;
+                            withdrawnCount: number;
+                            promotedCount: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPaidActivityRoster: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                activityId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            activity: {
+                                id: string;
+                                /**
+                                 * @description `trip` gezi, `event` etkinlik
+                                 * @enum {string}
+                                 */
+                                kind: "trip" | "event";
+                                name: string;
+                                /** @description Etkinlik günü (YYYY-MM-DD) */
+                                activityDate: string;
+                                /** @description Kişi başı ücret, kuruş */
+                                feeCents: number;
+                                /** @description Son katılım günü (dahil); katılım taksitinin vadesi */
+                                joinDeadline: string;
+                                /** @description Son iptal günü (dahil); bu güne kadar tam iade */
+                                cancelDeadline: string;
+                                capacity: number;
+                                /**
+                                 * @description Geç iptal: `percent` oran kadar iade, `cost` masraf düşülür
+                                 * @enum {string}
+                                 */
+                                lateRefundRule: "percent" | "cost";
+                                lateRefundPercent: number | null;
+                                lateCostCents: number | null;
+                                /** @description Gezi planı ya da başka kaynak kaydı (ON-155) */
+                                externalRef: string | null;
+                                /** @description Katılım veli izni ister (K-370) */
+                                requiresConsent: boolean;
+                                /** @description İznin okunduğu dijital izin formu (IST-067, `permissionForms`) */
+                                permissionFormId: string | null;
+                                /** @enum {string} */
+                                status: "open" | "cancelled";
+                                cancelledAt: string | null;
+                                cancelReason: string | null;
+                                /** @description Kontenjandan yer tutan katılım: asil ve izin bekleyen (K-369) */
+                                participantCount: number;
+                                /** @description Veli izni bekleyen asil sayısı (K-370) */
+                                awaitingConsentCount: number;
+                                /** @description İptal edilmemiş yedek sayısı (K-369) */
+                                waitlistCount: number;
+                                /** @description Ödenmemiş iade sayısı */
+                                pendingRefundCount: number;
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                            };
+                            items: {
+                                id: string;
+                                studentId: string;
+                                studentName: string;
+                                className: string | null;
+                                /** @description Veli telefonu yalnız maskeli (KVKK) */
+                                guardianPhoneMasked: string | null;
+                                /** @enum {string} */
+                                status: "active" | "awaiting_consent" | "waitlisted";
+                                waitlistRank: number | null;
+                                /** @enum {string} */
+                                consentStatus: "not_required" | "pending" | "granted" | "withdrawn";
+                                consentChannel: ("permission_form" | "paper" | "phone" | "in_person") | null;
+                                /** @enum {string} */
+                                paymentStatus: "not_billed" | "unpaid" | "partial" | "paid";
+                                amountCents: number;
+                                collectedCents: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    grantPaidActivityConsent: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                participantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    channel: "paper" | "phone" | "in_person";
+                    grantorName: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            activityId: string;
+                            studentId: string;
+                            studentName: string | null;
+                            classId: string | null;
+                            className: string | null;
+                            /** @description Katılım taksiti (`feeKind: activity`); yedek ve izin bekleyende yok */
+                            invoiceId: string | null;
+                            feeCents: number;
+                            joinedDate: string;
+                            /**
+                             * @description `active` asil, `awaiting_consent` asil ama veli izni bekleniyor (taksit yok), `waitlisted` yedek, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            status: "active" | "awaiting_consent" | "waitlisted" | "cancelled";
+                            /** @description Yedek sıra numarası (değişmez) */
+                            waitlistPosition: number | null;
+                            /** @description Yedeğin güncel sırası (1’den) */
+                            waitlistRank: number | null;
+                            /** @description Yedekten asile geçiş anı */
+                            promotedAt: string | null;
+                            /**
+                             * @description Veli izni (K-370)
+                             * @enum {string}
+                             */
+                            consentStatus: "not_required" | "pending" | "granted" | "withdrawn";
+                            consentChannel: ("permission_form" | "paper" | "phone" | "in_person") | null;
+                            /** @description Elle girilen izinde izni veren kişi */
+                            consentGrantorName: string | null;
+                            consentAt: string | null;
+                            consentWithdrawnAt: string | null;
+                            consentWithdrawalChannel: ("permission_form" | "paper" | "phone" | "in_person") | null;
+                            /** @description Bağlı izin formundaki durum; form bağlı değil ya da kullanılamıyorsa `null` */
+                            permissionStatus: ("pending" | "approved" | "rejected" | "not_targeted") | null;
+                            /** @description Katılım taksitinin tutarı */
+                            amountCents: number;
+                            /** @description Taksite alınan tutar; iptal edilmişte iptal anındaki değer */
+                            collectedCents: number;
+                            /** @enum {string} */
+                            paymentStatus: "not_billed" | "unpaid" | "partial" | "paid";
+                            /** @description `participant` katılımcı iptali, `activity` kurum etkinliği iptal etti */
+                            cancelKind: ("participant" | "activity" | "consent") | null;
+                            cancelledDate: string | null;
+                            /** @description İptal anında alınmış tutar */
+                            paidCents: number | null;
+                            /** @description Katılımcıda kalan kesinti */
+                            retainedCents: number | null;
+                            /** @description İade edilecek tutar */
+                            refundCents: number;
+                            /** @description İptalde kapanan taksit */
+                            closedInvoiceId: string | null;
+                            /** @description Kesinti alınandan fazlaysa açılan taksit */
+                            debtInvoiceId: string | null;
+                            /** @enum {string} */
+                            refundStatus: "none" | "pending" | "paid";
+                            refundPaidDate: string | null;
+                            /** @description Yalnız son dört hane */
+                            maskedIban: string | null;
+                            refundAccountHolder: string | null;
+                            refundBankAccountId: string | null;
+                            refundBankAccountLabel: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    withdrawPaidActivityConsent: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                participantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    channel: "paper" | "phone" | "in_person";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            activityId: string;
+                            studentId: string;
+                            studentName: string | null;
+                            classId: string | null;
+                            className: string | null;
+                            /** @description Katılım taksiti (`feeKind: activity`); yedek ve izin bekleyende yok */
+                            invoiceId: string | null;
+                            feeCents: number;
+                            joinedDate: string;
+                            /**
+                             * @description `active` asil, `awaiting_consent` asil ama veli izni bekleniyor (taksit yok), `waitlisted` yedek, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            status: "active" | "awaiting_consent" | "waitlisted" | "cancelled";
+                            /** @description Yedek sıra numarası (değişmez) */
+                            waitlistPosition: number | null;
+                            /** @description Yedeğin güncel sırası (1’den) */
+                            waitlistRank: number | null;
+                            /** @description Yedekten asile geçiş anı */
+                            promotedAt: string | null;
+                            /**
+                             * @description Veli izni (K-370)
+                             * @enum {string}
+                             */
+                            consentStatus: "not_required" | "pending" | "granted" | "withdrawn";
+                            consentChannel: ("permission_form" | "paper" | "phone" | "in_person") | null;
+                            /** @description Elle girilen izinde izni veren kişi */
+                            consentGrantorName: string | null;
+                            consentAt: string | null;
+                            consentWithdrawnAt: string | null;
+                            consentWithdrawalChannel: ("permission_form" | "paper" | "phone" | "in_person") | null;
+                            /** @description Bağlı izin formundaki durum; form bağlı değil ya da kullanılamıyorsa `null` */
+                            permissionStatus: ("pending" | "approved" | "rejected" | "not_targeted") | null;
+                            /** @description Katılım taksitinin tutarı */
+                            amountCents: number;
+                            /** @description Taksite alınan tutar; iptal edilmişte iptal anındaki değer */
+                            collectedCents: number;
+                            /** @enum {string} */
+                            paymentStatus: "not_billed" | "unpaid" | "partial" | "paid";
+                            /** @description `participant` katılımcı iptali, `activity` kurum etkinliği iptal etti */
+                            cancelKind: ("participant" | "activity" | "consent") | null;
                             cancelledDate: string | null;
                             /** @description İptal anında alınmış tutar */
                             paidCents: number | null;

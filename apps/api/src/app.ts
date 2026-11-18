@@ -238,6 +238,11 @@ export const REDACTED_PATHS = [
   '*.amendmentReason',
   'cancelReason',
   '*.cancelReason',
+  // kvkk: K — gezi katılımında izni veren velinin adı (DOM-FIN-112, K-370).
+  'grantorName',
+  '*.grantorName',
+  'consentGrantorName',
+  '*.consentGrantorName',
   // kvkk: K — sözleşme satırının imza yetkilisi adı ve kesin kayıtta yeni velinin adı
   // (DOM-KAY-009); veli telefonu `*.phone` ile gizlenir.
   'signatoryName',

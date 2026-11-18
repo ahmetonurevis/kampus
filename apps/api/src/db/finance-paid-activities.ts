@@ -872,7 +872,8 @@ export async function withdrawalParticipations(
       studentId: paidActivityParticipants.studentId,
       name: paidActivities.name,
       status: sql<ParticipationStatus>`${paidActivityParticipants.status}`,
-      invoiceId: paidActivityParticipants.invoiceId,
+      // Asil ya da borçlu katılımın taksiti vardır; yedek ve izin bekleyen sorguya girmez.
+      invoiceId: sql<string>`${paidActivityParticipants.invoiceId}`,
       feeCents: paidActivityParticipants.feeCents,
       debtInvoiceId: paidActivityParticipants.debtInvoiceId,
       activityDate: paidActivities.activityDate,
@@ -895,6 +896,7 @@ export async function withdrawalParticipations(
         liveParticipant(institutionId),
         eq(paidActivityParticipants.studentId, studentId),
         sql`(${paidActivityParticipants.status} = 'active' or ${paidActivityParticipants.debtInvoiceId} is not null)`,
+        isNotNull(paidActivityParticipants.invoiceId),
       ),
     )
     .orderBy(asc(paidActivities.activityDate), asc(paidActivityParticipants.id))

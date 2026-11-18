@@ -72,7 +72,7 @@ test.describe('DOM-FIN-113: özlük belgeleri', () => {
     await expect(person).toBeHidden()
 
     await section
-      .getByRole('group', { name: 'Özlük görünümü' })
+      .getByRole('toolbar', { name: 'Özlük görünümü' })
       .getByRole('button', {
         name: 'Geçerlilik takibi',
       })
@@ -87,10 +87,8 @@ test.describe('DOM-FIN-113: özlük belgeleri', () => {
     await desk.goto(`${DESK}?gorunum=ozluk-belgeleri`)
     const deskSection = desk.getByRole('region', { name: 'Özlük belgeleri' })
     await expect(deskSection.getByRole('button', { name: 'Belge türleri' })).toHaveCount(0)
-    await deskSection
-      .getByRole('row', { name: new RegExp(teacher) })
-      .getByRole('button', { name: `${teacher} özlük belgelerini aç` })
-      .click()
+    // Dar ekranda tablo kart olarak çizilir; düğme adı satırdan bağımsızdır.
+    await deskSection.getByRole('button', { name: `${teacher} özlük belgelerini aç` }).click()
     const deskPerson = desk.getByRole('dialog', { name: 'Personel özlük belgeleri' })
     const restricted = deskPerson
       .getByRole('list', { name: 'Özlük belgeleri' })

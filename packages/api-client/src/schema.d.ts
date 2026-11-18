@@ -10300,6 +10300,134 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/staff-separations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * İşten ayrılış dosyalarını listele
+         * @description Ayrılış dosyaları: açıklar önce, sonra ayrılış günü yeni önce (DOM-FIN-118). Personel adında aranır; durum ve personelle süzülür. Adımlar listede hesaplanmaz, ayrıntıdadır. Rol: yalnız `yonetici` (K-403; dosya avans, icra ve izin bilgisi taşır). Modül `finance`.
+         */
+        get: operations["listStaffSeparations"];
+        put?: never;
+        /**
+         * İşten ayrılış dosyası aç
+         * @description Ayrılan personel için dosya açar (K-403): ayrılış günü (bugünden en çok 365 gün sonra), neden (`resignation`, `termination`, `retirement`, `contract_end`, `other`), SGK çıkış kodu (boşsa nedenden önerilir; H-85), isteğe bağlı işe giriş ve bildirim günü (bildirim süresi bilgisi; K-405) ve not. Pasifleştirilmiş personele de açılır. Olmayan üyelik 422 `staff_separation_staff_not_found`, öğrenci ya da veli 422 `staff_separation_not_staff`, açık dosyası olan personel 409 `staff_separation_open_exists`; ileri tarihli işe giriş ya da bildirim 422. Yanıt kontrol listesini taşır. Denetim kaydına alan adları yazılır. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (K-403; dosya avans, icra ve izin bilgisi taşır). Modül `finance`.
+         */
+        post: operations["createStaffSeparation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staff-separations/{separationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * İşten ayrılış dosyası
+         * @description Dosya, bildirim süresi bilgisi ve kontrol listesi (K-404): zimmet iadesi (personelin zimmetleri; açık zimmet kalmayınca biter), avans ve icra kontrolü (ayrılış ayından kesilecek avans ve süren icra; yoksa kendiliğinden, varsa işaretle biter), kullanılmayan yıllık izin günü (ayrılış günündeki bakiye; işaretle biter), kıdem ve ihbar hesabı (isteğe bağlı işaret), hesap kapatma (üyelik pasifleştirilince biter) ve hizmet belgesi (iptal edilmemiş belge düzenlenince biter). Ayrılış ayının bordro kilidi de döner. İcra sayısı dönen okuma denetime yazılır (`finance.staff_separation.garnishment_read`). Başka kurumun dosyası 404. Rol: yalnız `yonetici` (K-403; dosya avans, icra ve izin bilgisi taşır). Modül `finance`.
+         */
+        get: operations["getStaffSeparation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * İşten ayrılış dosyasını düzelt
+         * @description Açık dosyanın ayrılış günü, nedeni, SGK kodu, işe giriş ve bildirim günü ya da notu (kısmi; `null` temizler). Neden değişip kod verilmezse kod yeni nedenin önerisine döner. Tamamlanmış ya da iptal edilmiş dosya 409 `staff_separation_closed`; değişiklik yoksa 422 `staff_separation_unchanged`. `If-Match` zorunlu. Rol: yalnız `yonetici` (K-403; dosya avans, icra ve izin bilgisi taşır). Modül `finance`.
+         */
+        patch: operations["updateStaffSeparation"];
+        trace?: never;
+    };
+    "/api/v1/finance/staff-separations/{separationId}/mark-step": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ayrılış adımını işaretle
+         * @description Elle adımı "kontrol edildi" işaretler ya da işareti kaldırır (K-404): `deductions` avans ve icra, `leave` kullanılmayan izin, `severance` kıdem ve ihbar. Zimmet, hesap kapatma ve hizmet belgesi adımları kayıtlardan okunur, işaretlenmez (400). Durum aynıysa yazılmaz (200, denetim yok). Kapanmış dosya 409 `staff_separation_closed`. `If-Match` zorunlu. Rol: yalnız `yonetici` (K-403; dosya avans, icra ve izin bilgisi taşır). Modül `finance`.
+         */
+        post: operations["markStaffSeparationStep"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staff-separations/{separationId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * İlişiği kes (dosyayı tamamla)
+         * @description Zorunlu adımların tamamı bitince dosyayı tamamlar; adımlar kurum kilidi altında kayıtlardan yeniden hesaplanır, kullanılmayan izin günü dondurulur (K-403). Ayrılış günü gelmemişse 422 `staff_separation_not_due`, eksik adım varsa 422 `staff_separation_steps_incomplete` (ileti eksikleri sayar), kapanmış dosya 409 `staff_separation_closed`. Tamamlanan dosya değişmez. `Idempotency-Key` ve `If-Match` zorunlu. Rol: yalnız `yonetici` (K-403; dosya avans, icra ve izin bilgisi taşır). Modül `finance`.
+         */
+        post: operations["completeStaffSeparation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staff-separations/{separationId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * İşten ayrılış dosyasını iptal et
+         * @description Açık dosyayı gerekçeyle (5–500 karakter) iptal eder (K-403); dosya silinmez. Tamamlanmış dosya iptal edilmez, kapanmış dosya 409 `staff_separation_closed`. Gerekçe denetim kaydına yazılmaz. `If-Match` zorunlu. Rol: yalnız `yonetici` (K-403; dosya avans, icra ve izin bilgisi taşır). Modül `finance`.
+         */
+        post: operations["cancelStaffSeparation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staff-separations/{separationId}/document": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * İlişik kesme belgesinin verisi
+         * @description PDF'in verisi (K-403): kurum adı, personel, günler, neden, SGK kodu, adımların durumu, zimmet dökümü, kullanılmayan izin günü ve hizmet belgesi numarası. Avans ve icra tutarı belgeye girmez. Tamamlanmamış dosyada PDF "Taslak" basar. Başka kurumun dosyası 404. Rol: yalnız `yonetici` (K-403; dosya avans, icra ve izin bilgisi taşır). Modül `finance`.
+         */
+        get: operations["getStaffSeparationDocument"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -108030,6 +108158,1688 @@ export interface operations {
                             url: string;
                             /** @description Bağlantının geçerlilik sonu */
                             expiresAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listStaffSeparations: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Personel adında arama */
+                q?: string;
+                /** @description Durum */
+                status?: "open" | "completed" | "cancelled";
+                /** @description Yalnız bu personelin dosyaları */
+                membershipId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Ayrılan personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı (üyelikten) */
+                            staffName: string;
+                            /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                            staffRole: string;
+                            /** @description Hesap etkin mi; `false` ise pasifleştirildi (hesap kapandı) */
+                            staffActive: boolean;
+                            /** @description Ayrılış (son çalışma) günü */
+                            separationDate: string;
+                            /**
+                             * @description Ayrılış nedeni
+                             * @enum {string}
+                             */
+                            reason: "resignation" | "termination" | "retirement" | "contract_end" | "other";
+                            /**
+                             * @description SGK işten ayrılış nedeni kodu (H-85)
+                             * @enum {string}
+                             */
+                            sgkExitCode: "10" | "22" | "29" | "01" | "02" | "03" | "04" | "05" | "08" | "09";
+                            /** @description İşe giriş günü */
+                            hireDate: string | null;
+                            /** @description Bildirim günü */
+                            noticeGivenDate: string | null;
+                            /** @description Not */
+                            note: string | null;
+                            /**
+                             * @description `open`, `completed` ya da `cancelled`
+                             * @enum {string}
+                             */
+                            status: "open" | "completed" | "cancelled";
+                            /** @description Dosyanın açıldığı an */
+                            createdAt: string;
+                            /** @description İlişiğin kesildiği an */
+                            completedAt: string | null;
+                            /** @description İptal anı */
+                            cancelledAt: string | null;
+                            /** @description İptal gerekçesi */
+                            cancelReason: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createStaffSeparation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Ayrılan personelin kurum üyeliği */
+                    membershipId: string;
+                    /** @description Ayrılış (son çalışma) günü; bugünden en çok 365 gün sonra */
+                    separationDate: string;
+                    /**
+                     * @description `resignation` istifa, `termination` işveren feshi, `retirement` emeklilik, `contract_end` sözleşme sonu, `other` diğer
+                     * @enum {string}
+                     */
+                    reason: "resignation" | "termination" | "retirement" | "contract_end" | "other";
+                    /** @default null */
+                    sgkExitCode?: ("10" | "22" | "29" | "01" | "02" | "03" | "04" | "05" | "08" | "09") | null;
+                    /** @default null */
+                    hireDate?: string | null;
+                    /** @default null */
+                    noticeGivenDate?: string | null;
+                    /** @description İsteğe bağlı not, en çok 500 karakter */
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Ayrılan personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı (üyelikten) */
+                            staffName: string;
+                            /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                            staffRole: string;
+                            /** @description Hesap etkin mi; `false` ise pasifleştirildi (hesap kapandı) */
+                            staffActive: boolean;
+                            /** @description Ayrılış (son çalışma) günü */
+                            separationDate: string;
+                            /**
+                             * @description Ayrılış nedeni
+                             * @enum {string}
+                             */
+                            reason: "resignation" | "termination" | "retirement" | "contract_end" | "other";
+                            /**
+                             * @description SGK işten ayrılış nedeni kodu (H-85)
+                             * @enum {string}
+                             */
+                            sgkExitCode: "10" | "22" | "29" | "01" | "02" | "03" | "04" | "05" | "08" | "09";
+                            /** @description İşe giriş günü */
+                            hireDate: string | null;
+                            /** @description Bildirim günü */
+                            noticeGivenDate: string | null;
+                            /** @description Not */
+                            note: string | null;
+                            /**
+                             * @description `open`, `completed` ya da `cancelled`
+                             * @enum {string}
+                             */
+                            status: "open" | "completed" | "cancelled";
+                            /** @description Dosyanın açıldığı an */
+                            createdAt: string;
+                            /** @description İlişiğin kesildiği an */
+                            completedAt: string | null;
+                            /** @description İptal anı */
+                            cancelledAt: string | null;
+                            /** @description İptal gerekçesi */
+                            cancelReason: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Hesabın pasifleştirildiği gün (Europe/Istanbul); etkinse boş */
+                            accountClosedDate: string | null;
+                            /** @description Dosyayı tamamlayan yönetici */
+                            completedByName: string | null;
+                            /** @description Bildirim süresi bilgisi; işe giriş günü yoksa boş (K-405) */
+                            notice: {
+                                /** @description Bu nedende yasal bildirim süresi uygulanır mı (H-86) */
+                                applies: boolean;
+                                /** @description Hizmet süresine göre bildirim süresi (hafta) */
+                                weeks: number;
+                                /** @description Bildirim süresinin bittiği gün */
+                                noticeEndDate: string | null;
+                                /** @description Ayrılış süre bitmeden ise eksik kalan gün */
+                                shortDays: number;
+                            } | null;
+                            /** @description Kontrol listesi, sırasıyla (K-404) */
+                            steps: {
+                                /** @enum {string} */
+                                step: "asset_return" | "deductions" | "leave" | "severance" | "account_closure" | "service_certificate";
+                                /** @description Tamamlamak için bitmeli mi (kıdem adımı değil) */
+                                required: boolean;
+                                /** @description Kayıtlardan okunur, işaretlenmez */
+                                automatic: boolean;
+                                done: boolean;
+                                /** @description Elle adımda işaret anı */
+                                checkedAt: string | null;
+                                /** @description İşaretleyen yönetici */
+                                checkedByName: string | null;
+                            }[];
+                            /** @description Bitmemiş zorunlu adımlar */
+                            missingSteps: ("asset_return" | "deductions" | "leave" | "severance" | "account_closure" | "service_certificate")[];
+                            /** @description Personelin zimmetleri: açıklar önce */
+                            assets: {
+                                /** @description Zimmet kaydı; iade `POST /finance/fixed-asset-assignments/:id/return` */
+                                assignmentId: string;
+                                assetId: string;
+                                /** @description Demirbaş etiket numarası */
+                                assetTagNumber: string;
+                                assetName: string;
+                                assignedDate: string;
+                                /** @description İade günü; boşsa zimmet açık */
+                                returnDate: string | null;
+                                returnCondition: ("intact" | "damaged") | null;
+                                /** @description Zimmet kaydının sürümü (iade `If-Match`) */
+                                version: number;
+                            }[];
+                            deductions: {
+                                /** @description Ayrılış ayından kesilecek taksiti olan avans */
+                                openAdvanceCount: number;
+                                /** @description Ayrılış ayından (dahil) kesilecek avans, kuruş */
+                                openAdvanceCents: number;
+                                /** @description Süren icra sayısı */
+                                activeGarnishmentCount: number;
+                                /** @enum {string} */
+                                currency: "TRY";
+                            };
+                            leave: {
+                                /** @description Personelin izin bilgisi (DOM-FIN-109) var mı */
+                                hasProfile: boolean;
+                                /** @description Ayrılış günündeki kullanılmayan yıllık izin günü; tamamlanmışta dondurulmuş */
+                                unusedDays: number | null;
+                                /** @description Gün tamamlanma anında donduruldu mu */
+                                frozen: boolean;
+                            };
+                            /** @description İptal edilmemiş hizmet belgesi (DOM-FIN-106) */
+                            serviceCertificate: {
+                                id: string;
+                                label: string;
+                                createdAt: string;
+                            } | null;
+                            /** @description Ayrılış ayı (YYYY-MM) */
+                            payrollMonth: string;
+                            /** @description Ayrılış ayının bordrosu onaylı (kilitli) mı; son bordro düzeltmeyle (DOM-FIN-108) */
+                            payrollMonthLocked: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getStaffSeparation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                separationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Ayrılan personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı (üyelikten) */
+                            staffName: string;
+                            /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                            staffRole: string;
+                            /** @description Hesap etkin mi; `false` ise pasifleştirildi (hesap kapandı) */
+                            staffActive: boolean;
+                            /** @description Ayrılış (son çalışma) günü */
+                            separationDate: string;
+                            /**
+                             * @description Ayrılış nedeni
+                             * @enum {string}
+                             */
+                            reason: "resignation" | "termination" | "retirement" | "contract_end" | "other";
+                            /**
+                             * @description SGK işten ayrılış nedeni kodu (H-85)
+                             * @enum {string}
+                             */
+                            sgkExitCode: "10" | "22" | "29" | "01" | "02" | "03" | "04" | "05" | "08" | "09";
+                            /** @description İşe giriş günü */
+                            hireDate: string | null;
+                            /** @description Bildirim günü */
+                            noticeGivenDate: string | null;
+                            /** @description Not */
+                            note: string | null;
+                            /**
+                             * @description `open`, `completed` ya da `cancelled`
+                             * @enum {string}
+                             */
+                            status: "open" | "completed" | "cancelled";
+                            /** @description Dosyanın açıldığı an */
+                            createdAt: string;
+                            /** @description İlişiğin kesildiği an */
+                            completedAt: string | null;
+                            /** @description İptal anı */
+                            cancelledAt: string | null;
+                            /** @description İptal gerekçesi */
+                            cancelReason: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Hesabın pasifleştirildiği gün (Europe/Istanbul); etkinse boş */
+                            accountClosedDate: string | null;
+                            /** @description Dosyayı tamamlayan yönetici */
+                            completedByName: string | null;
+                            /** @description Bildirim süresi bilgisi; işe giriş günü yoksa boş (K-405) */
+                            notice: {
+                                /** @description Bu nedende yasal bildirim süresi uygulanır mı (H-86) */
+                                applies: boolean;
+                                /** @description Hizmet süresine göre bildirim süresi (hafta) */
+                                weeks: number;
+                                /** @description Bildirim süresinin bittiği gün */
+                                noticeEndDate: string | null;
+                                /** @description Ayrılış süre bitmeden ise eksik kalan gün */
+                                shortDays: number;
+                            } | null;
+                            /** @description Kontrol listesi, sırasıyla (K-404) */
+                            steps: {
+                                /** @enum {string} */
+                                step: "asset_return" | "deductions" | "leave" | "severance" | "account_closure" | "service_certificate";
+                                /** @description Tamamlamak için bitmeli mi (kıdem adımı değil) */
+                                required: boolean;
+                                /** @description Kayıtlardan okunur, işaretlenmez */
+                                automatic: boolean;
+                                done: boolean;
+                                /** @description Elle adımda işaret anı */
+                                checkedAt: string | null;
+                                /** @description İşaretleyen yönetici */
+                                checkedByName: string | null;
+                            }[];
+                            /** @description Bitmemiş zorunlu adımlar */
+                            missingSteps: ("asset_return" | "deductions" | "leave" | "severance" | "account_closure" | "service_certificate")[];
+                            /** @description Personelin zimmetleri: açıklar önce */
+                            assets: {
+                                /** @description Zimmet kaydı; iade `POST /finance/fixed-asset-assignments/:id/return` */
+                                assignmentId: string;
+                                assetId: string;
+                                /** @description Demirbaş etiket numarası */
+                                assetTagNumber: string;
+                                assetName: string;
+                                assignedDate: string;
+                                /** @description İade günü; boşsa zimmet açık */
+                                returnDate: string | null;
+                                returnCondition: ("intact" | "damaged") | null;
+                                /** @description Zimmet kaydının sürümü (iade `If-Match`) */
+                                version: number;
+                            }[];
+                            deductions: {
+                                /** @description Ayrılış ayından kesilecek taksiti olan avans */
+                                openAdvanceCount: number;
+                                /** @description Ayrılış ayından (dahil) kesilecek avans, kuruş */
+                                openAdvanceCents: number;
+                                /** @description Süren icra sayısı */
+                                activeGarnishmentCount: number;
+                                /** @enum {string} */
+                                currency: "TRY";
+                            };
+                            leave: {
+                                /** @description Personelin izin bilgisi (DOM-FIN-109) var mı */
+                                hasProfile: boolean;
+                                /** @description Ayrılış günündeki kullanılmayan yıllık izin günü; tamamlanmışta dondurulmuş */
+                                unusedDays: number | null;
+                                /** @description Gün tamamlanma anında donduruldu mu */
+                                frozen: boolean;
+                            };
+                            /** @description İptal edilmemiş hizmet belgesi (DOM-FIN-106) */
+                            serviceCertificate: {
+                                id: string;
+                                label: string;
+                                createdAt: string;
+                            } | null;
+                            /** @description Ayrılış ayı (YYYY-MM) */
+                            payrollMonth: string;
+                            /** @description Ayrılış ayının bordrosu onaylı (kilitli) mı; son bordro düzeltmeyle (DOM-FIN-108) */
+                            payrollMonthLocked: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateStaffSeparation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                separationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Ayrılış (son çalışma) günü; bugünden en çok 365 gün sonra */
+                    separationDate?: string;
+                    /**
+                     * @description `resignation` istifa, `termination` işveren feshi, `retirement` emeklilik, `contract_end` sözleşme sonu, `other` diğer
+                     * @enum {string}
+                     */
+                    reason?: "resignation" | "termination" | "retirement" | "contract_end" | "other";
+                    /**
+                     * @description SGK işten ayrılış nedeni kodu; `null` ise nedenden önerilir (H-85)
+                     * @enum {string}
+                     */
+                    sgkExitCode?: "10" | "22" | "29" | "01" | "02" | "03" | "04" | "05" | "08" | "09";
+                    hireDate?: string | null;
+                    noticeGivenDate?: string | null;
+                    /** @description Not; boş metin notu siler */
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Ayrılan personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı (üyelikten) */
+                            staffName: string;
+                            /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                            staffRole: string;
+                            /** @description Hesap etkin mi; `false` ise pasifleştirildi (hesap kapandı) */
+                            staffActive: boolean;
+                            /** @description Ayrılış (son çalışma) günü */
+                            separationDate: string;
+                            /**
+                             * @description Ayrılış nedeni
+                             * @enum {string}
+                             */
+                            reason: "resignation" | "termination" | "retirement" | "contract_end" | "other";
+                            /**
+                             * @description SGK işten ayrılış nedeni kodu (H-85)
+                             * @enum {string}
+                             */
+                            sgkExitCode: "10" | "22" | "29" | "01" | "02" | "03" | "04" | "05" | "08" | "09";
+                            /** @description İşe giriş günü */
+                            hireDate: string | null;
+                            /** @description Bildirim günü */
+                            noticeGivenDate: string | null;
+                            /** @description Not */
+                            note: string | null;
+                            /**
+                             * @description `open`, `completed` ya da `cancelled`
+                             * @enum {string}
+                             */
+                            status: "open" | "completed" | "cancelled";
+                            /** @description Dosyanın açıldığı an */
+                            createdAt: string;
+                            /** @description İlişiğin kesildiği an */
+                            completedAt: string | null;
+                            /** @description İptal anı */
+                            cancelledAt: string | null;
+                            /** @description İptal gerekçesi */
+                            cancelReason: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Hesabın pasifleştirildiği gün (Europe/Istanbul); etkinse boş */
+                            accountClosedDate: string | null;
+                            /** @description Dosyayı tamamlayan yönetici */
+                            completedByName: string | null;
+                            /** @description Bildirim süresi bilgisi; işe giriş günü yoksa boş (K-405) */
+                            notice: {
+                                /** @description Bu nedende yasal bildirim süresi uygulanır mı (H-86) */
+                                applies: boolean;
+                                /** @description Hizmet süresine göre bildirim süresi (hafta) */
+                                weeks: number;
+                                /** @description Bildirim süresinin bittiği gün */
+                                noticeEndDate: string | null;
+                                /** @description Ayrılış süre bitmeden ise eksik kalan gün */
+                                shortDays: number;
+                            } | null;
+                            /** @description Kontrol listesi, sırasıyla (K-404) */
+                            steps: {
+                                /** @enum {string} */
+                                step: "asset_return" | "deductions" | "leave" | "severance" | "account_closure" | "service_certificate";
+                                /** @description Tamamlamak için bitmeli mi (kıdem adımı değil) */
+                                required: boolean;
+                                /** @description Kayıtlardan okunur, işaretlenmez */
+                                automatic: boolean;
+                                done: boolean;
+                                /** @description Elle adımda işaret anı */
+                                checkedAt: string | null;
+                                /** @description İşaretleyen yönetici */
+                                checkedByName: string | null;
+                            }[];
+                            /** @description Bitmemiş zorunlu adımlar */
+                            missingSteps: ("asset_return" | "deductions" | "leave" | "severance" | "account_closure" | "service_certificate")[];
+                            /** @description Personelin zimmetleri: açıklar önce */
+                            assets: {
+                                /** @description Zimmet kaydı; iade `POST /finance/fixed-asset-assignments/:id/return` */
+                                assignmentId: string;
+                                assetId: string;
+                                /** @description Demirbaş etiket numarası */
+                                assetTagNumber: string;
+                                assetName: string;
+                                assignedDate: string;
+                                /** @description İade günü; boşsa zimmet açık */
+                                returnDate: string | null;
+                                returnCondition: ("intact" | "damaged") | null;
+                                /** @description Zimmet kaydının sürümü (iade `If-Match`) */
+                                version: number;
+                            }[];
+                            deductions: {
+                                /** @description Ayrılış ayından kesilecek taksiti olan avans */
+                                openAdvanceCount: number;
+                                /** @description Ayrılış ayından (dahil) kesilecek avans, kuruş */
+                                openAdvanceCents: number;
+                                /** @description Süren icra sayısı */
+                                activeGarnishmentCount: number;
+                                /** @enum {string} */
+                                currency: "TRY";
+                            };
+                            leave: {
+                                /** @description Personelin izin bilgisi (DOM-FIN-109) var mı */
+                                hasProfile: boolean;
+                                /** @description Ayrılış günündeki kullanılmayan yıllık izin günü; tamamlanmışta dondurulmuş */
+                                unusedDays: number | null;
+                                /** @description Gün tamamlanma anında donduruldu mu */
+                                frozen: boolean;
+                            };
+                            /** @description İptal edilmemiş hizmet belgesi (DOM-FIN-106) */
+                            serviceCertificate: {
+                                id: string;
+                                label: string;
+                                createdAt: string;
+                            } | null;
+                            /** @description Ayrılış ayı (YYYY-MM) */
+                            payrollMonth: string;
+                            /** @description Ayrılış ayının bordrosu onaylı (kilitli) mı; son bordro düzeltmeyle (DOM-FIN-108) */
+                            payrollMonthLocked: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    markStaffSeparationStep: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                separationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description `deductions` avans ve icra kontrolü, `leave` izin, `severance` kıdem ve ihbar
+                     * @enum {string}
+                     */
+                    step: "deductions" | "leave" | "severance";
+                    /** @description `true` kontrol edildi, `false` işareti kaldır */
+                    done: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Ayrılan personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı (üyelikten) */
+                            staffName: string;
+                            /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                            staffRole: string;
+                            /** @description Hesap etkin mi; `false` ise pasifleştirildi (hesap kapandı) */
+                            staffActive: boolean;
+                            /** @description Ayrılış (son çalışma) günü */
+                            separationDate: string;
+                            /**
+                             * @description Ayrılış nedeni
+                             * @enum {string}
+                             */
+                            reason: "resignation" | "termination" | "retirement" | "contract_end" | "other";
+                            /**
+                             * @description SGK işten ayrılış nedeni kodu (H-85)
+                             * @enum {string}
+                             */
+                            sgkExitCode: "10" | "22" | "29" | "01" | "02" | "03" | "04" | "05" | "08" | "09";
+                            /** @description İşe giriş günü */
+                            hireDate: string | null;
+                            /** @description Bildirim günü */
+                            noticeGivenDate: string | null;
+                            /** @description Not */
+                            note: string | null;
+                            /**
+                             * @description `open`, `completed` ya da `cancelled`
+                             * @enum {string}
+                             */
+                            status: "open" | "completed" | "cancelled";
+                            /** @description Dosyanın açıldığı an */
+                            createdAt: string;
+                            /** @description İlişiğin kesildiği an */
+                            completedAt: string | null;
+                            /** @description İptal anı */
+                            cancelledAt: string | null;
+                            /** @description İptal gerekçesi */
+                            cancelReason: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Hesabın pasifleştirildiği gün (Europe/Istanbul); etkinse boş */
+                            accountClosedDate: string | null;
+                            /** @description Dosyayı tamamlayan yönetici */
+                            completedByName: string | null;
+                            /** @description Bildirim süresi bilgisi; işe giriş günü yoksa boş (K-405) */
+                            notice: {
+                                /** @description Bu nedende yasal bildirim süresi uygulanır mı (H-86) */
+                                applies: boolean;
+                                /** @description Hizmet süresine göre bildirim süresi (hafta) */
+                                weeks: number;
+                                /** @description Bildirim süresinin bittiği gün */
+                                noticeEndDate: string | null;
+                                /** @description Ayrılış süre bitmeden ise eksik kalan gün */
+                                shortDays: number;
+                            } | null;
+                            /** @description Kontrol listesi, sırasıyla (K-404) */
+                            steps: {
+                                /** @enum {string} */
+                                step: "asset_return" | "deductions" | "leave" | "severance" | "account_closure" | "service_certificate";
+                                /** @description Tamamlamak için bitmeli mi (kıdem adımı değil) */
+                                required: boolean;
+                                /** @description Kayıtlardan okunur, işaretlenmez */
+                                automatic: boolean;
+                                done: boolean;
+                                /** @description Elle adımda işaret anı */
+                                checkedAt: string | null;
+                                /** @description İşaretleyen yönetici */
+                                checkedByName: string | null;
+                            }[];
+                            /** @description Bitmemiş zorunlu adımlar */
+                            missingSteps: ("asset_return" | "deductions" | "leave" | "severance" | "account_closure" | "service_certificate")[];
+                            /** @description Personelin zimmetleri: açıklar önce */
+                            assets: {
+                                /** @description Zimmet kaydı; iade `POST /finance/fixed-asset-assignments/:id/return` */
+                                assignmentId: string;
+                                assetId: string;
+                                /** @description Demirbaş etiket numarası */
+                                assetTagNumber: string;
+                                assetName: string;
+                                assignedDate: string;
+                                /** @description İade günü; boşsa zimmet açık */
+                                returnDate: string | null;
+                                returnCondition: ("intact" | "damaged") | null;
+                                /** @description Zimmet kaydının sürümü (iade `If-Match`) */
+                                version: number;
+                            }[];
+                            deductions: {
+                                /** @description Ayrılış ayından kesilecek taksiti olan avans */
+                                openAdvanceCount: number;
+                                /** @description Ayrılış ayından (dahil) kesilecek avans, kuruş */
+                                openAdvanceCents: number;
+                                /** @description Süren icra sayısı */
+                                activeGarnishmentCount: number;
+                                /** @enum {string} */
+                                currency: "TRY";
+                            };
+                            leave: {
+                                /** @description Personelin izin bilgisi (DOM-FIN-109) var mı */
+                                hasProfile: boolean;
+                                /** @description Ayrılış günündeki kullanılmayan yıllık izin günü; tamamlanmışta dondurulmuş */
+                                unusedDays: number | null;
+                                /** @description Gün tamamlanma anında donduruldu mu */
+                                frozen: boolean;
+                            };
+                            /** @description İptal edilmemiş hizmet belgesi (DOM-FIN-106) */
+                            serviceCertificate: {
+                                id: string;
+                                label: string;
+                                createdAt: string;
+                            } | null;
+                            /** @description Ayrılış ayı (YYYY-MM) */
+                            payrollMonth: string;
+                            /** @description Ayrılış ayının bordrosu onaylı (kilitli) mı; son bordro düzeltmeyle (DOM-FIN-108) */
+                            payrollMonthLocked: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    completeStaffSeparation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                separationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Ayrılan personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı (üyelikten) */
+                            staffName: string;
+                            /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                            staffRole: string;
+                            /** @description Hesap etkin mi; `false` ise pasifleştirildi (hesap kapandı) */
+                            staffActive: boolean;
+                            /** @description Ayrılış (son çalışma) günü */
+                            separationDate: string;
+                            /**
+                             * @description Ayrılış nedeni
+                             * @enum {string}
+                             */
+                            reason: "resignation" | "termination" | "retirement" | "contract_end" | "other";
+                            /**
+                             * @description SGK işten ayrılış nedeni kodu (H-85)
+                             * @enum {string}
+                             */
+                            sgkExitCode: "10" | "22" | "29" | "01" | "02" | "03" | "04" | "05" | "08" | "09";
+                            /** @description İşe giriş günü */
+                            hireDate: string | null;
+                            /** @description Bildirim günü */
+                            noticeGivenDate: string | null;
+                            /** @description Not */
+                            note: string | null;
+                            /**
+                             * @description `open`, `completed` ya da `cancelled`
+                             * @enum {string}
+                             */
+                            status: "open" | "completed" | "cancelled";
+                            /** @description Dosyanın açıldığı an */
+                            createdAt: string;
+                            /** @description İlişiğin kesildiği an */
+                            completedAt: string | null;
+                            /** @description İptal anı */
+                            cancelledAt: string | null;
+                            /** @description İptal gerekçesi */
+                            cancelReason: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Hesabın pasifleştirildiği gün (Europe/Istanbul); etkinse boş */
+                            accountClosedDate: string | null;
+                            /** @description Dosyayı tamamlayan yönetici */
+                            completedByName: string | null;
+                            /** @description Bildirim süresi bilgisi; işe giriş günü yoksa boş (K-405) */
+                            notice: {
+                                /** @description Bu nedende yasal bildirim süresi uygulanır mı (H-86) */
+                                applies: boolean;
+                                /** @description Hizmet süresine göre bildirim süresi (hafta) */
+                                weeks: number;
+                                /** @description Bildirim süresinin bittiği gün */
+                                noticeEndDate: string | null;
+                                /** @description Ayrılış süre bitmeden ise eksik kalan gün */
+                                shortDays: number;
+                            } | null;
+                            /** @description Kontrol listesi, sırasıyla (K-404) */
+                            steps: {
+                                /** @enum {string} */
+                                step: "asset_return" | "deductions" | "leave" | "severance" | "account_closure" | "service_certificate";
+                                /** @description Tamamlamak için bitmeli mi (kıdem adımı değil) */
+                                required: boolean;
+                                /** @description Kayıtlardan okunur, işaretlenmez */
+                                automatic: boolean;
+                                done: boolean;
+                                /** @description Elle adımda işaret anı */
+                                checkedAt: string | null;
+                                /** @description İşaretleyen yönetici */
+                                checkedByName: string | null;
+                            }[];
+                            /** @description Bitmemiş zorunlu adımlar */
+                            missingSteps: ("asset_return" | "deductions" | "leave" | "severance" | "account_closure" | "service_certificate")[];
+                            /** @description Personelin zimmetleri: açıklar önce */
+                            assets: {
+                                /** @description Zimmet kaydı; iade `POST /finance/fixed-asset-assignments/:id/return` */
+                                assignmentId: string;
+                                assetId: string;
+                                /** @description Demirbaş etiket numarası */
+                                assetTagNumber: string;
+                                assetName: string;
+                                assignedDate: string;
+                                /** @description İade günü; boşsa zimmet açık */
+                                returnDate: string | null;
+                                returnCondition: ("intact" | "damaged") | null;
+                                /** @description Zimmet kaydının sürümü (iade `If-Match`) */
+                                version: number;
+                            }[];
+                            deductions: {
+                                /** @description Ayrılış ayından kesilecek taksiti olan avans */
+                                openAdvanceCount: number;
+                                /** @description Ayrılış ayından (dahil) kesilecek avans, kuruş */
+                                openAdvanceCents: number;
+                                /** @description Süren icra sayısı */
+                                activeGarnishmentCount: number;
+                                /** @enum {string} */
+                                currency: "TRY";
+                            };
+                            leave: {
+                                /** @description Personelin izin bilgisi (DOM-FIN-109) var mı */
+                                hasProfile: boolean;
+                                /** @description Ayrılış günündeki kullanılmayan yıllık izin günü; tamamlanmışta dondurulmuş */
+                                unusedDays: number | null;
+                                /** @description Gün tamamlanma anında donduruldu mu */
+                                frozen: boolean;
+                            };
+                            /** @description İptal edilmemiş hizmet belgesi (DOM-FIN-106) */
+                            serviceCertificate: {
+                                id: string;
+                                label: string;
+                                createdAt: string;
+                            } | null;
+                            /** @description Ayrılış ayı (YYYY-MM) */
+                            payrollMonth: string;
+                            /** @description Ayrılış ayının bordrosu onaylı (kilitli) mı; son bordro düzeltmeyle (DOM-FIN-108) */
+                            payrollMonthLocked: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelStaffSeparation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                separationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description İptal gerekçesi; denetim kaydına yazılmaz */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Ayrılan personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı (üyelikten) */
+                            staffName: string;
+                            /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                            staffRole: string;
+                            /** @description Hesap etkin mi; `false` ise pasifleştirildi (hesap kapandı) */
+                            staffActive: boolean;
+                            /** @description Ayrılış (son çalışma) günü */
+                            separationDate: string;
+                            /**
+                             * @description Ayrılış nedeni
+                             * @enum {string}
+                             */
+                            reason: "resignation" | "termination" | "retirement" | "contract_end" | "other";
+                            /**
+                             * @description SGK işten ayrılış nedeni kodu (H-85)
+                             * @enum {string}
+                             */
+                            sgkExitCode: "10" | "22" | "29" | "01" | "02" | "03" | "04" | "05" | "08" | "09";
+                            /** @description İşe giriş günü */
+                            hireDate: string | null;
+                            /** @description Bildirim günü */
+                            noticeGivenDate: string | null;
+                            /** @description Not */
+                            note: string | null;
+                            /**
+                             * @description `open`, `completed` ya da `cancelled`
+                             * @enum {string}
+                             */
+                            status: "open" | "completed" | "cancelled";
+                            /** @description Dosyanın açıldığı an */
+                            createdAt: string;
+                            /** @description İlişiğin kesildiği an */
+                            completedAt: string | null;
+                            /** @description İptal anı */
+                            cancelledAt: string | null;
+                            /** @description İptal gerekçesi */
+                            cancelReason: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Hesabın pasifleştirildiği gün (Europe/Istanbul); etkinse boş */
+                            accountClosedDate: string | null;
+                            /** @description Dosyayı tamamlayan yönetici */
+                            completedByName: string | null;
+                            /** @description Bildirim süresi bilgisi; işe giriş günü yoksa boş (K-405) */
+                            notice: {
+                                /** @description Bu nedende yasal bildirim süresi uygulanır mı (H-86) */
+                                applies: boolean;
+                                /** @description Hizmet süresine göre bildirim süresi (hafta) */
+                                weeks: number;
+                                /** @description Bildirim süresinin bittiği gün */
+                                noticeEndDate: string | null;
+                                /** @description Ayrılış süre bitmeden ise eksik kalan gün */
+                                shortDays: number;
+                            } | null;
+                            /** @description Kontrol listesi, sırasıyla (K-404) */
+                            steps: {
+                                /** @enum {string} */
+                                step: "asset_return" | "deductions" | "leave" | "severance" | "account_closure" | "service_certificate";
+                                /** @description Tamamlamak için bitmeli mi (kıdem adımı değil) */
+                                required: boolean;
+                                /** @description Kayıtlardan okunur, işaretlenmez */
+                                automatic: boolean;
+                                done: boolean;
+                                /** @description Elle adımda işaret anı */
+                                checkedAt: string | null;
+                                /** @description İşaretleyen yönetici */
+                                checkedByName: string | null;
+                            }[];
+                            /** @description Bitmemiş zorunlu adımlar */
+                            missingSteps: ("asset_return" | "deductions" | "leave" | "severance" | "account_closure" | "service_certificate")[];
+                            /** @description Personelin zimmetleri: açıklar önce */
+                            assets: {
+                                /** @description Zimmet kaydı; iade `POST /finance/fixed-asset-assignments/:id/return` */
+                                assignmentId: string;
+                                assetId: string;
+                                /** @description Demirbaş etiket numarası */
+                                assetTagNumber: string;
+                                assetName: string;
+                                assignedDate: string;
+                                /** @description İade günü; boşsa zimmet açık */
+                                returnDate: string | null;
+                                returnCondition: ("intact" | "damaged") | null;
+                                /** @description Zimmet kaydının sürümü (iade `If-Match`) */
+                                version: number;
+                            }[];
+                            deductions: {
+                                /** @description Ayrılış ayından kesilecek taksiti olan avans */
+                                openAdvanceCount: number;
+                                /** @description Ayrılış ayından (dahil) kesilecek avans, kuruş */
+                                openAdvanceCents: number;
+                                /** @description Süren icra sayısı */
+                                activeGarnishmentCount: number;
+                                /** @enum {string} */
+                                currency: "TRY";
+                            };
+                            leave: {
+                                /** @description Personelin izin bilgisi (DOM-FIN-109) var mı */
+                                hasProfile: boolean;
+                                /** @description Ayrılış günündeki kullanılmayan yıllık izin günü; tamamlanmışta dondurulmuş */
+                                unusedDays: number | null;
+                                /** @description Gün tamamlanma anında donduruldu mu */
+                                frozen: boolean;
+                            };
+                            /** @description İptal edilmemiş hizmet belgesi (DOM-FIN-106) */
+                            serviceCertificate: {
+                                id: string;
+                                label: string;
+                                createdAt: string;
+                            } | null;
+                            /** @description Ayrılış ayı (YYYY-MM) */
+                            payrollMonth: string;
+                            /** @description Ayrılış ayının bordrosu onaylı (kilitli) mı; son bordro düzeltmeyle (DOM-FIN-108) */
+                            payrollMonthLocked: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getStaffSeparationDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                separationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Ayrılan personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı (üyelikten) */
+                            staffName: string;
+                            /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                            staffRole: string;
+                            /** @description Hesap etkin mi; `false` ise pasifleştirildi (hesap kapandı) */
+                            staffActive: boolean;
+                            /** @description Ayrılış (son çalışma) günü */
+                            separationDate: string;
+                            /**
+                             * @description Ayrılış nedeni
+                             * @enum {string}
+                             */
+                            reason: "resignation" | "termination" | "retirement" | "contract_end" | "other";
+                            /**
+                             * @description SGK işten ayrılış nedeni kodu (H-85)
+                             * @enum {string}
+                             */
+                            sgkExitCode: "10" | "22" | "29" | "01" | "02" | "03" | "04" | "05" | "08" | "09";
+                            /** @description İşe giriş günü */
+                            hireDate: string | null;
+                            /** @description Bildirim günü */
+                            noticeGivenDate: string | null;
+                            /** @description Not */
+                            note: string | null;
+                            /**
+                             * @description `open`, `completed` ya da `cancelled`
+                             * @enum {string}
+                             */
+                            status: "open" | "completed" | "cancelled";
+                            /** @description Dosyanın açıldığı an */
+                            createdAt: string;
+                            /** @description İlişiğin kesildiği an */
+                            completedAt: string | null;
+                            /** @description İptal anı */
+                            cancelledAt: string | null;
+                            /** @description İptal gerekçesi */
+                            cancelReason: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Belge başlığındaki kurum adı */
+                            institutionName: string;
+                            completedByName: string | null;
+                            steps: {
+                                /** @enum {string} */
+                                step: "asset_return" | "deductions" | "leave" | "severance" | "account_closure" | "service_certificate";
+                                required: boolean;
+                                done: boolean;
+                            }[];
+                            assets: {
+                                /** @description Zimmet kaydı; iade `POST /finance/fixed-asset-assignments/:id/return` */
+                                assignmentId: string;
+                                assetId: string;
+                                /** @description Demirbaş etiket numarası */
+                                assetTagNumber: string;
+                                assetName: string;
+                                assignedDate: string;
+                                /** @description İade günü; boşsa zimmet açık */
+                                returnDate: string | null;
+                                returnCondition: ("intact" | "damaged") | null;
+                                /** @description Zimmet kaydının sürümü (iade `If-Match`) */
+                                version: number;
+                            }[];
+                            /** @description Kullanılmayan yıllık izin günü */
+                            unusedLeaveDays: number | null;
+                            /** @description Hizmet belgesi numarası */
+                            serviceCertificateLabel: string | null;
+                            /** @description Verinin üretildiği an */
+                            generatedAt: string;
                         };
                     };
                 };

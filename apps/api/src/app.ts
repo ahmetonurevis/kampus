@@ -101,6 +101,7 @@ import { registerProspectDocumentRoutes } from './routes/prospect-documents.ts'
 import { registerProspectSeasonWatchRoutes } from './routes/prospect-season-watch.ts'
 import { registerFinanceSgkPreparationRoutes } from './routes/finance-sgk-preparation.ts'
 import { registerFinanceWorkPermitRoutes } from './routes/finance-work-permits.ts'
+import { registerFinanceStaffSeparationRoutes } from './routes/finance-staff-separations.ts'
 // Onur: kayıt ve finans sonu
 import { createFfmpegTranscoder, type AudioTranscoder } from './services/audio-transcoder.ts'
 import { MAX_UPLOAD_BYTES } from './services/files.ts'
@@ -595,6 +596,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceWorkPermitRoutes(app)
   registerFinanceTripPlanRoutes(app)
   registerFinanceStaffDocumentRoutes(app, storage)
+  registerFinanceStaffSeparationRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

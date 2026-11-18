@@ -237880,6 +237880,4399 @@
         }
       }
     },
+    "/api/v1/finance/staff-separations": {
+      "get": {
+        "operationId": "listStaffSeparations",
+        "summary": "İşten ayrılış dosyalarını listele",
+        "tags": [
+          "finance-staff-separations"
+        ],
+        "description": "Ayrılış dosyaları: açıklar önce, sonra ayrılış günü yeni önce (DOM-FIN-118). Personel adında aranır; durum ve personelle süzülür. Adımlar listede hesaplanmaz, ayrıntıdadır. Rol: yalnız `yonetici` (K-403; dosya avans, icra ve izin bilgisi taşır). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Personel adında arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "completed",
+                "cancelled"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Durum"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "membershipId",
+            "required": false,
+            "description": "Yalnız bu personelin dosyaları"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "membershipId": {
+                            "type": "string",
+                            "description": "Ayrılan personelin kurum üyeliği"
+                          },
+                          "staffName": {
+                            "type": "string",
+                            "description": "Personel adı (üyelikten)"
+                          },
+                          "staffRole": {
+                            "type": "string",
+                            "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                          },
+                          "staffActive": {
+                            "type": "boolean",
+                            "description": "Hesap etkin mi; `false` ise pasifleştirildi (hesap kapandı)"
+                          },
+                          "separationDate": {
+                            "type": "string",
+                            "description": "Ayrılış (son çalışma) günü"
+                          },
+                          "reason": {
+                            "type": "string",
+                            "enum": [
+                              "resignation",
+                              "termination",
+                              "retirement",
+                              "contract_end",
+                              "other"
+                            ],
+                            "description": "Ayrılış nedeni"
+                          },
+                          "sgkExitCode": {
+                            "type": "string",
+                            "enum": [
+                              "10",
+                              "22",
+                              "29",
+                              "01",
+                              "02",
+                              "03",
+                              "04",
+                              "05",
+                              "08",
+                              "09"
+                            ],
+                            "description": "SGK işten ayrılış nedeni kodu (H-85)"
+                          },
+                          "hireDate": {
+                            "description": "İşe giriş günü",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "noticeGivenDate": {
+                            "description": "Bildirim günü",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "note": {
+                            "description": "Not",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "open",
+                              "completed",
+                              "cancelled"
+                            ],
+                            "description": "`open`, `completed` ya da `cancelled`"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "description": "Dosyanın açıldığı an"
+                          },
+                          "completedAt": {
+                            "description": "İlişiğin kesildiği an",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "cancelledAt": {
+                            "description": "İptal anı",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "cancelReason": {
+                            "description": "İptal gerekçesi",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "membershipId",
+                          "staffName",
+                          "staffRole",
+                          "staffActive",
+                          "separationDate",
+                          "reason",
+                          "sgkExitCode",
+                          "hireDate",
+                          "noticeGivenDate",
+                          "note",
+                          "status",
+                          "createdAt",
+                          "completedAt",
+                          "cancelledAt",
+                          "cancelReason",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createStaffSeparation",
+        "summary": "İşten ayrılış dosyası aç",
+        "tags": [
+          "finance-staff-separations"
+        ],
+        "description": "Ayrılan personel için dosya açar (K-403): ayrılış günü (bugünden en çok 365 gün sonra), neden (`resignation`, `termination`, `retirement`, `contract_end`, `other`), SGK çıkış kodu (boşsa nedenden önerilir; H-85), isteğe bağlı işe giriş ve bildirim günü (bildirim süresi bilgisi; K-405) ve not. Pasifleştirilmiş personele de açılır. Olmayan üyelik 422 `staff_separation_staff_not_found`, öğrenci ya da veli 422 `staff_separation_not_staff`, açık dosyası olan personel 409 `staff_separation_open_exists`; ileri tarihli işe giriş ya da bildirim 422. Yanıt kontrol listesini taşır. Denetim kaydına alan adları yazılır. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (K-403; dosya avans, icra ve izin bilgisi taşır). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "membershipId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Ayrılan personelin kurum üyeliği"
+                  },
+                  "separationDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Ayrılış (son çalışma) günü; bugünden en çok 365 gün sonra"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "resignation",
+                      "termination",
+                      "retirement",
+                      "contract_end",
+                      "other"
+                    ],
+                    "description": "`resignation` istifa, `termination` işveren feshi, `retirement` emeklilik, `contract_end` sözleşme sonu, `other` diğer"
+                  },
+                  "sgkExitCode": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "10",
+                          "22",
+                          "29",
+                          "01",
+                          "02",
+                          "03",
+                          "04",
+                          "05",
+                          "08",
+                          "09"
+                        ],
+                        "description": "SGK işten ayrılış nedeni kodu; `null` ise nedenden önerilir (H-85)"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "hireDate": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                        "description": "İşe giriş günü; bildirim süresi buradan hesaplanır, boşsa bildirim bilgisi gösterilmez"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "noticeGivenDate": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                        "description": "Fesih bildiriminin yapıldığı gün (istifa ya da işveren feshinde)"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "note": {
+                    "description": "İsteğe bağlı not, en çok 500 karakter",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "membershipId",
+                  "separationDate",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "membershipId": {
+                          "type": "string",
+                          "description": "Ayrılan personelin kurum üyeliği"
+                        },
+                        "staffName": {
+                          "type": "string",
+                          "description": "Personel adı (üyelikten)"
+                        },
+                        "staffRole": {
+                          "type": "string",
+                          "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                        },
+                        "staffActive": {
+                          "type": "boolean",
+                          "description": "Hesap etkin mi; `false` ise pasifleştirildi (hesap kapandı)"
+                        },
+                        "separationDate": {
+                          "type": "string",
+                          "description": "Ayrılış (son çalışma) günü"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "enum": [
+                            "resignation",
+                            "termination",
+                            "retirement",
+                            "contract_end",
+                            "other"
+                          ],
+                          "description": "Ayrılış nedeni"
+                        },
+                        "sgkExitCode": {
+                          "type": "string",
+                          "enum": [
+                            "10",
+                            "22",
+                            "29",
+                            "01",
+                            "02",
+                            "03",
+                            "04",
+                            "05",
+                            "08",
+                            "09"
+                          ],
+                          "description": "SGK işten ayrılış nedeni kodu (H-85)"
+                        },
+                        "hireDate": {
+                          "description": "İşe giriş günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "noticeGivenDate": {
+                          "description": "Bildirim günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "note": {
+                          "description": "Not",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "completed",
+                            "cancelled"
+                          ],
+                          "description": "`open`, `completed` ya da `cancelled`"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "description": "Dosyanın açıldığı an"
+                        },
+                        "completedAt": {
+                          "description": "İlişiğin kesildiği an",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "description": "İptal anı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "description": "İptal gerekçesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "accountClosedDate": {
+                          "description": "Hesabın pasifleştirildiği gün (Europe/Istanbul); etkinse boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "completedByName": {
+                          "description": "Dosyayı tamamlayan yönetici",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "notice": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "applies": {
+                                  "type": "boolean",
+                                  "description": "Bu nedende yasal bildirim süresi uygulanır mı (H-86)"
+                                },
+                                "weeks": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Hizmet süresine göre bildirim süresi (hafta)"
+                                },
+                                "noticeEndDate": {
+                                  "description": "Bildirim süresinin bittiği gün",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "shortDays": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Ayrılış süre bitmeden ise eksik kalan gün"
+                                }
+                              },
+                              "required": [
+                                "applies",
+                                "weeks",
+                                "noticeEndDate",
+                                "shortDays"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Bildirim süresi bilgisi; işe giriş günü yoksa boş (K-405)"
+                        },
+                        "steps": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "step": {
+                                "type": "string",
+                                "enum": [
+                                  "asset_return",
+                                  "deductions",
+                                  "leave",
+                                  "severance",
+                                  "account_closure",
+                                  "service_certificate"
+                                ]
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "description": "Tamamlamak için bitmeli mi (kıdem adımı değil)"
+                              },
+                              "automatic": {
+                                "type": "boolean",
+                                "description": "Kayıtlardan okunur, işaretlenmez"
+                              },
+                              "done": {
+                                "type": "boolean"
+                              },
+                              "checkedAt": {
+                                "description": "Elle adımda işaret anı",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "checkedByName": {
+                                "description": "İşaretleyen yönetici",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "step",
+                              "required",
+                              "automatic",
+                              "done",
+                              "checkedAt",
+                              "checkedByName"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Kontrol listesi, sırasıyla (K-404)"
+                        },
+                        "missingSteps": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "asset_return",
+                              "deductions",
+                              "leave",
+                              "severance",
+                              "account_closure",
+                              "service_certificate"
+                            ]
+                          },
+                          "description": "Bitmemiş zorunlu adımlar"
+                        },
+                        "assets": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "assignmentId": {
+                                "type": "string",
+                                "description": "Zimmet kaydı; iade `POST /finance/fixed-asset-assignments/:id/return`"
+                              },
+                              "assetId": {
+                                "type": "string"
+                              },
+                              "assetTagNumber": {
+                                "type": "string",
+                                "description": "Demirbaş etiket numarası"
+                              },
+                              "assetName": {
+                                "type": "string"
+                              },
+                              "assignedDate": {
+                                "type": "string"
+                              },
+                              "returnDate": {
+                                "description": "İade günü; boşsa zimmet açık",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "returnCondition": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "intact",
+                                      "damaged"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Zimmet kaydının sürümü (iade `If-Match`)"
+                              }
+                            },
+                            "required": [
+                              "assignmentId",
+                              "assetId",
+                              "assetTagNumber",
+                              "assetName",
+                              "assignedDate",
+                              "returnDate",
+                              "returnCondition",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Personelin zimmetleri: açıklar önce"
+                        },
+                        "deductions": {
+                          "type": "object",
+                          "properties": {
+                            "openAdvanceCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ayrılış ayından kesilecek taksiti olan avans"
+                            },
+                            "openAdvanceCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ayrılış ayından (dahil) kesilecek avans, kuruş"
+                            },
+                            "activeGarnishmentCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Süren icra sayısı"
+                            },
+                            "currency": {
+                              "type": "string",
+                              "enum": [
+                                "TRY"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "openAdvanceCount",
+                            "openAdvanceCents",
+                            "activeGarnishmentCount",
+                            "currency"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "leave": {
+                          "type": "object",
+                          "properties": {
+                            "hasProfile": {
+                              "type": "boolean",
+                              "description": "Personelin izin bilgisi (DOM-FIN-109) var mı"
+                            },
+                            "unusedDays": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Ayrılış günündeki kullanılmayan yıllık izin günü; tamamlanmışta dondurulmuş"
+                            },
+                            "frozen": {
+                              "type": "boolean",
+                              "description": "Gün tamamlanma anında donduruldu mu"
+                            }
+                          },
+                          "required": [
+                            "hasProfile",
+                            "unusedDays",
+                            "frozen"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "serviceCertificate": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "label": {
+                                  "type": "string"
+                                },
+                                "createdAt": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "label",
+                                "createdAt"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "İptal edilmemiş hizmet belgesi (DOM-FIN-106)"
+                        },
+                        "payrollMonth": {
+                          "type": "string",
+                          "description": "Ayrılış ayı (YYYY-MM)"
+                        },
+                        "payrollMonthLocked": {
+                          "type": "boolean",
+                          "description": "Ayrılış ayının bordrosu onaylı (kilitli) mı; son bordro düzeltmeyle (DOM-FIN-108)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "membershipId",
+                        "staffName",
+                        "staffRole",
+                        "staffActive",
+                        "separationDate",
+                        "reason",
+                        "sgkExitCode",
+                        "hireDate",
+                        "noticeGivenDate",
+                        "note",
+                        "status",
+                        "createdAt",
+                        "completedAt",
+                        "cancelledAt",
+                        "cancelReason",
+                        "version",
+                        "accountClosedDate",
+                        "completedByName",
+                        "notice",
+                        "steps",
+                        "missingSteps",
+                        "assets",
+                        "deductions",
+                        "leave",
+                        "serviceCertificate",
+                        "payrollMonth",
+                        "payrollMonthLocked"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/staff-separations/{separationId}": {
+      "get": {
+        "operationId": "getStaffSeparation",
+        "summary": "İşten ayrılış dosyası",
+        "tags": [
+          "finance-staff-separations"
+        ],
+        "description": "Dosya, bildirim süresi bilgisi ve kontrol listesi (K-404): zimmet iadesi (personelin zimmetleri; açık zimmet kalmayınca biter), avans ve icra kontrolü (ayrılış ayından kesilecek avans ve süren icra; yoksa kendiliğinden, varsa işaretle biter), kullanılmayan yıllık izin günü (ayrılış günündeki bakiye; işaretle biter), kıdem ve ihbar hesabı (isteğe bağlı işaret), hesap kapatma (üyelik pasifleştirilince biter) ve hizmet belgesi (iptal edilmemiş belge düzenlenince biter). Ayrılış ayının bordro kilidi de döner. İcra sayısı dönen okuma denetime yazılır (`finance.staff_separation.garnishment_read`). Başka kurumun dosyası 404. Rol: yalnız `yonetici` (K-403; dosya avans, icra ve izin bilgisi taşır). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "separationId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "membershipId": {
+                          "type": "string",
+                          "description": "Ayrılan personelin kurum üyeliği"
+                        },
+                        "staffName": {
+                          "type": "string",
+                          "description": "Personel adı (üyelikten)"
+                        },
+                        "staffRole": {
+                          "type": "string",
+                          "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                        },
+                        "staffActive": {
+                          "type": "boolean",
+                          "description": "Hesap etkin mi; `false` ise pasifleştirildi (hesap kapandı)"
+                        },
+                        "separationDate": {
+                          "type": "string",
+                          "description": "Ayrılış (son çalışma) günü"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "enum": [
+                            "resignation",
+                            "termination",
+                            "retirement",
+                            "contract_end",
+                            "other"
+                          ],
+                          "description": "Ayrılış nedeni"
+                        },
+                        "sgkExitCode": {
+                          "type": "string",
+                          "enum": [
+                            "10",
+                            "22",
+                            "29",
+                            "01",
+                            "02",
+                            "03",
+                            "04",
+                            "05",
+                            "08",
+                            "09"
+                          ],
+                          "description": "SGK işten ayrılış nedeni kodu (H-85)"
+                        },
+                        "hireDate": {
+                          "description": "İşe giriş günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "noticeGivenDate": {
+                          "description": "Bildirim günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "note": {
+                          "description": "Not",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "completed",
+                            "cancelled"
+                          ],
+                          "description": "`open`, `completed` ya da `cancelled`"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "description": "Dosyanın açıldığı an"
+                        },
+                        "completedAt": {
+                          "description": "İlişiğin kesildiği an",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "description": "İptal anı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "description": "İptal gerekçesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "accountClosedDate": {
+                          "description": "Hesabın pasifleştirildiği gün (Europe/Istanbul); etkinse boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "completedByName": {
+                          "description": "Dosyayı tamamlayan yönetici",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "notice": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "applies": {
+                                  "type": "boolean",
+                                  "description": "Bu nedende yasal bildirim süresi uygulanır mı (H-86)"
+                                },
+                                "weeks": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Hizmet süresine göre bildirim süresi (hafta)"
+                                },
+                                "noticeEndDate": {
+                                  "description": "Bildirim süresinin bittiği gün",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "shortDays": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Ayrılış süre bitmeden ise eksik kalan gün"
+                                }
+                              },
+                              "required": [
+                                "applies",
+                                "weeks",
+                                "noticeEndDate",
+                                "shortDays"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Bildirim süresi bilgisi; işe giriş günü yoksa boş (K-405)"
+                        },
+                        "steps": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "step": {
+                                "type": "string",
+                                "enum": [
+                                  "asset_return",
+                                  "deductions",
+                                  "leave",
+                                  "severance",
+                                  "account_closure",
+                                  "service_certificate"
+                                ]
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "description": "Tamamlamak için bitmeli mi (kıdem adımı değil)"
+                              },
+                              "automatic": {
+                                "type": "boolean",
+                                "description": "Kayıtlardan okunur, işaretlenmez"
+                              },
+                              "done": {
+                                "type": "boolean"
+                              },
+                              "checkedAt": {
+                                "description": "Elle adımda işaret anı",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "checkedByName": {
+                                "description": "İşaretleyen yönetici",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "step",
+                              "required",
+                              "automatic",
+                              "done",
+                              "checkedAt",
+                              "checkedByName"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Kontrol listesi, sırasıyla (K-404)"
+                        },
+                        "missingSteps": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "asset_return",
+                              "deductions",
+                              "leave",
+                              "severance",
+                              "account_closure",
+                              "service_certificate"
+                            ]
+                          },
+                          "description": "Bitmemiş zorunlu adımlar"
+                        },
+                        "assets": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "assignmentId": {
+                                "type": "string",
+                                "description": "Zimmet kaydı; iade `POST /finance/fixed-asset-assignments/:id/return`"
+                              },
+                              "assetId": {
+                                "type": "string"
+                              },
+                              "assetTagNumber": {
+                                "type": "string",
+                                "description": "Demirbaş etiket numarası"
+                              },
+                              "assetName": {
+                                "type": "string"
+                              },
+                              "assignedDate": {
+                                "type": "string"
+                              },
+                              "returnDate": {
+                                "description": "İade günü; boşsa zimmet açık",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "returnCondition": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "intact",
+                                      "damaged"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Zimmet kaydının sürümü (iade `If-Match`)"
+                              }
+                            },
+                            "required": [
+                              "assignmentId",
+                              "assetId",
+                              "assetTagNumber",
+                              "assetName",
+                              "assignedDate",
+                              "returnDate",
+                              "returnCondition",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Personelin zimmetleri: açıklar önce"
+                        },
+                        "deductions": {
+                          "type": "object",
+                          "properties": {
+                            "openAdvanceCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ayrılış ayından kesilecek taksiti olan avans"
+                            },
+                            "openAdvanceCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ayrılış ayından (dahil) kesilecek avans, kuruş"
+                            },
+                            "activeGarnishmentCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Süren icra sayısı"
+                            },
+                            "currency": {
+                              "type": "string",
+                              "enum": [
+                                "TRY"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "openAdvanceCount",
+                            "openAdvanceCents",
+                            "activeGarnishmentCount",
+                            "currency"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "leave": {
+                          "type": "object",
+                          "properties": {
+                            "hasProfile": {
+                              "type": "boolean",
+                              "description": "Personelin izin bilgisi (DOM-FIN-109) var mı"
+                            },
+                            "unusedDays": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Ayrılış günündeki kullanılmayan yıllık izin günü; tamamlanmışta dondurulmuş"
+                            },
+                            "frozen": {
+                              "type": "boolean",
+                              "description": "Gün tamamlanma anında donduruldu mu"
+                            }
+                          },
+                          "required": [
+                            "hasProfile",
+                            "unusedDays",
+                            "frozen"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "serviceCertificate": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "label": {
+                                  "type": "string"
+                                },
+                                "createdAt": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "label",
+                                "createdAt"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "İptal edilmemiş hizmet belgesi (DOM-FIN-106)"
+                        },
+                        "payrollMonth": {
+                          "type": "string",
+                          "description": "Ayrılış ayı (YYYY-MM)"
+                        },
+                        "payrollMonthLocked": {
+                          "type": "boolean",
+                          "description": "Ayrılış ayının bordrosu onaylı (kilitli) mı; son bordro düzeltmeyle (DOM-FIN-108)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "membershipId",
+                        "staffName",
+                        "staffRole",
+                        "staffActive",
+                        "separationDate",
+                        "reason",
+                        "sgkExitCode",
+                        "hireDate",
+                        "noticeGivenDate",
+                        "note",
+                        "status",
+                        "createdAt",
+                        "completedAt",
+                        "cancelledAt",
+                        "cancelReason",
+                        "version",
+                        "accountClosedDate",
+                        "completedByName",
+                        "notice",
+                        "steps",
+                        "missingSteps",
+                        "assets",
+                        "deductions",
+                        "leave",
+                        "serviceCertificate",
+                        "payrollMonth",
+                        "payrollMonthLocked"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateStaffSeparation",
+        "summary": "İşten ayrılış dosyasını düzelt",
+        "tags": [
+          "finance-staff-separations"
+        ],
+        "description": "Açık dosyanın ayrılış günü, nedeni, SGK kodu, işe giriş ve bildirim günü ya da notu (kısmi; `null` temizler). Neden değişip kod verilmezse kod yeni nedenin önerisine döner. Tamamlanmış ya da iptal edilmiş dosya 409 `staff_separation_closed`; değişiklik yoksa 422 `staff_separation_unchanged`. `If-Match` zorunlu. Rol: yalnız `yonetici` (K-403; dosya avans, icra ve izin bilgisi taşır). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "separationDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Ayrılış (son çalışma) günü; bugünden en çok 365 gün sonra"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "resignation",
+                      "termination",
+                      "retirement",
+                      "contract_end",
+                      "other"
+                    ],
+                    "description": "`resignation` istifa, `termination` işveren feshi, `retirement` emeklilik, `contract_end` sözleşme sonu, `other` diğer"
+                  },
+                  "sgkExitCode": {
+                    "type": "string",
+                    "enum": [
+                      "10",
+                      "22",
+                      "29",
+                      "01",
+                      "02",
+                      "03",
+                      "04",
+                      "05",
+                      "08",
+                      "09"
+                    ],
+                    "description": "SGK işten ayrılış nedeni kodu; `null` ise nedenden önerilir (H-85)"
+                  },
+                  "hireDate": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                        "description": "İşe giriş günü; bildirim süresi buradan hesaplanır, boşsa bildirim bilgisi gösterilmez"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "noticeGivenDate": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                        "description": "Fesih bildiriminin yapıldığı gün (istifa ya da işveren feshinde)"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "note": {
+                    "description": "Not; boş metin notu siler",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "separationId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "membershipId": {
+                          "type": "string",
+                          "description": "Ayrılan personelin kurum üyeliği"
+                        },
+                        "staffName": {
+                          "type": "string",
+                          "description": "Personel adı (üyelikten)"
+                        },
+                        "staffRole": {
+                          "type": "string",
+                          "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                        },
+                        "staffActive": {
+                          "type": "boolean",
+                          "description": "Hesap etkin mi; `false` ise pasifleştirildi (hesap kapandı)"
+                        },
+                        "separationDate": {
+                          "type": "string",
+                          "description": "Ayrılış (son çalışma) günü"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "enum": [
+                            "resignation",
+                            "termination",
+                            "retirement",
+                            "contract_end",
+                            "other"
+                          ],
+                          "description": "Ayrılış nedeni"
+                        },
+                        "sgkExitCode": {
+                          "type": "string",
+                          "enum": [
+                            "10",
+                            "22",
+                            "29",
+                            "01",
+                            "02",
+                            "03",
+                            "04",
+                            "05",
+                            "08",
+                            "09"
+                          ],
+                          "description": "SGK işten ayrılış nedeni kodu (H-85)"
+                        },
+                        "hireDate": {
+                          "description": "İşe giriş günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "noticeGivenDate": {
+                          "description": "Bildirim günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "note": {
+                          "description": "Not",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "completed",
+                            "cancelled"
+                          ],
+                          "description": "`open`, `completed` ya da `cancelled`"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "description": "Dosyanın açıldığı an"
+                        },
+                        "completedAt": {
+                          "description": "İlişiğin kesildiği an",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "description": "İptal anı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "description": "İptal gerekçesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "accountClosedDate": {
+                          "description": "Hesabın pasifleştirildiği gün (Europe/Istanbul); etkinse boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "completedByName": {
+                          "description": "Dosyayı tamamlayan yönetici",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "notice": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "applies": {
+                                  "type": "boolean",
+                                  "description": "Bu nedende yasal bildirim süresi uygulanır mı (H-86)"
+                                },
+                                "weeks": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Hizmet süresine göre bildirim süresi (hafta)"
+                                },
+                                "noticeEndDate": {
+                                  "description": "Bildirim süresinin bittiği gün",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "shortDays": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Ayrılış süre bitmeden ise eksik kalan gün"
+                                }
+                              },
+                              "required": [
+                                "applies",
+                                "weeks",
+                                "noticeEndDate",
+                                "shortDays"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Bildirim süresi bilgisi; işe giriş günü yoksa boş (K-405)"
+                        },
+                        "steps": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "step": {
+                                "type": "string",
+                                "enum": [
+                                  "asset_return",
+                                  "deductions",
+                                  "leave",
+                                  "severance",
+                                  "account_closure",
+                                  "service_certificate"
+                                ]
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "description": "Tamamlamak için bitmeli mi (kıdem adımı değil)"
+                              },
+                              "automatic": {
+                                "type": "boolean",
+                                "description": "Kayıtlardan okunur, işaretlenmez"
+                              },
+                              "done": {
+                                "type": "boolean"
+                              },
+                              "checkedAt": {
+                                "description": "Elle adımda işaret anı",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "checkedByName": {
+                                "description": "İşaretleyen yönetici",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "step",
+                              "required",
+                              "automatic",
+                              "done",
+                              "checkedAt",
+                              "checkedByName"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Kontrol listesi, sırasıyla (K-404)"
+                        },
+                        "missingSteps": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "asset_return",
+                              "deductions",
+                              "leave",
+                              "severance",
+                              "account_closure",
+                              "service_certificate"
+                            ]
+                          },
+                          "description": "Bitmemiş zorunlu adımlar"
+                        },
+                        "assets": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "assignmentId": {
+                                "type": "string",
+                                "description": "Zimmet kaydı; iade `POST /finance/fixed-asset-assignments/:id/return`"
+                              },
+                              "assetId": {
+                                "type": "string"
+                              },
+                              "assetTagNumber": {
+                                "type": "string",
+                                "description": "Demirbaş etiket numarası"
+                              },
+                              "assetName": {
+                                "type": "string"
+                              },
+                              "assignedDate": {
+                                "type": "string"
+                              },
+                              "returnDate": {
+                                "description": "İade günü; boşsa zimmet açık",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "returnCondition": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "intact",
+                                      "damaged"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Zimmet kaydının sürümü (iade `If-Match`)"
+                              }
+                            },
+                            "required": [
+                              "assignmentId",
+                              "assetId",
+                              "assetTagNumber",
+                              "assetName",
+                              "assignedDate",
+                              "returnDate",
+                              "returnCondition",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Personelin zimmetleri: açıklar önce"
+                        },
+                        "deductions": {
+                          "type": "object",
+                          "properties": {
+                            "openAdvanceCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ayrılış ayından kesilecek taksiti olan avans"
+                            },
+                            "openAdvanceCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ayrılış ayından (dahil) kesilecek avans, kuruş"
+                            },
+                            "activeGarnishmentCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Süren icra sayısı"
+                            },
+                            "currency": {
+                              "type": "string",
+                              "enum": [
+                                "TRY"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "openAdvanceCount",
+                            "openAdvanceCents",
+                            "activeGarnishmentCount",
+                            "currency"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "leave": {
+                          "type": "object",
+                          "properties": {
+                            "hasProfile": {
+                              "type": "boolean",
+                              "description": "Personelin izin bilgisi (DOM-FIN-109) var mı"
+                            },
+                            "unusedDays": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Ayrılış günündeki kullanılmayan yıllık izin günü; tamamlanmışta dondurulmuş"
+                            },
+                            "frozen": {
+                              "type": "boolean",
+                              "description": "Gün tamamlanma anında donduruldu mu"
+                            }
+                          },
+                          "required": [
+                            "hasProfile",
+                            "unusedDays",
+                            "frozen"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "serviceCertificate": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "label": {
+                                  "type": "string"
+                                },
+                                "createdAt": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "label",
+                                "createdAt"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "İptal edilmemiş hizmet belgesi (DOM-FIN-106)"
+                        },
+                        "payrollMonth": {
+                          "type": "string",
+                          "description": "Ayrılış ayı (YYYY-MM)"
+                        },
+                        "payrollMonthLocked": {
+                          "type": "boolean",
+                          "description": "Ayrılış ayının bordrosu onaylı (kilitli) mı; son bordro düzeltmeyle (DOM-FIN-108)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "membershipId",
+                        "staffName",
+                        "staffRole",
+                        "staffActive",
+                        "separationDate",
+                        "reason",
+                        "sgkExitCode",
+                        "hireDate",
+                        "noticeGivenDate",
+                        "note",
+                        "status",
+                        "createdAt",
+                        "completedAt",
+                        "cancelledAt",
+                        "cancelReason",
+                        "version",
+                        "accountClosedDate",
+                        "completedByName",
+                        "notice",
+                        "steps",
+                        "missingSteps",
+                        "assets",
+                        "deductions",
+                        "leave",
+                        "serviceCertificate",
+                        "payrollMonth",
+                        "payrollMonthLocked"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/staff-separations/{separationId}/mark-step": {
+      "post": {
+        "operationId": "markStaffSeparationStep",
+        "summary": "Ayrılış adımını işaretle",
+        "tags": [
+          "finance-staff-separations"
+        ],
+        "description": "Elle adımı \"kontrol edildi\" işaretler ya da işareti kaldırır (K-404): `deductions` avans ve icra, `leave` kullanılmayan izin, `severance` kıdem ve ihbar. Zimmet, hesap kapatma ve hizmet belgesi adımları kayıtlardan okunur, işaretlenmez (400). Durum aynıysa yazılmaz (200, denetim yok). Kapanmış dosya 409 `staff_separation_closed`. `If-Match` zorunlu. Rol: yalnız `yonetici` (K-403; dosya avans, icra ve izin bilgisi taşır). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "step": {
+                    "type": "string",
+                    "enum": [
+                      "deductions",
+                      "leave",
+                      "severance"
+                    ],
+                    "description": "`deductions` avans ve icra kontrolü, `leave` izin, `severance` kıdem ve ihbar"
+                  },
+                  "done": {
+                    "type": "boolean",
+                    "description": "`true` kontrol edildi, `false` işareti kaldır"
+                  }
+                },
+                "required": [
+                  "step",
+                  "done"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "separationId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "membershipId": {
+                          "type": "string",
+                          "description": "Ayrılan personelin kurum üyeliği"
+                        },
+                        "staffName": {
+                          "type": "string",
+                          "description": "Personel adı (üyelikten)"
+                        },
+                        "staffRole": {
+                          "type": "string",
+                          "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                        },
+                        "staffActive": {
+                          "type": "boolean",
+                          "description": "Hesap etkin mi; `false` ise pasifleştirildi (hesap kapandı)"
+                        },
+                        "separationDate": {
+                          "type": "string",
+                          "description": "Ayrılış (son çalışma) günü"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "enum": [
+                            "resignation",
+                            "termination",
+                            "retirement",
+                            "contract_end",
+                            "other"
+                          ],
+                          "description": "Ayrılış nedeni"
+                        },
+                        "sgkExitCode": {
+                          "type": "string",
+                          "enum": [
+                            "10",
+                            "22",
+                            "29",
+                            "01",
+                            "02",
+                            "03",
+                            "04",
+                            "05",
+                            "08",
+                            "09"
+                          ],
+                          "description": "SGK işten ayrılış nedeni kodu (H-85)"
+                        },
+                        "hireDate": {
+                          "description": "İşe giriş günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "noticeGivenDate": {
+                          "description": "Bildirim günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "note": {
+                          "description": "Not",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "completed",
+                            "cancelled"
+                          ],
+                          "description": "`open`, `completed` ya da `cancelled`"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "description": "Dosyanın açıldığı an"
+                        },
+                        "completedAt": {
+                          "description": "İlişiğin kesildiği an",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "description": "İptal anı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "description": "İptal gerekçesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "accountClosedDate": {
+                          "description": "Hesabın pasifleştirildiği gün (Europe/Istanbul); etkinse boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "completedByName": {
+                          "description": "Dosyayı tamamlayan yönetici",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "notice": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "applies": {
+                                  "type": "boolean",
+                                  "description": "Bu nedende yasal bildirim süresi uygulanır mı (H-86)"
+                                },
+                                "weeks": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Hizmet süresine göre bildirim süresi (hafta)"
+                                },
+                                "noticeEndDate": {
+                                  "description": "Bildirim süresinin bittiği gün",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "shortDays": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Ayrılış süre bitmeden ise eksik kalan gün"
+                                }
+                              },
+                              "required": [
+                                "applies",
+                                "weeks",
+                                "noticeEndDate",
+                                "shortDays"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Bildirim süresi bilgisi; işe giriş günü yoksa boş (K-405)"
+                        },
+                        "steps": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "step": {
+                                "type": "string",
+                                "enum": [
+                                  "asset_return",
+                                  "deductions",
+                                  "leave",
+                                  "severance",
+                                  "account_closure",
+                                  "service_certificate"
+                                ]
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "description": "Tamamlamak için bitmeli mi (kıdem adımı değil)"
+                              },
+                              "automatic": {
+                                "type": "boolean",
+                                "description": "Kayıtlardan okunur, işaretlenmez"
+                              },
+                              "done": {
+                                "type": "boolean"
+                              },
+                              "checkedAt": {
+                                "description": "Elle adımda işaret anı",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "checkedByName": {
+                                "description": "İşaretleyen yönetici",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "step",
+                              "required",
+                              "automatic",
+                              "done",
+                              "checkedAt",
+                              "checkedByName"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Kontrol listesi, sırasıyla (K-404)"
+                        },
+                        "missingSteps": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "asset_return",
+                              "deductions",
+                              "leave",
+                              "severance",
+                              "account_closure",
+                              "service_certificate"
+                            ]
+                          },
+                          "description": "Bitmemiş zorunlu adımlar"
+                        },
+                        "assets": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "assignmentId": {
+                                "type": "string",
+                                "description": "Zimmet kaydı; iade `POST /finance/fixed-asset-assignments/:id/return`"
+                              },
+                              "assetId": {
+                                "type": "string"
+                              },
+                              "assetTagNumber": {
+                                "type": "string",
+                                "description": "Demirbaş etiket numarası"
+                              },
+                              "assetName": {
+                                "type": "string"
+                              },
+                              "assignedDate": {
+                                "type": "string"
+                              },
+                              "returnDate": {
+                                "description": "İade günü; boşsa zimmet açık",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "returnCondition": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "intact",
+                                      "damaged"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Zimmet kaydının sürümü (iade `If-Match`)"
+                              }
+                            },
+                            "required": [
+                              "assignmentId",
+                              "assetId",
+                              "assetTagNumber",
+                              "assetName",
+                              "assignedDate",
+                              "returnDate",
+                              "returnCondition",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Personelin zimmetleri: açıklar önce"
+                        },
+                        "deductions": {
+                          "type": "object",
+                          "properties": {
+                            "openAdvanceCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ayrılış ayından kesilecek taksiti olan avans"
+                            },
+                            "openAdvanceCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ayrılış ayından (dahil) kesilecek avans, kuruş"
+                            },
+                            "activeGarnishmentCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Süren icra sayısı"
+                            },
+                            "currency": {
+                              "type": "string",
+                              "enum": [
+                                "TRY"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "openAdvanceCount",
+                            "openAdvanceCents",
+                            "activeGarnishmentCount",
+                            "currency"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "leave": {
+                          "type": "object",
+                          "properties": {
+                            "hasProfile": {
+                              "type": "boolean",
+                              "description": "Personelin izin bilgisi (DOM-FIN-109) var mı"
+                            },
+                            "unusedDays": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Ayrılış günündeki kullanılmayan yıllık izin günü; tamamlanmışta dondurulmuş"
+                            },
+                            "frozen": {
+                              "type": "boolean",
+                              "description": "Gün tamamlanma anında donduruldu mu"
+                            }
+                          },
+                          "required": [
+                            "hasProfile",
+                            "unusedDays",
+                            "frozen"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "serviceCertificate": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "label": {
+                                  "type": "string"
+                                },
+                                "createdAt": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "label",
+                                "createdAt"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "İptal edilmemiş hizmet belgesi (DOM-FIN-106)"
+                        },
+                        "payrollMonth": {
+                          "type": "string",
+                          "description": "Ayrılış ayı (YYYY-MM)"
+                        },
+                        "payrollMonthLocked": {
+                          "type": "boolean",
+                          "description": "Ayrılış ayının bordrosu onaylı (kilitli) mı; son bordro düzeltmeyle (DOM-FIN-108)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "membershipId",
+                        "staffName",
+                        "staffRole",
+                        "staffActive",
+                        "separationDate",
+                        "reason",
+                        "sgkExitCode",
+                        "hireDate",
+                        "noticeGivenDate",
+                        "note",
+                        "status",
+                        "createdAt",
+                        "completedAt",
+                        "cancelledAt",
+                        "cancelReason",
+                        "version",
+                        "accountClosedDate",
+                        "completedByName",
+                        "notice",
+                        "steps",
+                        "missingSteps",
+                        "assets",
+                        "deductions",
+                        "leave",
+                        "serviceCertificate",
+                        "payrollMonth",
+                        "payrollMonthLocked"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/staff-separations/{separationId}/complete": {
+      "post": {
+        "operationId": "completeStaffSeparation",
+        "summary": "İlişiği kes (dosyayı tamamla)",
+        "tags": [
+          "finance-staff-separations"
+        ],
+        "description": "Zorunlu adımların tamamı bitince dosyayı tamamlar; adımlar kurum kilidi altında kayıtlardan yeniden hesaplanır, kullanılmayan izin günü dondurulur (K-403). Ayrılış günü gelmemişse 422 `staff_separation_not_due`, eksik adım varsa 422 `staff_separation_steps_incomplete` (ileti eksikleri sayar), kapanmış dosya 409 `staff_separation_closed`. Tamamlanan dosya değişmez. `Idempotency-Key` ve `If-Match` zorunlu. Rol: yalnız `yonetici` (K-403; dosya avans, icra ve izin bilgisi taşır). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "separationId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "membershipId": {
+                          "type": "string",
+                          "description": "Ayrılan personelin kurum üyeliği"
+                        },
+                        "staffName": {
+                          "type": "string",
+                          "description": "Personel adı (üyelikten)"
+                        },
+                        "staffRole": {
+                          "type": "string",
+                          "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                        },
+                        "staffActive": {
+                          "type": "boolean",
+                          "description": "Hesap etkin mi; `false` ise pasifleştirildi (hesap kapandı)"
+                        },
+                        "separationDate": {
+                          "type": "string",
+                          "description": "Ayrılış (son çalışma) günü"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "enum": [
+                            "resignation",
+                            "termination",
+                            "retirement",
+                            "contract_end",
+                            "other"
+                          ],
+                          "description": "Ayrılış nedeni"
+                        },
+                        "sgkExitCode": {
+                          "type": "string",
+                          "enum": [
+                            "10",
+                            "22",
+                            "29",
+                            "01",
+                            "02",
+                            "03",
+                            "04",
+                            "05",
+                            "08",
+                            "09"
+                          ],
+                          "description": "SGK işten ayrılış nedeni kodu (H-85)"
+                        },
+                        "hireDate": {
+                          "description": "İşe giriş günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "noticeGivenDate": {
+                          "description": "Bildirim günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "note": {
+                          "description": "Not",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "completed",
+                            "cancelled"
+                          ],
+                          "description": "`open`, `completed` ya da `cancelled`"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "description": "Dosyanın açıldığı an"
+                        },
+                        "completedAt": {
+                          "description": "İlişiğin kesildiği an",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "description": "İptal anı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "description": "İptal gerekçesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "accountClosedDate": {
+                          "description": "Hesabın pasifleştirildiği gün (Europe/Istanbul); etkinse boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "completedByName": {
+                          "description": "Dosyayı tamamlayan yönetici",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "notice": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "applies": {
+                                  "type": "boolean",
+                                  "description": "Bu nedende yasal bildirim süresi uygulanır mı (H-86)"
+                                },
+                                "weeks": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Hizmet süresine göre bildirim süresi (hafta)"
+                                },
+                                "noticeEndDate": {
+                                  "description": "Bildirim süresinin bittiği gün",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "shortDays": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Ayrılış süre bitmeden ise eksik kalan gün"
+                                }
+                              },
+                              "required": [
+                                "applies",
+                                "weeks",
+                                "noticeEndDate",
+                                "shortDays"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Bildirim süresi bilgisi; işe giriş günü yoksa boş (K-405)"
+                        },
+                        "steps": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "step": {
+                                "type": "string",
+                                "enum": [
+                                  "asset_return",
+                                  "deductions",
+                                  "leave",
+                                  "severance",
+                                  "account_closure",
+                                  "service_certificate"
+                                ]
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "description": "Tamamlamak için bitmeli mi (kıdem adımı değil)"
+                              },
+                              "automatic": {
+                                "type": "boolean",
+                                "description": "Kayıtlardan okunur, işaretlenmez"
+                              },
+                              "done": {
+                                "type": "boolean"
+                              },
+                              "checkedAt": {
+                                "description": "Elle adımda işaret anı",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "checkedByName": {
+                                "description": "İşaretleyen yönetici",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "step",
+                              "required",
+                              "automatic",
+                              "done",
+                              "checkedAt",
+                              "checkedByName"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Kontrol listesi, sırasıyla (K-404)"
+                        },
+                        "missingSteps": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "asset_return",
+                              "deductions",
+                              "leave",
+                              "severance",
+                              "account_closure",
+                              "service_certificate"
+                            ]
+                          },
+                          "description": "Bitmemiş zorunlu adımlar"
+                        },
+                        "assets": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "assignmentId": {
+                                "type": "string",
+                                "description": "Zimmet kaydı; iade `POST /finance/fixed-asset-assignments/:id/return`"
+                              },
+                              "assetId": {
+                                "type": "string"
+                              },
+                              "assetTagNumber": {
+                                "type": "string",
+                                "description": "Demirbaş etiket numarası"
+                              },
+                              "assetName": {
+                                "type": "string"
+                              },
+                              "assignedDate": {
+                                "type": "string"
+                              },
+                              "returnDate": {
+                                "description": "İade günü; boşsa zimmet açık",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "returnCondition": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "intact",
+                                      "damaged"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Zimmet kaydının sürümü (iade `If-Match`)"
+                              }
+                            },
+                            "required": [
+                              "assignmentId",
+                              "assetId",
+                              "assetTagNumber",
+                              "assetName",
+                              "assignedDate",
+                              "returnDate",
+                              "returnCondition",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Personelin zimmetleri: açıklar önce"
+                        },
+                        "deductions": {
+                          "type": "object",
+                          "properties": {
+                            "openAdvanceCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ayrılış ayından kesilecek taksiti olan avans"
+                            },
+                            "openAdvanceCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ayrılış ayından (dahil) kesilecek avans, kuruş"
+                            },
+                            "activeGarnishmentCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Süren icra sayısı"
+                            },
+                            "currency": {
+                              "type": "string",
+                              "enum": [
+                                "TRY"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "openAdvanceCount",
+                            "openAdvanceCents",
+                            "activeGarnishmentCount",
+                            "currency"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "leave": {
+                          "type": "object",
+                          "properties": {
+                            "hasProfile": {
+                              "type": "boolean",
+                              "description": "Personelin izin bilgisi (DOM-FIN-109) var mı"
+                            },
+                            "unusedDays": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Ayrılış günündeki kullanılmayan yıllık izin günü; tamamlanmışta dondurulmuş"
+                            },
+                            "frozen": {
+                              "type": "boolean",
+                              "description": "Gün tamamlanma anında donduruldu mu"
+                            }
+                          },
+                          "required": [
+                            "hasProfile",
+                            "unusedDays",
+                            "frozen"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "serviceCertificate": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "label": {
+                                  "type": "string"
+                                },
+                                "createdAt": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "label",
+                                "createdAt"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "İptal edilmemiş hizmet belgesi (DOM-FIN-106)"
+                        },
+                        "payrollMonth": {
+                          "type": "string",
+                          "description": "Ayrılış ayı (YYYY-MM)"
+                        },
+                        "payrollMonthLocked": {
+                          "type": "boolean",
+                          "description": "Ayrılış ayının bordrosu onaylı (kilitli) mı; son bordro düzeltmeyle (DOM-FIN-108)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "membershipId",
+                        "staffName",
+                        "staffRole",
+                        "staffActive",
+                        "separationDate",
+                        "reason",
+                        "sgkExitCode",
+                        "hireDate",
+                        "noticeGivenDate",
+                        "note",
+                        "status",
+                        "createdAt",
+                        "completedAt",
+                        "cancelledAt",
+                        "cancelReason",
+                        "version",
+                        "accountClosedDate",
+                        "completedByName",
+                        "notice",
+                        "steps",
+                        "missingSteps",
+                        "assets",
+                        "deductions",
+                        "leave",
+                        "serviceCertificate",
+                        "payrollMonth",
+                        "payrollMonthLocked"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/staff-separations/{separationId}/cancel": {
+      "post": {
+        "operationId": "cancelStaffSeparation",
+        "summary": "İşten ayrılış dosyasını iptal et",
+        "tags": [
+          "finance-staff-separations"
+        ],
+        "description": "Açık dosyayı gerekçeyle (5–500 karakter) iptal eder (K-403); dosya silinmez. Tamamlanmış dosya iptal edilmez, kapanmış dosya 409 `staff_separation_closed`. Gerekçe denetim kaydına yazılmaz. `If-Match` zorunlu. Rol: yalnız `yonetici` (K-403; dosya avans, icra ve izin bilgisi taşır). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500,
+                    "description": "İptal gerekçesi; denetim kaydına yazılmaz"
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "separationId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "membershipId": {
+                          "type": "string",
+                          "description": "Ayrılan personelin kurum üyeliği"
+                        },
+                        "staffName": {
+                          "type": "string",
+                          "description": "Personel adı (üyelikten)"
+                        },
+                        "staffRole": {
+                          "type": "string",
+                          "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                        },
+                        "staffActive": {
+                          "type": "boolean",
+                          "description": "Hesap etkin mi; `false` ise pasifleştirildi (hesap kapandı)"
+                        },
+                        "separationDate": {
+                          "type": "string",
+                          "description": "Ayrılış (son çalışma) günü"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "enum": [
+                            "resignation",
+                            "termination",
+                            "retirement",
+                            "contract_end",
+                            "other"
+                          ],
+                          "description": "Ayrılış nedeni"
+                        },
+                        "sgkExitCode": {
+                          "type": "string",
+                          "enum": [
+                            "10",
+                            "22",
+                            "29",
+                            "01",
+                            "02",
+                            "03",
+                            "04",
+                            "05",
+                            "08",
+                            "09"
+                          ],
+                          "description": "SGK işten ayrılış nedeni kodu (H-85)"
+                        },
+                        "hireDate": {
+                          "description": "İşe giriş günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "noticeGivenDate": {
+                          "description": "Bildirim günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "note": {
+                          "description": "Not",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "completed",
+                            "cancelled"
+                          ],
+                          "description": "`open`, `completed` ya da `cancelled`"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "description": "Dosyanın açıldığı an"
+                        },
+                        "completedAt": {
+                          "description": "İlişiğin kesildiği an",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "description": "İptal anı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "description": "İptal gerekçesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "accountClosedDate": {
+                          "description": "Hesabın pasifleştirildiği gün (Europe/Istanbul); etkinse boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "completedByName": {
+                          "description": "Dosyayı tamamlayan yönetici",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "notice": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "applies": {
+                                  "type": "boolean",
+                                  "description": "Bu nedende yasal bildirim süresi uygulanır mı (H-86)"
+                                },
+                                "weeks": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Hizmet süresine göre bildirim süresi (hafta)"
+                                },
+                                "noticeEndDate": {
+                                  "description": "Bildirim süresinin bittiği gün",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "shortDays": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Ayrılış süre bitmeden ise eksik kalan gün"
+                                }
+                              },
+                              "required": [
+                                "applies",
+                                "weeks",
+                                "noticeEndDate",
+                                "shortDays"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Bildirim süresi bilgisi; işe giriş günü yoksa boş (K-405)"
+                        },
+                        "steps": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "step": {
+                                "type": "string",
+                                "enum": [
+                                  "asset_return",
+                                  "deductions",
+                                  "leave",
+                                  "severance",
+                                  "account_closure",
+                                  "service_certificate"
+                                ]
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "description": "Tamamlamak için bitmeli mi (kıdem adımı değil)"
+                              },
+                              "automatic": {
+                                "type": "boolean",
+                                "description": "Kayıtlardan okunur, işaretlenmez"
+                              },
+                              "done": {
+                                "type": "boolean"
+                              },
+                              "checkedAt": {
+                                "description": "Elle adımda işaret anı",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "checkedByName": {
+                                "description": "İşaretleyen yönetici",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "step",
+                              "required",
+                              "automatic",
+                              "done",
+                              "checkedAt",
+                              "checkedByName"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Kontrol listesi, sırasıyla (K-404)"
+                        },
+                        "missingSteps": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "asset_return",
+                              "deductions",
+                              "leave",
+                              "severance",
+                              "account_closure",
+                              "service_certificate"
+                            ]
+                          },
+                          "description": "Bitmemiş zorunlu adımlar"
+                        },
+                        "assets": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "assignmentId": {
+                                "type": "string",
+                                "description": "Zimmet kaydı; iade `POST /finance/fixed-asset-assignments/:id/return`"
+                              },
+                              "assetId": {
+                                "type": "string"
+                              },
+                              "assetTagNumber": {
+                                "type": "string",
+                                "description": "Demirbaş etiket numarası"
+                              },
+                              "assetName": {
+                                "type": "string"
+                              },
+                              "assignedDate": {
+                                "type": "string"
+                              },
+                              "returnDate": {
+                                "description": "İade günü; boşsa zimmet açık",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "returnCondition": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "intact",
+                                      "damaged"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Zimmet kaydının sürümü (iade `If-Match`)"
+                              }
+                            },
+                            "required": [
+                              "assignmentId",
+                              "assetId",
+                              "assetTagNumber",
+                              "assetName",
+                              "assignedDate",
+                              "returnDate",
+                              "returnCondition",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Personelin zimmetleri: açıklar önce"
+                        },
+                        "deductions": {
+                          "type": "object",
+                          "properties": {
+                            "openAdvanceCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ayrılış ayından kesilecek taksiti olan avans"
+                            },
+                            "openAdvanceCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ayrılış ayından (dahil) kesilecek avans, kuruş"
+                            },
+                            "activeGarnishmentCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Süren icra sayısı"
+                            },
+                            "currency": {
+                              "type": "string",
+                              "enum": [
+                                "TRY"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "openAdvanceCount",
+                            "openAdvanceCents",
+                            "activeGarnishmentCount",
+                            "currency"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "leave": {
+                          "type": "object",
+                          "properties": {
+                            "hasProfile": {
+                              "type": "boolean",
+                              "description": "Personelin izin bilgisi (DOM-FIN-109) var mı"
+                            },
+                            "unusedDays": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Ayrılış günündeki kullanılmayan yıllık izin günü; tamamlanmışta dondurulmuş"
+                            },
+                            "frozen": {
+                              "type": "boolean",
+                              "description": "Gün tamamlanma anında donduruldu mu"
+                            }
+                          },
+                          "required": [
+                            "hasProfile",
+                            "unusedDays",
+                            "frozen"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "serviceCertificate": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "label": {
+                                  "type": "string"
+                                },
+                                "createdAt": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "label",
+                                "createdAt"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "İptal edilmemiş hizmet belgesi (DOM-FIN-106)"
+                        },
+                        "payrollMonth": {
+                          "type": "string",
+                          "description": "Ayrılış ayı (YYYY-MM)"
+                        },
+                        "payrollMonthLocked": {
+                          "type": "boolean",
+                          "description": "Ayrılış ayının bordrosu onaylı (kilitli) mı; son bordro düzeltmeyle (DOM-FIN-108)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "membershipId",
+                        "staffName",
+                        "staffRole",
+                        "staffActive",
+                        "separationDate",
+                        "reason",
+                        "sgkExitCode",
+                        "hireDate",
+                        "noticeGivenDate",
+                        "note",
+                        "status",
+                        "createdAt",
+                        "completedAt",
+                        "cancelledAt",
+                        "cancelReason",
+                        "version",
+                        "accountClosedDate",
+                        "completedByName",
+                        "notice",
+                        "steps",
+                        "missingSteps",
+                        "assets",
+                        "deductions",
+                        "leave",
+                        "serviceCertificate",
+                        "payrollMonth",
+                        "payrollMonthLocked"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/staff-separations/{separationId}/document": {
+      "get": {
+        "operationId": "getStaffSeparationDocument",
+        "summary": "İlişik kesme belgesinin verisi",
+        "tags": [
+          "finance-staff-separations"
+        ],
+        "description": "PDF'in verisi (K-403): kurum adı, personel, günler, neden, SGK kodu, adımların durumu, zimmet dökümü, kullanılmayan izin günü ve hizmet belgesi numarası. Avans ve icra tutarı belgeye girmez. Tamamlanmamış dosyada PDF \"Taslak\" basar. Başka kurumun dosyası 404. Rol: yalnız `yonetici` (K-403; dosya avans, icra ve izin bilgisi taşır). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "separationId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "membershipId": {
+                          "type": "string",
+                          "description": "Ayrılan personelin kurum üyeliği"
+                        },
+                        "staffName": {
+                          "type": "string",
+                          "description": "Personel adı (üyelikten)"
+                        },
+                        "staffRole": {
+                          "type": "string",
+                          "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                        },
+                        "staffActive": {
+                          "type": "boolean",
+                          "description": "Hesap etkin mi; `false` ise pasifleştirildi (hesap kapandı)"
+                        },
+                        "separationDate": {
+                          "type": "string",
+                          "description": "Ayrılış (son çalışma) günü"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "enum": [
+                            "resignation",
+                            "termination",
+                            "retirement",
+                            "contract_end",
+                            "other"
+                          ],
+                          "description": "Ayrılış nedeni"
+                        },
+                        "sgkExitCode": {
+                          "type": "string",
+                          "enum": [
+                            "10",
+                            "22",
+                            "29",
+                            "01",
+                            "02",
+                            "03",
+                            "04",
+                            "05",
+                            "08",
+                            "09"
+                          ],
+                          "description": "SGK işten ayrılış nedeni kodu (H-85)"
+                        },
+                        "hireDate": {
+                          "description": "İşe giriş günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "noticeGivenDate": {
+                          "description": "Bildirim günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "note": {
+                          "description": "Not",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "completed",
+                            "cancelled"
+                          ],
+                          "description": "`open`, `completed` ya da `cancelled`"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "description": "Dosyanın açıldığı an"
+                        },
+                        "completedAt": {
+                          "description": "İlişiğin kesildiği an",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "description": "İptal anı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelReason": {
+                          "description": "İptal gerekçesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "institutionName": {
+                          "type": "string",
+                          "description": "Belge başlığındaki kurum adı"
+                        },
+                        "completedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "steps": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "step": {
+                                "type": "string",
+                                "enum": [
+                                  "asset_return",
+                                  "deductions",
+                                  "leave",
+                                  "severance",
+                                  "account_closure",
+                                  "service_certificate"
+                                ]
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "done": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "step",
+                              "required",
+                              "done"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "assets": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "assignmentId": {
+                                "type": "string",
+                                "description": "Zimmet kaydı; iade `POST /finance/fixed-asset-assignments/:id/return`"
+                              },
+                              "assetId": {
+                                "type": "string"
+                              },
+                              "assetTagNumber": {
+                                "type": "string",
+                                "description": "Demirbaş etiket numarası"
+                              },
+                              "assetName": {
+                                "type": "string"
+                              },
+                              "assignedDate": {
+                                "type": "string"
+                              },
+                              "returnDate": {
+                                "description": "İade günü; boşsa zimmet açık",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "returnCondition": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "intact",
+                                      "damaged"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Zimmet kaydının sürümü (iade `If-Match`)"
+                              }
+                            },
+                            "required": [
+                              "assignmentId",
+                              "assetId",
+                              "assetTagNumber",
+                              "assetName",
+                              "assignedDate",
+                              "returnDate",
+                              "returnCondition",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "unusedLeaveDays": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Kullanılmayan yıllık izin günü"
+                        },
+                        "serviceCertificateLabel": {
+                          "description": "Hizmet belgesi numarası",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "generatedAt": {
+                          "type": "string",
+                          "description": "Verinin üretildiği an"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "membershipId",
+                        "staffName",
+                        "staffRole",
+                        "staffActive",
+                        "separationDate",
+                        "reason",
+                        "sgkExitCode",
+                        "hireDate",
+                        "noticeGivenDate",
+                        "note",
+                        "status",
+                        "createdAt",
+                        "completedAt",
+                        "cancelledAt",
+                        "cancelReason",
+                        "version",
+                        "institutionName",
+                        "completedByName",
+                        "steps",
+                        "assets",
+                        "unusedLeaveDays",
+                        "serviceCertificateLabel",
+                        "generatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

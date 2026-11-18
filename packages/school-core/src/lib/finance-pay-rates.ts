@@ -252,25 +252,88 @@ export function wageOn<T extends PayRatePeriod & { component: PayRateComponent; 
 }
 
 /**
- * Kıdem hesaplayıcısına öneri (DOM-FIN-094 girdisi; yalnız okuma): `day` gününde yürürlükteki
- * aylık brüt ücret (ana ücret aylık brüt değilse `null`, çeviri yapılmaz) ve yürürlükteki yan
- * hakların aylık toplamı. Hesaplayıcı girdisi elle düzeltilebilir kalır.
+ * Kıdem önerisinin durumu (DOM-FIN-094, K-345): `suggested` aylık brüt ana ücret var, öneri yapılır;
+ * `net_wage` ana ücret net tanımlı, brüte çevrilmez; `non_monthly_wage` saatlik ya da ders saati
+ * ücreti, aylık brüt bilinmez; `no_wage` günde yürürlükte ana ücret yok. Son üçünde öneri yapılmaz.
  */
-export function severancePaySuggestion(
-  rates: readonly (PayRatePeriod & {
-    component: PayRateComponent
-    rateType: string
-    amountCents: number
-  })[],
+export const SEVERANCE_SUGGESTION_STATUSES = [
+  'suggested',
+  'net_wage',
+  'non_monthly_wage',
+  'no_wage',
+] as const
+export type SeveranceSuggestionStatus = (typeof SEVERANCE_SUGGESTION_STATUSES)[number]
+
+/** Öneri yapılmayan durumun uyarısı (ekran); `suggested` için `null`. */
+export const SEVERANCE_SUGGESTION_WARNINGS: Readonly<
+  Record<SeveranceSuggestionStatus, string | null>
+> = {
+  suggested: null,
+  net_wage:
+    'Personelin ana ücreti net tanımlı; net ücret brüte çevrilmediği için öneri yapılmadı. Brüt ücreti elle girin.',
+  non_monthly_wage:
+    'Personelin ana ücreti saatlik ya da ders saati üzerinden; aylık brüt bilinmediği için öneri yapılmadı. Brüt ücreti elle girin.',
+  no_wage: 'Çıkış gününde yürürlükte ana ücret tanımı yok; ücreti elle girin.',
+}
+
+/** Kıdeme esas yan hak (K-345): nakdi olan girer; ayni yan hak giydirilmiş ücrete eklenmez. */
+export const isSeveranceBenefit = (rate: { benefitForm: BenefitForm | null }) =>
+  rate.benefitForm === 'cash'
+
+/** Öneri için okunan tanım alanları. */
+export type SeveranceSuggestionRate = PayRatePeriod & {
+  component: PayRateComponent
+  rateType: string
+  amountCents: number
+  benefitForm: BenefitForm | null
+}
+
+export interface SeverancePaySuggestion<T extends SeveranceSuggestionRate> {
+  status: SeveranceSuggestionStatus
+  /** Önerilen aylık brüt; öneri yoksa `null`. */
+  grossWageCents: number | null
+  /** Önerilen düzenli yan ödeme (nakdi yan hakların aylık toplamı); öneri yoksa `null`. */
+  regularBenefitsCents: number | null
+  /** Günde yürürlükteki ana ücret (türü ne olursa olsun); yoksa `null`. */
+  wage: T | null
+  /** Günde yürürlükteki yan haklar ve kıdeme girip girmediği. */
+  benefits: { rate: T; included: boolean }[]
+}
+
+/**
+ * Kıdem hesaplayıcısına öneri (DOM-FIN-094, K-345; yalnız okuma): `day` (çıkış) gününde yürürlükteki
+ * aylık brüt ana ücret ve kıdeme esas yan hakların aylık toplamı (giydirilmiş ücretin düzenli nakdi
+ * kısmı; ayni yan haklar ve saat başı ek ders/nöbet ücretleri girmez). Ana ücret aylık brüt değilse
+ * öneri yapılmaz, durum uyarıyı belirler. Hesaplayıcı girdisi elle düzeltilebilir kalır.
+ */
+export function severancePaySuggestion<T extends SeveranceSuggestionRate>(
+  rates: readonly T[],
   day: string,
-): { grossWageCents: number | null; regularBenefitsCents: number } {
+): SeverancePaySuggestion<T> {
   const effective = payRatesOn(rates, day)
-  const wage = effective.find((rate) => rate.component === 'wage')
+  const wage = effective.find((rate) => rate.component === 'wage') ?? null
+  const benefits = effective
+    .filter((rate) => rate.component === 'benefit')
+    .map((rate) => ({ rate, included: isSeveranceBenefit(rate) }))
+  const status: SeveranceSuggestionStatus =
+    wage === null
+      ? 'no_wage'
+      : wage.rateType === 'monthly_gross'
+        ? 'suggested'
+        : wage.rateType === 'monthly_net'
+          ? 'net_wage'
+          : 'non_monthly_wage'
   return {
-    grossWageCents: wage?.rateType === 'monthly_gross' ? wage.amountCents : null,
-    regularBenefitsCents: effective
-      .filter((rate) => rate.component === 'benefit')
-      .reduce((sum, rate) => sum + rate.amountCents, 0),
+    status,
+    grossWageCents: status === 'suggested' && wage !== null ? wage.amountCents : null,
+    regularBenefitsCents:
+      status === 'suggested'
+        ? benefits
+            .filter((item) => item.included)
+            .reduce((sum, item) => sum + item.rate.amountCents, 0)
+        : null,
+    wage,
+    benefits,
   }
 }
 

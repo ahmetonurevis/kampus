@@ -5,6 +5,7 @@ import type { Page } from '@playwright/test'
 import type { ApiClient } from './support/api.ts'
 import { seedCarriedOverTariff } from './support/finance-terms.ts'
 import { expect, test } from './support/fixtures.ts'
+import { markFilesReady, pdf } from './support/materials.ts'
 import type { Tenant, TenantOptions, TenantUser } from './support/tenant.ts'
 import { expectNoHorizontalOverflow } from './support/ui.ts'
 
@@ -1414,3 +1415,102 @@ async function enrollThroughForm(
   await page.getByRole('button', { name: 'Kaydı tamamla' }).click()
   await expect(toast(page, 'Kesin kayıt, sözleşme ve taksit planı oluşturuldu.')).toBeVisible()
 }
+
+test.describe('Kayıt belgeleri', () => {
+  test("DOM-KAY-045, K-384: kesin kayıtta kabul edilen aday belgesi öğrenci dosyasına geçer; ön büro Kayıt İşlemleri'nde belgeyi ve eksikleri görür", async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }: Fixtures) => {
+    const name = 'Evraklı Aday'
+    const school = await tenant({
+      roles: ['yonetici', 'onburo'],
+      records: [prospect('e2e-kyt-evrak', name, { stage: 'Teklif verildi' })],
+    })
+    const admin = await api(school.user('yonetici'))
+    const send = async (url: string, data: unknown, version?: number) => {
+      const response = await admin.context.post(url, {
+        data,
+        headers: {
+          'idempotency-key': randomUUID(),
+          ...(version === undefined ? {} : { 'if-match': `"${String(version)}"` }),
+        },
+      })
+      expect(response.status(), url).toBeLessThan(300)
+      return (await response.json()) as { data: Record<string, unknown> }
+    }
+    const academicYear = new Date().getFullYear()
+    const draft = (
+      await send('/api/v1/fee-tariffs', {
+        academicYear,
+        items: [
+          {
+            kind: 'tuition',
+            level: null,
+            amountCents: 10_000_000,
+            unit: 'year',
+            vatBasisPoints: 1000,
+            vatEffectiveDate: `${String(academicYear)}-01-01`,
+            announcedAmountCents: 10_000_000,
+          },
+        ],
+        paymentTerms: PAYMENT_TERMS,
+      })
+    ).data as { id: string; version: number }
+    await send(
+      `/api/v1/fee-tariffs/${draft.id}/publish`,
+      { announcedDate: `${String(academicYear)}-01-02`, mebbisRecordedDate: null },
+      draft.version,
+    )
+    // Kimlik belgesi yüklenir, kabul edilir; karne ve fotoğraf eksik kalır.
+    const upload = await admin.context.fetch('/api/v1/files', {
+      method: 'POST',
+      multipart: { purpose: 'document', file: pdf('kimlik.pdf') },
+      headers: { 'idempotency-key': randomUUID() },
+      failOnStatusCode: false,
+    })
+    expect(upload.status()).toBe(201)
+    const fileId = ((await upload.json()) as { data: { id: string } }).data.id
+    await markFilesReady(school.institutionId)
+    const added = (
+      await send('/api/v1/prospects/e2e-kyt-evrak/documents', {
+        documentTypeId: 'identity',
+        fileId,
+      })
+    ).data as { documents: { id: string; version: number }[] }
+    const document = added.documents[0]!
+    await send(
+      `/api/v1/prospects/e2e-kyt-evrak/documents/${document.id}/review`,
+      { decision: 'accept' },
+      document.version,
+    )
+    const current = await prospectOf(admin, 'e2e-kyt-evrak')
+    await send(
+      '/api/v1/prospects/e2e-kyt-evrak/enroll',
+      { ...enrollBody(), tariffId: draft.id, installmentCount: 2 },
+      current.version,
+    )
+
+    await loginAs(school.user('onburo'))
+    await page.goto(LIST_URL)
+    const section = page.getByRole('region', { name: 'Kayıt belgeleri' })
+    const row = section.getByRole('row').filter({ hasText: name })
+    await expect(row).toContainText('1 belge')
+    await expect(row).toContainText('2 eksik belge')
+    await expect(row).toContainText('Karne / öğrenim belgesi (Kesin kayıt)')
+
+    await row.getByRole('button', { name: `${name} kayıt belgelerini göster` }).click()
+    const dialog = page.getByRole('dialog', { name: `${name} kayıt belgeleri` })
+    const items = dialog.getByRole('list', { name: 'Öğrenci dosyasındaki belgeler' })
+    await expect(items.getByRole('listitem')).toHaveCount(1)
+    await expect(items).toContainText('Nüfus kayıt örneği / kimlik')
+    await expect(
+      items.getByRole('button', { name: 'Nüfus kayıt örneği / kimlik belgesini aç' }),
+    ).toBeEnabled()
+    await expect(dialog.getByRole('note')).toContainText('Eksik belgeler: Karne / öğrenim belgesi')
+    await expect(
+      dialog.getByRole('link', { name: 'Aday kartında belgeleri yönet' }),
+    ).toHaveAttribute('href', detailUrl('e2e-kyt-evrak'))
+  })
+})

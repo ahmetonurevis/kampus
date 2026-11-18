@@ -129,6 +129,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/ticketed-events/{eventId}/tickets',
   'POST /api/v1/finance/event-tickets/{ticketId}/pay',
   'POST /api/v1/finance/event-tickets/{ticketId}/cancel',
+  // Gezi planı taslağı numaralı plan açar; çift tıklama ikinci planı açmaz
+  // (routes/finance-trip-plans.ts; DOM-FIN-111, ON-155).
+  'POST /api/v1/finance/trip-plans',
 ]
 // Onur: kayıt ve finans sonu
 

@@ -2516,6 +2516,33 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: personel çalışma ve hizmet belgesi (ON-175; DOM-FIN-106).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/staff-certificates', 'listOf(a.admin)'],
+        ['liste', 'GET /api/v1/finance/staff-certificate-staff', 'get(STAFF, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/staff-certificates', 'institutionId: b.id'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/staff-certificates/:certificateId/document',
+          '`${bUrl}/document`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-certificates/:certificateId/cancel',
+          '`${bUrl}/cancel`',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-staff-certificates.test.ts',
+        'başka kurumun personeli ve belgesi 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

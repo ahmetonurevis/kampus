@@ -8948,6 +8948,90 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/staff-certificates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Personel belgelerini listele
+         * @description Düzenlenen çalışma ve hizmet belgeleri, yeni numara önce (DOM-FIN-106). Personel adında aranır; tür, durum (`valid`, `cancelled`), yıl ve personelle süzülür. Liste T.C. kimlik no ve ücret tutarı taşımaz, yalnız var olup olmadıklarını gösterir (K-343). Rol: yalnız `yonetici` (K-342; muhasebe rolü açılsa da görmez, belge ücret içerebilir). Modül `finance`.
+         */
+        get: operations["listStaffCertificates"];
+        put?: never;
+        /**
+         * Personel belgesi düzenle
+         * @description Çalışma belgesi (`employment`; etkin personel, görev, işe giriş, isteğe bağlı ücret ve muhatap) ya da hizmet belgesi (`service`; ayrılan personel, giriş–çıkış günü, görev; 4857 md. 28). Görev ve günler elle girilir (K-340); T.C. kimlik no isteğe bağlıdır, muhatap boşsa "İlgili makama". Numara kurumda yılın sıradaki numarasıdır (`PB-<yıl>-<sıra>`); içerik bu anda dondurulur (K-341). Ücret yalnız çalışma belgesinde `includeWage: true` ise düzenleme günündeki ana ücret tanımından kopyalanır, tanım yoksa 422 `staff_certificate_wage_missing` (K-342). Ayrılan personele çalışma belgesi 422 `staff_certificate_staff_inactive`, etkin personele hizmet belgesi 422 `staff_certificate_staff_active`; olmayan üyelik 422 `staff_certificate_staff_not_found`, öğrenci ya da veli 422 `staff_certificate_not_staff`; ileri tarihli giriş ya da çıkış 422. Denetim kaydına alan adları yazılır. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (K-342; muhasebe rolü açılsa da görmez, belge ücret içerebilir). Modül `finance`.
+         */
+        post: operations["createStaffCertificate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staff-certificate-staff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Belge düzenlenebilecek personel
+         * @description Kurumun yönetici, öğretmen ve ön büro üyelikleri ada göre; etkin mi, pasifleştirme günü (ayrılış önerisi) ve iptal edilmemiş son belgedeki görev ile işe giriş günü (öneri; personel kaydında bu alanlar yoktur, K-340). Rol: yalnız `yonetici` (K-342; muhasebe rolü açılsa da görmez, belge ücret içerebilir). Modül `finance`.
+         */
+        get: operations["listStaffCertificateStaff"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staff-certificates/{certificateId}/document": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Personel belgesinin içeriği
+         * @description PDF'in verisi: dondurulmuş içeriğin tamamı (kurum adı, personel adı, görev, günler, T.C. kimlik no, muhatap, ücret, düzenleyen, iptal). Önizleme ve indirme aynı veriden üretilir. Okuma aynı transaction'da denetime yazılır (`finance.staff_certificate.read`, alan adları; K-343). İptal edilmiş belge de okunur (PDF "İptal edildi" basar). Olmayan ya da başka kurumun belgesi 404. Rol: yalnız `yonetici` (K-342; muhasebe rolü açılsa da görmez, belge ücret içerebilir). Modül `finance`.
+         */
+        get: operations["getStaffCertificateDocument"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staff-certificates/{certificateId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Personel belgesini iptal et
+         * @description Gerekçeyle (5–500 karakter); belge silinmez, numarası yeniden kullanılmaz, PDF "İptal edildi" ibaresiyle kalır (K-341). İptal edilmiş belge 409 `staff_certificate_cancelled`, sürüm tutmazsa 409. Gerekçe denetim kaydına yazılmaz. `If-Match` zorunlu. Başka kurumun belgesi 404. Rol: yalnız `yonetici` (K-342; muhasebe rolü açılsa da görmez, belge ücret içerebilir). Modül `finance`.
+         */
+        post: operations["cancelStaffCertificate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -94187,6 +94271,728 @@ export interface operations {
                             /** @description `cooling_off` iki ay içinde cayma, `exit` sonra ayrılma */
                             optOutKind: ("cooling_off" | "exit") | null;
                             createdAt: string;
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listStaffCertificates: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Personel adında arama */
+                q?: string;
+                /** @description Belge türü */
+                kind?: "employment" | "service";
+                /** @description `valid` geçerli, `cancelled` iptal edilmiş */
+                status?: "valid" | "cancelled";
+                /** @description Belge numarasının yılı */
+                year?: number;
+                /** @description Yalnız bu personelin belgeleri */
+                membershipId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Belgenin düzenlendiği personelin kurum üyeliği */
+                            membershipId: string;
+                            /**
+                             * @description `employment` çalışma belgesi, `service` hizmet belgesi
+                             * @enum {string}
+                             */
+                            kind: "employment" | "service";
+                            /** @description Belge numarasının yılı (Europe/Istanbul) */
+                            certificateYear: number;
+                            /** @description Yıl içindeki sıra; numara `PB-<yıl>-<sıra>` (K-341) */
+                            certificateNumber: number;
+                            /** @description Üretim anındaki personel adı */
+                            staffName: string;
+                            /** @description Görev ya da unvan */
+                            position: string;
+                            /** @description İşe giriş günü (YYYY-MM-DD) */
+                            hireDate: string;
+                            /** @description İşten ayrılış günü; yalnız hizmet belgesinde */
+                            exitDate: string | null;
+                            /** @description Muhatap; yazılmadıysa "İlgili makama" */
+                            addressee: string;
+                            /** @description Belgede ücret bilgisi var mı (tutar yalnız belge ucunda) */
+                            includesWage: boolean;
+                            /** @description Belgede T.C. kimlik no var mı (değer yalnız belge ucunda) */
+                            hasIdentityNumber: boolean;
+                            /** @description Düzenleyen yönetici */
+                            issuedByName: string;
+                            /** @description Düzenleme anı (ISO 8601 UTC) */
+                            createdAt: string;
+                            /** @description İptal anı; boşsa belge geçerli */
+                            cancelledAt: string | null;
+                            /** @description İptal gerekçesi */
+                            cancelReason: string | null;
+                            /** @description `If-Match` için kayıt sürümü (iptal) */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createStaffCertificate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Çalışma (`employment`) ya da hizmet (`service`) belgesi */
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    kind: "employment";
+                    /** @description Belgenin düzenlendiği personelin kurum üyeliği */
+                    membershipId: string;
+                    /** @description Görev ya da unvan (ör. "İngilizce öğretmeni"); personel kaydında olmadığı için elle */
+                    position: string;
+                    /** @description İşe giriş günü (elle; personel kaydında yok) */
+                    hireDate: string;
+                    /** @description İsteğe bağlı T.C. kimlik no (11 hane, kontrol haneli); yalnız belgede yazar */
+                    identityNumber?: string | null;
+                    /** @description İsteğe bağlı muhatap (ör. "X Bankası Kadıköy Şubesi Müdürlüğüne"); boşsa "İlgili makama" */
+                    addressee?: string | null;
+                    /**
+                     * @description `true` ise düzenleme günündeki ana ücret belgeye yazılır (K-342)
+                     * @default false
+                     */
+                    includeWage?: boolean;
+                } | {
+                    /** @enum {string} */
+                    kind: "service";
+                    /** @description Belgenin düzenlendiği personelin kurum üyeliği */
+                    membershipId: string;
+                    /** @description Görev ya da unvan (ör. "İngilizce öğretmeni"); personel kaydında olmadığı için elle */
+                    position: string;
+                    /** @description İşe giriş günü (elle; personel kaydında yok) */
+                    hireDate: string;
+                    /** @description İsteğe bağlı T.C. kimlik no (11 hane, kontrol haneli); yalnız belgede yazar */
+                    identityNumber?: string | null;
+                    /** @description İsteğe bağlı muhatap (ör. "X Bankası Kadıköy Şubesi Müdürlüğüne"); boşsa "İlgili makama" */
+                    addressee?: string | null;
+                    /** @description İşten ayrılış günü (dahil) */
+                    exitDate: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Belgenin düzenlendiği personelin kurum üyeliği */
+                            membershipId: string;
+                            /**
+                             * @description `employment` çalışma belgesi, `service` hizmet belgesi
+                             * @enum {string}
+                             */
+                            kind: "employment" | "service";
+                            /** @description Belge numarasının yılı (Europe/Istanbul) */
+                            certificateYear: number;
+                            /** @description Yıl içindeki sıra; numara `PB-<yıl>-<sıra>` (K-341) */
+                            certificateNumber: number;
+                            /** @description Üretim anındaki personel adı */
+                            staffName: string;
+                            /** @description Görev ya da unvan */
+                            position: string;
+                            /** @description İşe giriş günü (YYYY-MM-DD) */
+                            hireDate: string;
+                            /** @description İşten ayrılış günü; yalnız hizmet belgesinde */
+                            exitDate: string | null;
+                            /** @description Muhatap; yazılmadıysa "İlgili makama" */
+                            addressee: string;
+                            /** @description Belgede ücret bilgisi var mı (tutar yalnız belge ucunda) */
+                            includesWage: boolean;
+                            /** @description Belgede T.C. kimlik no var mı (değer yalnız belge ucunda) */
+                            hasIdentityNumber: boolean;
+                            /** @description Düzenleyen yönetici */
+                            issuedByName: string;
+                            /** @description Düzenleme anı (ISO 8601 UTC) */
+                            createdAt: string;
+                            /** @description İptal anı; boşsa belge geçerli */
+                            cancelledAt: string | null;
+                            /** @description İptal gerekçesi */
+                            cancelReason: string | null;
+                            /** @description `If-Match` için kayıt sürümü (iptal) */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listStaffCertificateStaff: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Personel adında arama */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            membershipId: string;
+                            name: string;
+                            /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                            role: string;
+                            /** @description Etkin personele çalışma, pasifleştirilmiş (ayrılan) personele hizmet belgesi */
+                            active: boolean;
+                            /** @description Pasifleştirme günü (Europe/Istanbul); ayrılış günü önerisi */
+                            leftDate: string | null;
+                            /** @description İptal edilmemiş son belgedeki görev (öneri) */
+                            lastPosition: string | null;
+                            /** @description İptal edilmemiş son belgedeki işe giriş günü (öneri) */
+                            lastHireDate: string | null;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getStaffCertificateDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                certificateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Belgenin düzenlendiği personelin kurum üyeliği */
+                            membershipId: string;
+                            /**
+                             * @description `employment` çalışma belgesi, `service` hizmet belgesi
+                             * @enum {string}
+                             */
+                            kind: "employment" | "service";
+                            /** @description Belge numarasının yılı (Europe/Istanbul) */
+                            certificateYear: number;
+                            /** @description Yıl içindeki sıra; numara `PB-<yıl>-<sıra>` (K-341) */
+                            certificateNumber: number;
+                            /** @description Üretim anındaki personel adı */
+                            staffName: string;
+                            /** @description Görev ya da unvan */
+                            position: string;
+                            /** @description İşe giriş günü (YYYY-MM-DD) */
+                            hireDate: string;
+                            /** @description İşten ayrılış günü; yalnız hizmet belgesinde */
+                            exitDate: string | null;
+                            /** @description Muhatap; yazılmadıysa "İlgili makama" */
+                            addressee: string;
+                            /** @description Belgede ücret bilgisi var mı (tutar yalnız belge ucunda) */
+                            includesWage: boolean;
+                            /** @description Belgede T.C. kimlik no var mı (değer yalnız belge ucunda) */
+                            hasIdentityNumber: boolean;
+                            /** @description Düzenleyen yönetici */
+                            issuedByName: string;
+                            /** @description Düzenleme anı (ISO 8601 UTC) */
+                            createdAt: string;
+                            /** @description İptal anı; boşsa belge geçerli */
+                            cancelledAt: string | null;
+                            /** @description İptal gerekçesi */
+                            cancelReason: string | null;
+                            /** @description `If-Match` için kayıt sürümü (iptal) */
+                            version: number;
+                            /** @description Üretim anındaki kurum adı (belge başlığı) */
+                            institutionName: string;
+                            /** @description T.C. kimlik no; girilmediyse boş */
+                            identityNumber: string | null;
+                            /** @description Belgeye yazılan ana ücretin türü; ücret istenmediyse boş */
+                            wageRateType: ("monthly_gross" | "monthly_net" | "hourly" | "lesson_hour") | null;
+                            /** @description Belgeye yazılan ana ücret, kuruş */
+                            wageAmountCents: number | null;
+                            /** @enum {string} */
+                            currency: "TRY";
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelStaffCertificate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                certificateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description İptal gerekçesi; denetim kaydına yazılmaz */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Belgenin düzenlendiği personelin kurum üyeliği */
+                            membershipId: string;
+                            /**
+                             * @description `employment` çalışma belgesi, `service` hizmet belgesi
+                             * @enum {string}
+                             */
+                            kind: "employment" | "service";
+                            /** @description Belge numarasının yılı (Europe/Istanbul) */
+                            certificateYear: number;
+                            /** @description Yıl içindeki sıra; numara `PB-<yıl>-<sıra>` (K-341) */
+                            certificateNumber: number;
+                            /** @description Üretim anındaki personel adı */
+                            staffName: string;
+                            /** @description Görev ya da unvan */
+                            position: string;
+                            /** @description İşe giriş günü (YYYY-MM-DD) */
+                            hireDate: string;
+                            /** @description İşten ayrılış günü; yalnız hizmet belgesinde */
+                            exitDate: string | null;
+                            /** @description Muhatap; yazılmadıysa "İlgili makama" */
+                            addressee: string;
+                            /** @description Belgede ücret bilgisi var mı (tutar yalnız belge ucunda) */
+                            includesWage: boolean;
+                            /** @description Belgede T.C. kimlik no var mı (değer yalnız belge ucunda) */
+                            hasIdentityNumber: boolean;
+                            /** @description Düzenleyen yönetici */
+                            issuedByName: string;
+                            /** @description Düzenleme anı (ISO 8601 UTC) */
+                            createdAt: string;
+                            /** @description İptal anı; boşsa belge geçerli */
+                            cancelledAt: string | null;
+                            /** @description İptal gerekçesi */
+                            cancelReason: string | null;
+                            /** @description `If-Match` için kayıt sürümü (iptal) */
                             version: number;
                         };
                     };

@@ -132,6 +132,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // Personel avansı taksit planı oluşturur; çift tıklama ikinci avansı açmaz
   // (routes/finance-staff-deductions.ts; DOM-FIN-101, ON-199).
   'POST /api/v1/finance/staff-advances',
+  // Personel belgesi yıl bazlı numara keser; çift tıklama ikinci belge açmaz
+  // (routes/finance-staff-certificates.ts; DOM-FIN-106).
+  'POST /api/v1/finance/staff-certificates',
 ]
 // Onur: kayıt ve finans sonu
 

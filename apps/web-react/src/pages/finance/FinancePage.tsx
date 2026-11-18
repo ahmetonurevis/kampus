@@ -146,6 +146,9 @@ const FinanceEventTicketsSection = lazy(async () => ({
 const FinanceStaffDeductionsSection = lazy(async () => ({
   default: (await import('./FinanceStaffDeductionsSection.tsx')).FinanceStaffDeductionsSection,
 }))
+const FinanceStaffCertificatesSection = lazy(async () => ({
+  default: (await import('./FinanceStaffCertificatesSection.tsx')).FinanceStaffCertificatesSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -194,6 +197,7 @@ const VIEWS = {
   paidActivities: { label: 'Gezi ve etkinlik ücretleri', param: 'gezi-etkinlik' },
   eventTickets: { label: 'Etkinlik biletleri', param: 'etkinlik-bileti' },
   staffDeductions: { label: 'Avans ve kesintiler', param: 'avans-kesinti' },
+  staffCertificates: { label: 'Personel belgeleri', param: 'personel-belgesi' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -230,6 +234,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * etkinliği ve iadeyi yönetici yönetir (K-300).
  * Etkinlik biletleri (DOM-FIN-103) ikisine açıktır; etkinliği yönetici açar (K-324).
  * Avans ve kesintiler (DOM-FIN-101) yalnız yöneticidedir; icra bilgisi hassastır (K-315).
+ * Personel belgeleri (DOM-FIN-106) yalnız yöneticidedir; belge ücret ve kimlik no içerir (K-342).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -244,6 +249,7 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'fixedAssets' ||
       value === 'severance' ||
       value === 'freeTuition' ||
+      value === 'staffCertificates' ||
       value === 'staffDeductions' ||
       value === 'payRates' ||
       value === 'stakeholders' ||
@@ -439,6 +445,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'paidActivities' ? <FinancePaidActivitiesSection isManager={isManager} /> : null}
         {tab === 'eventTickets' ? <FinanceEventTicketsSection role={session?.role ?? ''} /> : null}
         {tab === 'staffDeductions' ? <FinanceStaffDeductionsSection /> : null}
+        {tab === 'staffCertificates' ? <FinanceStaffCertificatesSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

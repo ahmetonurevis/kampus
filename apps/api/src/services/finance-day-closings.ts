@@ -33,6 +33,7 @@ import {
 import { loadPaymentSettings, paymentsTouchingDay, type StoredPayment } from '../db/payments.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
 import { freeTuitionRefundsPaidOnDay } from '../db/finance-free-tuition.ts'
+import { paidActivityRefundsPaidOnDay } from '../db/finance-paid-activities.ts'
 import { refundsPaidOnDay, type StoredDayRefund } from '../db/withdrawals.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
@@ -87,13 +88,14 @@ export interface FinanceDayLine {
 export type FinanceDayRefundLine = StoredDayRefund
 
 /**
- * O gün ödenen iadeler (M-13): ayrılış iadeleri ve ücretsiz okutma iadeleri (DOM-FIN-026, K-270).
- * İkisi de banka havalesiyle kurum hesabından çıkar, günün "iade ödemesi" satırına girer.
+ * O gün ödenen iadeler (M-13): ayrılış iadeleri, ücretsiz okutma iadeleri (DOM-FIN-026, K-270) ve
+ * gezi ve etkinlik katılımı iadeleri (DOM-FIN-098, K-303). Hepsi banka havalesiyle kurum hesabından çıkar, günün "iade ödemesi" satırına girer.
  */
 async function dayRefunds(db: Database, institutionId: string, day: string) {
   return [
     ...(await refundsPaidOnDay(db, institutionId, day)),
     ...(await freeTuitionRefundsPaidOnDay(db, institutionId, day)),
+    ...(await paidActivityRefundsPaidOnDay(db, institutionId, day)),
   ]
 }
 

@@ -41,6 +41,7 @@ import { registerFinanceBudgetActualsRoutes } from './routes/finance-budget-actu
 import { registerFinanceCorporateRoutes } from './routes/finance-corporate.ts'
 import { registerFinanceCostReportRoutes } from './routes/finance-cost-reports.ts'
 import { registerFinanceEOzelRoutes } from './routes/finance-e-ozel.ts'
+import { registerFinanceEventTicketRoutes } from './routes/finance-event-tickets.ts'
 import { registerFinanceDayClosingRoutes } from './routes/finance-day-closings.ts'
 import { registerFinanceExportRoutes } from './routes/finance-exports.ts'
 import { registerFinanceFixedAssetAssignmentRoutes } from './routes/finance-fixed-asset-assignments.ts'
@@ -48,17 +49,24 @@ import { registerFinanceFixedAssetCountRoutes } from './routes/finance-fixed-ass
 import { registerFinanceFixedAssetRoutes } from './routes/finance-fixed-assets.ts'
 import { registerFinanceForecastRoutes } from './routes/finance-forecasts.ts'
 import { registerFinanceFreeTuitionRoutes } from './routes/finance-free-tuition.ts'
+import { registerFinanceDonationRoutes } from './routes/finance-donations.ts'
 import { registerFinanceInstallmentImportRoutes } from './routes/finance-installment-imports.ts'
 import { registerFinanceChemicalRoutes } from './routes/finance-chemicals.ts'
 import { registerFinanceInventoryRoutes } from './routes/finance-inventory.ts'
 import { registerFinanceMaintenancePlanRoutes } from './routes/finance-maintenance-plans.ts'
 import { registerFinanceMaintenanceRequestRoutes } from './routes/finance-maintenance-requests.ts'
+import { registerFinancePayRateRoutes } from './routes/finance-pay-rates.ts'
 import { registerFinanceSeveranceRoutes } from './routes/finance-severance.ts'
+import { registerFinancePayrollParameterRoutes } from './routes/finance-payroll-parameters.ts'
+import { registerFinanceStaffDeductionRoutes } from './routes/finance-staff-deductions.ts'
 import { registerFinanceBudgetDraftRoutes } from './routes/finance-budget-drafts.ts'
+import { registerEnrollmentAlumniDocumentRoutes } from './routes/enrollment-alumni-documents.ts'
 import { registerFinanceMaterialSetRoutes } from './routes/finance-material-sets.ts'
+import { registerFinancePaidActivityRoutes } from './routes/finance-paid-activities.ts'
 import { registerFinanceStockCountRoutes } from './routes/finance-stock-counts.ts'
 import { registerFinanceOpeningWatchRoutes } from './routes/finance-opening-watch.ts'
 import { registerFinanceReferralRoutes } from './routes/finance-referrals.ts'
+import { registerFinanceRefundInvoiceRoutes } from './routes/finance-refund-invoices.ts'
 import { registerFinancePackageRoutes } from './routes/finance-packages.ts'
 import { registerFinancePayerChildrenRoutes } from './routes/finance-payer-children.ts'
 import { registerFinanceReminderRoutes } from './routes/finance-reminders.ts'
@@ -75,6 +83,7 @@ import { registerFinancePurchaseRequestRoutes } from './routes/finance-purchase-
 import { registerFinanceSupplierLedgerRoutes } from './routes/finance-supplier-ledger.ts'
 import { registerFinanceSupplierRoutes } from './routes/finance-suppliers.ts'
 import { registerFinanceSupplyRequestRoutes } from './routes/finance-supply-requests.ts'
+import { registerFinanceStakeholderRoutes } from './routes/finance-stakeholders.ts'
 import { registerPaymentRoutes } from './routes/payments.ts'
 import { registerWithdrawalRoutes } from './routes/withdrawals.ts'
 import { registerProspectRoutes } from './routes/prospects.ts'
@@ -176,6 +185,12 @@ export const REDACTED_PATHS = [
   // (DOM-FIN-070); IBAN yukarıda `iban`. Talep gerekçesi serbest metindir (DOM-FIN-071).
   'taxNumber',
   '*.taxNumber',
+  // kvkk: K — bağış makbuzuna kopyalanan bağışçı adı ve kimlik numarası (DOM-FIN-097); bağışçı
+  // kaydının kimlik numarası, iletişimi ve adresi `identityNumber`, `phone`, `email`, `address`.
+  'donorName',
+  '*.donorName',
+  'donorIdentityNumber',
+  '*.donorIdentityNumber',
   'contactName',
   '*.contactName',
   'contactPhone',
@@ -186,6 +201,20 @@ export const REDACTED_PATHS = [
   '*.address',
   'justification',
   '*.justification',
+  // kvkk: K — mezun belge talebinde talep edenin ve vekilin adı, teslim e-postası ve adresi,
+  // hazırlayanın notu ve teslimde kimlik doğrulama notu (DOM-KAY-044); ret gerekçesi `reason`.
+  'requesterName',
+  '*.requesterName',
+  'proxyName',
+  '*.proxyName',
+  'deliveryEmail',
+  '*.deliveryEmail',
+  'deliveryAddress',
+  '*.deliveryAddress',
+  'manualNote',
+  '*.manualNote',
+  'identityCheckNote',
+  '*.identityCheckNote',
   // kvkk: K — sözleşmenin imza yetkilisi ve ödeyici adı; ek protokol gerekçesi serbest metindir.
   'signatory',
   '*.signatory',
@@ -524,12 +553,21 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceFixedAssetAssignmentRoutes(app)
   registerFinanceFixedAssetCountRoutes(app)
   registerFinanceChemicalRoutes(app)
+  registerFinanceEventTicketRoutes(app)
   registerFinanceSupplyRequestRoutes(app)
   registerFinanceMaintenanceRequestRoutes(app)
   registerFinanceSeveranceRoutes(app)
   registerFinancePurchaseApprovalRoutes(app)
   registerFinanceMaintenancePlanRoutes(app)
   registerFinanceBudgetDraftRoutes(app)
+  registerFinanceRefundInvoiceRoutes(app)
+  registerFinancePayrollParameterRoutes(app)
+  registerFinanceDonationRoutes(app)
+  registerFinanceStakeholderRoutes(app)
+  registerFinancePayRateRoutes(app)
+  registerFinancePaidActivityRoutes(app)
+  registerEnrollmentAlumniDocumentRoutes(app)
+  registerFinanceStaffDeductionRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

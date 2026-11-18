@@ -1,5 +1,5 @@
 {
-  "id": "bf971949-d017-491d-aea9-0c741acbf9e0",
+  "id": "5cee05ff-9255-464b-a3df-e4370d3cd07f",
   "prevId": "4f1e7ab1-36ce-4a09-bc98-c837962b3531",
   "version": "7",
   "dialect": "postgresql",
@@ -18158,6 +18158,357 @@
       },
       "isRLSEnabled": false
     },
+    "public.refund_invoices": {
+      "name": "refund_invoices",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "withdrawal_id": {
+          "name": "withdrawal_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "original_invoice_number": {
+          "name": "original_invoice_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "original_invoice_date": {
+          "name": "original_invoice_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "original_invoice_type": {
+          "name": "original_invoice_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "original_total_cents": {
+          "name": "original_total_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vat_rate_basis_points": {
+          "name": "vat_rate_basis_points",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount_cents": {
+          "name": "amount_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "net_cents": {
+          "name": "net_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vat_cents": {
+          "name": "vat_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'TRY'"
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "document_number": {
+          "name": "document_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completed_date": {
+          "name": "completed_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ready_at": {
+          "name": "ready_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ready_by_user_id": {
+          "name": "ready_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "completed_by_user_id": {
+          "name": "completed_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discard_reason": {
+          "name": "discard_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "discarded_by_user_id": {
+          "name": "discarded_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "refund_invoices_withdrawal_key": {
+          "name": "refund_invoices_withdrawal_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "withdrawal_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"refund_invoices\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "refund_invoices_document_number_key": {
+          "name": "refund_invoices_document_number_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "document_number",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"refund_invoices\".\"document_number\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "refund_invoices_withdrawal_idx": {
+          "name": "refund_invoices_withdrawal_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "withdrawal_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "refund_invoices_status_idx": {
+          "name": "refund_invoices_status_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "refund_invoices_institution_id_institutions_id_fk": {
+          "name": "refund_invoices_institution_id_institutions_id_fk",
+          "tableFrom": "refund_invoices",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "refund_invoices_withdrawal_fkey": {
+          "name": "refund_invoices_withdrawal_fkey",
+          "tableFrom": "refund_invoices",
+          "tableTo": "student_withdrawals",
+          "columnsFrom": [
+            "institution_id",
+            "withdrawal_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "refund_invoices_pkey": {
+          "name": "refund_invoices_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "refund_invoices_kind_check": {
+          "name": "refund_invoices_kind_check",
+          "value": "\"refund_invoices\".\"kind\" in ('cancellation', 'return_invoice')"
+        },
+        "refund_invoices_status_check": {
+          "name": "refund_invoices_status_check",
+          "value": "\"refund_invoices\".\"status\" in ('draft', 'ready', 'sent', 'cancelled')"
+        },
+        "refund_invoices_original_type_check": {
+          "name": "refund_invoices_original_type_check",
+          "value": "\"refund_invoices\".\"original_invoice_type\" in ('e_archive', 'e_invoice')"
+        },
+        "refund_invoices_vat_rate_check": {
+          "name": "refund_invoices_vat_rate_check",
+          "value": "\"refund_invoices\".\"vat_rate_basis_points\" in (0, 100, 1000, 2000)"
+        },
+        "refund_invoices_currency_check": {
+          "name": "refund_invoices_currency_check",
+          "value": "\"refund_invoices\".\"currency\" = 'TRY'"
+        },
+        "refund_invoices_amounts_check": {
+          "name": "refund_invoices_amounts_check",
+          "value": "\"refund_invoices\".\"original_total_cents\" > 0 and \"refund_invoices\".\"amount_cents\" > 0 and \"refund_invoices\".\"amount_cents\" <= \"refund_invoices\".\"original_total_cents\" and \"refund_invoices\".\"net_cents\" >= 0 and \"refund_invoices\".\"vat_cents\" >= 0 and \"refund_invoices\".\"net_cents\" + \"refund_invoices\".\"vat_cents\" = \"refund_invoices\".\"amount_cents\""
+        },
+        "refund_invoices_kind_status_check": {
+          "name": "refund_invoices_kind_status_check",
+          "value": "(\"refund_invoices\".\"kind\" = 'return_invoice' and \"refund_invoices\".\"status\" <> 'cancelled') or (\"refund_invoices\".\"kind\" = 'cancellation' and \"refund_invoices\".\"status\" <> 'sent')"
+        },
+        "refund_invoices_completed_check": {
+          "name": "refund_invoices_completed_check",
+          "value": "(\"refund_invoices\".\"status\" in ('sent', 'cancelled')) = (\"refund_invoices\".\"completed_date\" is not null)"
+        },
+        "refund_invoices_document_number_check": {
+          "name": "refund_invoices_document_number_check",
+          "value": "(\"refund_invoices\".\"document_number\" is not null) = (\"refund_invoices\".\"status\" = 'sent')"
+        },
+        "refund_invoices_discard_check": {
+          "name": "refund_invoices_discard_check",
+          "value": "(\"refund_invoices\".\"discard_reason\" is null) = (\"refund_invoices\".\"archived_at\" is null) and (\"refund_invoices\".\"archived_at\" is null or \"refund_invoices\".\"status\" in ('draft', 'ready'))"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.scholarship_fund_allocations": {
       "name": "scholarship_fund_allocations",
       "schema": "",
@@ -25554,589 +25905,6 @@
         "campaign_codes_currency_check": {
           "name": "campaign_codes_currency_check",
           "value": "\"campaign_codes\".\"currency\" = 'TRY'"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.prospect_document_consents": {
-      "name": "prospect_document_consents",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "prospect_id": {
-          "name": "prospect_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "grantor": {
-          "name": "grantor",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "method": {
-          "name": "method",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "granted_at": {
-          "name": "granted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "granted_by_user_id": {
-          "name": "granted_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "withdrawn_at": {
-          "name": "withdrawn_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "withdrawn_by_user_id": {
-          "name": "withdrawn_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "prospect_document_consents_prospect_idx": {
-          "name": "prospect_document_consents_prospect_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "prospect_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "prospect_document_consents_active_key": {
-          "name": "prospect_document_consents_active_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "prospect_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"prospect_document_consents\".\"withdrawn_at\" is null and \"prospect_document_consents\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "prospect_document_consents_institution_id_institutions_id_fk": {
-          "name": "prospect_document_consents_institution_id_institutions_id_fk",
-          "tableFrom": "prospect_document_consents",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "prospect_document_consents_pkey": {
-          "name": "prospect_document_consents_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "prospect_document_consents_grantor_check": {
-          "name": "prospect_document_consents_grantor_check",
-          "value": "\"prospect_document_consents\".\"grantor\" in ('guardian', 'self')"
-        },
-        "prospect_document_consents_method_check": {
-          "name": "prospect_document_consents_method_check",
-          "value": "\"prospect_document_consents\".\"method\" in ('wet_signature')"
-        },
-        "prospect_document_consents_withdrawn_check": {
-          "name": "prospect_document_consents_withdrawn_check",
-          "value": "(\"prospect_document_consents\".\"withdrawn_at\" is null) = (\"prospect_document_consents\".\"withdrawn_by_user_id\" is null)"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.prospect_document_types": {
-      "name": "prospect_document_types",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "label": {
-          "name": "label",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "required": {
-          "name": "required",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "stage": {
-          "name": "stage",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "special_category": {
-          "name": "special_category",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "position": {
-          "name": "position",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "prospect_document_types_institution_id_institutions_id_fk": {
-          "name": "prospect_document_types_institution_id_institutions_id_fk",
-          "tableFrom": "prospect_document_types",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "prospect_document_types_pkey": {
-          "name": "prospect_document_types_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "prospect_document_types_id_check": {
-          "name": "prospect_document_types_id_check",
-          "value": "char_length(\"prospect_document_types\".\"id\") between 1 and 64"
-        },
-        "prospect_document_types_kind_check": {
-          "name": "prospect_document_types_kind_check",
-          "value": "\"prospect_document_types\".\"kind\" in ('identity', 'report_card', 'health_report', 'photo', 'other')"
-        },
-        "prospect_document_types_stage_check": {
-          "name": "prospect_document_types_stage_check",
-          "value": "\"prospect_document_types\".\"stage\" in ('application', 'enrollment')"
-        },
-        "prospect_document_types_label_check": {
-          "name": "prospect_document_types_label_check",
-          "value": "char_length(\"prospect_document_types\".\"label\") between 2 and 80"
-        },
-        "prospect_document_types_special_check": {
-          "name": "prospect_document_types_special_check",
-          "value": "\"prospect_document_types\".\"kind\" <> 'health_report' or \"prospect_document_types\".\"special_category\""
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.prospect_documents": {
-      "name": "prospect_documents",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "prospect_id": {
-          "name": "prospect_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "document_type_id": {
-          "name": "document_type_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "file_id": {
-          "name": "file_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "special_category": {
-          "name": "special_category",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "rejection_reason": {
-          "name": "rejection_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "uploaded_by_user_id": {
-          "name": "uploaded_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "reviewed_by_user_id": {
-          "name": "reviewed_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reviewed_at": {
-          "name": "reviewed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "superseded_at": {
-          "name": "superseded_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "superseded_by_id": {
-          "name": "superseded_by_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "prospect_documents_prospect_idx": {
-          "name": "prospect_documents_prospect_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "prospect_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "prospect_documents_current_key": {
-          "name": "prospect_documents_current_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "prospect_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "document_type_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"prospect_documents\".\"status\" <> 'superseded' and \"prospect_documents\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "prospect_documents_file_key": {
-          "name": "prospect_documents_file_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "file_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "prospect_documents_type_idx": {
-          "name": "prospect_documents_type_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "document_type_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "prospect_documents_institution_id_institutions_id_fk": {
-          "name": "prospect_documents_institution_id_institutions_id_fk",
-          "tableFrom": "prospect_documents",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "prospect_documents_type_fkey": {
-          "name": "prospect_documents_type_fkey",
-          "tableFrom": "prospect_documents",
-          "tableTo": "prospect_document_types",
-          "columnsFrom": [
-            "institution_id",
-            "document_type_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "prospect_documents_file_fkey": {
-          "name": "prospect_documents_file_fkey",
-          "tableFrom": "prospect_documents",
-          "tableTo": "files",
-          "columnsFrom": [
-            "institution_id",
-            "file_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "prospect_documents_pkey": {
-          "name": "prospect_documents_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "prospect_documents_status_check": {
-          "name": "prospect_documents_status_check",
-          "value": "\"prospect_documents\".\"status\" in ('uploaded', 'accepted', 'rejected', 'superseded')"
-        },
-        "prospect_documents_rejection_check": {
-          "name": "prospect_documents_rejection_check",
-          "value": "(\"prospect_documents\".\"status\" <> 'rejected' or \"prospect_documents\".\"rejection_reason\" is not null) and (\"prospect_documents\".\"rejection_reason\" is null or \"prospect_documents\".\"status\" in ('rejected', 'superseded'))"
-        },
-        "prospect_documents_rejection_length_check": {
-          "name": "prospect_documents_rejection_length_check",
-          "value": "\"prospect_documents\".\"rejection_reason\" is null or char_length(\"prospect_documents\".\"rejection_reason\") between 2 and 300"
-        },
-        "prospect_documents_superseded_check": {
-          "name": "prospect_documents_superseded_check",
-          "value": "(\"prospect_documents\".\"status\" = 'superseded') = (\"prospect_documents\".\"superseded_at\" is not null)"
         }
       },
       "isRLSEnabled": false

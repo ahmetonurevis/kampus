@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useSearchParams } from 'react-router'
 import { dateLabel, dayKey, money } from '@kampus/school-core/lib/format.ts'
 import { bankAccountLabel } from '@kampus/school-core/lib/payments.ts'
 import {
@@ -52,6 +53,7 @@ import { useListState } from '@/hooks/use-list-state.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { notify } from '@/lib/notify.ts'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
+import { refundInvoicesSearch } from './finance-refund-invoices.ts'
 
 type WithdrawalRow = {
   id: string
@@ -89,6 +91,7 @@ const isRefundStatus = (value: unknown): value is keyof typeof STATUS_LABELS =>
 
 export function WithdrawalsSection({ canManage }: { canManage: boolean }) {
   const learner = useEnrollmentLearner()
+  const [, setParams] = useSearchParams()
   const list = useListState('ayrilislar', { urlFilters: WITHDRAWAL_URL_FILTERS })
   // Öğrenci adı araması ve iade durumu sunucuda süzülür (ON-118).
   const search = useDebouncedValue(list.state.query)
@@ -166,6 +169,16 @@ export function WithdrawalsSection({ canManage }: { canManage: boolean }) {
               label="Kırılım"
               ariaLabel={`${row.studentName} iade kırılımını görüntüle`}
             />
+            {canManage && row.refundStatus === 'paid' ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                aria-label={`${row.studentName} iadesi için iade faturası ya da iptal isteği`}
+                onClick={() => setParams(refundInvoicesSearch(row.id))}
+              >
+                İade belgesi
+              </Button>
+            ) : null}
             {canManage && row.refundStatus === 'pending' ? (
               <Button
                 size="sm"
@@ -179,7 +192,7 @@ export function WithdrawalsSection({ canManage }: { canManage: boolean }) {
         ),
       },
     ],
-    [canManage, learner],
+    [canManage, learner, setParams],
   )
 
   const total = withdrawals.data?.meta.total ?? 0

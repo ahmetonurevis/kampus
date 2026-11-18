@@ -1759,10 +1759,6 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
-  // Onur: kıdem ve ihbar tazminatı tahmini (ON-205; DOM-FIN-094). Elle girdili hesap; kayıt yok.
-  'POST /api/v1/finance/severance-estimates': yok(
-    'elle girdili kıdem ve ihbar hesabı; kurum kaydı okumaz ve yazmaz, sonuç saklanmaz (K-273)',
-  ),
   // Onur: kampanya kodu ve huni kırılımı (ON-134; DOM-KAY-041). Envanter tablosunda Onur
   // bloklarının sonuna (ör. tedarikçi bloğunun yanına) eklenir; kanıt `prospect-campaigns.test.ts`.
   ...Object.fromEntries(
@@ -2285,6 +2281,298 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       proof(kind)(
         'finance-paid-activities.test.ts',
         'DOM-FIN-098: başka kurumun etkinliği ve katılımı 404',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: mezun belge talebi (ON-260; DOM-KAY-044). Kanıt `enrollment-alumni-documents.test.ts`.
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/prospects/alumni-document-requests', 'get(BASE, a.admin)'],
+        ['liste', 'GET /api/v1/prospects/alumni-document-students', '`${STUDENTS}?q=B Öğrenci`'],
+        ['liste', 'GET /api/v1/prospects/alumni-document-fees', 'get(FEES, b.admin)'],
+        ['liste', 'PATCH /api/v1/prospects/alumni-document-fees', "call('PATCH', FEES, a.admin"],
+        ['gövde', 'POST /api/v1/prospects/alumni-document-requests', 'institutionId: b.id'],
+        [
+          'kayıt',
+          'GET /api/v1/prospects/alumni-document-requests/:requestId',
+          'get(bUrl, a.admin)',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/prospects/alumni-document-requests/:requestId/document',
+          '`${bUrl}/document`',
+        ],
+        ['kayıt', 'POST /api/v1/prospects/alumni-document-requests/:requestId/start', 'start: {}'],
+        ['kayıt', 'POST /api/v1/prospects/alumni-document-requests/:requestId/ready', 'ready: {}'],
+        [
+          'kayıt',
+          'POST /api/v1/prospects/alumni-document-requests/:requestId/deliver',
+          "deliver: { identityCheckNote: 'Kimlik görüldü' }",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/prospects/alumni-document-requests/:requestId/reject',
+          "reject: { reason: 'Başka kurum talebi' }",
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'enrollment-alumni-documents.test.ts',
+        'başka kurumun talebi ve öğrencisi 404, listede yok, B değişmez',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: etkinlik bileti ve oturma (ON-159; DOM-FIN-103).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/ticketed-events', 'get(EVENTS, a.admin)'],
+        [
+          'gövde',
+          'POST /api/v1/finance/ticketed-events',
+          'createEvent(a.admin, { ...SEATED, institutionId: b.id })',
+        ],
+        ['kayıt', 'GET /api/v1/finance/ticketed-events/:eventId', 'get(bUrl, a.admin)'],
+        ['kayıt', 'PATCH /api/v1/finance/ticketed-events/:eventId', "call('PATCH', bUrl, a.admin"],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/ticketed-events/:eventId',
+          "call('DELETE', bUrl, a.admin",
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/ticketed-events/:eventId/tickets',
+          'get(`${bUrl}/tickets`, a.admin)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/ticketed-events/:eventId/tickets',
+          'allocate(a.admin, bEvent',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/ticketed-events/:eventId/check-in',
+          'checkIn(a.admin, bEvent, bTicket.code)',
+        ],
+        ['kayıt', 'POST /api/v1/finance/event-tickets/:ticketId/pay', 'pay(a.admin, bTicket)'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/event-tickets/:ticketId/cancel',
+          'cancel(a.admin, bTicket)',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-event-tickets.test.ts',
+        'DOM-FIN-103: başka kurumun etkinliği, bileti ve kodu 404',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: avans ve kesintiler (ON-199; DOM-FIN-101).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/staff-deductions', 'staffOf(a.admin)'],
+        ['kayıt', 'GET /api/v1/finance/staff-deductions/:membershipId', 'detail(a.admin, bStaff)'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-deductions/:membershipId/month-preview',
+          'preview(a.admin, bStaff',
+        ],
+        ['gövde', 'POST /api/v1/finance/staff-advances', 'giveAdvance(a.admin, advance(bStaff))'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-advances/:advanceId/close',
+          '`${ADVANCES}/${String(bAdvance.id)}/close`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-advances/:advanceId/cancel',
+          '`${ADVANCES}/${String(bAdvance.id)}/cancel`',
+        ],
+        [
+          'gövde',
+          'POST /api/v1/finance/staff-garnishments',
+          'addGarnishment(a.admin, garnishment(bStaff))',
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/staff-garnishments/:garnishmentId',
+          '`${GARNISHMENTS}/${String(bIcra.id)}`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-garnishments/:garnishmentId/close',
+          '`${GARNISHMENTS}/${String(bIcra.id)}/close`',
+        ],
+        [
+          'gövde',
+          'POST /api/v1/finance/staff-pension-enrollments',
+          'enroll(a.admin, pension(bStaff))',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-pension-enrollments/:enrollmentId/pause',
+          '`${PENSIONS}/${String(bBes.id)}/pause`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-pension-enrollments/:enrollmentId/opt-out',
+          '`${PENSIONS}/${String(bBes.id)}/opt-out`',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-staff-deductions.test.ts',
+        'başka kurumun personeli ve kayıtları 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: aday belgeleri (ON-263; DOM-KAY-043). Kanıt `prospect-documents.test.ts`.
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/prospects/document-types', 'get(TYPES, a.admin)'],
+        ['gövde', 'POST /api/v1/prospects/document-types', 'institutionId: b.id'],
+        [
+          'kayıt',
+          'PATCH /api/v1/prospects/document-types/:typeId',
+          "call('PATCH', `${TYPES}/${String(bType.id)}`, a.admin",
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/prospects/document-types/:typeId',
+          "call('DELETE', `${TYPES}/${String(bType.id)}`, a.admin",
+        ],
+        ['liste', 'GET /api/v1/prospects/document-gaps', 'get(GAPS, a.admin)'],
+        ['kayıt', 'GET /api/v1/prospects/:prospectId/documents', "get(docs('pb1'), a.admin)"],
+        [
+          'kayıt',
+          'POST /api/v1/prospects/:prospectId/documents',
+          "call('POST', docs('pb1'), a.front",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/prospects/:prospectId/documents/:documentId/review',
+          '`${bUrl}/review`',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/prospects/:prospectId/documents/:documentId/url',
+          'get(`${bUrl}/url`, a.admin)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/prospects/:prospectId/document-consent',
+          "call('POST', consent('pb1'), a.front",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/prospects/:prospectId/document-consent/withdraw',
+          "`${consent('pb1')}/withdraw`",
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'prospect-documents.test.ts',
+        'başka kurumun adayı, belgesi, türü ve rızası 404, B değişmez',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: kayıt belgeleri (ON-344; DOM-KAY-045). Kanıt `enrollment-documents.test.ts`.
+  'GET /api/v1/prospects/enrollment-documents': liste(
+    'enrollment-documents.test.ts',
+    'DOM-KAY-045: yetki, modül ve kurum kapsamı; başka kurumun öğrencisi 404, listede yok',
+    'listRows(other.admin)',
+  ),
+  'GET /api/v1/prospects/students/:studentId/enrollment-documents': kayit(
+    'enrollment-documents.test.ts',
+    'DOM-KAY-045: yetki, modül ve kurum kapsamı; başka kurumun öğrencisi 404, listede yok',
+    'get(studentDocs(studentId), other.admin)',
+  ),
+  // Onur: kıdem hesaplayıcısında ücret önerisi ve bordro parametresi (ON-341; DOM-FIN-094).
+  ...Object.fromEntries(
+    (
+      [
+        ['gövde', 'POST /api/v1/finance/severance-estimates', 'membershipId: bTeacher.id'],
+        ['kayıt', 'GET /api/v1/finance/severance-pay-suggestion', 'membershipId=${bTeacher.id}'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-severance.test.ts',
+        'kurumlar arası: başka kurumun personeli ve personel olmayan üyelik 404',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: personel çalışma ve hizmet belgesi (ON-175; DOM-FIN-106).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/staff-certificates', 'listOf(a.admin)'],
+        ['liste', 'GET /api/v1/finance/staff-certificate-staff', 'get(STAFF, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/staff-certificates', 'institutionId: b.id'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/staff-certificates/:certificateId/document',
+          '`${bUrl}/document`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-certificates/:certificateId/cancel',
+          '`${bUrl}/cancel`',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-staff-certificates.test.ts',
+        'başka kurumun personeli ve belgesi 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: bordro programına aktarım (ON-202; DOM-FIN-105).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/payroll-exports/preview', 'ok(await preview(a.admin))'],
+        ['liste', 'POST /api/v1/finance/payroll-exports', 'aFile.body.includes(b.selin)'],
+        ['liste', 'GET /api/v1/finance/payroll-exports', '(await get(EXPORTS, a.admin))'],
+        ['gövde', 'POST /api/v1/finance/payroll-lesson-hours', 'institutionId: b.id'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/payroll-lesson-hours/:entryId',
+          "call('PATCH', bUrl, a.admin",
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/payroll-lesson-hours/:entryId',
+          "call('DELETE', bUrl, a.admin",
+        ],
+        ['liste', 'GET /api/v1/finance/payroll-export-profile', 'ok(await get(PROFILE, a.admin))'],
+        [
+          'gövde',
+          'PATCH /api/v1/finance/payroll-export-profile',
+          'profile: null, institutionId: b.id',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-payroll-exports.test.ts',
+        'başka kurumun ek ders saati ve dosyası 404 ve B değişmez',
         marker,
       ),
     ]),

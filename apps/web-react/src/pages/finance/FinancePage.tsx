@@ -140,6 +140,15 @@ const FinancePayRatesSection = lazy(async () => ({
 const FinancePaidActivitiesSection = lazy(async () => ({
   default: (await import('./FinancePaidActivitiesSection.tsx')).FinancePaidActivitiesSection,
 }))
+const FinanceEventTicketsSection = lazy(async () => ({
+  default: (await import('./FinanceEventTicketsSection.tsx')).FinanceEventTicketsSection,
+}))
+const FinanceStaffDeductionsSection = lazy(async () => ({
+  default: (await import('./FinanceStaffDeductionsSection.tsx')).FinanceStaffDeductionsSection,
+}))
+const FinanceStaffCertificatesSection = lazy(async () => ({
+  default: (await import('./FinanceStaffCertificatesSection.tsx')).FinanceStaffCertificatesSection,
+}))
 const FinancePayrollExportSection = lazy(async () => ({
   default: (await import('./FinancePayrollExportSection.tsx')).FinancePayrollExportSection,
 }))
@@ -189,6 +198,9 @@ const VIEWS = {
   stakeholders: { label: 'Paydaşlar ve sponsorlar', param: 'paydas' },
   payRates: { label: 'Ücret tanımları', param: 'ucret-tanimi' },
   paidActivities: { label: 'Gezi ve etkinlik ücretleri', param: 'gezi-etkinlik' },
+  eventTickets: { label: 'Etkinlik biletleri', param: 'etkinlik-bileti' },
+  staffDeductions: { label: 'Avans ve kesintiler', param: 'avans-kesinti' },
+  staffCertificates: { label: 'Personel belgeleri', param: 'personel-belgesi' },
   payrollExport: { label: 'Bordro aktarımı', param: 'bordro-aktarim' },
 } as const
 type FinanceView = keyof typeof VIEWS
@@ -224,6 +236,9 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Ücret tanımları (DOM-FIN-099) yalnız yöneticidedir; ücret kişisel veridir (K-306).
  * Gezi ve etkinlik ücretleri (DOM-FIN-098) ikisine açıktır; ön büro katılım yazar ve iptal eder,
  * etkinliği ve iadeyi yönetici yönetir (K-300).
+ * Etkinlik biletleri (DOM-FIN-103) ikisine açıktır; etkinliği yönetici açar (K-324).
+ * Avans ve kesintiler (DOM-FIN-101) yalnız yöneticidedir; icra bilgisi hassastır (K-315).
+ * Personel belgeleri (DOM-FIN-106) yalnız yöneticidedir; belge ücret ve kimlik no içerir (K-342).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -238,8 +253,10 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'fixedAssets' ||
       value === 'severance' ||
       value === 'freeTuition' ||
-      value === 'payRates' ||
       value === 'payrollExport' ||
+      value === 'staffCertificates' ||
+      value === 'staffDeductions' ||
+      value === 'payRates' ||
       value === 'stakeholders' ||
       value === 'donations' ||
       value === 'refundInvoices'
@@ -431,6 +448,9 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'stakeholders' ? <FinanceStakeholdersSection /> : null}
         {tab === 'payRates' ? <FinancePayRatesSection /> : null}
         {tab === 'paidActivities' ? <FinancePaidActivitiesSection isManager={isManager} /> : null}
+        {tab === 'eventTickets' ? <FinanceEventTicketsSection role={session?.role ?? ''} /> : null}
+        {tab === 'staffDeductions' ? <FinanceStaffDeductionsSection /> : null}
+        {tab === 'staffCertificates' ? <FinanceStaffCertificatesSection /> : null}
         {tab === 'payrollExport' ? <FinancePayrollExportSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel

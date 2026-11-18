@@ -70,7 +70,15 @@ export async function updateLeaveType(
   institutionId: string,
   row: LeaveTypeRow & { expectedVersion: number; userId: string; now: Date },
 ): Promise<boolean> {
-  const { expectedVersion, userId, now, code, kind: _kind, ...fields } = row
+  const { expectedVersion, userId, now, code } = row
+  // Kod ve biçim değişmez; yalnız ayar alanları yazılır.
+  const fields = {
+    label: row.label,
+    paid: row.paid,
+    deductsFromAnnual: row.deductsFromAnnual,
+    defaultDays: row.defaultDays,
+    isActive: row.isActive,
+  }
   const rows = await tx
     .update(staffLeaveTypes)
     .set({ ...fields, updatedByUserId: userId, updatedAt: now, version: expectedVersion + 1 })

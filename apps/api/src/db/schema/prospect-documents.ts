@@ -101,6 +101,11 @@ export const prospectDocuments = pgTable(
     reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
     supersededAt: timestamp('superseded_at', { withTimezone: true }),
     supersededById: uuid('superseded_by_id'),
+    // Kesin kayıtla eklenen ikinci bağ (DOM-KAY-045, K-384): belgenin öğrenci dosyasındaki yeri.
+    // kvkk: K — öğrencinin kaydı (records `students`); dosya kopyalanmaz, bağı aday belgesinde kalır
+    studentId: text('student_id'),
+    linkedAt: timestamp('linked_at', { withTimezone: true }),
+    linkedByUserId: text('linked_by_user_id'),
     ...requiredColumns(),
   },
   (table) => [
@@ -129,6 +134,19 @@ export const prospectDocuments = pgTable(
       'prospect_documents_superseded_check',
       sql`(${table.status} = 'superseded') = (${table.supersededAt} is not null)`,
     ),
+    check(
+      'prospect_documents_link_check',
+      sql`(${table.studentId} is null) = (${table.linkedAt} is null) and (${table.studentId} is null) = (${table.linkedByUserId} is null)`,
+    ),
+    // Yalnız kabul edilmiş belge bağlanır; yerine yenisi yüklenince bağ geçmiş olarak kalır (K-384).
+    check(
+      'prospect_documents_link_status_check',
+      sql`${table.studentId} is null or ${table.status} in ('accepted', 'superseded')`,
+    ),
+    // Öğrencinin kayıt belgeleri bu indeksten okunur.
+    index('prospect_documents_student_idx')
+      .on(table.institutionId, table.studentId)
+      .where(sql`${table.studentId} is not null`),
     // Adayın belgeleri bu indeksten okunur.
     index('prospect_documents_prospect_idx').on(table.institutionId, table.prospectId),
     // Türde tek güncel belge.
@@ -163,6 +181,10 @@ export const prospectDocumentConsents = pgTable(
     grantedByUserId: text('granted_by_user_id').notNull(),
     withdrawnAt: timestamp('withdrawn_at', { withTimezone: true }),
     withdrawnByUserId: text('withdrawn_by_user_id'),
+    // Kesin kayıtla rızanın bağlandığı öğrenci (DOM-KAY-045, K-385; H-80).
+    // kvkk: K — öğrencinin kaydı (records `students`)
+    studentId: text('student_id'),
+    linkedAt: timestamp('linked_at', { withTimezone: true }),
     ...requiredColumns(),
   },
   (table) => [
@@ -178,6 +200,10 @@ export const prospectDocumentConsents = pgTable(
     check(
       'prospect_document_consents_withdrawn_check',
       sql`(${table.withdrawnAt} is null) = (${table.withdrawnByUserId} is null)`,
+    ),
+    check(
+      'prospect_document_consents_link_check',
+      sql`(${table.studentId} is null) = (${table.linkedAt} is null)`,
     ),
     index('prospect_document_consents_prospect_idx').on(table.institutionId, table.prospectId),
     // Aday başına tek etkin rıza.

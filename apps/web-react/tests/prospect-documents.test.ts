@@ -55,6 +55,8 @@ const document = (overrides: Partial<ProspectDocumentRow> = {}): ProspectDocumen
     byteSize: 1536,
     purgeAt: null,
   },
+  linkedToStudent: false,
+  linkedAt: null,
   rejectionReason: null,
   uploadedAt: '2026-10-06T09:00:00.000Z',
   reviewedAt: null,

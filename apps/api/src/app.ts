@@ -31,6 +31,7 @@ import { requireMarkedHeaders } from './routes/commands.schemas.ts'
 import { registerEnrollmentImportRoutes } from './routes/enrollment-imports.ts'
 import { registerEnrollmentEokulImportRoutes } from './routes/enrollment-eokul-imports.ts'
 import { registerEnrollmentCertificateRoutes } from './routes/enrollment-certificates.ts'
+import { registerEnrollmentDocumentRoutes } from './routes/enrollment-documents.ts'
 import { registerEnrollmentFunnelRoutes } from './routes/enrollment-funnel.ts'
 import { registerFeeTariffRoutes } from './routes/fee-tariffs.ts'
 import { registerFinanceBoardReportRoutes } from './routes/finance-board-report.ts'
@@ -529,6 +530,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerProspectSeasonWatchRoutes(app)
   registerProspectCampaignRoutes(app)
   registerProspectDocumentRoutes(app, storage)
+  registerEnrollmentDocumentRoutes(app)
   registerEnrollmentCertificateRoutes(app)
   registerFinancePayerChildrenRoutes(app)
   registerFinanceCorporateRoutes(app)

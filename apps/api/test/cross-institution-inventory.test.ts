@@ -2493,6 +2493,17 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: kayıt belgeleri (ON-344; DOM-KAY-045). Kanıt `enrollment-documents.test.ts`.
+  'GET /api/v1/prospects/enrollment-documents': liste(
+    'enrollment-documents.test.ts',
+    'DOM-KAY-045: yetki, modül ve kurum kapsamı; başka kurumun öğrencisi 404, listede yok',
+    'listRows(other.admin)',
+  ),
+  'GET /api/v1/prospects/students/:studentId/enrollment-documents': kayit(
+    'enrollment-documents.test.ts',
+    'DOM-KAY-045: yetki, modül ve kurum kapsamı; başka kurumun öğrencisi 404, listede yok',
+    'get(studentDocs(studentId), other.admin)',
+  ),
 }
 
 /**

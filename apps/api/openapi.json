@@ -18214,6 +18214,278 @@
           "rows"
         ]
       },
+      "EnrollmentDocumentRowInput": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string"
+          },
+          "prospectId": {
+            "type": "string",
+            "description": "Belgelerin yüklendiği aday kaydı (aday detayı bağlantısı)"
+          },
+          "name": {
+            "type": "string"
+          },
+          "documentCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Öğrenciye bağlı, dosyası duran belge sayısı"
+          },
+          "missing": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "stage": {
+                  "type": "string",
+                  "enum": [
+                    "application",
+                    "enrollment"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "label",
+                "stage"
+              ]
+            },
+            "description": "Eksik zorunlu türler (kesin kayıtta iki aşamanın türleri de istenir; K-321)"
+          },
+          "awaitingReview": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "İncelemesi bekleyen güncel aday belgesi"
+          }
+        },
+        "required": [
+          "studentId",
+          "prospectId",
+          "name",
+          "documentCount",
+          "missing",
+          "awaitingReview"
+        ]
+      },
+      "EnrollmentDocumentInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+            "description": "Aday belgesinin kimliği (açılış aday belge ucundan)"
+          },
+          "prospectId": {
+            "type": "string"
+          },
+          "documentTypeId": {
+            "type": "string"
+          },
+          "typeLabel": {
+            "type": "string"
+          },
+          "specialCategory": {
+            "type": "boolean"
+          },
+          "canOpen": {
+            "type": "boolean",
+            "description": "Oturumdaki kişi dosyayı açabilir mi (özel nitelikli belgede yalnız yönetici)"
+          },
+          "file": {
+            "type": "object",
+            "properties": {
+              "available": {
+                "type": "boolean",
+                "description": "Dosya imha edilmemiş mi"
+              },
+              "name": {
+                "description": "Özgün dosya adı; özel nitelikli belgeyi açamayana `null`",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "contentType": {
+                "type": "string"
+              },
+              "byteSize": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "available",
+              "name",
+              "contentType",
+              "byteSize"
+            ]
+          },
+          "reviewedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "linkedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Öğrenciye bağlandığı an"
+          }
+        },
+        "required": [
+          "id",
+          "prospectId",
+          "documentTypeId",
+          "typeLabel",
+          "specialCategory",
+          "canOpen",
+          "file",
+          "reviewedAt",
+          "linkedAt"
+        ]
+      },
+      "EnrollmentDocumentsInput": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "prospectId": {
+            "description": "Kesin kaydın adayı; aday kaydından gelmeyen öğrencide `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnrollmentDocumentInput"
+            },
+            "description": "Bağlı belgeler, en yeni bağ önce"
+          },
+          "gaps": {
+            "type": "object",
+            "properties": {
+              "missing": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "stage": {
+                      "type": "string",
+                      "enum": [
+                        "application",
+                        "enrollment"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "label",
+                    "stage"
+                  ]
+                },
+                "description": "Eksik zorunlu türler (kesin kayıtta iki aşamanın türleri de istenir; K-321)"
+              },
+              "awaitingReview": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "İncelemesi bekleyen güncel aday belgesi"
+              }
+            },
+            "required": [
+              "missing",
+              "awaitingReview"
+            ]
+          },
+          "consent": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "grantor": {
+                    "type": "string",
+                    "enum": [
+                      "guardian",
+                      "self"
+                    ]
+                  },
+                  "grantedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  "linkedAt": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "grantor",
+                  "grantedAt",
+                  "linkedAt"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Öğrenciye bağlı etkin özel nitelikli belge rızası (K-385)"
+          }
+        },
+        "required": [
+          "studentId",
+          "name",
+          "prospectId",
+          "documents",
+          "gaps",
+          "consent"
+        ]
+      },
       "EnrollmentFunnelStepInput": {
         "type": "object",
         "properties": {
@@ -19765,7 +20037,7 @@
                     "type": "null"
                   }
                 ],
-                "description": "Dosyanın imhaya işaretlendiği an (K-323)"
+                "description": "Dosyanın imhaya işaretlendiği an (K-323); öğrenciye bağlı belgede `null` (K-386)"
               }
             },
             "required": [
@@ -19776,6 +20048,23 @@
               "byteSize",
               "purgeAt"
             ]
+          },
+          "linkedToStudent": {
+            "type": "boolean",
+            "description": "Kesin kayıtla öğrenci dosyasına bağlandı mı (DOM-KAY-045, K-384)"
+          },
+          "linkedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Öğrenciye bağlandığı an"
           },
           "rejectionReason": {
             "description": "Ret gerekçesi; özel nitelikli belgeyi açamayana `null`",
@@ -19827,6 +20116,8 @@
           "specialCategory",
           "canOpen",
           "file",
+          "linkedToStudent",
+          "linkedAt",
           "rejectionReason",
           "uploadedAt",
           "reviewedAt",
@@ -39040,6 +39331,286 @@
         ],
         "additionalProperties": false
       },
+      "EnrollmentDocumentRow": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string"
+          },
+          "prospectId": {
+            "type": "string",
+            "description": "Belgelerin yüklendiği aday kaydı (aday detayı bağlantısı)"
+          },
+          "name": {
+            "type": "string"
+          },
+          "documentCount": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Öğrenciye bağlı, dosyası duran belge sayısı"
+          },
+          "missing": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "stage": {
+                  "type": "string",
+                  "enum": [
+                    "application",
+                    "enrollment"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "label",
+                "stage"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Eksik zorunlu türler (kesin kayıtta iki aşamanın türleri de istenir; K-321)"
+          },
+          "awaitingReview": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "İncelemesi bekleyen güncel aday belgesi"
+          }
+        },
+        "required": [
+          "studentId",
+          "prospectId",
+          "name",
+          "documentCount",
+          "missing",
+          "awaitingReview"
+        ],
+        "additionalProperties": false
+      },
+      "EnrollmentDocument": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+            "description": "Aday belgesinin kimliği (açılış aday belge ucundan)"
+          },
+          "prospectId": {
+            "type": "string"
+          },
+          "documentTypeId": {
+            "type": "string"
+          },
+          "typeLabel": {
+            "type": "string"
+          },
+          "specialCategory": {
+            "type": "boolean"
+          },
+          "canOpen": {
+            "type": "boolean",
+            "description": "Oturumdaki kişi dosyayı açabilir mi (özel nitelikli belgede yalnız yönetici)"
+          },
+          "file": {
+            "type": "object",
+            "properties": {
+              "available": {
+                "type": "boolean",
+                "description": "Dosya imha edilmemiş mi"
+              },
+              "name": {
+                "description": "Özgün dosya adı; özel nitelikli belgeyi açamayana `null`",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "contentType": {
+                "type": "string"
+              },
+              "byteSize": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "available",
+              "name",
+              "contentType",
+              "byteSize"
+            ],
+            "additionalProperties": false
+          },
+          "reviewedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "linkedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Öğrenciye bağlandığı an"
+          }
+        },
+        "required": [
+          "id",
+          "prospectId",
+          "documentTypeId",
+          "typeLabel",
+          "specialCategory",
+          "canOpen",
+          "file",
+          "reviewedAt",
+          "linkedAt"
+        ],
+        "additionalProperties": false
+      },
+      "EnrollmentDocuments": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "prospectId": {
+            "description": "Kesin kaydın adayı; aday kaydından gelmeyen öğrencide `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnrollmentDocument"
+            },
+            "description": "Bağlı belgeler, en yeni bağ önce"
+          },
+          "gaps": {
+            "type": "object",
+            "properties": {
+              "missing": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "stage": {
+                      "type": "string",
+                      "enum": [
+                        "application",
+                        "enrollment"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "label",
+                    "stage"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "Eksik zorunlu türler (kesin kayıtta iki aşamanın türleri de istenir; K-321)"
+              },
+              "awaitingReview": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "İncelemesi bekleyen güncel aday belgesi"
+              }
+            },
+            "required": [
+              "missing",
+              "awaitingReview"
+            ],
+            "additionalProperties": false
+          },
+          "consent": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "grantor": {
+                    "type": "string",
+                    "enum": [
+                      "guardian",
+                      "self"
+                    ]
+                  },
+                  "grantedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  "linkedAt": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "grantor",
+                  "grantedAt",
+                  "linkedAt"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Öğrenciye bağlı etkin özel nitelikli belge rızası (K-385)"
+          }
+        },
+        "required": [
+          "studentId",
+          "name",
+          "prospectId",
+          "documents",
+          "gaps",
+          "consent"
+        ],
+        "additionalProperties": false
+      },
       "EnrollmentFunnelStep": {
         "type": "object",
         "properties": {
@@ -40613,7 +41184,7 @@
                     "type": "null"
                   }
                 ],
-                "description": "Dosyanın imhaya işaretlendiği an (K-323)"
+                "description": "Dosyanın imhaya işaretlendiği an (K-323); öğrenciye bağlı belgede `null` (K-386)"
               }
             },
             "required": [
@@ -40625,6 +41196,23 @@
               "purgeAt"
             ],
             "additionalProperties": false
+          },
+          "linkedToStudent": {
+            "type": "boolean",
+            "description": "Kesin kayıtla öğrenci dosyasına bağlandı mı (DOM-KAY-045, K-384)"
+          },
+          "linkedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Öğrenciye bağlandığı an"
           },
           "rejectionReason": {
             "description": "Ret gerekçesi; özel nitelikli belgeyi açamayana `null`",
@@ -40676,6 +41264,8 @@
           "specialCategory",
           "canOpen",
           "file",
+          "linkedToStudent",
+          "linkedAt",
           "rejectionReason",
           "uploadedAt",
           "reviewedAt",
@@ -100203,6 +100793,298 @@
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/ProspectDocuments"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/prospects/enrollment-documents": {
+      "get": {
+        "operationId": "listEnrollmentDocuments",
+        "summary": "Kayıt belgeleri listesi",
+        "tags": [
+          "prospects"
+        ],
+        "description": "Aday kaydından gelen aktif öğrenciler, ad sırasıyla (DOM-KAY-045, K-386): öğrenciye bağlı belge sayısı, eksik zorunlu türler (kesin kayıtta ön başvuru ve kesin kayıt türlerinin ikisi de istenir; reddedilen ya da dosyası imha edilen belge eksiktir) ve incelemesi bekleyen belge sayısı. Ayrılan, mezun ve aktarımla gelen öğrenci listede yoktur. `q` ada göre arar, `missingOnly=true` yalnız eksiği olanları verir. Satır iletişim ve kimlik bilgisi taşımaz. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Ada göre arama"
+          },
+          {
+            "schema": {
+              "default": "false",
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "in": "query",
+            "name": "missingOnly",
+            "required": false,
+            "description": "`true`: yalnız eksik zorunlu belgesi olan öğrenciler"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/EnrollmentDocumentRow"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/prospects/students/{studentId}/enrollment-documents": {
+      "get": {
+        "operationId": "getEnrollmentDocuments",
+        "summary": "Öğrencinin kayıt belgeleri",
+        "tags": [
+          "prospects"
+        ],
+        "description": "Kesin kayıtta (ya da kayıttan sonraki kabulde) öğrenciye bağlanan aday belgeleri, eksik zorunlu türler ve öğrenciye bağlı özel nitelikli belge rızası (DOM-KAY-045, K-384, K-385). Dosya kopyalanmaz; belge `GET /api/v1/prospects/{prospectId}/documents/{documentId}/url` ile açılır ve açılış `prospect_document.read` olarak denetime yazılır. Özel nitelikli belgeyi açamayan (ön büro) dosya adını `null` görür. Reddedilen, yerine yenisi yüklenen ve rızası geri çekilip arşivlenen belge listede yoktur. Aday kaydından gelmeyen öğrencide `prospectId` `null`, liste boş. Olmayan, arşivlenmiş ya da başka kurumun öğrencisi 404. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "studentId",
+            "required": true,
+            "description": "Öğrenci kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/EnrollmentDocuments"
                     }
                   },
                   "required": [

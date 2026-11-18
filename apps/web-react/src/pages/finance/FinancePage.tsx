@@ -146,6 +146,9 @@ const FinanceEventTicketsSection = lazy(async () => ({
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
+const FinanceSgkPreparationSection = lazy(async () => ({
+  default: (await import('./FinanceSgkPreparationSection.tsx')).FinanceSgkPreparationSection,
+}))
 
 const VIEW_PARAM = 'gorunum'
 const VIEWS = {
@@ -190,6 +193,7 @@ const VIEWS = {
   payRates: { label: 'Ücret tanımları', param: 'ucret-tanimi' },
   paidActivities: { label: 'Gezi ve etkinlik ücretleri', param: 'gezi-etkinlik' },
   eventTickets: { label: 'Etkinlik biletleri', param: 'etkinlik-bileti' },
+  sgkPreparation: { label: 'SGK hazırlık listesi', param: 'sgk-hazirlik' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -225,6 +229,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Gezi ve etkinlik ücretleri (DOM-FIN-098) ikisine açıktır; ön büro katılım yazar ve iptal eder,
  * etkinliği ve iadeyi yönetici yönetir (K-300).
  * Etkinlik biletleri (DOM-FIN-103) ikisine açıktır; etkinliği yönetici açar (K-324).
+ * SGK hazırlık listesi (DOM-FIN-107) yalnız yöneticidedir; liste ücret taşır (K-355).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -242,7 +247,8 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'payRates' ||
       value === 'stakeholders' ||
       value === 'donations' ||
-      value === 'refundInvoices'
+      value === 'refundInvoices' ||
+      value === 'sgkPreparation'
     )
       return isManager
     if (value === 'packages' || value === 'courseOffers' || value === 'corporate')
@@ -432,6 +438,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'payRates' ? <FinancePayRatesSection /> : null}
         {tab === 'paidActivities' ? <FinancePaidActivitiesSection isManager={isManager} /> : null}
         {tab === 'eventTickets' ? <FinanceEventTicketsSection role={session?.role ?? ''} /> : null}
+        {tab === 'sgkPreparation' ? <FinanceSgkPreparationSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

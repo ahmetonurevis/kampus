@@ -1759,10 +1759,6 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
-  // Onur: kıdem ve ihbar tazminatı tahmini (ON-205; DOM-FIN-094). Elle girdili hesap; kayıt yok.
-  'POST /api/v1/finance/severance-estimates': yok(
-    'elle girdili kıdem ve ihbar hesabı; kurum kaydı okumaz ve yazmaz, sonuç saklanmaz (K-273)',
-  ),
   // Onur: kampanya kodu ve huni kırılımı (ON-134; DOM-KAY-041). Envanter tablosunda Onur
   // bloklarının sonuna (ör. tedarikçi bloğunun yanına) eklenir; kanıt `prospect-campaigns.test.ts`.
   ...Object.fromEntries(
@@ -2503,6 +2499,22 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'enrollment-documents.test.ts',
     'DOM-KAY-045: yetki, modül ve kurum kapsamı; başka kurumun öğrencisi 404, listede yok',
     'get(studentDocs(studentId), other.admin)',
+  ),
+  // Onur: kıdem hesaplayıcısında ücret önerisi ve bordro parametresi (ON-341; DOM-FIN-094).
+  ...Object.fromEntries(
+    (
+      [
+        ['gövde', 'POST /api/v1/finance/severance-estimates', 'membershipId: bTeacher.id'],
+        ['kayıt', 'GET /api/v1/finance/severance-pay-suggestion', 'membershipId=${bTeacher.id}'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-severance.test.ts',
+        'kurumlar arası: başka kurumun personeli ve personel olmayan üyelik 404',
+        marker,
+      ),
+    ]),
   ),
 }
 

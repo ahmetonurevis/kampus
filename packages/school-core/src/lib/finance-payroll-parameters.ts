@@ -295,8 +295,9 @@ const SOURCE_2026 =
 /**
  * Platform varsayılanı (tüm kurumlar). Yeni dönem (ocak; kıdem tavanında temmuz; yıl ortası asgari
  * ücret artışı) yeni satırla eklenir, eski satır değişmez. Değerler **doğrulanmalı** (M-40);
- * `unverifiedFields` ayrıca emin olunmayan alanlardır. Kıdem tavanı ve dilimler kıdem
- * hesaplayıcısının tablolarıyla aynıdır (`finance-severance.ts`; tutarlılık testle denetlenir).
+ * `unverifiedFields` ayrıca emin olunmayan alanlardır. Kıdem hesaplayıcısı 2025 ve sonrasında
+ * tavanı ve dilimleri buradan okur; daha önceki çıkış günleri için kendi yedek tablosu vardır
+ * (`finance-severance.ts`, K-344).
  *
  * - 2025: brüt asgari ücret 26.005,50 ₺ (net 22.104,67 ₺); dilimler 158.000 / 330.000 /
  *   1.200.000 / 4.300.000 ₺; SGK tavanı 7,5 kat; kıdem tavanı ocak 46.655,43 ₺, temmuz 53.919,68 ₺.
@@ -558,20 +559,9 @@ export function payrollParameterYear(
 // --- Kıdem hesaplayıcısına okuma bağı -----------------------------------------------------------
 
 /**
- * Kıdem tavanı satırları, kıdem hesaplayıcısının `SEVERANCE_CEILINGS` biçiminde (DOM-FIN-094).
- * Hesaplayıcı bugün kendi tablosunu kullanır; parametre tablosuna geçişte bu satırlar verilir.
+ * Dilimler kıdem hesaplayıcısının tarife biçiminde (`upToCents`, son dilimde `null`). Kıdem tavanı,
+ * dilimler ve damga oranı çıkış günündeki setten okunur (`severanceParametersOn`, DOM-FIN-094, K-344).
  */
-export function severanceCeilingRows(
-  institutionSets: readonly PayrollInstitutionSet[],
-  platform: readonly PayrollPlatformSet[] = PAYROLL_PLATFORM_DEFAULTS,
-): { from: string; monthlyCents: number }[] {
-  return payrollParameterTimeline(institutionSets, platform).map((set) => ({
-    from: set.values.effectiveFrom,
-    monthlyCents: set.values.severanceCeilingCents,
-  }))
-}
-
-/** Dilimler kıdem hesaplayıcısının tarife biçiminde (`upToCents`, son dilimde `null`). */
 export function wageTariffBrackets(
   brackets: readonly IncomeTaxBracket[],
 ): { upToCents: number | null; rateBasisPoints: number }[] {

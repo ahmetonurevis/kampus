@@ -2,11 +2,30 @@ import { z } from 'zod'
 
 import type { Role } from '../modules/navigation.ts'
 import { daySchema } from './domain.ts'
+import {
+  WAGE_TYPE_LABELS,
+  type SeverancePaySuggestion,
+  type SeveranceSuggestionRate,
+  type SeveranceSuggestionStatus,
+  type WageType,
+} from './finance-pay-rates.ts'
+import {
+  PAYROLL_PLATFORM_DEFAULTS,
+  payrollParameterTimeline,
+  STAMP_TAX_SCALE,
+  stampTaxLabel,
+  wageTariffBrackets,
+  type PayrollInstitutionSet,
+  type PayrollOrigin,
+  type PayrollPlatformSet,
+} from './finance-payroll-parameters.ts'
 import { dateLabel, money } from './format.ts'
 
 /**
- * Kıdem ve ihbar tazminatı tahmini (docs/domain/finans.md DOM-FIN-094; ON-205). Elle girdili saf
- * hesap: personel kaydı okumaz, sonuç saklanmaz (K-273). Tutarlar kuruş tamsayı, oranlar on binde
+ * Kıdem ve ihbar tazminatı tahmini (docs/domain/finans.md DOM-FIN-094; ON-205, ON-341). Saf hesap:
+ * ücret elle girilir ya da personelin ücret tanımından önerilir (K-345); kıdem tavanı, gelir vergisi
+ * dilimleri ve damga vergisi oranı kurumun çıkış günündeki bordro parametre setinden okunur
+ * (DOM-FIN-100, K-344). Sonuç saklanmaz (K-273, K-346). Tutarlar kuruş tamsayı, oranlar on binde
  * birdir; her kalem bir kez kuruşa yuvarlanır (yarım yukarı). Mevzuat varsayımları hukukçu ve mali
  * müşavir sorusu H-34'tür; tablolardaki değerler **doğrulanmalıdır**.
  *
@@ -27,7 +46,10 @@ export const FINANCE_SEVERANCE_ROLES = ['yonetici'] as const satisfies readonly 
 export const SEVERANCE_ESTIMATE_NOTE =
   'Tahmini hesaptır; bordro ya da mali müşavir hesabı yerine geçmez.'
 
-/** Damga vergisi: binde 7,59 (488 sayılı Damga Vergisi Kanunu (1) sayılı tablo IV-1). */
+/**
+ * Yedek damga vergisi oranı: binde 7,59 (488 sayılı Damga Vergisi Kanunu (1) sayılı tablo IV-1);
+ * yalnız bordro parametre seti olmayan çıkış gününde kullanılır (K-344).
+ */
 export const STAMP_TAX_RATE_PER_100K = 759
 /** Aylık giydirilmiş ücretin günlüğe çevrilmesinde ay 30 gündür (4857 md. 49 uygulaması). */
 export const DAYS_PER_MONTH = 30
@@ -42,26 +64,22 @@ export const SEVERANCE_TAX_BASE_MAX_CENTS = 10_000_000_000
 export const SEVERANCE_MIN_START_DATE = '1960-01-01'
 
 /**
- * Kıdem tazminatı tavanı: en yüksek devlet memuruna (bugün Diyanet İşleri Başkanı ve TBMM Genel
- * Sekreteri karşılaştırması) bir hizmet yılı için ödenen azami emeklilik ikramiyesi; memur maaş
- * katsayısıyla ocak ve temmuzda değişir. Kaynak: Hazine ve Maliye Bakanlığı memur maaş katsayısı
- * genelgeleri, ÇSGB duyuruları. Değerler **doğrulanmalı** (H-34); yeni dönem başına satır eklenir.
- * Son satırın başlangıcından altı ay geçtiyse hesap "tavan güncel değil" uyarısı taşır.
+ * Yedek kıdem tazminatı tavanı (K-344): bordro parametre seti (DOM-FIN-100) 2025 ocakla başlar; daha
+ * önceki çıkış günleri için bu tablo kullanılır. Tavan en yüksek devlet memuruna bir hizmet yılı için
+ * ödenen azami emeklilik ikramiyesidir; memur maaş katsayısıyla ocak ve temmuzda değişir. Kaynak:
+ * Hazine ve Maliye Bakanlığı memur maaş katsayısı genelgeleri, ÇSGB duyuruları. Değerler
+ * **doğrulanmalı** (H-34). 2025 ve sonrası yalnız parametre setindedir (tek kaynak).
  */
-export const SEVERANCE_CEILINGS: readonly { from: string; monthlyCents: number }[] = [
+export const SEVERANCE_FALLBACK_CEILINGS: readonly { from: string; monthlyCents: number }[] = [
   { from: '2022-01-01', monthlyCents: 1_084_859 },
   { from: '2022-07-01', monthlyCents: 1_537_140 },
   { from: '2023-01-01', monthlyCents: 1_998_283 },
   { from: '2023-07-01', monthlyCents: 2_348_983 },
   { from: '2024-01-01', monthlyCents: 3_505_858 },
   { from: '2024-07-01', monthlyCents: 4_182_842 },
-  { from: '2025-01-01', monthlyCents: 4_665_543 },
-  { from: '2025-07-01', monthlyCents: 5_391_968 },
-  { from: '2026-01-01', monthlyCents: 6_494_877 },
 ]
-/** Tavan tablosunun kapsadığı en erken çıkış günü. */
+/** Yedek tablonun kapsadığı en erken çıkış günü (öncesi için tavan bilinmez, 400). */
 export const SEVERANCE_MIN_END_DATE = '2022-01-01'
-const CEILING_PERIOD_MONTHS = 6
 
 const TARIFF_RATES = [1500, 2000, 2700, 3500, 4000] as const
 
@@ -73,19 +91,16 @@ function tariff(limits: readonly [number, number, number, number]) {
 }
 
 /**
- * Ücret gelirlerine uygulanan gelir vergisi tarifesi (GVK md. 103; her yıl yeniden değerleme
- * oranıyla güncellenir, kaynak: GİB gelir vergisi tarifeleri). Dilim üst sınırı kuruş, oran on binde
- * bir; son dilimin üst sınırı yoktur. Değerler **doğrulanmalı** (H-34). Tabloda olmayan yıl için son
- * yılın tarifesi kullanılır ve hesap uyarı taşır.
+ * Yedek ücret gelir vergisi tarifesi (K-344; GVK md. 103, kaynak: GİB gelir vergisi tarifeleri):
+ * parametre seti olmayan 2022–2024 çıkışları için. Dilim üst sınırı kuruş, oran on binde bir; son
+ * dilimin üst sınırı yoktur. Değerler **doğrulanmalı** (H-34).
  */
-export const WAGE_INCOME_TAX_TARIFFS: Readonly<
+export const WAGE_INCOME_TAX_FALLBACK_TARIFFS: Readonly<
   Record<number, readonly { upToCents: number | null; rateBasisPoints: number }[]>
 > = {
   2022: tariff([3_200_000, 7_000_000, 25_000_000, 88_000_000]),
   2023: tariff([7_000_000, 15_000_000, 55_000_000, 190_000_000]),
   2024: tariff([11_000_000, 23_000_000, 87_000_000, 300_000_000]),
-  2025: tariff([15_800_000, 33_000_000, 120_000_000, 430_000_000]),
-  2026: tariff([19_000_000, 40_000_000, 150_000_000, 530_000_000]),
 }
 /**
  * Çıkış nedenleri (K-275). `severance`: kıdem hakkı doğurur (bir tam yıl şartıyla); `notice`:
@@ -202,6 +217,15 @@ export const severanceRequestSchema = z
       .max(SEVERANCE_TAX_BASE_MAX_CENTS, 'Kümülatif matrah en fazla 100.000.000 ₺ olabilir.')
       .nullable()
       .default(null),
+    // kvkk: K — personel üyeliği. Verilirse sunucu çıkış gününün ücret önerisini yeniden okur ve
+    // kaynağını sonuçta döner (K-346); yalnız ücret okuyan rol (K-347). Ad alınmaz.
+    membershipId: z
+      .string('Personel geçersiz.')
+      .trim()
+      .min(1, 'Personel geçersiz.')
+      .max(100, 'Personel geçersiz.')
+      .nullable()
+      .default(null),
   })
   .superRefine((value, context) => {
     if (value.startDate < SEVERANCE_MIN_START_DATE)
@@ -304,33 +328,123 @@ export function noticeWeeks(startDate: string, endDate: string): 2 | 4 | 6 | 8 {
 // --- Tablolar ------------------------------------------------------------------------------------
 
 export interface CeilingLookup {
-  /** Uygulanan tavan döneminin başlangıcı. */
+  /** Uygulanan tavan döneminin (parametre setinin ya da yedek tablo satırının) başlangıcı. */
   from: string
   monthlyCents: number
-  /** Çıkış günü tablonun son döneminden (altı ay) sonra: tavan güncel olmayabilir. */
+  /**
+   * Çıkış günü, son bilinen dönemin başladığı yarıyıldan (ocak–haziran, temmuz–aralık) sonraki bir
+   * yarıyılda: tavan ocak ve temmuzda değişir, güncel olmayabilir.
+   */
   stale: boolean
 }
 
-/** Çıkış gününde yürürlükteki kıdem tavanı. */
-export function severanceCeilingOn(day: string): CeilingLookup {
-  let found = SEVERANCE_CEILINGS[0]
-  for (const row of SEVERANCE_CEILINGS) if (row.from <= day) found = row
-  if (!found || day < found.from) throw new RangeError(`Tavan tablosu ${day} gününü kapsamıyor.`)
-  const last = SEVERANCE_CEILINGS[SEVERANCE_CEILINGS.length - 1]
-  const stale = found === last && day >= addMonthsClamped(found.from, CEILING_PERIOD_MONTHS)
-  return { from: found.from, monthlyCents: found.monthlyCents, stale }
+export interface WageTariff {
+  /** Tarifenin yılı (parametre setinin başlangıç yılı). */
+  year: number
+  /** Çıkış yılı için tarife yok, son bilinen kullanıldı. */
+  stale: boolean
+  brackets: readonly { upToCents: number | null; rateBasisPoints: number }[]
 }
 
-const TARIFF_YEARS = Object.keys(WAGE_INCOME_TAX_TARIFFS)
+export const SEVERANCE_PARAMETER_SOURCES = ['payroll_parameters', 'fallback_table'] as const
+export type SeveranceParameterSource = (typeof SEVERANCE_PARAMETER_SOURCES)[number]
+
+/** Hesabın dayandığı tavan, tarife ve damga oranı ile kaynağı (K-344). */
+export interface SeveranceParameters {
+  /** `payroll_parameters` kurumun geçerli bordro parametre seti, `fallback_table` yedek tablo. */
+  source: SeveranceParameterSource
+  /** Parametre setinin kimliği (`platform-…` ya da kurum kopyası); yedek tabloda `null`. */
+  setId: string | null
+  origin: PayrollOrigin | null
+  /** Kurum kopyasının sürümü; platform setinde ve yedek tabloda `null`. */
+  version: number | null
+  /** Setin yürürlük başlangıcı ya da yedek tavan satırının başlangıcı. */
+  effectiveFrom: string
+  ceiling: CeilingLookup
+  tariff: WageTariff
+  /** Damga vergisi oranı, yüz binde bir (759 = binde 7,59). */
+  stampTaxRatePer100k: number
+}
+
+/** Günün yarıyılının ilk günü: ocak–haziran 1 Ocak, temmuz–aralık 1 Temmuz. */
+const halfYearStart = (day: string) =>
+  `${day.slice(0, 4)}-${Number(day.slice(5, 7)) >= 7 ? '07' : '01'}-01`
+
+/** Son dönem, günün yarıyılından önce başladıysa tavan güncel olmayabilir. */
+const ceilingStale = (from: string, isLast: boolean, day: string) =>
+  isLast && from < halfYearStart(day)
+
+const FALLBACK_TARIFF_YEARS = Object.keys(WAGE_INCOME_TAX_FALLBACK_TARIFFS)
   .map(Number)
   .sort((a, b) => a - b)
 
-/** Yılın ücret tarifesi; tabloda yoksa en yakın önceki yılın (yoksa ilk yılın) tarifesi. */
-export function wageTariffFor(year: number) {
-  const known = TARIFF_YEARS.filter((item) => item <= year)
-  const used = known[known.length - 1] ?? TARIFF_YEARS[0] ?? 2026
-  const brackets = WAGE_INCOME_TAX_TARIFFS[used] ?? []
-  return { year: used, stale: used !== year, brackets }
+/** Yedek tablodan (2025 öncesi) tavan ve tarife; tabloyu kapsamayan gün `RangeError`. */
+function fallbackParameters(day: string): SeveranceParameters {
+  let found: { from: string; monthlyCents: number } | undefined
+  for (const row of SEVERANCE_FALLBACK_CEILINGS) if (row.from <= day) found = row
+  if (found === undefined) throw new RangeError(`Tavan tablosu ${day} gününü kapsamıyor.`)
+  const year = Number(day.slice(0, 4))
+  const known = FALLBACK_TARIFF_YEARS.filter((item) => item <= year)
+  const tariffYear = known[known.length - 1] ?? FALLBACK_TARIFF_YEARS[0] ?? year
+  return {
+    source: 'fallback_table',
+    setId: null,
+    origin: null,
+    version: null,
+    effectiveFrom: found.from,
+    ceiling: {
+      from: found.from,
+      monthlyCents: found.monthlyCents,
+      stale: ceilingStale(found.from, found === SEVERANCE_FALLBACK_CEILINGS.at(-1), day),
+    },
+    tariff: {
+      year: tariffYear,
+      stale: tariffYear !== year,
+      brackets: WAGE_INCOME_TAX_FALLBACK_TARIFFS[tariffYear] ?? [],
+    },
+    stampTaxRatePer100k: STAMP_TAX_RATE_PER_100K,
+  }
+}
+
+/**
+ * Çıkış gününde geçerli kıdem parametreleri (K-344): kurumun bordro parametre setlerinin ve platform
+ * varsayılanının birleşiminde (DOM-FIN-100) başlangıcı güne eşit ya da önce olan en geç set; tavan,
+ * dilimler ve damga oranı o setten okunur. Gün bütün setlerden önceyse (2025 öncesi, kurumun daha
+ * erken kopyası yoksa) yedek tablo kullanılır. Tarife yılı setin yılıdır; çıkış yılı için set yoksa
+ * `tariff.stale`.
+ */
+export function severanceParametersOn(
+  day: string,
+  institutionSets: readonly PayrollInstitutionSet[] = [],
+  platform: readonly PayrollPlatformSet[] = PAYROLL_PLATFORM_DEFAULTS,
+): SeveranceParameters {
+  const timeline = payrollParameterTimeline(institutionSets, platform)
+  let index = -1
+  timeline.forEach((set, at) => {
+    if (set.values.effectiveFrom <= day) index = at
+  })
+  const set = timeline[index]
+  if (set === undefined) return fallbackParameters(day)
+  const from = set.values.effectiveFrom
+  const year = Number(from.slice(0, 4))
+  return {
+    source: 'payroll_parameters',
+    setId: set.id,
+    origin: set.origin,
+    version: set.version,
+    effectiveFrom: from,
+    ceiling: {
+      from,
+      monthlyCents: set.values.severanceCeilingCents,
+      stale: ceilingStale(from, index === timeline.length - 1, day),
+    },
+    tariff: {
+      year,
+      stale: Number(day.slice(0, 4)) > year,
+      brackets: wageTariffBrackets(set.values.incomeTaxBrackets),
+    },
+    stampTaxRatePer100k: set.values.stampTaxRatePer100k,
+  }
 }
 
 /** Kümülatif matrahın tarifeye göre vergisi (kuruş, yuvarlanmamış). */
@@ -349,8 +463,8 @@ function cumulativeTax(
   return tax
 }
 
-const stampTax = (grossCents: number) =>
-  Math.round((grossCents * STAMP_TAX_RATE_PER_100K) / 100_000)
+const stampTax = (grossCents: number, ratePer100k: number) =>
+  Math.round((grossCents * ratePer100k) / STAMP_TAX_SCALE)
 
 // --- Hesap ---------------------------------------------------------------------------------------
 
@@ -396,6 +510,34 @@ export interface NoticeLine {
   netCents: number
 }
 
+/** Hesabın parametre kaynağı (yanıt ve PDF; tavan ve tarife satırları ilgili kalemdedir). */
+export type SeveranceParameterInfo = Omit<SeveranceParameters, 'ceiling' | 'tariff'>
+
+/**
+ * Ücret girdisinin kaynağı (K-346): personel seçildiyse sunucunun çıkış gününde okuduğu ücret
+ * tanımları ve önerilen tutarlar; girilen ücret öneriden farklıysa `…Changed`. Tutar ve tanım
+ * kimliği yanıtta ve PDF'te kalır, sunucuda saklanmaz (K-273).
+ */
+export interface SeverancePaySource {
+  membershipId: string
+  /** Önerinin okunduğu gün: çıkış günü. */
+  date: string
+  status: SeveranceSuggestionStatus
+  /** Günde yürürlükteki ana ücret tanımı (türü ne olursa olsun). */
+  wageRateId: string | null
+  wageRateType: WageType | null
+  wageStartDate: string | null
+  /** Öneriye giren (nakdi) yan hak tanımları. */
+  benefitRateIds: string[]
+  /** Öneri dışında kalan (ayni) yan hak sayısı. */
+  excludedBenefitCount: number
+  suggestedGrossWageCents: number | null
+  suggestedBenefitsCents: number | null
+  /** Girilen brüt öneriden farklı ya da öneri yok. */
+  grossWageChanged: boolean
+  benefitsChanged: boolean
+}
+
 export interface SeveranceEstimate {
   exitReason: SeveranceExitReason
   noticeGiven: boolean
@@ -411,18 +553,62 @@ export interface SeveranceEstimate {
   severance: SeveranceLine
   notice: NoticeLine
   totals: { grossCents: number; incomeTaxCents: number; stampTaxCents: number; netCents: number }
+  parameters: SeveranceParameterInfo
+  /** Personel seçilmediyse `null` (ücret elle girildi). */
+  paySource: SeverancePaySource | null
 }
 
-/** Kıdem ve ihbar tazminatı tahmini (DOM-FIN-094). Girdi `severanceRequestSchema` çıktısıdır. */
-export function severanceEstimate(input: SeveranceRequestInput): SeveranceEstimate {
+const isWageType = (rate: { rateType: string }): rate is { rateType: WageType } =>
+  Object.hasOwn(WAGE_TYPE_LABELS, rate.rateType)
+
+/** Sunucunun okuduğu öneriden ve istekteki ücretten kaynak satırı (K-346). */
+export function severancePaySource(
+  membershipId: string,
+  day: string,
+  suggestion: SeverancePaySuggestion<SeveranceSuggestionRate & { id: string }>,
+  request: Pick<SeveranceRequest, 'grossWageCents' | 'regularBenefitsCents'>,
+): SeverancePaySource {
+  const wage = suggestion.wage
+  return {
+    membershipId,
+    date: day,
+    status: suggestion.status,
+    wageRateId: wage?.id ?? null,
+    wageRateType: wage !== null && isWageType(wage) ? wage.rateType : null,
+    wageStartDate: wage?.startDate ?? null,
+    benefitRateIds: suggestion.benefits.filter((item) => item.included).map((item) => item.rate.id),
+    excludedBenefitCount: suggestion.benefits.filter((item) => !item.included).length,
+    suggestedGrossWageCents: suggestion.grossWageCents,
+    suggestedBenefitsCents: suggestion.regularBenefitsCents,
+    grossWageChanged: suggestion.grossWageCents !== request.grossWageCents,
+    benefitsChanged: suggestion.regularBenefitsCents !== request.regularBenefitsCents,
+  }
+}
+
+export interface SeveranceEstimateOptions {
+  /** Çıkış gününün parametreleri; verilmezse yalnız platform varsayılanı (kurum kopyası yok). */
+  parameters?: SeveranceParameters
+  paySource?: SeverancePaySource | null
+}
+
+/**
+ * Kıdem ve ihbar tazminatı tahmini (DOM-FIN-094). Girdi `severanceRequestSchema` çıktısıdır; tavan,
+ * tarife ve damga oranı `options.parameters`tan (servis kurumun çıkış günündeki setini verir, K-344).
+ */
+export function severanceEstimate(
+  input: SeveranceRequestInput,
+  options: SeveranceEstimateOptions = {},
+): SeveranceEstimate {
   const request = severanceRequestSchema.parse(input)
+  const parameters = options.parameters ?? severanceParametersOn(request.endDate)
   const reason = SEVERANCE_EXIT_REASON_INFO[request.exitReason]
   const service = servicePeriod(request.startDate, request.endDate)
   const dressed = request.grossWageCents + request.regularBenefitsCents
   const daily = Math.round(dressed / DAYS_PER_MONTH)
+  const stampRate = parameters.stampTaxRatePer100k
 
   // Kıdem: tam yıl × aylık + artan gün × aylık / 365; aylık tavanla sınırlı.
-  const ceiling = severanceCeilingOn(request.endDate)
+  const ceiling = parameters.ceiling
   const baseMonthly = Math.min(dressed, ceiling.monthlyCents)
   const severanceStatus: SeveranceStatus = !reason.severance
     ? 'reason_not_entitled'
@@ -435,7 +621,7 @@ export function severanceEstimate(input: SeveranceRequestInput): SeveranceEstima
           (baseMonthly * (service.years * DAYS_PER_YEAR + service.remainderDays)) / DAYS_PER_YEAR,
         )
       : 0
-  const severanceStamp = stampTax(severanceGross)
+  const severanceStamp = stampTax(severanceGross, stampRate)
   const severance: SeveranceLine = {
     status: severanceStatus,
     days:
@@ -448,7 +634,7 @@ export function severanceEstimate(input: SeveranceRequestInput): SeveranceEstima
         : 0,
     fullYears: service.years,
     remainderDays: service.remainderDays,
-    ceiling,
+    ceiling: { ...ceiling },
     ceilingApplied: dressed > ceiling.monthlyCents,
     baseMonthlyCents: baseMonthly,
     dailyWageCents: Math.round(baseMonthly / DAYS_PER_MONTH),
@@ -467,7 +653,7 @@ export function severanceEstimate(input: SeveranceRequestInput): SeveranceEstima
       : 'eligible'
   const noticeDays = noticeStatus === 'eligible' ? weeks * 7 : 0
   const noticeGross = Math.round((dressed * noticeDays) / DAYS_PER_MONTH)
-  const tariffUsed = wageTariffFor(Number(request.endDate.slice(0, 4)))
+  const tariffUsed = parameters.tariff
   const method: IncomeTaxMethod =
     noticeGross === 0
       ? 'none'
@@ -485,7 +671,7 @@ export function severanceEstimate(input: SeveranceRequestInput): SeveranceEstima
               tariffUsed.brackets,
             ) - cumulativeTax(request.cumulativeTaxBaseCents ?? 0, tariffUsed.brackets),
           )
-  const noticeStamp = stampTax(noticeGross)
+  const noticeStamp = stampTax(noticeGross, stampRate)
   const notice: NoticeLine = {
     status: noticeStatus,
     weeks,
@@ -520,6 +706,15 @@ export function severanceEstimate(input: SeveranceRequestInput): SeveranceEstima
       stampTaxCents: severance.stampTaxCents + notice.stampTaxCents,
       netCents: severance.netCents + notice.netCents,
     },
+    parameters: {
+      source: parameters.source,
+      setId: parameters.setId,
+      origin: parameters.origin,
+      version: parameters.version,
+      effectiveFrom: parameters.effectiveFrom,
+      stampTaxRatePer100k: parameters.stampTaxRatePer100k,
+    },
+    paySource: options.paySource ?? null,
   }
 }
 
@@ -559,17 +754,29 @@ export const SEVERANCE_WARNING_CODES = [
   'ceiling_stale',
   'tax_table_stale',
   'resignation_notice_owed',
+  'pay_suggestion_unavailable',
 ] as const
 export type SeveranceWarningCode = (typeof SEVERANCE_WARNING_CODES)[number]
 
 type WarningSource = Pick<SeveranceEstimate, 'exitReason' | 'noticeGiven'> & {
   severance: Pick<SeveranceLine, 'ceiling'>
   notice: Pick<NoticeLine, 'taxTableStale' | 'incomeTaxMethod' | 'taxYear'>
+  paySource: Pick<SeverancePaySource, 'status'> | null
+}
+
+/** Personel seçildi ama öneri yapılmadıysa nedeni (sonuç notu). */
+const SUGGESTION_UNAVAILABLE_REASONS: Readonly<
+  Record<Exclude<SeveranceSuggestionStatus, 'suggested'>, string>
+> = {
+  net_wage: 'ana ücret net tanımlı, brüte çevrilmez',
+  non_monthly_wage: 'ana ücret saatlik ya da ders saati üzerinden',
+  no_wage: 'çıkış gününde yürürlükte ana ücret yok',
 }
 
 /**
- * Hesabın uyarı kodları (API yanıtında): tavan ya da tarife tabloda yok (son bilinen değer
- * kullanıldı), bildirimsiz istifada ihbar tazminatını çalışan öder (bu hesap kapsamaz).
+ * Hesabın uyarı kodları (API yanıtında): tavan ya da tarife parametrelerde yok (son bilinen değer
+ * kullanıldı), bildirimsiz istifada ihbar tazminatını çalışan öder (bu hesap kapsamaz), personel
+ * seçildi ama ücret tanımından öneri yapılamadı (K-345).
  */
 export function severanceWarningCodes(estimate: WarningSource): SeveranceWarningCode[] {
   const codes: SeveranceWarningCode[] = []
@@ -578,6 +785,8 @@ export function severanceWarningCodes(estimate: WarningSource): SeveranceWarning
     codes.push('tax_table_stale')
   if (estimate.exitReason === 'resignation' && !estimate.noticeGiven)
     codes.push('resignation_notice_owed')
+  if (estimate.paySource !== null && estimate.paySource.status !== 'suggested')
+    codes.push('pay_suggestion_unavailable')
   return codes
 }
 
@@ -586,11 +795,16 @@ export function severanceWarnings(estimate: WarningSource): string[] {
   return severanceWarningCodes(estimate).map((code) => {
     switch (code) {
       case 'ceiling_stale':
-        return `Çıkış günü için kıdem tavanı tabloda yok; son bilinen ${dayText(estimate.severance.ceiling.from)} dönemi tavanı kullanıldı. Güncel tavanı doğrulayın.`
+        return `Çıkış günü için kıdem tavanı bordro parametrelerinde yok; son bilinen ${dayText(estimate.severance.ceiling.from)} dönemi tavanı kullanıldı. Güncel tavanı doğrulayın ve Bordro parametrelerine girin.`
       case 'tax_table_stale':
-        return `Çıkış yılının gelir vergisi tarifesi tabloda yok; ${String(estimate.notice.taxYear)} tarifesi kullanıldı.`
+        return `Çıkış yılının gelir vergisi dilimleri bordro parametrelerinde yok; ${String(estimate.notice.taxYear)} tarifesi kullanıldı.`
       case 'resignation_notice_owed':
         return 'Bildirim süresine uyulmadan istifada ihbar tazminatını çalışan işverene öder; bu hesap onu kapsamaz.'
+      case 'pay_suggestion_unavailable': {
+        const status = estimate.paySource?.status ?? 'no_wage'
+        const reason = status === 'suggested' ? '' : SUGGESTION_UNAVAILABLE_REASONS[status]
+        return `Ücret tanımından öneri yapılmadı (${reason}); hesap elle girilen ücretle yapıldı.`
+      }
       default:
         return code satisfies never
     }
@@ -605,6 +819,8 @@ type BreakdownSource = WarningSource & {
   severance: SeveranceLine
   notice: NoticeLine
   totals: SeveranceEstimate['totals']
+  parameters: SeveranceParameterInfo
+  paySource: SeverancePaySource | null
 }
 
 // Intl kurucusu bir kez kurulur (format.ts ile aynı gerekçe).
@@ -636,7 +852,47 @@ export function severanceBreakdownRows(estimate: BreakdownSource): string[][] {
   ]
 }
 
-/** Hesabın dayanakları: hizmet süresi, ücret, tavan, ihbar süresi ve vergi yöntemi. */
+/** Tanım kimliğinin kısa gösterimi (belgede izlenebilirlik için). */
+const shortId = (id: string) => id.slice(0, 8)
+
+/** Ücret ve yan ödeme girdisinin kaynağı (K-346); personel seçilmediyse elle girildi. */
+export function severancePaySourceFacts(source: SeverancePaySource | null): [string, string][] {
+  if (source === null) return [['Ücret kaynağı', 'Elle girildi']]
+  const changed = (value: boolean) => (value ? '; öneri değiştirildi' : '')
+  if (source.status !== 'suggested') {
+    const type =
+      source.wageRateType === null
+        ? 'ana ücret tanımı yok'
+        : WAGE_TYPE_LABELS[source.wageRateType].toLocaleLowerCase('tr-TR')
+    return [['Ücret kaynağı', `Ücret tanımından öneri yapılmadı (${type}); elle girildi`]]
+  }
+  const wage = `Ücret tanımı: ${WAGE_TYPE_LABELS[source.wageRateType ?? 'monthly_gross']}, ${dayText(source.wageStartDate ?? source.date)} başlangıçlı (tanım ${shortId(source.wageRateId ?? '')}), ${dayText(source.date)} günü geçerli${changed(source.grossWageChanged)}`
+  const included = source.benefitRateIds.length
+  const benefits = [
+    included === 0
+      ? 'Nakdi yan hak yok'
+      : `${String(included)} nakdi yan hak (tanım ${source.benefitRateIds.map(shortId).join(', ')})`,
+    source.excludedBenefitCount > 0
+      ? `${String(source.excludedBenefitCount)} ayni yan hak hariç`
+      : null,
+  ]
+    .filter((part): part is string => part !== null)
+    .join(', ')
+  return [
+    ['Ücret kaynağı', wage],
+    ['Yan ödeme kaynağı', `${benefits}${changed(source.benefitsChanged)}`],
+  ]
+}
+
+/** Tavan, dilim ve damga oranının kaynağı (K-344). */
+export function severanceParameterSourceLabel(parameters: SeveranceParameterInfo): string {
+  if (parameters.source === 'fallback_table')
+    return 'Yerleşik tavan ve tarife tablosu (bordro parametrelerinden önceki dönem)'
+  const owner = parameters.origin === 'institution' ? 'Kurumun' : 'Platformun'
+  return `${owner} bordro parametresi, ${dayText(parameters.effectiveFrom)} dönemi`
+}
+
+/** Hesabın dayanakları: hizmet süresi, ücret ve kaynağı, tavan, ihbar süresi, vergi ve kaynağı. */
 export function severanceFacts(estimate: BreakdownSource): [string, string][] {
   const { wage, severance, notice } = estimate
   return [
@@ -645,6 +901,7 @@ export function severanceFacts(estimate: BreakdownSource): [string, string][] {
     ['Aylık brüt ücret', money(wage.grossWageCents)],
     ['Düzenli yan ödemeler', money(wage.regularBenefitsCents)],
     ['Giydirilmiş aylık brüt', money(wage.dressedWageCents)],
+    ...severancePaySourceFacts(estimate.paySource),
     [
       'Kıdem tavanı',
       `${money(severance.ceiling.monthlyCents)} (${dayText(severance.ceiling.from)} dönemi)${severance.ceilingApplied ? ', uygulandı' : ''}`,
@@ -656,6 +913,8 @@ export function severanceFacts(estimate: BreakdownSource): [string, string][] {
         ? INCOME_TAX_METHOD_LABELS.none
         : `${INCOME_TAX_METHOD_LABELS[notice.incomeTaxMethod]}, ${String(notice.taxYear)} tarifesi`,
     ],
+    ['Damga vergisi oranı', stampTaxLabel(estimate.parameters.stampTaxRatePer100k)],
+    ['Parametre kaynağı', severanceParameterSourceLabel(estimate.parameters)],
   ]
 }
 

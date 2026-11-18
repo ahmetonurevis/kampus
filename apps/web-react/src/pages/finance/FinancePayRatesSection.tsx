@@ -9,6 +9,7 @@ import {
   useStaffPayRates,
   type PayRate,
 } from '@kampus/react-shared/use-finance-pay-rates.ts'
+import { usePayrollPeriodYear } from '@kampus/react-shared/use-finance-payroll-periods.ts'
 import { daySchema } from '@kampus/school-core/lib/domain.ts'
 import {
   BENEFIT_FORM_LABELS,
@@ -20,6 +21,10 @@ import {
   payRateCancelSchema,
   type PayRateComponent,
 } from '@kampus/school-core/lib/finance-pay-rates.ts'
+import {
+  lockedMonthsIn,
+  payrollMonthLabel,
+} from '@kampus/school-core/lib/finance-payroll-periods.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { FormField } from '@/components/FormField.tsx'
@@ -362,6 +367,10 @@ function CreateForm({ membershipId, onDone }: { membershipId: string; onDone: ()
   const errors = form.formState.errors
   const busy = create.isPending || form.formState.isSubmitting
   const component = useWatch({ control: form.control, name: 'component' })
+  const lockedWarning = useLockedMonthWarning(
+    useWatch({ control: form.control, name: 'startDate' }),
+    useWatch({ control: form.control, name: 'endDate' }),
+  )
   const onSubmit = form.handleSubmit(async (values) => {
     const outcome = await create.submit(payRateBody(membershipId, values), {
       setError: (name, error) => {
@@ -484,6 +493,11 @@ function CreateForm({ membershipId, onDone }: { membershipId: string; onDone: ()
           <Input {...control} type="date" {...form.register('endDate')} disabled={busy} />
         )}
       </FormField>
+      {lockedWarning === null ? null : (
+        <p role="note" className="rounded-lg border p-3 text-sm text-warning sm:col-span-2">
+          {lockedWarning}
+        </p>
+      )}
       <div className="sm:col-span-2">
         <FormField id="ucret-not" label="Not (isteğe bağlı)" error={errors.note}>
           {(control) => (
@@ -499,6 +513,20 @@ function CreateForm({ membershipId, onDone }: { membershipId: string; onDone: ()
       </div>
     </form>
   )
+}
+
+/**
+ * Kilitli ay uyarısı (DOM-FIN-108, K-357): seçilen yürürlük onaylı bordro ayına düşüyorsa form
+ * kaydetmeden önce uyarır; asıl denetim sunucudadır (409 `payroll_period_locked`).
+ */
+function useLockedMonthWarning(startDate: string, endDate: string): string | null {
+  const periods = usePayrollPeriodYear(undefined)
+  const locked = periods.data?.data.lockedMonths ?? []
+  if (locked.length === 0 || !daySchema.safeParse(startDate).success) return null
+  const to = daySchema.safeParse(endDate).success ? endDate : null
+  const touched = lockedMonthsIn(locked, { from: startDate, to })
+  if (touched.length === 0) return null
+  return `Bu tanım onaylanmış bordro ayına düşüyor (${touched.map(payrollMonthLabel).join(', ')}); kilitli ay değiştirilemez. Düzeltme için Bordro dönemleri sekmesinden düzeltme kaydı girin ya da dönemi yeniden açın.`
 }
 
 /** Son tanımın bitişi (K-304): boş bırakılırsa süresiz. */

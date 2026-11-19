@@ -13,9 +13,10 @@ import {
 import { isStaffRole } from './staff-accounts.ts'
 
 /**
- * Bordro onayı ve dönem kilidi (docs/domain/finans.md DOM-FIN-108; ON-200). Bordro Kampüs'te
- * hesaplanmaz (ON-193); dönem (takvim ayı) bordro programına giden **girdilerin** onayıdır:
- * ücret tanımları (DOM-FIN-099) ve kurum bordro parametreleri (DOM-FIN-100).
+ * Bordro onayı ve dönem kilidi (docs/domain/finans.md DOM-FIN-108; ON-200). Dönem (takvim ayı)
+ * onayı bordro **girdilerini** (ücret tanımları DOM-FIN-099, kurum bordro parametreleri
+ * DOM-FIN-100) ve Kampüs'ün kayıtlı bordro hesabını (DOM-FIN-115; ADR 0011) dondurur: kilitli
+ * ayda hesap yeniden kaydedilmez.
  *
  * - Durum: kaydı olmayan ay açıktır; onaylanan ay kilitlidir; yeniden açılan ay yeniden açıktır ve
  *   tekrar onaylanabilir (K-356). Onay anında girdi özeti (personel ve tanım sayısı, aylık brüt

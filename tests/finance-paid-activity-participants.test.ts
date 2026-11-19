@@ -238,6 +238,53 @@ test('DOM-FIN-112, K-369: yer açılınca en küçük numaralı yedek asile geç
   assert.deepEqual(promotionCandidates(terms(), { seatCount: 2, waitlisted }, TODAY), [])
 })
 
+test('K-396, DOM-FIN-112: etkin olmayan (ayrılmış) öğrencinin yedeği atlanır, sıradaki asile geçer', () => {
+  const waitlisted = [
+    {
+      id: 'p2',
+      studentId: FIRST_ID,
+      waitlistPosition: 2,
+      consentStatus: 'not_required' as const,
+      studentActive: false,
+    },
+    {
+      id: 'p3',
+      studentId: SECOND_ID,
+      waitlistPosition: 3,
+      consentStatus: 'not_required' as const,
+      studentActive: true,
+    },
+  ]
+  const state = freshState()
+  const promotions = applyWaitlistPromotions(
+    state,
+    terms(),
+    { seatCount: 1, waitlisted },
+    { today: TODAY, makeId },
+  )
+  assert.deepEqual(
+    promotions.map((item) => [item.participantId, item.studentId]),
+    [['p3', SECOND_ID]],
+  )
+  assert.ok(
+    !state.invoices.some((item) => item.studentId === FIRST_ID && item.feeKind === 'activity'),
+    'ayrılmış öğrenciye etkinlik taksiti açılmaz',
+  )
+  // Bilgi verilmeyen yedek etkin sayılır; yalnız etkin olmayanlar kalırsa geçiş olmaz.
+  assert.deepEqual(
+    promotionCandidates(terms(), { seatCount: 0, waitlisted: [waitlisted[0]!] }, TODAY),
+    [],
+  )
+  assert.deepEqual(
+    promotionCandidates(
+      terms(),
+      { seatCount: 1, waitlisted: [{ waitlistPosition: 4 }, { waitlistPosition: 5 }] },
+      TODAY,
+    ).map((item) => item.waitlistPosition),
+    [4],
+  )
+})
+
 test('DOM-FIN-112, K-369: taksiti olmayan katılım (yedek, izin bekleyen) parasız iptal edilir', () => {
   const state = freshState()
   const before = structuredClone(state.invoices)

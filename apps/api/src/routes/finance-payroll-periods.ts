@@ -96,7 +96,7 @@ export function registerFinancePayrollPeriodRoutes(app: FastifyInstance) {
         operationId: 'approvePayrollPeriod',
         tags,
         summary: 'Bordro ayını onayla (kilitle)',
-        description: `Ayın bordro girdilerini onaylar ve ayı kilitler (DOM-FIN-108, K-356, K-357): onaydan sonra yürürlüğü bu aya düşen ücret tanımı yazmaları (yeni tanım, bitiş, iptal) ve bu ayda geçerli seti değiştiren bordro parametresi yazmaları 409 \`payroll_period_locked\` olur. Girdi özeti ve damgası kurum kilidi altında yeniden hesaplanır; \`inputsHash\` listedeki \`current.inputsHash\` ile aynı değilse 409 \`payroll_inputs_changed\`. Başlamamış ay 422 \`payroll_period_in_future\`, onaylı ay 409 \`payroll_period_already_approved\`. İlk onay 201, yeniden açılmış ayın onayı 200. \`Idempotency-Key\` zorunlu. ${MANAGER}`,
+        description: `Ayın bordro girdilerini onaylar ve ayı kilitler (DOM-FIN-108, K-356, K-357): onaydan sonra yürürlüğü bu aya düşen ücret tanımı yazmaları (yeni tanım, bitiş, iptal), bu ayda geçerli seti değiştiren bordro parametresi yazmaları ve bu ayın kesintisini değiştiren avans, icra ve BES yazmaları (K-394) 409 \`payroll_period_locked\` olur. Girdi özeti ve damgası kurum kilidi altında yeniden hesaplanır; \`inputsHash\` listedeki \`current.inputsHash\` ile aynı değilse 409 \`payroll_inputs_changed\`. Başlamamış ay 422 \`payroll_period_in_future\`, onaylı ay 409 \`payroll_period_already_approved\`. İlk onay 201, yeniden açılmış ayın onayı 200. \`Idempotency-Key\` zorunlu. ${MANAGER}`,
         headers: commandHeadersSchema('required', { ifMatch: false }),
         params: monthParams,
         body: payrollApproveSchema,

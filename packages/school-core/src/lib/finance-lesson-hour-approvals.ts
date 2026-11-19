@@ -20,7 +20,8 @@ import { PAYROLL_REASON_MAX, PAYROLL_REASON_MIN } from './finance-payroll-period
  * dönemi kilitliyse (DOM-FIN-108) saat, onay ve yeniden açma 409 `payroll_period_locked`.
  * Bordroya yalnız onaylı ayın saatleri girer (K-411): aktarım dosyası onaysız saati "onay
  * bekliyor" işaretiyle, tutarsız verir; bordro hesabı `lessonHoursForPayroll` ile yalnız onaylı
- * saatleri okur. Fonksiyonlar saftır.
+ * saatleri okur, onay bekleyenleri (`lessonHoursPendingApproval`) uyarıyla gösterir (K-423).
+ * Onay bekleyen saati olan ayın bordro dönemi onaylanmaz (K-424). Fonksiyonlar saftır.
  */
 
 /** Saat girişi, çizelgeyi gönderme ve öğretmen yanıtını işleme (K-409). */
@@ -307,4 +308,28 @@ export function lessonHoursForPayroll<T>(
   entries: readonly T[],
 ): T[] {
   return isLessonSheetApproved(stored) ? [...entries] : []
+}
+
+/**
+ * Müdür onayı bekleyen ek ders saatleri (K-423): onaylı ayda boş, taslak ya da öğretmen
+ * kontrolündeki ayda ayın bütün kayıtları. Bordro hesabı bunları hesaba katmaz, uyarı gösterir.
+ */
+export function lessonHoursPendingApproval<T>(
+  stored: StoredLessonSheet | null,
+  entries: readonly T[],
+): T[] {
+  return isLessonSheetApproved(stored) ? [] : [...entries]
+}
+
+/**
+ * Bordro dönemi onayı (DOM-FIN-108, K-424): ayda müdür onayı bekleyen ek ders saati varsa dönem
+ * onaylanmaz (409 `payroll_lesson_hours_pending`). Kilitli dönemde çizelge onaylanamadığından
+ * (K-410) bu saatler o aya hiç giremezdi. Saat kaydı olmayan ay serbesttir.
+ */
+export function assertPayrollLessonHoursApproved(pendingEntryCount: number): void {
+  if (pendingEntryCount > 0)
+    throw conflict(
+      'payroll_lesson_hours_pending',
+      'Bu ayın ek ders çizelgesi müdür onayı bekliyor. Önce çizelgeyi onaylayın ya da ödenmeyecek saatleri silin, sonra dönemi onaylayın.',
+    )
 }

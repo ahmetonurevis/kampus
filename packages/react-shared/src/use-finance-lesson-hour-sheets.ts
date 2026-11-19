@@ -5,10 +5,13 @@ import type { CommandHeaders } from './commands.ts'
 import { useApiCommand } from './use-api-command.ts'
 import { useApiQuery } from './use-api-query.ts'
 import { PAYROLL_EXPORTS_KEY } from './use-finance-payroll-exports.ts'
+import { PAYROLL_RUNS_KEY } from './use-finance-payroll-runs.ts'
 
 // Ek ders çizelgesi onayı kancaları (`/finance/lesson-hour-sheets`; DOM-FIN-120, ON-196). Çizelge
 // bordro aktarımı anahtarının altındadır: saat yazmaları çizelgeyi, çizelge geçişleri önizlemeyi
-// ("onay bekliyor" satırları) tazeler. Bütün yazmalar `Idempotency-Key` taşır ve `exclusive`.
+// ("onay bekliyor" satırları) tazeler. Müdür onayı ve yeniden açma bordro hesabını da tazeler:
+// hesaba yalnız onaylı çizelgenin ek dersi girer (K-423). Bütün yazmalar `Idempotency-Key` taşır
+// ve `exclusive`.
 
 export type LessonHourSheet =
   operations['getLessonHourSheet']['responses'][200]['content']['application/json']['data']
@@ -71,7 +74,7 @@ export function useApproveLessonHourSheet() {
         params: { path: { month: input.month }, header: headers },
         body: { entriesHash: input.entriesHash },
       }),
-    invalidates: [PAYROLL_EXPORTS_KEY],
+    invalidates: [PAYROLL_EXPORTS_KEY, PAYROLL_RUNS_KEY],
     messages: MESSAGES,
     exclusive: true,
   })
@@ -84,7 +87,7 @@ export function useReopenLessonHourSheet() {
         params: { path: { month: input.month }, header: headers },
         body: { reason: input.reason },
       }),
-    invalidates: [PAYROLL_EXPORTS_KEY],
+    invalidates: [PAYROLL_EXPORTS_KEY, PAYROLL_RUNS_KEY],
     exclusive: true,
   })
 }

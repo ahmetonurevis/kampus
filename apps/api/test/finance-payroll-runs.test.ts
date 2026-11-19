@@ -29,7 +29,8 @@ import {
 /**
  * Bordro hesabı uçları (DOM-FIN-115; ON-198; K-387…K-391). Her test kendi kurumunu kurar; ücret
  * tanımı ücret ucuyla (DOM-FIN-099), kesinti kesinti ucuyla (DOM-FIN-101), dönem onayı dönem
- * ucuyla (DOM-FIN-108) yazılır. FIXED_NOW 2026-10-06. Beklenen tutarlar core testindeki
+ * ucuyla (DOM-FIN-108), ek ders çizelgesi onayı çizelge uçlarıyla (DOM-FIN-120) yazılır. FIXED_NOW
+ * 2026-10-06. Beklenen tutarlar core testindeki
  * (`tests/finance-payroll-calc.test.ts`) 2026 örnekleridir.
  */
 
@@ -41,6 +42,7 @@ const RATES = `${FINANCE}/pay-rates`
 const PERIODS = `${FINANCE}/payroll-periods`
 const GARNISHMENTS = `${FINANCE}/staff-garnishments`
 const LESSON_HOURS = `${FINANCE}/payroll-lesson-hours`
+const SHEETS = `${FINANCE}/lesson-hour-sheets`
 
 type Json = Record<string, unknown>
 type Response = Awaited<ReturnType<App['inject']>>
@@ -152,6 +154,43 @@ describe('DOM-FIN-115: bordro hesabı uçları', () => {
       .from(auditLog)
       .where(and(eq(auditLog.institutionId, institutionId), eq(auditLog.action, action)))
 
+  /**
+   * Ayın ek ders çizelgesini öğretmen kontrolüne gönderir, saati olan herkesi teyit eder ve müdür
+   * onayı verir (DOM-FIN-120): bordro hesabı yalnız onaylı çizelgenin ek dersini okur (K-423).
+   */
+  async function approveSheet(t: Tenant, month: string) {
+    let sheet = ok(await call('POST', `${SHEETS}/${month}/submit`, t.admin, {}, key()))
+    for (const staff of sheet.staff as Json[])
+      sheet = ok(
+        await call(
+          'POST',
+          `${SHEETS}/${month}/confirmations`,
+          t.admin,
+          { membershipId: staff.membershipId, outcome: 'confirmed', channel: 'in_person' },
+          key(),
+        ),
+      )
+    ok(
+      await call(
+        'POST',
+        `${SHEETS}/${month}/approve`,
+        t.admin,
+        { entriesHash: sheet.entriesHash },
+        key(),
+      ),
+    )
+  }
+  const reopenSheet = (t: Tenant, month: string) =>
+    call('POST', `${SHEETS}/${month}/reopen`, t.admin, { reason: 'Saat yanlış girildi' }, key())
+  const approvePeriod = async (t: Tenant, month: string) => {
+    const year = ok(await get(`${PERIODS}?year=${month.slice(0, 4)}`, t.admin)) as {
+      months: Json[]
+    }
+    const view = year.months.find((item) => item.month === month)
+    const hash = (view?.current as Json | null)?.inputsHash
+    return call('POST', `${PERIODS}/${month}/approve`, t.admin, { inputsHash: hash }, key())
+  }
+
   test('kimliksiz istek 401', async () => {
     assertError(await get(`${CALC}/2026-01`, null), 401)
     assertError(await get(`${RUNS}/2026-01`, null), 401)
@@ -236,6 +275,7 @@ describe('DOM-FIN-115: bordro hesabı uçları', () => {
       }),
       201,
     )
+    await approveSheet(t, '2026-01')
     const data = await preview(t.admin, '2026-01')
     assert.equal(data.locked, false)
     assert.equal(data.saved, null)
@@ -262,6 +302,90 @@ describe('DOM-FIN-115: bordro hesabı uçları', () => {
     assert.equal(audit.length, 1)
     assert.equal(audit[0]?.entityId, 'payroll-calculation:2026-01')
     assert.ok(!JSON.stringify(audit[0]?.changes).includes('3303000'))
+  })
+
+  test('DOM-FIN-115, DOM-FIN-120: ek ders yalnız onaylı çizelgeden; onaysız ayda uyarı, yeniden açılan çizelge kayıtlı hesabı değiştirmez (K-423, K-424)', async () => {
+    const t = await institution()
+    const selin = await person(t, 'ogretmen', 'Selin Kaya')
+    const ece = await person(t, 'ogretmen', 'Ece Yılmaz')
+    await rate(t, wage(selin, 15_000_000))
+    await rate(t, {
+      component: 'lesson',
+      membershipId: selin,
+      rateType: 'extra',
+      amountCents: 25_000,
+      startDate: '2026-01-01',
+    })
+    for (const [membershipId, hours] of [
+      [selin, 10],
+      [ece, 4],
+    ] as const)
+      ok(
+        await call('POST', LESSON_HOURS, t.admin, {
+          membershipId,
+          month: '2026-02',
+          lessonType: 'extra',
+          hours,
+        }),
+        201,
+      )
+    const lessonKinds = (row: Json) => (row.earnings as Json[]).map((item) => item.kind)
+    const unapproved = (row: Json) => (row.warnings as string[]).includes('lesson_hours_unapproved')
+
+    // Onaysız (taslak) ay: ek ders hesaba girmez; satırda ve özette uyarı.
+    const draft = await preview(t.admin, '2026-02')
+    assert.deepEqual(draft.lessonSheet, { status: 'draft', pendingStaffCount: 2, pendingHours: 14 })
+    assert.equal(rowOf(draft, selin).grossCents, 15_000_000)
+    assert.deepEqual(lessonKinds(rowOf(draft, selin)), ['wage'])
+    assert.ok(unapproved(rowOf(draft, selin)))
+    // Yalnız ek dersi olan personel listelenir, hesaplanmaz.
+    assert.ok(unapproved(rowOf(draft, ece)))
+    assert.equal(rowOf(draft, ece).complete, false)
+    // Kaydedilen hesap da onaysız ek dersi taşımaz; satır uyarıyla kaydedilir.
+    const first = ok(await save(t.admin, '2026-02', null), 201)
+    const firstRun = ok(await get(`${RUNS}/2026-02`, t.admin))
+    assert.equal(rowOf(firstRun, selin).grossCents, 15_000_000)
+    assert.ok(unapproved(rowOf(firstRun, selin)))
+    // Dönem onayı onay bekleyen ek ders varken engellenir (K-424).
+    assertError(await approvePeriod(t, '2026-02'), 409, 'payroll_lesson_hours_pending')
+
+    // Müdür onayından sonra ek ders hesaba girer, uyarı kalkar.
+    await approveSheet(t, '2026-02')
+    const approved = await preview(t.admin, '2026-02')
+    assert.deepEqual(approved.lessonSheet, {
+      status: 'approved',
+      pendingStaffCount: 0,
+      pendingHours: 0,
+    })
+    assert.equal(rowOf(approved, selin).grossCents, 15_250_000)
+    assert.deepEqual(lessonKinds(rowOf(approved, selin)), ['wage', 'lesson'])
+    assert.ok(!unapproved(rowOf(approved, selin)))
+    const second = ok(await save(t.admin, '2026-02', String(first.id)), 200)
+    const secondRun = ok(await get(`${RUNS}/2026-02`, t.admin))
+    assert.equal(secondRun.id, second.id)
+    assert.equal(rowOf(secondRun, selin).grossCents, 15_250_000)
+
+    // Çizelge yeniden açılır: kayıtlı hesap değişmez, önizleme ek dersi düşürür ve uyarır.
+    ok(await reopenSheet(t, '2026-02'))
+    const reopened = await preview(t.admin, '2026-02')
+    assert.deepEqual(reopened.lessonSheet, {
+      status: 'draft',
+      pendingStaffCount: 2,
+      pendingHours: 14,
+    })
+    assert.equal(rowOf(reopened, selin).grossCents, 15_000_000)
+    assert.ok(unapproved(rowOf(reopened, selin)))
+    assert.equal((reopened.saved as Json).id, second.id)
+    const kept = ok(await get(`${RUNS}/2026-02`, t.admin))
+    assert.equal(kept.id, second.id)
+    assert.deepEqual(rowsOf(kept), rowsOf(secondRun))
+    assertError(await approvePeriod(t, '2026-02'), 409, 'payroll_lesson_hours_pending')
+    // Başka ayın çizelgesi bu ayı etkilemez.
+    assert.deepEqual((await preview(t.admin, '2026-01')).lessonSheet, {
+      status: 'draft',
+      pendingStaffCount: 0,
+      pendingHours: 0,
+    })
   })
 
   test('DOM-FIN-115: icra kesintisi net ücretin dörtte biri, ödenecek netten düşer', async () => {

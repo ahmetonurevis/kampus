@@ -12,6 +12,7 @@ import {
   payrollCalculationCsv,
   payrollCalculationFilename,
   payrollEarningLabel,
+  payrollLessonSheetNotice,
   payrollMonthParameters,
   payrollRunSaveSchema,
   payrollTaxCarryoverInputSchema,
@@ -66,6 +67,7 @@ function person(rates: PayrollCalcRate[], overrides: Partial<PayrollPersonInput>
     missing: [],
     dates: null,
     lessonHours: [],
+    lessonHoursUnapproved: false,
     adjustments: [],
     cumulativeIncomeTaxBaseBeforeCents: 0,
     unsavedPreviousMonths: [],
@@ -480,6 +482,7 @@ describe('DOM-FIN-115: ay listesi', () => {
     missing: [],
     dates: [],
     lessonHours: [],
+    lessonSheet: { status: 'draft' as const, pending: [] },
     adjustments: [],
     savedBases: [],
     carryovers: [],
@@ -562,6 +565,81 @@ describe('DOM-FIN-115: ay listesi', () => {
     assert.equal(list.rows.length, 1)
     assert.equal(list.rows[0]?.complete, false)
     assert.ok(list.rows[0]?.warnings.includes('no_wage'))
+  })
+
+  test('DOM-FIN-115, DOM-FIN-120: onaysız ayda ek ders hesaba girmez, satırda ve özette uyarı (K-423)', () => {
+    const lessonRate: PayrollCalcRate = {
+      ...wage(25_000),
+      id: 'l',
+      component: 'lesson',
+      rateType: 'extra',
+    }
+    const pending = [
+      { membershipId: 'm-1', lessonType: 'extra' as const, hours: 10 },
+      { membershipId: 'm-1', lessonType: 'duty' as const, hours: 2 },
+      // Ücret tanımı olmayan personel yalnız bekleyen ek dersiyle de listelenir.
+      { membershipId: 'm-2', lessonType: 'extra' as const, hours: 4 },
+    ]
+    const draft = payrollCalculation(
+      input('2026-01', {
+        rates: [wage(15_000_000), lessonRate],
+        lessonSheet: { status: 'teacher_review', pending },
+      }),
+    )
+    assert.deepEqual(
+      draft.rows.map((item) => [
+        item.membershipId,
+        item.warnings.includes('lesson_hours_unapproved'),
+      ]),
+      [
+        ['m-2', true],
+        ['m-1', true],
+      ],
+    )
+    const selin = draft.rows.find((item) => item.membershipId === 'm-1')
+    assert.equal(selin?.grossCents, 15_000_000)
+    assert.deepEqual(
+      selin?.earnings.map((item) => item.kind),
+      ['wage'],
+    )
+    // Bekleyen saat için ücret tanımı aranmaz.
+    assert.ok(!selin?.warnings.includes('lesson_rate_missing'))
+    assert.deepEqual(draft.lessonSheet, {
+      status: 'teacher_review',
+      pendingStaffCount: 2,
+      pendingHours: 16,
+    })
+    assert.equal(
+      payrollLessonSheetNotice(draft.lessonSheet),
+      'Ek ders çizelgesi onaylanmadı: 2 personelin 16 saat ek dersi hesaba girmedi. Çizelge müdür onayı alınca ek ders hesaba girer.',
+    )
+
+    // Onaylı ay: aynı saatler hesaba girer, uyarı yok.
+    const approved = payrollCalculation(
+      input('2026-01', {
+        rates: [wage(15_000_000), lessonRate],
+        lessonHours: pending.filter((entry) => entry.membershipId === 'm-1'),
+        lessonSheet: { status: 'approved', pending: [] },
+      }),
+    )
+    const paid = approved.rows.find((item) => item.membershipId === 'm-1')
+    assert.equal(paid?.grossCents, 15_250_000)
+    assert.ok(!paid?.warnings.includes('lesson_hours_unapproved'))
+    assert.deepEqual(approved.lessonSheet, {
+      status: 'approved',
+      pendingStaffCount: 0,
+      pendingHours: 0,
+    })
+    assert.equal(payrollLessonSheetNotice(approved.lessonSheet), null)
+    // Saat kaydı olmayan taslak ay uyarı vermez.
+    assert.equal(payrollLessonSheetNotice(payrollCalculation(input('2026-01')).lessonSheet), null)
+  })
+
+  test('DOM-FIN-115: personel satırı onay bekleyen ek ders uyarısını taşır (K-423)', () => {
+    const result = row('2026-01', [wage(4_000_000)], { lessonHoursUnapproved: true })
+    assert.deepEqual(result.warnings, ['lesson_hours_unapproved'])
+    assert.equal(result.complete, true)
+    assert.equal(result.grossCents, 4_000_000)
   })
 
   test('DOM-FIN-115: CSV toplam ve ilke notu taşır, formül kaçışlı', () => {

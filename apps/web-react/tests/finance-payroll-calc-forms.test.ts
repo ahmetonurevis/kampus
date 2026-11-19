@@ -50,6 +50,14 @@ test('DOM-FIN-115: uyarı metni ve tonu', () => {
   assert.match(payrollWarningText('above_ceiling'), /tavan/)
 })
 
+test('DOM-FIN-115, DOM-FIN-120: onaylanmamış ek ders çizelgesi uyarısı tutarı etkiler (K-423)', () => {
+  assert.equal(payrollWarningTone('lesson_hours_unapproved'), 'amber')
+  assert.equal(
+    payrollWarningText('lesson_hours_unapproved'),
+    'Ek ders çizelgesi onaylanmadı; ek ders hesaba girmedi',
+  )
+})
+
 test('DOM-FIN-115: ayrıntı paneli bölümleri asgari ücretli satırı gösterir', () => {
   const row = payrollCalcRow('2026-01', payrollMonthParameters('2026-01', []), {
     member: { membershipId: 'm-1', name: 'Deniz Yılmaz', role: 'onburo', active: true },
@@ -80,6 +88,7 @@ test('DOM-FIN-115: ayrıntı paneli bölümleri asgari ücretli satırı göster
     missing: [],
     dates: null,
     lessonHours: [],
+    lessonHoursUnapproved: false,
     adjustments: [{ item: 'deduction', amountCents: -5_000 }],
     cumulativeIncomeTaxBaseBeforeCents: 0,
     unsavedPreviousMonths: [],

@@ -11,6 +11,7 @@ import {
   type LessonPayType,
   type WageType,
 } from './finance-pay-rates.ts'
+import type { LessonSheetStatus } from './finance-lesson-hour-approvals.ts'
 import {
   BASIS_POINTS_SCALE,
   PAYROLL_PLATFORM_DEFAULTS,
@@ -54,8 +55,9 @@ import { isStaffRole } from './staff-accounts.ts'
  *
  * - Girdiler: ayın ilk günü geçerli bordro parametre seti (DOM-FIN-100), ücret tanımları
  *   (DOM-FIN-099), prim günü SGK hazırlık listesinin ortak fonksiyonuyla (`sgkWorkDays`,
- *   DOM-FIN-107), elle ek ders saatleri (DOM-FIN-105), aya aktarılan düzeltmeler (DOM-FIN-108),
- *   avans/icra/BES kayıtları (DOM-FIN-101), sağlık raporu günleri (DOM-FIN-110; yalnız uyarı).
+ *   DOM-FIN-107), elle ek ders saatleri (DOM-FIN-105; yalnız ek ders çizelgesi müdür onaylı ayda,
+ *   DOM-FIN-120, K-423), aya aktarılan düzeltmeler (DOM-FIN-108), avans/icra/BES kayıtları
+ *   (DOM-FIN-101), sağlık raporu günleri (DOM-FIN-110; yalnız uyarı).
  * - Kalemler (K-387): aylık brüt ana ücret gün oranlı; ek ders saat × ücret; nakdi yan hak SGK
  *   matrahına girer, vergiye tabi işaretliyse gelir ve damga vergisi matrahına da; ayni yan hak
  *   ödenmez, işveren maliyetine eklenir. Saatlik ve ders saati ana ücreti hesaplanmaz (satır eksik).
@@ -281,6 +283,7 @@ export const PAYROLL_CALC_WARNINGS = [
   'net_rounding',
   'mixed_wage',
   'lesson_rate_missing',
+  'lesson_hours_unapproved',
   'below_floor',
   'above_ceiling',
   'negative_gross',
@@ -302,6 +305,7 @@ export const PAYROLL_CALC_WARNING_LABELS = {
   net_rounding: 'Ters hesapta kuruş farkı kaldı',
   mixed_wage: 'Ay içinde net ve brüt tanımlı ücret birlikte',
   lesson_rate_missing: 'Ek ders saati var, ek ders ücreti tanımı yok; tutar eklenmedi',
+  lesson_hours_unapproved: 'Ek ders çizelgesi onaylanmadı; ek ders hesaba girmedi',
   below_floor: 'SGK matrahı tabana yükseltildi',
   above_ceiling: 'SGK matrahı tavanda kesildi',
   negative_gross: 'Düzeltmeler brütü sıfırın altına indirdi; brüt sıfır alındı',
@@ -417,7 +421,10 @@ export interface PayrollPersonInput {
   rates: readonly PayrollCalcRate[]
   missing: readonly Pick<SgkMissingDayEntry, 'days' | 'reasonCode'>[]
   dates: Pick<SgkEmploymentDatesEntry, 'entryDate' | 'exitDate'> | null
+  /** Hesaba giren ek ders: yalnız müdür onaylı çizelgenin saatleri (K-423). */
   lessonHours: readonly Omit<PayrollCalcLessonHours, 'membershipId'>[]
+  /** Personelin müdür onayı bekleyen ek ders saati var mı; varsa hesaba girmez, uyarı (K-423). */
+  lessonHoursUnapproved: boolean
   adjustments: readonly Omit<PayrollCalcAdjustment, 'membershipId'>[]
   /** Yıl başından önceki ayların kayıtlı GV matrahı + elle devir. */
   cumulativeIncomeTaxBaseBeforeCents: number
@@ -601,6 +608,7 @@ export function payrollCalcRow(
     if (mapped) warnings.add(mapped)
   }
   if (!input.member.active) warnings.add('staff_inactive')
+  if (input.lessonHoursUnapproved) warnings.add('lesson_hours_unapproved')
   const { from, to, primDays } = work
   const inRange = input.rates.filter((rate) => overlaps(rate, from, to))
   const wages = inRange.filter((rate) => rate.component === 'wage')
@@ -850,11 +858,28 @@ export interface PayrollCalcParameters {
   minimumWageBaseBeforeCents: number
 }
 
+/**
+ * Ayın ek ders çizelgesi (DOM-FIN-120, K-423): durum ve müdür onayı beklediği için hesaba girmeyen
+ * saatlerin özeti. Onaylı ayda ya da saat kaydı olmayan ayda bekleyen sayılar sıfırdır.
+ */
+export interface PayrollCalcLessonSheet {
+  status: LessonSheetStatus
+  pendingStaffCount: number
+  pendingHours: number
+}
+
 export interface PayrollCalculation {
   month: string
   parameters: PayrollCalcParameters
+  lessonSheet: PayrollCalcLessonSheet
   rows: PayrollCalcRow[]
   totals: PayrollCalcTotals
+}
+
+/** Özet uyarısı: bekleyen saat yoksa `null` (K-423). */
+export function payrollLessonSheetNotice(sheet: PayrollCalcLessonSheet): string | null {
+  if (sheet.pendingHours === 0) return null
+  return `Ek ders çizelgesi onaylanmadı: ${String(sheet.pendingStaffCount)} personelin ${String(sheet.pendingHours)} saat ek dersi hesaba girmedi. Çizelge müdür onayı alınca ek ders hesaba girer.`
 }
 
 export const payrollCalcParameters = (
@@ -875,7 +900,9 @@ const EMPTY_SOURCES: MonthlyDeductionSources = { advances: [], garnishments: [],
  * Ayın hesabı (DOM-FIN-115). Personel: ayda ana ücret tanımı yürürlükte olan, o ay ek ders saati,
  * aya aktarılan düzeltme ya da SGK elle satırı bulunan üyelikler; ada göre. `rates` bu üyeliklerin
  * iptal edilmemiş bütün tanımları, `savedBases` yılın kayıtlı (etkin) hesaplarının satırları,
- * `carryovers` yılın elle devirleridir.
+ * `carryovers` yılın elle devirleridir. Ek ders (K-423): `lessonHours` yalnız müdür onaylı
+ * çizelgenin saatleridir ve hesaba girer; `lessonSheet.pending` onay bekleyen saatlerdir, hesaba
+ * girmez, personelin satırına uyarı ve özete sayı olarak yansır (personel yine listelenir).
  */
 export function payrollCalculation(input: {
   month: string
@@ -887,6 +914,7 @@ export function payrollCalculation(input: {
     membershipId: string
   })[]
   lessonHours: readonly PayrollCalcLessonHours[]
+  lessonSheet: { status: LessonSheetStatus; pending: readonly PayrollCalcLessonHours[] }
   adjustments: readonly PayrollCalcAdjustment[]
   savedBases: readonly PayrollSavedBase[]
   carryovers: readonly { membershipId: string; incomeTaxBaseCents: number }[]
@@ -904,6 +932,7 @@ export function payrollCalculation(input: {
   const missingBy = group(input.missing)
   const datesBy = new Map(input.dates.map((entry) => [entry.membershipId, entry]))
   const lessonsBy = group(input.lessonHours)
+  const pendingBy = group(input.lessonSheet.pending)
   const adjustmentsBy = group(input.adjustments)
   const year = input.month.slice(0, 4)
   const savedBy = group(
@@ -926,6 +955,7 @@ export function payrollCalculation(input: {
           (rate) => rate.component === 'wage' && overlaps(rate, range.firstDay, range.lastDay),
         ) ||
         lessonsBy.has(id) ||
+        pendingBy.has(id) ||
         adjustmentsBy.has(id) ||
         missingBy.has(id) ||
         datesBy.has(id)
@@ -941,6 +971,7 @@ export function payrollCalculation(input: {
         missing: missingBy.get(id) ?? [],
         dates: datesBy.get(id) ?? null,
         lessonHours: lessonsBy.get(id) ?? [],
+        lessonHoursUnapproved: pendingBy.has(id),
         adjustments: adjustmentsBy.get(id) ?? [],
         cumulativeIncomeTaxBaseBeforeCents:
           (carryoverBy.get(id) ?? 0) +
@@ -960,6 +991,11 @@ export function payrollCalculation(input: {
   return {
     month: input.month,
     parameters: payrollCalcParameters(input.parameters),
+    lessonSheet: {
+      status: input.lessonSheet.status,
+      pendingStaffCount: pendingBy.size,
+      pendingHours: input.lessonSheet.pending.reduce((total, entry) => total + entry.hours, 0),
+    },
     rows,
     totals: payrollCalcTotals(rows),
   }

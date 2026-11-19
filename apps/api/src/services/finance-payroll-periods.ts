@@ -19,9 +19,11 @@ import {
   type DayRange,
   type PayrollInputSummary,
 } from '@kampus/school-core/lib/finance-payroll-periods.ts'
+import { assertPayrollLessonHoursApproved } from '@kampus/school-core/lib/finance-lesson-hour-approvals.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 
 import type { Database } from '../db/client.ts'
+import { approvedLessonHoursFor } from '../db/finance-lesson-hour-approvals.ts'
 import { findStaffMember } from '../db/finance-pay-rates.ts'
 import { listPayrollParameterSets } from '../db/finance-payroll-parameters.ts'
 import {
@@ -190,8 +192,9 @@ async function periodBody(tx: Database, ctx: ServiceContext, month: string) {
 
 /**
  * Onay (K-356): güncel özet kurum kilidi altında yeniden hesaplanır; istemcinin gördüğü damga
- * tutmazsa 409 `payroll_inputs_changed`. İlk onay kayıt açar (201), yeniden açılmış ay güncellenir
- * (200).
+ * tutmazsa 409 `payroll_inputs_changed`. Ayda müdür onayı bekleyen ek ders saati varsa 409
+ * `payroll_lesson_hours_pending` (K-424; kilitli ayda çizelge onaylanamaz, K-410). İlk onay kayıt
+ * açar (201), yeniden açılmış ay güncellenir (200).
  */
 export function approvePayrollPeriodCommand(
   ctx: ServiceContext,
@@ -212,12 +215,14 @@ export function approvePayrollPeriodCommand(
         const parsed = payrollApproveSchema.parse(input)
         const stored = await findPayrollPeriod(tx, ctx.institutionId, month)
         const current = await currentSummary(tx, ctx.institutionId, month)
+        const lessons = await approvedLessonHoursFor(tx, ctx.institutionId, month)
         return {
           run: () => {
             planPayrollApproval(month, dayKey(ctx.now), stored, {
               expected: parsed.inputsHash,
               current: current.inputsHash,
             })
+            assertPayrollLessonHoursApproved(lessons.pending.length)
             return { stored, current }
           },
         }

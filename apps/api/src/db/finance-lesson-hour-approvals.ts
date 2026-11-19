@@ -2,6 +2,7 @@ import { and, asc, eq, isNull, max } from 'drizzle-orm'
 
 import {
   lessonHoursForPayroll,
+  lessonHoursPendingApproval,
   lessonSheetStatus,
   type LessonConfirmationChannel,
   type LessonConfirmationOutcome,
@@ -201,16 +202,25 @@ export async function insertLessonConfirmation(
 }
 
 /**
- * Bordroya giren ek ders saatleri (DOM-FIN-120, K-411): ayın çizelgesi müdür onaylıysa ayın etkin
- * saat kayıtları, değilse boş liste. Bordro hesabı (ON-198) ek dersi buradan okur; durum
- * ekranda "onay bekliyor" göstermek için döner.
+ * Bordroya giren ek ders saatleri (DOM-FIN-120, K-411, K-423): ayın çizelgesi müdür onaylıysa
+ * `entries` ayın etkin saat kayıtları, değilse boş liste. Bordro hesabı (ON-198) ve bordro dönemi
+ * onayı (ON-200, K-424) ek dersi yalnız buradan okur. `pending` onay bekleyen kayıtlardır (onaylı
+ * ayda boş): hesaba girmez, ekranda "onaylanmadı" uyarısı ve dönem onayı engeli içindir.
  */
 export async function approvedLessonHoursFor(
   db: Database,
   institutionId: string,
   month: string,
-): Promise<{ status: LessonSheetStatus; entries: StoredLessonHours[] }> {
+): Promise<{
+  status: LessonSheetStatus
+  entries: StoredLessonHours[]
+  pending: StoredLessonHours[]
+}> {
   const sheet = await findLessonSheet(db, institutionId, month)
   const entries = await loadMonthLessonHours(db, institutionId, `${month}-01`)
-  return { status: lessonSheetStatus(sheet), entries: lessonHoursForPayroll(sheet, entries) }
+  return {
+    status: lessonSheetStatus(sheet),
+    entries: lessonHoursForPayroll(sheet, entries),
+    pending: lessonHoursPendingApproval(sheet, entries),
+  }
 }

@@ -15,6 +15,7 @@ import { REAUTHENTICATION_CODE } from '@kampus/react-shared/use-withdrawals.ts'
 import {
   PAYROLL_CALC_NOTE,
   payrollCalculationFilename,
+  payrollLessonSheetNotice,
 } from '@kampus/school-core/lib/finance-payroll-calc.ts'
 import { payrollMonthLabel } from '@kampus/school-core/lib/finance-payroll-periods.ts'
 import { sgkRoleLabel } from '@kampus/school-core/lib/finance-sgk-preparation.ts'
@@ -66,7 +67,9 @@ const momentText = (iso: string) =>
  * kaydet" ayı kaydeder (kümülatif matraha girer), onaylı ayda kaydetme kapalıdır. Satır panelinde
  * hesabın ayrıntısı ve kümülatif matrah devri vardır. Her görüntüleme ve CSV denetime düşer.
  * Kayıtlı hesap varken satırda ve başlıkta ücret hesap pusulası (PDF) düğmesi vardır (DOM-FIN-119):
- * pusula kayıtlı hesaptan üretilir, ekrandaki önizlemeden değil.
+ * pusula kayıtlı hesaptan üretilir, ekrandaki önizlemeden değil. Ek ders yalnız müdür onaylı
+ * çizelgeden hesaba girer (DOM-FIN-120, K-423): onay bekleyen saat varsa özette ve personelin
+ * satırında "ek ders çizelgesi onaylanmadı" uyarısı görünür; çizelge "Bordro aktarımı"ndadır.
  */
 export function FinancePayrollCalculationSection() {
   const [monthInput, setMonthInput] = useState(() => defaultPayrollMonth(dayKey()))
@@ -214,6 +217,7 @@ function CalculationBody({
   onOpen: (id: string) => void
 }) {
   const { parameters, totals, saved } = data
+  const lessonNotice = payrollLessonSheetNotice(data.lessonSheet)
   const stats = useMemo(
     () => [
       {
@@ -248,6 +252,15 @@ function CalculationBody({
           ? 'Bu ayın kayıtlı hesabı yok. Ücret hesap pusulası kayıtlı hesaptan üretilir.'
           : `Kayıtlı hesap ${String(saved.revision)}. revizyon, ${momentText(saved.calculatedAt)}${saved.calculatedByName ? ` · ${saved.calculatedByName}` : ''}; ödenecek net ${money(saved.payableTotalCents)}.`}
       </p>
+      {lessonNotice === null ? null : (
+        <p
+          role="note"
+          aria-label="Ek ders çizelgesi"
+          className="rounded-card border bg-warning-soft p-3 text-sm"
+        >
+          {lessonNotice} Çizelge &quot;Bordro aktarımı&quot; sekmesinde onaylanır.
+        </p>
+      )}
       <StatGrid label={`${payrollMonthLabel(data.month)} bordro özeti`} items={stats} />
       {data.rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">

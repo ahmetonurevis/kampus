@@ -198,6 +198,10 @@ const FinanceStaffOnboardingSection = lazy(async () => ({
 const FinancePerformanceSection = lazy(async () => ({
   default: (await import('./FinancePerformanceSection.tsx')).FinancePerformanceSection,
 }))
+const FinancePolicyAcknowledgementsSection = lazy(async () => ({
+  default: (await import('./FinancePolicyAcknowledgementsSection.tsx'))
+    .FinancePolicyAcknowledgementsSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -263,6 +267,7 @@ const VIEWS = {
   staffRetention: { label: 'Özlük saklama ve imha', param: 'ozluk-imha' },
   staffOnboarding: { label: 'İşe başlama', param: 'ise-baslama' },
   performance: { label: 'Performans', param: 'performans' },
+  policyAcknowledgements: { label: 'Politika onayları', param: 'politika-onaylari' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -316,6 +321,8 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Özlük saklama ve imha (DOM-FIN-122) yalnız yöneticidedir; imha geri alınamaz (K-417).
  * İşe başlama (DOM-FIN-121) yalnız yöneticidedir; aday verisi ve ücret önerisi taşır (K-412).
  * Performans (DOM-FIN-124) yalnız yöneticidedir; performans verisi kişiseldir (K-429).
+ * Politika onayları (DOM-FIN-127) ikisine açıktır; ön büro personel adına onay kaydeder, belgeyi
+ * yönetici yayımlar (K-437).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -556,6 +563,9 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'staffRetention' ? <FinanceStaffRetentionSection /> : null}
         {tab === 'staffOnboarding' ? <FinanceStaffOnboardingSection /> : null}
         {tab === 'performance' ? <FinancePerformanceSection /> : null}
+        {tab === 'policyAcknowledgements' ? (
+          <FinancePolicyAcknowledgementsSection isManager={isManager} />
+        ) : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

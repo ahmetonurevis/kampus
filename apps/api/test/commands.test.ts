@@ -196,6 +196,11 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // (routes/finance-performance.ts; DOM-FIN-124, ON-211).
   'POST /api/v1/finance/performance-periods',
   'POST /api/v1/finance/performance-periods/{periodId}/reviews',
+  // Politika belgesi yayımı önceki sürümü geçersiz kılar; onay kaydı personel × sürüm başına
+  // tekildir; çift tıklama ikinci sürümü ya da 409'u üretmez
+  // (routes/finance-policy-acknowledgements.ts; DOM-FIN-127, ON-190).
+  'POST /api/v1/finance/policy-documents',
+  'POST /api/v1/finance/policy-acknowledgements',
 ]
 // Onur: kayıt ve finans sonu
 

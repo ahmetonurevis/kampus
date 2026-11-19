@@ -19,6 +19,7 @@ import { sgkMonthRange } from '@kampus/school-core/lib/finance-sgk-preparation.t
 import type { MonthlyDeductionSources } from '@kampus/school-core/lib/finance-staff-deductions.ts'
 
 import type { Database } from '../db/client.ts'
+import { approvedLessonHoursFor } from '../db/finance-lesson-hour-approvals.ts'
 import { findStaffMember, loadStaffPayRates } from '../db/finance-pay-rates.ts'
 import { listPayrollParameterSets } from '../db/finance-payroll-parameters.ts'
 import {
@@ -33,7 +34,6 @@ import {
   loadPayrollAdjustmentsInto,
   loadPayrollCalcMembers,
   loadPayrollEmploymentDates,
-  loadPayrollLessonHours,
   loadPayrollMissingDays,
   loadPayrollRunLines,
   loadSavedIncomeTaxBases,
@@ -57,8 +57,8 @@ import { auditWork } from './task-work.ts'
 
 /**
  * Bordro ön hesabı (DOM-FIN-115; ON-198). Kural core `lib/finance-payroll-calc.ts`'tedir; servis
- * ayın girdilerini (ücret tanımları, parametre setleri, elle SGK satırları, ek ders saatleri, aya
- * aktarılan düzeltmeler, kesinti kayıtları, sağlık raporu günleri, yılın kayıtlı hesapları ve
+ * ayın girdilerini (ücret tanımları, parametre setleri, elle SGK satırları, ek ders saatleri —
+ * yalnız müdür onaylı çizelgeden, `approvedLessonHoursFor`, K-423 —, aya aktarılan düzeltmeler, kesinti kayıtları, sağlık raporu günleri, yılın kayıtlı hesapları ve
  * devirleri) tek transaction'da okur. Ücret ve icra kişisel veridir (K-306, K-315): önizleme, kayıtlı
  * hesap ve CSV her okumada aynı transaction'da denetime düşer; denetime alan adları yazılır, tutar
  * yazılmaz. Kaydetme kurum kilidi altındadır; onaylı (kilitli) ay 409 `payroll_period_locked`
@@ -92,6 +92,13 @@ async function calculate(tx: Database, ctx: ServiceContext, month: string) {
     throw mapOperationError(error)
   }
   const members = await loadPayrollCalcMembers(tx, ctx.institutionId, range)
+  // Ek ders yalnız müdür onaylı çizelgeden (K-423); onay bekleyen saat yalnız uyarıdır.
+  const lessons = await approvedLessonHoursFor(tx, ctx.institutionId, month)
+  const lessonInput = (entry: (typeof lessons.entries)[number]) => ({
+    membershipId: entry.membershipId,
+    lessonType: entry.lessonType,
+    hours: entry.hours,
+  })
   const ids = members.map((member) => member.membershipId)
   const deductionSources = new Map<string, MonthlyDeductionSources>()
   for (const id of ids) {
@@ -116,7 +123,8 @@ async function calculate(tx: Database, ctx: ServiceContext, month: string) {
     rates: await loadStaffPayRates(tx, ctx.institutionId, ids),
     missing: await loadPayrollMissingDays(tx, ctx.institutionId, range.firstDay),
     dates: await loadPayrollEmploymentDates(tx, ctx.institutionId, range.firstDay),
-    lessonHours: await loadPayrollLessonHours(tx, ctx.institutionId, range.firstDay),
+    lessonHours: lessons.entries.map(lessonInput),
+    lessonSheet: { status: lessons.status, pending: lessons.pending.map(lessonInput) },
     adjustments: await loadPayrollAdjustmentsInto(tx, ctx.institutionId, month),
     savedBases: await loadSavedIncomeTaxBases(tx, ctx.institutionId, month),
     carryovers: await loadYearCarryovers(tx, ctx.institutionId, Number(month.slice(0, 4))),

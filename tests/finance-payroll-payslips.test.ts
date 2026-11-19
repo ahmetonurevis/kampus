@@ -41,6 +41,7 @@ function calcRow(cumulativeBefore = 0) {
     missing: [{ days: 2, reasonCode: '15' }],
     dates: null,
     lessonHours: [],
+    lessonHoursUnapproved: false,
     adjustments: [{ item: 'deduction', amountCents: -10_000 }],
     cumulativeIncomeTaxBaseBeforeCents: cumulativeBefore,
     unsavedPreviousMonths: [],

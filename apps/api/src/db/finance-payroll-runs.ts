@@ -2,7 +2,6 @@ import { and, asc, desc, eq, gte, inArray, isNull, lt, lte, or, sql } from 'driz
 
 import type {
   PayrollCalcAdjustment,
-  PayrollCalcLessonHours,
   PayrollCalcMember,
   PayrollCalcRow,
   PayrollSavedBase,
@@ -26,7 +25,8 @@ import { sgkEmploymentDates, sgkMissingDays } from './schema/finance-sgk-prepara
 /**
  * Bordro hesabı deposu (DOM-FIN-115; ON-198). Kurum kapsamlıdır: ilk parametre `institutionId`.
  * Kural core `lib/finance-payroll-calc.ts`'tedir; depo yalnız okur ve yazar. Arşivli hesap, devir,
- * ek ders saati, düzeltme ve elle SGK satırı okunmaz; iptal edilmiş ücret tanımı okunmaz.
+ * ek ders saati, düzeltme ve elle SGK satırı okunmaz; iptal edilmiş ücret tanımı okunmaz. Ek ders
+ * saatleri onay durumuyla `finance-lesson-hour-approvals.ts` (`approvedLessonHoursFor`) okur.
  */
 
 // --- Hesap girdileri ------------------------------------------------------------------------------
@@ -163,28 +163,6 @@ export function loadPayrollEmploymentDates(
         eq(sgkEmploymentDates.institutionId, institutionId),
         isNull(sgkEmploymentDates.archivedAt),
         eq(sgkEmploymentDates.month, firstDay),
-      ),
-    )
-}
-
-/** Ayın etkin ek ders saatleri. */
-export function loadPayrollLessonHours(
-  db: Database,
-  institutionId: string,
-  firstDay: string,
-): Promise<PayrollCalcLessonHours[]> {
-  return db
-    .select({
-      membershipId: payrollLessonHours.membershipId,
-      lessonType: payrollLessonHours.lessonType,
-      hours: payrollLessonHours.hours,
-    })
-    .from(payrollLessonHours)
-    .where(
-      and(
-        eq(payrollLessonHours.institutionId, institutionId),
-        isNull(payrollLessonHours.archivedAt),
-        eq(payrollLessonHours.monthStart, firstDay),
       ),
     )
 }

@@ -3,6 +3,7 @@ import test from 'node:test'
 
 import {
   assertLessonHoursWritable,
+  assertPayrollLessonHoursApproved,
   isLessonSheetApproved,
   LESSON_CONFIRMATION_CHANNEL_LABELS,
   LESSON_CONFIRMATION_CHANNELS,
@@ -13,6 +14,7 @@ import {
   lessonConfirmationInputSchema,
   lessonEntriesFingerprint,
   lessonHoursForPayroll,
+  lessonHoursPendingApproval,
   lessonSheetApproveSchema,
   lessonSheetReopenSchema,
   lessonSheetStatus,
@@ -218,6 +220,20 @@ test('DOM-FIN-120: kilit ve yeniden açma; bordroya yalnız onaylı saat girer (
   assert.notEqual(lessonHoursForPayroll(APPROVED, entries), entries)
   for (const stored of [null, DRAFT, REVIEW])
     assert.deepEqual(lessonHoursForPayroll(stored, entries), [])
+})
+
+test('DOM-FIN-120: onay bekleyen saatler bordroya girmez ve dönem onayını engeller (K-423, K-424)', () => {
+  const entries = [{ id: 'h-1' }, { id: 'h-2' }]
+  assert.deepEqual(lessonHoursPendingApproval(APPROVED, entries), [])
+  for (const stored of [null, DRAFT, REVIEW]) {
+    assert.deepEqual(lessonHoursPendingApproval(stored, entries), entries)
+    assert.notEqual(lessonHoursPendingApproval(stored, entries), entries)
+  }
+  assertPayrollLessonHoursApproved(0)
+  assert.throws(
+    () => assertPayrollLessonHoursApproved(2),
+    isDomainError('payroll_lesson_hours_pending', 'conflict'),
+  )
 })
 
 test('DOM-FIN-120: onaysız ayın ek ders satırı "onay bekliyor", tutarsız ve toplama girmez (K-411)', () => {

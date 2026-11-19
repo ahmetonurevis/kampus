@@ -1,5 +1,6 @@
 import { z } from 'zod'
 
+import { LESSON_SHEET_STATUSES } from '@kampus/school-core/lib/finance-lesson-hour-approvals.ts'
 import { WAGE_TYPES } from '@kampus/school-core/lib/finance-pay-rates.ts'
 import {
   PAYROLL_CALC_WARNINGS,
@@ -142,6 +143,21 @@ export const payrollCalculationResponse = dataResponse(
         .int()
         .describe('Asgari ücretin yıl başından önceki aylara kümülatif GV matrahı'),
     }),
+    lessonSheet: z
+      .object({
+        status: z
+          .enum(LESSON_SHEET_STATUSES)
+          .describe('Ayın ek ders çizelgesi: `draft`, `teacher_review`, `approved` (DOM-FIN-120)'),
+        pendingStaffCount: z
+          .number()
+          .int()
+          .describe('Müdür onayı beklediği için ek dersi hesaba girmeyen personel sayısı (K-423)'),
+        pendingHours: z
+          .number()
+          .int()
+          .describe('Müdür onayı beklediği için hesaba girmeyen toplam ek ders saati (K-423)'),
+      })
+      .describe('Ek ders çizelgesi; hesaba yalnız müdür onaylı çizelgenin saatleri girer'),
     rows: z.array(payrollCalcRowSchema),
     totals: totalsSchema,
     saved: savedSummarySchema.nullable().describe('Ayın etkin kayıtlı hesabı; yoksa `null`'),

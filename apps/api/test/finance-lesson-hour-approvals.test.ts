@@ -28,9 +28,9 @@ import {
 } from './support/app.ts'
 
 /**
- * Ek ders çizelgesi onayı uçları (DOM-FIN-120; ON-196; K-409…K-411). Her test kendi kurumunu
- * kurar; saat bordro aktarımı ucuyla (DOM-FIN-105), dönem kilidi bordro dönemi uçlarıyla
- * (DOM-FIN-108) yazılır. FIXED_NOW 2026-10-06: Ekim cari ay.
+ * Ek ders çizelgesi onayı uçları (DOM-FIN-120; ON-196; K-409…K-411; dönem onayı engeli K-424,
+ * ON-348). Her test kendi kurumunu kurar; saat bordro aktarımı ucuyla (DOM-FIN-105), dönem kilidi
+ * bordro dönemi uçlarıyla (DOM-FIN-108) yazılır. FIXED_NOW 2026-10-06: Ekim cari ay.
  */
 
 const FINANCE = '/api/v1/finance'
@@ -460,26 +460,53 @@ describe('DOM-FIN-120: ek ders çizelgesi onayı uçları', () => {
     assert.equal(row?.version, 1)
   })
 
-  test('DOM-FIN-120: kilitli bordro döneminde saat, müdür onayı ve yeniden açma 409 payroll_period_locked (K-410)', async () => {
-    const t = await staffed()
-    ok(await submit(t.admin))
-    ok(await confirm(t.admin, t.selin))
-    const sheet = ok(await confirm(t.admin, t.ece))
+  /** Ayın bordro dönemi onayı (DOM-FIN-108): listedeki güncel damgayla. */
+  async function approvePeriod(t: Tenant) {
     const year = ok(await call('GET', `${PERIODS}?year=2026`, t.admin)) as {
       months: { month: string; current: { inputsHash: string } | null }[]
     }
     const current = year.months.find((item) => item.month === MONTH)?.current
     assert.ok(current)
-    ok(
-      await call(
-        'POST',
-        `${PERIODS}/${MONTH}/approve`,
-        t.admin,
-        { inputsHash: current.inputsHash },
-        key(),
-      ),
-      201,
+    return call(
+      'POST',
+      `${PERIODS}/${MONTH}/approve`,
+      t.admin,
+      { inputsHash: current.inputsHash },
+      key(),
     )
+  }
+
+  test('DOM-FIN-120, DOM-FIN-108: onay bekleyen ek ders saati varken bordro dönemi onaylanmaz (K-424)', async () => {
+    const t = await staffed()
+    // Taslak ve öğretmen kontrolündeki çizelge dönemi engeller.
+    assertError(await approvePeriod(t), 409, 'payroll_lesson_hours_pending')
+    ok(await submit(t.admin))
+    ok(await confirm(t.admin, t.selin))
+    const sheet = ok(await confirm(t.admin, t.ece))
+    const blocked = await approvePeriod(t)
+    assertError(blocked, 409, 'payroll_lesson_hours_pending')
+    assert.match(blocked.json().message as string, /ek ders çizelgesi müdür onayı bekliyor/)
+    assert.equal(ok(await sheetOf(t.admin)).payrollLocked, false)
+    // Müdür onayından sonra dönem onaylanır.
+    ok(await approve(t.admin, sheet.entriesHash))
+    ok(await approvePeriod(t), 201)
+    assert.equal(ok(await sheetOf(t.admin)).payrollLocked, true)
+    // Saat kaydı olmayan ay serbesttir.
+    ok(await approvePeriod(await institution()), 201)
+  })
+
+  test('DOM-FIN-120: kilitli bordro döneminde saat, müdür onayı ve yeniden açma 409 payroll_period_locked (K-410)', async () => {
+    const t = await staffed()
+    ok(await submit(t.admin))
+    ok(await confirm(t.admin, t.selin))
+    const sheet = ok(await confirm(t.admin, t.ece))
+    ok(await approve(t.admin, sheet.entriesHash))
+    ok(await approvePeriod(t), 201)
+    // K-424 öncesinde onay bekleyen çizelgeyle kilitlenmiş dönem: çizelge öğretmen kontrolünde.
+    await db
+      .update(lessonHourApprovals)
+      .set({ status: 'teacher_review' })
+      .where(eq(lessonHourApprovals.institutionId, t.id))
     assert.equal(ok(await sheetOf(t.admin)).payrollLocked, true)
     assertError(
       await call('POST', HOURS, t.admin, {
@@ -502,19 +529,7 @@ describe('DOM-FIN-120: ek ders çizelgesi onayı uçları', () => {
     // Çizelge önce onaylanmışsa yeniden açılmaz.
     const other = await staffed()
     await approved(other)
-    const otherYear = ok(await call('GET', `${PERIODS}?year=2026`, other.admin)) as typeof year
-    const otherCurrent = otherYear.months.find((item) => item.month === MONTH)?.current
-    assert.ok(otherCurrent)
-    ok(
-      await call(
-        'POST',
-        `${PERIODS}/${MONTH}/approve`,
-        other.admin,
-        { inputsHash: otherCurrent.inputsHash },
-        key(),
-      ),
-      201,
-    )
+    ok(await approvePeriod(other), 201)
     assertError(await reopen(other.admin), 409, 'payroll_period_locked')
     assert.equal((await sheetRows(other.id))[0]?.status, 'approved')
   })

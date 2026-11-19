@@ -9807,7 +9807,7 @@ export interface paths {
         put?: never;
         /**
          * Bordro ayını onayla (kilitle)
-         * @description Ayın bordro girdilerini onaylar ve ayı kilitler (DOM-FIN-108, K-356, K-357): onaydan sonra yürürlüğü bu aya düşen ücret tanımı yazmaları (yeni tanım, bitiş, iptal), bu ayda geçerli seti değiştiren bordro parametresi yazmaları ve bu ayın kesintisini değiştiren avans, icra ve BES yazmaları (K-394) 409 `payroll_period_locked` olur. Girdi özeti ve damgası kurum kilidi altında yeniden hesaplanır; `inputsHash` listedeki `current.inputsHash` ile aynı değilse 409 `payroll_inputs_changed`. Başlamamış ay 422 `payroll_period_in_future`, onaylı ay 409 `payroll_period_already_approved`. İlk onay 201, yeniden açılmış ayın onayı 200. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (K-359). Modül `finance`.
+         * @description Ayın bordro girdilerini onaylar ve ayı kilitler (DOM-FIN-108, K-356, K-357): onaydan sonra yürürlüğü bu aya düşen ücret tanımı yazmaları (yeni tanım, bitiş, iptal), bu ayda geçerli seti değiştiren bordro parametresi yazmaları ve bu ayın kesintisini değiştiren avans, icra ve BES yazmaları (K-394) 409 `payroll_period_locked` olur. Girdi özeti ve damgası kurum kilidi altında yeniden hesaplanır; `inputsHash` listedeki `current.inputsHash` ile aynı değilse 409 `payroll_inputs_changed`. Ayda müdür onayı bekleyen ek ders saati varsa (DOM-FIN-120) 409 `payroll_lesson_hours_pending` (K-424). Başlamamış ay 422 `payroll_period_in_future`, onaylı ay 409 `payroll_period_already_approved`. İlk onay 201, yeniden açılmış ayın onayı 200. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (K-359). Modül `finance`.
          */
         post: operations["approvePayrollPeriod"];
         delete?: never;
@@ -10453,7 +10453,7 @@ export interface paths {
         };
         /**
          * Bordro ön hesabı (önizleme)
-         * @description Ayın canlı bordro hesabı (DOM-FIN-115; kaydedilmez): ayda ana ücret tanımı yürürlükte olan, o ay ek ders saati, aya aktarılan düzeltme ya da elle SGK satırı bulunan personel. Satır: prim günü (SGK hazırlık listesiyle aynı, DOM-FIN-107), brüt kalemleri (aylık brüt gün oranlı, ek ders saat × ücret, nakdi yan hak; vergiye tabi işaretli olan GV ve DV matrahına da girer; ayni yan hak yalnız maliyete; düzeltme kayıtları brüt fark, kesinti kalemi net fark; K-387), SGK taban/tavan, işçi payları, GV matrahı, önceki kümülatif matrah (yılın kayıtlı hesapları + elle devir), hesaplanan GV, asgari ücret GV istisnası (asgari ücretin yıl başından kümülatif matrahıyla, gün oranlı) ve DV istisnası (K-388), net, kesintiler (DOM-FIN-101 sırası; icra net ücretten), ödenecek net, işveren payları (5 puan indirim setten) ve maliyet. Net tanımlı ücret ters hesapla brüte çevrilir (K-389); yuvarlama her kalemde bir kez yarım yukarı, vergi tek yuvarlama (K-390). Saatlik ya da ders saati ana ücret hesaplanmaz (`complete: false`, toplama ve kayda girmez). `saved` ayın etkin kayıtlı hesabının özeti, `locked` ayın onaylı olup olmadığıdır. Set yoksa 422 `payroll_parameters_missing`. Her okuma denetime düşer: ekran `finance.payroll_calculation.read`, `Accept: text/csv` `finance.payroll_calculation_export` (yalnız alan adları); sağlık raporu günü varsa ayrıca `finance.medical_report.read`. CSV taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk. Hesap mali müşavir doğrulaması bekler (M-75…M-77); resmî beyanname ve bildirge Kampüs dışında verilir. Rol: yalnız `yonetici` (K-391). Modül `finance`.
+         * @description Ayın canlı bordro hesabı (DOM-FIN-115; kaydedilmez): ayda ana ücret tanımı yürürlükte olan, o ay ek ders saati, aya aktarılan düzeltme ya da elle SGK satırı bulunan personel. Satır: prim günü (SGK hazırlık listesiyle aynı, DOM-FIN-107), brüt kalemleri (aylık brüt gün oranlı, ek ders saat × ücret — yalnız ek ders çizelgesi müdür onaylı ayda (DOM-FIN-120, K-423); onay bekleyen saat hesaba girmez, personelin satırı `lesson_hours_unapproved` uyarısı taşır ve `lessonSheet` çizelge durumunu ve bekleyen saat özetini verir —, nakdi yan hak; vergiye tabi işaretli olan GV ve DV matrahına da girer; ayni yan hak yalnız maliyete; düzeltme kayıtları brüt fark, kesinti kalemi net fark; K-387), SGK taban/tavan, işçi payları, GV matrahı, önceki kümülatif matrah (yılın kayıtlı hesapları + elle devir), hesaplanan GV, asgari ücret GV istisnası (asgari ücretin yıl başından kümülatif matrahıyla, gün oranlı) ve DV istisnası (K-388), net, kesintiler (DOM-FIN-101 sırası; icra net ücretten), ödenecek net, işveren payları (5 puan indirim setten) ve maliyet. Net tanımlı ücret ters hesapla brüte çevrilir (K-389); yuvarlama her kalemde bir kez yarım yukarı, vergi tek yuvarlama (K-390). Saatlik ya da ders saati ana ücret hesaplanmaz (`complete: false`, toplama ve kayda girmez). `saved` ayın etkin kayıtlı hesabının özeti, `locked` ayın onaylı olup olmadığıdır. Set yoksa 422 `payroll_parameters_missing`. Her okuma denetime düşer: ekran `finance.payroll_calculation.read`, `Accept: text/csv` `finance.payroll_calculation_export` (yalnız alan adları); sağlık raporu günü varsa ayrıca `finance.medical_report.read`. CSV taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk. Hesap mali müşavir doğrulaması bekler (M-75…M-77); resmî beyanname ve bildirge Kampüs dışında verilir. Rol: yalnız `yonetici` (K-391). Modül `finance`.
          */
         get: operations["getPayrollCalculation"];
         put?: never;
@@ -10495,7 +10495,7 @@ export interface paths {
         put?: never;
         /**
          * Bordro hesabını kaydet ya da yeniden hesapla
-         * @description Ay kurum kilidi altında yeniden hesaplanır ve kaydedilir (K-391). Onaylı (kilitli) ay 409 `payroll_period_locked`: dönem onayı kayıtlı hesabı dondurur (DOM-FIN-108). `previousRunId` ekranda görülen kayıtlı hesabın kimliğidir (ilk kayıtta `null`); güncel değilse 409 `payroll_run_changed`. Hesaplanabilen satır yoksa 422 `payroll_run_empty`. Varsa eski hesap arşivlenir, revizyonu bir artırılmış yeni hesap yazılır; eksik satırlar (saatlik ücret, tanımsız) kayda girmez. Kayıtlı hesabın GV matrahı sonraki ayların kümülatifine girer. Kayıt ödeme yapmaz, icra kalanını değiştirmez. İlk kayıt 201, yeniden hesaplama 200. `Idempotency-Key` zorunlu. Hesap mali müşavir doğrulaması bekler (M-75…M-77); resmî beyanname ve bildirge Kampüs dışında verilir. Rol: yalnız `yonetici` (K-391). Modül `finance`.
+         * @description Ay kurum kilidi altında yeniden hesaplanır ve kaydedilir (K-391). Onaylı (kilitli) ay 409 `payroll_period_locked`: dönem onayı kayıtlı hesabı dondurur (DOM-FIN-108). `previousRunId` ekranda görülen kayıtlı hesabın kimliğidir (ilk kayıtta `null`); güncel değilse 409 `payroll_run_changed`. Hesaplanabilen satır yoksa 422 `payroll_run_empty`. Varsa eski hesap arşivlenir, revizyonu bir artırılmış yeni hesap yazılır; eksik satırlar (saatlik ücret, tanımsız) kayda girmez. Ek ders yalnız müdür onaylı çizelgeden girer (K-423); çizelge sonradan yeniden açılsa da kayıtlı satırlar değişmez. Kayıtlı hesabın GV matrahı sonraki ayların kümülatifine girer. Kayıt ödeme yapmaz, icra kalanını değiştirmez. İlk kayıt 201, yeniden hesaplama 200. `Idempotency-Key` zorunlu. Hesap mali müşavir doğrulaması bekler (M-75…M-77); resmî beyanname ve bildirge Kampüs dışında verilir. Rol: yalnız `yonetici` (K-391). Modül `finance`.
          */
         post: operations["savePayrollRun"];
         delete?: never;
@@ -110058,6 +110058,18 @@ export interface operations {
                                 /** @description Asgari ücretin yıl başından önceki aylara kümülatif GV matrahı */
                                 minimumWageBaseBeforeCents: number;
                             };
+                            /** @description Ek ders çizelgesi; hesaba yalnız müdür onaylı çizelgenin saatleri girer */
+                            lessonSheet: {
+                                /**
+                                 * @description Ayın ek ders çizelgesi: `draft`, `teacher_review`, `approved` (DOM-FIN-120)
+                                 * @enum {string}
+                                 */
+                                status: "draft" | "teacher_review" | "approved";
+                                /** @description Müdür onayı beklediği için ek dersi hesaba girmeyen personel sayısı (K-423) */
+                                pendingStaffCount: number;
+                                /** @description Müdür onayı beklediği için hesaba girmeyen toplam ek ders saati (K-423) */
+                                pendingHours: number;
+                            };
                             rows: {
                                 membershipId: string;
                                 name: string;
@@ -110155,7 +110167,7 @@ export interface operations {
                                 /** @description İşveren maliyeti, kuruş */
                                 employerCostCents: number;
                                 /** @description Uyarı kodları */
-                                warnings: ("no_wage" | "pay_rate_gap" | "entry_in_month" | "exit_in_month" | "missing_days_exceed" | "missing_reason" | "hourly_wage" | "net_wage" | "net_rounding" | "mixed_wage" | "lesson_rate_missing" | "below_floor" | "above_ceiling" | "negative_gross" | "medical_report_days" | "previous_month_not_saved" | "deduction_capped" | "staff_inactive")[];
+                                warnings: ("no_wage" | "pay_rate_gap" | "entry_in_month" | "exit_in_month" | "missing_days_exceed" | "missing_reason" | "hourly_wage" | "net_wage" | "net_rounding" | "mixed_wage" | "lesson_rate_missing" | "lesson_hours_unapproved" | "below_floor" | "above_ceiling" | "negative_gross" | "medical_report_days" | "previous_month_not_saved" | "deduction_capped" | "staff_inactive")[];
                             }[];
                             totals: {
                                 staffCount: number;
@@ -110395,7 +110407,7 @@ export interface operations {
                                 /** @description İşveren maliyeti, kuruş */
                                 employerCostCents: number;
                                 /** @description Uyarı kodları */
-                                warnings: ("no_wage" | "pay_rate_gap" | "entry_in_month" | "exit_in_month" | "missing_days_exceed" | "missing_reason" | "hourly_wage" | "net_wage" | "net_rounding" | "mixed_wage" | "lesson_rate_missing" | "below_floor" | "above_ceiling" | "negative_gross" | "medical_report_days" | "previous_month_not_saved" | "deduction_capped" | "staff_inactive")[];
+                                warnings: ("no_wage" | "pay_rate_gap" | "entry_in_month" | "exit_in_month" | "missing_days_exceed" | "missing_reason" | "hourly_wage" | "net_wage" | "net_rounding" | "mixed_wage" | "lesson_rate_missing" | "lesson_hours_unapproved" | "below_floor" | "above_ceiling" | "negative_gross" | "medical_report_days" | "previous_month_not_saved" | "deduction_capped" | "staff_inactive")[];
                             }[];
                             totals: {
                                 staffCount: number;

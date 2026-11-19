@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { daySchema } from './domain.ts'
 import { DomainError } from './errors.ts'
+import { monthEnd, type DayRange } from './finance-payroll-periods.ts'
 import { isStaffRole } from './staff-accounts.ts'
 
 /**
@@ -12,6 +13,7 @@ import { isStaffRole } from './staff-accounts.ts'
  * okur; burada ücret hesaplanmaz, para aktarılmaz. Hesaplanabilen değer (taksit planı, kalan avans,
  * icra sırası, BES durumu) saklanmaz. Fonksiyonlar saftır; bugün `today` (Europe/Istanbul günü) ile
  * gelir. Mevzuat varsayımları **doğrulanmalı** (H-45, H-46, M-42, M-43); ürün kararları K-312…K-315.
+ * Yazmaların bordro dönem kilidine (DOM-FIN-108) verdiği etki aralıkları dosyanın sonundadır (K-394).
  */
 
 /** Okuma ve yazma yalnız yönetici (K-315; muhasebe/İK rolü açılınca o da). */
@@ -782,3 +784,38 @@ export function monthlyDeductions(
     remainingNetCents: netCents === null ? null : netCents - totalCents,
   }
 }
+
+// --- Dönem kilidi (DOM-FIN-108; K-394) -----------------------------------------------------------
+
+/**
+ * Ay aralığının günleri: ilk ayın ilk gününden son ayın son gününe; `toMonth: null` süresizdir.
+ * Kesinti yazmaları kilit denetimine (`assertPayrollDaysUnlocked`) bu aralıkla girer.
+ */
+export function deductionMonthsRange(fromMonth: string, toMonth: string | null): DayRange {
+  return { from: `${fromMonth}-01`, to: toMonth === null ? null : monthEnd(toMonth) }
+}
+
+/** Taksit planının son ayı. */
+const lastInstallmentMonth = (advance: { firstMonth: string; installmentCount: number }) =>
+  addMonths(advance.firstMonth, advance.installmentCount - 1)
+
+/**
+ * Avansın kilit aralığı (K-394): yeni avansta ve iptalde bütün taksit ayları; erken kapamada
+ * kesilmeyecek ilk aydan planın son ayına. Veriliş günü bordro girdisi değildir, denetlenmez.
+ */
+export function advanceLockRange(
+  advance: { firstMonth: string; installmentCount: number },
+  fromMonth: string = advance.firstMonth,
+): DayRange {
+  return deductionMonthsRange(fromMonth, lastInstallmentMonth(advance))
+}
+
+/**
+ * Günden itibaren süren kesintinin kilit aralığı (K-394): icra tebliği ve kapanışı, BES başlangıcı
+ * ve ayrılması o günün ayından itibaren her ayın kesintisini değiştirir.
+ */
+export const fromDayLockRange = (day: string): DayRange => deductionMonthsRange(monthOf(day), null)
+
+/** BES ara vermesinin kilit aralığı: ilk ve son ay dahil. */
+export const pensionPauseLockRange = (pause: StaffPensionPause): DayRange =>
+  deductionMonthsRange(pause.fromMonth, pause.toMonth)

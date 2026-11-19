@@ -53,9 +53,10 @@ import { auditWork } from './task-work.ts'
  * Bordro onayı ve dönem kilidi (DOM-FIN-108; ON-200). Kural core `lib/finance-payroll-periods.ts`'
  * tedir; servis kurum kilidi altında girdileri yükler, özeti damgalar ve tek transaction'da yazar.
  * Kilit denetimi geneldir: bordroya girdi yazan her servis `assertPayrollRangesUnlocked`'u kendi
- * etki aralığıyla çağırır (bugün ücret tanımı ve bordro parametresi; ON-199 avans/kesinti ve ON-202
- * aktarım takipte). Denetim kaydına alan adları yazılır; tutar ve gerekçe yazılmaz. Rol ve modül
- * denetimi rotadadır (yalnız yönetici).
+ * etki aralığıyla çağırır: ücret tanımı, bordro parametresi ve avans/icra/BES (ON-343). Bordro
+ * aktarımı (ON-202) kilitlenmez; aya aktarılan düzeltmeleri hedef ayın satırı olarak okur.
+ * Denetim kaydına alan adları yazılır; tutar ve gerekçe yazılmaz. Rol ve modül denetimi
+ * rotadadır (yalnız yönetici).
  */
 
 const PERIOD = 'payroll_periods'

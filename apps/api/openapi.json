@@ -270143,6 +270143,3592 @@
         }
       }
     },
+    "/api/v1/finance/department-meetings": {
+      "get": {
+        "operationId": "listDepartmentMeetings",
+        "summary": "Zümre toplantılarını listele",
+        "tags": [
+          "finance-department-meetings"
+        ],
+        "description": "Zümre toplantısı tutanakları, yeniden eskiye (DOM-FIN-132). Ders adında ya da yerde aranır; zümre, tür, durum ve gün aralığıyla süzülür. Satır katılım ve açık karar sayılarını taşır. Rol: yalnız `yonetici` (K-451). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Ders adında ya da yerde arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60
+            },
+            "in": "query",
+            "name": "subjectId",
+            "required": false,
+            "description": "Zümre (ders)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "term_start",
+                "term_end",
+                "interim"
+              ]
+            },
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "description": "Toplantı türü"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "finalized"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Tutanak durumu"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "description": "Bu günden itibaren (YYYY-MM-DD)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "description": "Bu güne kadar (YYYY-MM-DD); başlangıçtan önceyse liste boş"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "subjectId": {
+                            "type": "string",
+                            "description": "Zümrenin dersi"
+                          },
+                          "subjectName": {
+                            "type": "string",
+                            "description": "Ders adı (toplantı anındaki kopya)"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "term_start",
+                              "term_end",
+                              "interim"
+                            ]
+                          },
+                          "meetingDate": {
+                            "type": "string",
+                            "description": "Toplantı günü (YYYY-MM-DD)"
+                          },
+                          "location": {
+                            "type": "string"
+                          },
+                          "chairMembershipId": {
+                            "type": "string",
+                            "description": "Başkanın kurum üyeliği"
+                          },
+                          "chairName": {
+                            "type": "string",
+                            "description": "Başkanın adı (üyelikten)"
+                          },
+                          "agendaCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Gündem maddesi sayısı"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "draft",
+                              "finalized"
+                            ]
+                          },
+                          "signedDate": {
+                            "description": "İmza günü; yalnız kesinleşmiş tutanakta",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "finalizedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "attendeeCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "attendedCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "\"Katıldı\" işaretli katılımcı sayısı"
+                          },
+                          "decisionCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "openDecisionCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Açık karar sayısı"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "subjectId",
+                          "subjectName",
+                          "kind",
+                          "meetingDate",
+                          "location",
+                          "chairMembershipId",
+                          "chairName",
+                          "agendaCount",
+                          "status",
+                          "signedDate",
+                          "finalizedAt",
+                          "attendeeCount",
+                          "attendedCount",
+                          "decisionCount",
+                          "openDecisionCount",
+                          "createdAt",
+                          "updatedAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createDepartmentMeeting",
+        "summary": "Zümre toplantısı tutanağı aç",
+        "tags": [
+          "finance-department-meetings"
+        ],
+        "description": "Tutanak taslak açılır (K-452). Zümre kurumun dersi (yoksa 422 `department_meeting_subject_not_found`); başkan ve katılımcılar kurumun etkin öğretmen ya da yönetici üyeliği (olmayan ya da başka kurumun üyeliği 422 `department_meeting_staff_not_found`, diğer roller 422 `department_meeting_not_staff`, ayrılmış 422 `department_meeting_staff_inactive`); başkan katılımcılar arasında \"katıldı\" olmalı. Gündem 1–30 madde, sıra gövdedeki sıradır. Denetim kaydına alan adları yazılır. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (K-451). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "subjectId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60,
+                    "description": "Zümrenin dersi (kurum ders kaydı ya da müfredat ders kimliği)"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "term_start",
+                      "term_end",
+                      "interim"
+                    ],
+                    "description": "`term_start` dönem başı, `term_end` dönem sonu, `interim` ara toplantı"
+                  },
+                  "meetingDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Toplantı günü (YYYY-MM-DD)"
+                  },
+                  "location": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 200,
+                    "description": "Toplantı yeri"
+                  },
+                  "chairMembershipId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Toplantı başkanının kurum üyeliği; katılımcılar arasında \"katıldı\" olmalı"
+                  },
+                  "agenda": {
+                    "minItems": 1,
+                    "maxItems": 30,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "default": null,
+                          "description": "Var olan gündem maddesinin kimliği; yeni maddede boş",
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 2,
+                          "maxLength": 300,
+                          "description": "Gündem maddesinin başlığı"
+                        },
+                        "discussion": {
+                          "description": "Maddede yapılan görüşmelerin özeti (isteğe bağlı)",
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 4000
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "title"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Gündem maddeleri, görüşülme sırasıyla"
+                  },
+                  "attendees": {
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "membershipId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100,
+                          "description": "Katılımcının kurum üyeliği"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "attended",
+                            "absent",
+                            "excused"
+                          ],
+                          "description": "`attended` katıldı, `absent` katılmadı, `excused` mazeretli"
+                        }
+                      },
+                      "required": [
+                        "membershipId",
+                        "status"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Zümre öğretmenleri ve katılım durumları"
+                  }
+                },
+                "required": [
+                  "subjectId",
+                  "kind",
+                  "meetingDate",
+                  "location",
+                  "chairMembershipId",
+                  "agenda",
+                  "attendees"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "subjectId": {
+                          "type": "string",
+                          "description": "Zümrenin dersi"
+                        },
+                        "subjectName": {
+                          "type": "string",
+                          "description": "Ders adı (toplantı anındaki kopya)"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "term_start",
+                            "term_end",
+                            "interim"
+                          ]
+                        },
+                        "meetingDate": {
+                          "type": "string",
+                          "description": "Toplantı günü (YYYY-MM-DD)"
+                        },
+                        "location": {
+                          "type": "string"
+                        },
+                        "chairMembershipId": {
+                          "type": "string",
+                          "description": "Başkanın kurum üyeliği"
+                        },
+                        "chairName": {
+                          "type": "string",
+                          "description": "Başkanın adı (üyelikten)"
+                        },
+                        "agendaCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Gündem maddesi sayısı"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "finalized"
+                          ]
+                        },
+                        "signedDate": {
+                          "description": "İmza günü; yalnız kesinleşmiş tutanakta",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "finalizedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "attendeeCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "attendedCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "\"Katıldı\" işaretli katılımcı sayısı"
+                        },
+                        "decisionCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "openDecisionCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Açık karar sayısı"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "agenda": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "discussion": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "title",
+                              "discussion"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Gündem maddeleri, sırasıyla"
+                        },
+                        "attendees": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "role": {
+                                "type": "string"
+                              },
+                              "active": {
+                                "type": "boolean",
+                                "description": "Üyelik etkin mi (ayrılmış personel tutanakta kalır)"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "attended",
+                                  "absent",
+                                  "excused"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "membershipId",
+                              "name",
+                              "role",
+                              "active",
+                              "status"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Katılımcılar, ada göre"
+                        },
+                        "decisions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "number": {
+                                "type": "string",
+                                "description": "Karar numarası \"madde.sıra\" (saklanmaz, gündem sırasından)"
+                              },
+                              "agendaItemId": {
+                                "type": "string"
+                              },
+                              "text": {
+                                "type": "string"
+                              },
+                              "responsibleMembershipId": {
+                                "type": "string"
+                              },
+                              "responsibleName": {
+                                "type": "string",
+                                "description": "Sorumlunun adı (üyelikten)"
+                              },
+                              "dueDate": {
+                                "description": "Termin günü (YYYY-MM-DD)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "open",
+                                  "completed",
+                                  "cancelled"
+                                ]
+                              },
+                              "followUpNote": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "overdue": {
+                                "type": "boolean",
+                                "description": "Termini geçmiş açık karar (İstanbul günü)"
+                              },
+                              "statusChangedAt": {
+                                "type": "string"
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için kayıt sürümü"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "number",
+                              "agendaItemId",
+                              "text",
+                              "responsibleMembershipId",
+                              "responsibleName",
+                              "dueDate",
+                              "status",
+                              "followUpNote",
+                              "overdue",
+                              "statusChangedAt",
+                              "createdAt",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Kararlar, numara sırasıyla"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "subjectId",
+                        "subjectName",
+                        "kind",
+                        "meetingDate",
+                        "location",
+                        "chairMembershipId",
+                        "chairName",
+                        "agendaCount",
+                        "status",
+                        "signedDate",
+                        "finalizedAt",
+                        "attendeeCount",
+                        "attendedCount",
+                        "decisionCount",
+                        "openDecisionCount",
+                        "createdAt",
+                        "updatedAt",
+                        "version",
+                        "agenda",
+                        "attendees",
+                        "decisions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/department-meeting-subjects": {
+      "get": {
+        "operationId": "listDepartmentMeetingSubjects",
+        "summary": "Zümre (ders) seçenekleri",
+        "tags": [
+          "finance-department-meetings"
+        ],
+        "description": "Kurumun ders kayıtları ve öğretmen kayıtlarının dersleri (izin takvimiyle aynı kaynak, K-421); kurumda ders yoksa müfredat dersleri. Rol: yalnız `yonetici` (K-451). Modül `finance`.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name"
+                        ],
+                        "additionalProperties": false
+                      },
+                      "description": "Zümre (ders) seçenekleri"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/department-meeting-decisions": {
+      "get": {
+        "operationId": "listDepartmentMeetingDecisions",
+        "summary": "Zümre kararlarının takip listesi",
+        "tags": [
+          "finance-department-meetings"
+        ],
+        "description": "Kesinleşmiş tutanakların kararları; termine göre (terminsiz sonda). `overdue=true` termini İstanbul gününe göre geçmiş açık kararları verir (K-453). Durum, sorumlu ve zümreyle süzülür. Rol: yalnız `yonetici` (K-451). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "completed",
+                "cancelled"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Karar durumu"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true"
+              ]
+            },
+            "in": "query",
+            "name": "overdue",
+            "required": false,
+            "description": "`true`: yalnız termini geçmiş açık kararlar (İstanbul günü)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "responsibleMembershipId",
+            "required": false,
+            "description": "Sorumlu"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60
+            },
+            "in": "query",
+            "name": "subjectId",
+            "required": false,
+            "description": "Zümre (ders)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "meetingId": {
+                            "type": "string"
+                          },
+                          "subjectName": {
+                            "type": "string"
+                          },
+                          "meetingDate": {
+                            "type": "string"
+                          },
+                          "meetingKind": {
+                            "type": "string",
+                            "enum": [
+                              "term_start",
+                              "term_end",
+                              "interim"
+                            ]
+                          },
+                          "agendaTitle": {
+                            "type": "string",
+                            "description": "Bağlı gündem maddesi"
+                          },
+                          "text": {
+                            "type": "string"
+                          },
+                          "responsibleMembershipId": {
+                            "type": "string"
+                          },
+                          "responsibleName": {
+                            "type": "string"
+                          },
+                          "dueDate": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "open",
+                              "completed",
+                              "cancelled"
+                            ]
+                          },
+                          "followUpNote": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "overdue": {
+                            "type": "boolean"
+                          },
+                          "overdueDays": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Termin ertesinden bugüne gün; gecikmemişse 0"
+                          },
+                          "statusChangedAt": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "meetingId",
+                          "subjectName",
+                          "meetingDate",
+                          "meetingKind",
+                          "agendaTitle",
+                          "text",
+                          "responsibleMembershipId",
+                          "responsibleName",
+                          "dueDate",
+                          "status",
+                          "followUpNote",
+                          "overdue",
+                          "overdueDays",
+                          "statusChangedAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/department-meetings/{meetingId}": {
+      "get": {
+        "operationId": "getDepartmentMeeting",
+        "summary": "Zümre toplantısı tutanağı",
+        "tags": [
+          "finance-department-meetings"
+        ],
+        "description": "Gündem, katılım ve numaralı kararlar; tutanak PDF'i bu yanıttan üretilir. Olmayan ya da başka kurumun tutanağı 404. Rol: yalnız `yonetici` (K-451). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "meetingId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "subjectId": {
+                          "type": "string",
+                          "description": "Zümrenin dersi"
+                        },
+                        "subjectName": {
+                          "type": "string",
+                          "description": "Ders adı (toplantı anındaki kopya)"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "term_start",
+                            "term_end",
+                            "interim"
+                          ]
+                        },
+                        "meetingDate": {
+                          "type": "string",
+                          "description": "Toplantı günü (YYYY-MM-DD)"
+                        },
+                        "location": {
+                          "type": "string"
+                        },
+                        "chairMembershipId": {
+                          "type": "string",
+                          "description": "Başkanın kurum üyeliği"
+                        },
+                        "chairName": {
+                          "type": "string",
+                          "description": "Başkanın adı (üyelikten)"
+                        },
+                        "agendaCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Gündem maddesi sayısı"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "finalized"
+                          ]
+                        },
+                        "signedDate": {
+                          "description": "İmza günü; yalnız kesinleşmiş tutanakta",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "finalizedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "attendeeCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "attendedCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "\"Katıldı\" işaretli katılımcı sayısı"
+                        },
+                        "decisionCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "openDecisionCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Açık karar sayısı"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "agenda": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "discussion": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "title",
+                              "discussion"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Gündem maddeleri, sırasıyla"
+                        },
+                        "attendees": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "role": {
+                                "type": "string"
+                              },
+                              "active": {
+                                "type": "boolean",
+                                "description": "Üyelik etkin mi (ayrılmış personel tutanakta kalır)"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "attended",
+                                  "absent",
+                                  "excused"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "membershipId",
+                              "name",
+                              "role",
+                              "active",
+                              "status"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Katılımcılar, ada göre"
+                        },
+                        "decisions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "number": {
+                                "type": "string",
+                                "description": "Karar numarası \"madde.sıra\" (saklanmaz, gündem sırasından)"
+                              },
+                              "agendaItemId": {
+                                "type": "string"
+                              },
+                              "text": {
+                                "type": "string"
+                              },
+                              "responsibleMembershipId": {
+                                "type": "string"
+                              },
+                              "responsibleName": {
+                                "type": "string",
+                                "description": "Sorumlunun adı (üyelikten)"
+                              },
+                              "dueDate": {
+                                "description": "Termin günü (YYYY-MM-DD)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "open",
+                                  "completed",
+                                  "cancelled"
+                                ]
+                              },
+                              "followUpNote": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "overdue": {
+                                "type": "boolean",
+                                "description": "Termini geçmiş açık karar (İstanbul günü)"
+                              },
+                              "statusChangedAt": {
+                                "type": "string"
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için kayıt sürümü"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "number",
+                              "agendaItemId",
+                              "text",
+                              "responsibleMembershipId",
+                              "responsibleName",
+                              "dueDate",
+                              "status",
+                              "followUpNote",
+                              "overdue",
+                              "statusChangedAt",
+                              "createdAt",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Kararlar, numara sırasıyla"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "subjectId",
+                        "subjectName",
+                        "kind",
+                        "meetingDate",
+                        "location",
+                        "chairMembershipId",
+                        "chairName",
+                        "agendaCount",
+                        "status",
+                        "signedDate",
+                        "finalizedAt",
+                        "attendeeCount",
+                        "attendedCount",
+                        "decisionCount",
+                        "openDecisionCount",
+                        "createdAt",
+                        "updatedAt",
+                        "version",
+                        "agenda",
+                        "attendees",
+                        "decisions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateDepartmentMeeting",
+        "summary": "Tutanak taslağını düzelt",
+        "tags": [
+          "finance-department-meetings"
+        ],
+        "description": "Tam gövde (oluşturma kurallarıyla). Var olan gündem maddesi kimliğiyle gönderilir; bilinmeyen kimlik 422 `department_meeting_agenda_unknown`, kararı olan maddeyi silmek 422 `department_meeting_agenda_in_use`. Toplantı günü açık kararların termininden sonraya alınamaz (422 `department_meeting_due_before_meeting`). Tutanakta zaten olan ayrılmış personel kalabilir. Kesinleşmiş tutanak 409 `department_meeting_finalized`. `If-Match` zorunlu. Başka kurumun tutanağı 404. Rol: yalnız `yonetici` (K-451). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "subjectId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60,
+                    "description": "Zümrenin dersi (kurum ders kaydı ya da müfredat ders kimliği)"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "term_start",
+                      "term_end",
+                      "interim"
+                    ],
+                    "description": "`term_start` dönem başı, `term_end` dönem sonu, `interim` ara toplantı"
+                  },
+                  "meetingDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Toplantı günü (YYYY-MM-DD)"
+                  },
+                  "location": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 200,
+                    "description": "Toplantı yeri"
+                  },
+                  "chairMembershipId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Toplantı başkanının kurum üyeliği; katılımcılar arasında \"katıldı\" olmalı"
+                  },
+                  "agenda": {
+                    "minItems": 1,
+                    "maxItems": 30,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "default": null,
+                          "description": "Var olan gündem maddesinin kimliği; yeni maddede boş",
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 2,
+                          "maxLength": 300,
+                          "description": "Gündem maddesinin başlığı"
+                        },
+                        "discussion": {
+                          "description": "Maddede yapılan görüşmelerin özeti (isteğe bağlı)",
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 4000
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "title"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Gündem maddeleri, görüşülme sırasıyla"
+                  },
+                  "attendees": {
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "membershipId": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100,
+                          "description": "Katılımcının kurum üyeliği"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "attended",
+                            "absent",
+                            "excused"
+                          ],
+                          "description": "`attended` katıldı, `absent` katılmadı, `excused` mazeretli"
+                        }
+                      },
+                      "required": [
+                        "membershipId",
+                        "status"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Zümre öğretmenleri ve katılım durumları"
+                  }
+                },
+                "required": [
+                  "subjectId",
+                  "kind",
+                  "meetingDate",
+                  "location",
+                  "chairMembershipId",
+                  "agenda",
+                  "attendees"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "meetingId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "subjectId": {
+                          "type": "string",
+                          "description": "Zümrenin dersi"
+                        },
+                        "subjectName": {
+                          "type": "string",
+                          "description": "Ders adı (toplantı anındaki kopya)"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "term_start",
+                            "term_end",
+                            "interim"
+                          ]
+                        },
+                        "meetingDate": {
+                          "type": "string",
+                          "description": "Toplantı günü (YYYY-MM-DD)"
+                        },
+                        "location": {
+                          "type": "string"
+                        },
+                        "chairMembershipId": {
+                          "type": "string",
+                          "description": "Başkanın kurum üyeliği"
+                        },
+                        "chairName": {
+                          "type": "string",
+                          "description": "Başkanın adı (üyelikten)"
+                        },
+                        "agendaCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Gündem maddesi sayısı"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "finalized"
+                          ]
+                        },
+                        "signedDate": {
+                          "description": "İmza günü; yalnız kesinleşmiş tutanakta",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "finalizedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "attendeeCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "attendedCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "\"Katıldı\" işaretli katılımcı sayısı"
+                        },
+                        "decisionCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "openDecisionCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Açık karar sayısı"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "agenda": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "discussion": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "title",
+                              "discussion"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Gündem maddeleri, sırasıyla"
+                        },
+                        "attendees": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "role": {
+                                "type": "string"
+                              },
+                              "active": {
+                                "type": "boolean",
+                                "description": "Üyelik etkin mi (ayrılmış personel tutanakta kalır)"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "attended",
+                                  "absent",
+                                  "excused"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "membershipId",
+                              "name",
+                              "role",
+                              "active",
+                              "status"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Katılımcılar, ada göre"
+                        },
+                        "decisions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "number": {
+                                "type": "string",
+                                "description": "Karar numarası \"madde.sıra\" (saklanmaz, gündem sırasından)"
+                              },
+                              "agendaItemId": {
+                                "type": "string"
+                              },
+                              "text": {
+                                "type": "string"
+                              },
+                              "responsibleMembershipId": {
+                                "type": "string"
+                              },
+                              "responsibleName": {
+                                "type": "string",
+                                "description": "Sorumlunun adı (üyelikten)"
+                              },
+                              "dueDate": {
+                                "description": "Termin günü (YYYY-MM-DD)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "open",
+                                  "completed",
+                                  "cancelled"
+                                ]
+                              },
+                              "followUpNote": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "overdue": {
+                                "type": "boolean",
+                                "description": "Termini geçmiş açık karar (İstanbul günü)"
+                              },
+                              "statusChangedAt": {
+                                "type": "string"
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için kayıt sürümü"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "number",
+                              "agendaItemId",
+                              "text",
+                              "responsibleMembershipId",
+                              "responsibleName",
+                              "dueDate",
+                              "status",
+                              "followUpNote",
+                              "overdue",
+                              "statusChangedAt",
+                              "createdAt",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Kararlar, numara sırasıyla"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "subjectId",
+                        "subjectName",
+                        "kind",
+                        "meetingDate",
+                        "location",
+                        "chairMembershipId",
+                        "chairName",
+                        "agendaCount",
+                        "status",
+                        "signedDate",
+                        "finalizedAt",
+                        "attendeeCount",
+                        "attendedCount",
+                        "decisionCount",
+                        "openDecisionCount",
+                        "createdAt",
+                        "updatedAt",
+                        "version",
+                        "agenda",
+                        "attendees",
+                        "decisions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/department-meetings/{meetingId}/finalize": {
+      "post": {
+        "operationId": "finalizeDepartmentMeeting",
+        "summary": "Tutanağı kesinleştir",
+        "tags": [
+          "finance-department-meetings"
+        ],
+        "description": "İmza günüyle kesinleşir (K-453); sonra toplantı, katılım ve karar metni değişmez, yalnız karar takibi yazılır. İmza günü toplantıdan önce (422 `department_meeting_signed_before_meeting`) ve bugünden sonra (422 `department_meeting_signed_in_future`) olamaz; kesinleşmiş tutanak 409 `department_meeting_finalized`. `If-Match` zorunlu. Başka kurumun tutanağı 404. Rol: yalnız `yonetici` (K-451). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "signedDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Tutanağın imzalandığı gün (YYYY-MM-DD)"
+                  }
+                },
+                "required": [
+                  "signedDate"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "meetingId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "subjectId": {
+                          "type": "string",
+                          "description": "Zümrenin dersi"
+                        },
+                        "subjectName": {
+                          "type": "string",
+                          "description": "Ders adı (toplantı anındaki kopya)"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "term_start",
+                            "term_end",
+                            "interim"
+                          ]
+                        },
+                        "meetingDate": {
+                          "type": "string",
+                          "description": "Toplantı günü (YYYY-MM-DD)"
+                        },
+                        "location": {
+                          "type": "string"
+                        },
+                        "chairMembershipId": {
+                          "type": "string",
+                          "description": "Başkanın kurum üyeliği"
+                        },
+                        "chairName": {
+                          "type": "string",
+                          "description": "Başkanın adı (üyelikten)"
+                        },
+                        "agendaCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Gündem maddesi sayısı"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "finalized"
+                          ]
+                        },
+                        "signedDate": {
+                          "description": "İmza günü; yalnız kesinleşmiş tutanakta",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "finalizedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "attendeeCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "attendedCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "\"Katıldı\" işaretli katılımcı sayısı"
+                        },
+                        "decisionCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "openDecisionCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Açık karar sayısı"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "agenda": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "discussion": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "title",
+                              "discussion"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Gündem maddeleri, sırasıyla"
+                        },
+                        "attendees": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "role": {
+                                "type": "string"
+                              },
+                              "active": {
+                                "type": "boolean",
+                                "description": "Üyelik etkin mi (ayrılmış personel tutanakta kalır)"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "attended",
+                                  "absent",
+                                  "excused"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "membershipId",
+                              "name",
+                              "role",
+                              "active",
+                              "status"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Katılımcılar, ada göre"
+                        },
+                        "decisions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "number": {
+                                "type": "string",
+                                "description": "Karar numarası \"madde.sıra\" (saklanmaz, gündem sırasından)"
+                              },
+                              "agendaItemId": {
+                                "type": "string"
+                              },
+                              "text": {
+                                "type": "string"
+                              },
+                              "responsibleMembershipId": {
+                                "type": "string"
+                              },
+                              "responsibleName": {
+                                "type": "string",
+                                "description": "Sorumlunun adı (üyelikten)"
+                              },
+                              "dueDate": {
+                                "description": "Termin günü (YYYY-MM-DD)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "open",
+                                  "completed",
+                                  "cancelled"
+                                ]
+                              },
+                              "followUpNote": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "overdue": {
+                                "type": "boolean",
+                                "description": "Termini geçmiş açık karar (İstanbul günü)"
+                              },
+                              "statusChangedAt": {
+                                "type": "string"
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için kayıt sürümü"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "number",
+                              "agendaItemId",
+                              "text",
+                              "responsibleMembershipId",
+                              "responsibleName",
+                              "dueDate",
+                              "status",
+                              "followUpNote",
+                              "overdue",
+                              "statusChangedAt",
+                              "createdAt",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Kararlar, numara sırasıyla"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "subjectId",
+                        "subjectName",
+                        "kind",
+                        "meetingDate",
+                        "location",
+                        "chairMembershipId",
+                        "chairName",
+                        "agendaCount",
+                        "status",
+                        "signedDate",
+                        "finalizedAt",
+                        "attendeeCount",
+                        "attendedCount",
+                        "decisionCount",
+                        "openDecisionCount",
+                        "createdAt",
+                        "updatedAt",
+                        "version",
+                        "agenda",
+                        "attendees",
+                        "decisions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/department-meetings/{meetingId}/decisions": {
+      "post": {
+        "operationId": "createDepartmentMeetingDecision",
+        "summary": "Tutanağa karar ekle",
+        "tags": [
+          "finance-department-meetings"
+        ],
+        "description": "Taslak tutanağın gündem maddesine karar; durum \"açık\" (K-452). Madde tutanakta yoksa 422 `department_meeting_agenda_not_found`, termin toplantıdan önceyse 422 `department_meeting_due_before_meeting`; sorumlu kurumun etkin öğretmen ya da yöneticisi (422 `department_meeting_staff_not_found`, `department_meeting_not_staff`, `department_meeting_staff_inactive`). Kesinleşmiş tutanak 409 `department_meeting_finalized`. `Idempotency-Key` zorunlu. Başka kurumun tutanağı 404. Rol: yalnız `yonetici` (K-451). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "agendaItemId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "description": "Kararın bağlı olduğu gündem maddesi"
+                  },
+                  "text": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 2000,
+                    "description": "Karar metni"
+                  },
+                  "responsibleMembershipId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Kararın sorumlusu (kurum üyeliği)"
+                  },
+                  "dueDate": {
+                    "default": null,
+                    "description": "Termin günü (YYYY-MM-DD); boşsa terminsiz",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "agendaItemId",
+                  "text",
+                  "responsibleMembershipId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "meetingId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "number": {
+                          "type": "string",
+                          "description": "Karar numarası \"madde.sıra\" (saklanmaz, gündem sırasından)"
+                        },
+                        "agendaItemId": {
+                          "type": "string"
+                        },
+                        "text": {
+                          "type": "string"
+                        },
+                        "responsibleMembershipId": {
+                          "type": "string"
+                        },
+                        "responsibleName": {
+                          "type": "string",
+                          "description": "Sorumlunun adı (üyelikten)"
+                        },
+                        "dueDate": {
+                          "description": "Termin günü (YYYY-MM-DD)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "completed",
+                            "cancelled"
+                          ]
+                        },
+                        "followUpNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "overdue": {
+                          "type": "boolean",
+                          "description": "Termini geçmiş açık karar (İstanbul günü)"
+                        },
+                        "statusChangedAt": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "number",
+                        "agendaItemId",
+                        "text",
+                        "responsibleMembershipId",
+                        "responsibleName",
+                        "dueDate",
+                        "status",
+                        "followUpNote",
+                        "overdue",
+                        "statusChangedAt",
+                        "createdAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/department-meetings/{meetingId}/decisions/{decisionId}": {
+      "patch": {
+        "operationId": "updateDepartmentMeetingDecision",
+        "summary": "Kararı düzelt",
+        "tags": [
+          "finance-department-meetings"
+        ],
+        "description": "Taslak tutanakta tam gövde (ekleme kurallarıyla); kesinleşmiş tutanak 409 `department_meeting_finalized` (takip ayrı uçtadır). `If-Match` zorunlu. Başka tutanağın ya da kurumun kararı 404. Rol: yalnız `yonetici` (K-451). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "agendaItemId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "description": "Kararın bağlı olduğu gündem maddesi"
+                  },
+                  "text": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 2000,
+                    "description": "Karar metni"
+                  },
+                  "responsibleMembershipId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Kararın sorumlusu (kurum üyeliği)"
+                  },
+                  "dueDate": {
+                    "default": null,
+                    "description": "Termin günü (YYYY-MM-DD); boşsa terminsiz",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "agendaItemId",
+                  "text",
+                  "responsibleMembershipId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "meetingId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "decisionId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "number": {
+                          "type": "string",
+                          "description": "Karar numarası \"madde.sıra\" (saklanmaz, gündem sırasından)"
+                        },
+                        "agendaItemId": {
+                          "type": "string"
+                        },
+                        "text": {
+                          "type": "string"
+                        },
+                        "responsibleMembershipId": {
+                          "type": "string"
+                        },
+                        "responsibleName": {
+                          "type": "string",
+                          "description": "Sorumlunun adı (üyelikten)"
+                        },
+                        "dueDate": {
+                          "description": "Termin günü (YYYY-MM-DD)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "completed",
+                            "cancelled"
+                          ]
+                        },
+                        "followUpNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "overdue": {
+                          "type": "boolean",
+                          "description": "Termini geçmiş açık karar (İstanbul günü)"
+                        },
+                        "statusChangedAt": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "number",
+                        "agendaItemId",
+                        "text",
+                        "responsibleMembershipId",
+                        "responsibleName",
+                        "dueDate",
+                        "status",
+                        "followUpNote",
+                        "overdue",
+                        "statusChangedAt",
+                        "createdAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "removeDepartmentMeetingDecision",
+        "summary": "Kararı kaldır",
+        "tags": [
+          "finance-department-meetings"
+        ],
+        "description": "Taslak tutanaktaki karar arşivlenir; kesinleşmiş tutanakta karar kaldırılmaz, iptal edilir (409 `department_meeting_finalized`). `If-Match` zorunlu. Başka tutanağın ya da kurumun kararı 404. Rol: yalnız `yonetici` (K-451). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "meetingId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "decisionId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/department-meetings/{meetingId}/decisions/{decisionId}/follow-up": {
+      "post": {
+        "operationId": "followUpDepartmentMeetingDecision",
+        "summary": "Karar takibini yaz",
+        "tags": [
+          "finance-department-meetings"
+        ],
+        "description": "Kesinleşmiş tutanakta kararın durumu (açık, tamamlandı, iptal) ve takip notu (K-453); iptalde not zorunlu (400). Taslak tutanak 409 `department_meeting_not_finalized`, iptal edilmiş karar 409 `department_decision_cancelled`. `If-Match` zorunlu. Başka tutanağın ya da kurumun kararı 404. Rol: yalnız `yonetici` (K-451). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "open",
+                      "completed",
+                      "cancelled"
+                    ],
+                    "description": "`open` açık, `completed` tamamlandı, `cancelled` iptal"
+                  },
+                  "followUpNote": {
+                    "description": "Takip notu; iptalde zorunlu",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "status"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "meetingId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "decisionId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "number": {
+                          "type": "string",
+                          "description": "Karar numarası \"madde.sıra\" (saklanmaz, gündem sırasından)"
+                        },
+                        "agendaItemId": {
+                          "type": "string"
+                        },
+                        "text": {
+                          "type": "string"
+                        },
+                        "responsibleMembershipId": {
+                          "type": "string"
+                        },
+                        "responsibleName": {
+                          "type": "string",
+                          "description": "Sorumlunun adı (üyelikten)"
+                        },
+                        "dueDate": {
+                          "description": "Termin günü (YYYY-MM-DD)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "completed",
+                            "cancelled"
+                          ]
+                        },
+                        "followUpNote": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "overdue": {
+                          "type": "boolean",
+                          "description": "Termini geçmiş açık karar (İstanbul günü)"
+                        },
+                        "statusChangedAt": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "number",
+                        "agendaItemId",
+                        "text",
+                        "responsibleMembershipId",
+                        "responsibleName",
+                        "dueDate",
+                        "status",
+                        "followUpNote",
+                        "overdue",
+                        "statusChangedAt",
+                        "createdAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

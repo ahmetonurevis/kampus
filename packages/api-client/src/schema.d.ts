@@ -11608,6 +11608,178 @@ export interface paths {
         patch: operations["updateProfessionalDevelopmentEnrollment"];
         trace?: never;
     };
+    "/api/v1/finance/department-meetings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Zümre toplantılarını listele
+         * @description Zümre toplantısı tutanakları, yeniden eskiye (DOM-FIN-132). Ders adında ya da yerde aranır; zümre, tür, durum ve gün aralığıyla süzülür. Satır katılım ve açık karar sayılarını taşır. Rol: yalnız `yonetici` (K-451). Modül `finance`.
+         */
+        get: operations["listDepartmentMeetings"];
+        put?: never;
+        /**
+         * Zümre toplantısı tutanağı aç
+         * @description Tutanak taslak açılır (K-452). Zümre kurumun dersi (yoksa 422 `department_meeting_subject_not_found`); başkan ve katılımcılar kurumun etkin öğretmen ya da yönetici üyeliği (olmayan ya da başka kurumun üyeliği 422 `department_meeting_staff_not_found`, diğer roller 422 `department_meeting_not_staff`, ayrılmış 422 `department_meeting_staff_inactive`); başkan katılımcılar arasında "katıldı" olmalı. Gündem 1–30 madde, sıra gövdedeki sıradır. Denetim kaydına alan adları yazılır. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (K-451). Modül `finance`.
+         */
+        post: operations["createDepartmentMeeting"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/department-meeting-subjects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Zümre (ders) seçenekleri
+         * @description Kurumun ders kayıtları ve öğretmen kayıtlarının dersleri (izin takvimiyle aynı kaynak, K-421); kurumda ders yoksa müfredat dersleri. Rol: yalnız `yonetici` (K-451). Modül `finance`.
+         */
+        get: operations["listDepartmentMeetingSubjects"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/department-meeting-decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Zümre kararlarının takip listesi
+         * @description Kesinleşmiş tutanakların kararları; termine göre (terminsiz sonda). `overdue=true` termini İstanbul gününe göre geçmiş açık kararları verir (K-453). Durum, sorumlu ve zümreyle süzülür. Rol: yalnız `yonetici` (K-451). Modül `finance`.
+         */
+        get: operations["listDepartmentMeetingDecisions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/department-meetings/{meetingId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Zümre toplantısı tutanağı
+         * @description Gündem, katılım ve numaralı kararlar; tutanak PDF'i bu yanıttan üretilir. Olmayan ya da başka kurumun tutanağı 404. Rol: yalnız `yonetici` (K-451). Modül `finance`.
+         */
+        get: operations["getDepartmentMeeting"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Tutanak taslağını düzelt
+         * @description Tam gövde (oluşturma kurallarıyla). Var olan gündem maddesi kimliğiyle gönderilir; bilinmeyen kimlik 422 `department_meeting_agenda_unknown`, kararı olan maddeyi silmek 422 `department_meeting_agenda_in_use`. Toplantı günü açık kararların termininden sonraya alınamaz (422 `department_meeting_due_before_meeting`). Tutanakta zaten olan ayrılmış personel kalabilir. Kesinleşmiş tutanak 409 `department_meeting_finalized`. `If-Match` zorunlu. Başka kurumun tutanağı 404. Rol: yalnız `yonetici` (K-451). Modül `finance`.
+         */
+        patch: operations["updateDepartmentMeeting"];
+        trace?: never;
+    };
+    "/api/v1/finance/department-meetings/{meetingId}/finalize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Tutanağı kesinleştir
+         * @description İmza günüyle kesinleşir (K-453); sonra toplantı, katılım ve karar metni değişmez, yalnız karar takibi yazılır. İmza günü toplantıdan önce (422 `department_meeting_signed_before_meeting`) ve bugünden sonra (422 `department_meeting_signed_in_future`) olamaz; kesinleşmiş tutanak 409 `department_meeting_finalized`. `If-Match` zorunlu. Başka kurumun tutanağı 404. Rol: yalnız `yonetici` (K-451). Modül `finance`.
+         */
+        post: operations["finalizeDepartmentMeeting"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/department-meetings/{meetingId}/decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Tutanağa karar ekle
+         * @description Taslak tutanağın gündem maddesine karar; durum "açık" (K-452). Madde tutanakta yoksa 422 `department_meeting_agenda_not_found`, termin toplantıdan önceyse 422 `department_meeting_due_before_meeting`; sorumlu kurumun etkin öğretmen ya da yöneticisi (422 `department_meeting_staff_not_found`, `department_meeting_not_staff`, `department_meeting_staff_inactive`). Kesinleşmiş tutanak 409 `department_meeting_finalized`. `Idempotency-Key` zorunlu. Başka kurumun tutanağı 404. Rol: yalnız `yonetici` (K-451). Modül `finance`.
+         */
+        post: operations["createDepartmentMeetingDecision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/department-meetings/{meetingId}/decisions/{decisionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Kararı kaldır
+         * @description Taslak tutanaktaki karar arşivlenir; kesinleşmiş tutanakta karar kaldırılmaz, iptal edilir (409 `department_meeting_finalized`). `If-Match` zorunlu. Başka tutanağın ya da kurumun kararı 404. Rol: yalnız `yonetici` (K-451). Modül `finance`.
+         */
+        delete: operations["removeDepartmentMeetingDecision"];
+        options?: never;
+        head?: never;
+        /**
+         * Kararı düzelt
+         * @description Taslak tutanakta tam gövde (ekleme kurallarıyla); kesinleşmiş tutanak 409 `department_meeting_finalized` (takip ayrı uçtadır). `If-Match` zorunlu. Başka tutanağın ya da kurumun kararı 404. Rol: yalnız `yonetici` (K-451). Modül `finance`.
+         */
+        patch: operations["updateDepartmentMeetingDecision"];
+        trace?: never;
+    };
+    "/api/v1/finance/department-meetings/{meetingId}/decisions/{decisionId}/follow-up": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Karar takibini yaz
+         * @description Kesinleşmiş tutanakta kararın durumu (açık, tamamlandı, iptal) ve takip notu (K-453); iptalde not zorunlu (400). Taslak tutanak 409 `department_meeting_not_finalized`, iptal edilmiş karar 409 `department_decision_cancelled`. `If-Match` zorunlu. Başka tutanağın ya da kurumun kararı 404. Rol: yalnız `yonetici` (K-451). Modül `finance`.
+         */
+        post: operations["followUpDepartmentMeetingDecision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -122564,6 +122736,1656 @@ export interface operations {
                             attendedHours: number | null;
                             statusChangedAt: string;
                             createdAt: string;
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listDepartmentMeetings: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Ders adında ya da yerde arama */
+                q?: string;
+                /** @description Zümre (ders) */
+                subjectId?: string;
+                /** @description Toplantı türü */
+                kind?: "term_start" | "term_end" | "interim";
+                /** @description Tutanak durumu */
+                status?: "draft" | "finalized";
+                /** @description Bu günden itibaren (YYYY-MM-DD) */
+                from?: string;
+                /** @description Bu güne kadar (YYYY-MM-DD); başlangıçtan önceyse liste boş */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Zümrenin dersi */
+                            subjectId: string;
+                            /** @description Ders adı (toplantı anındaki kopya) */
+                            subjectName: string;
+                            /** @enum {string} */
+                            kind: "term_start" | "term_end" | "interim";
+                            /** @description Toplantı günü (YYYY-MM-DD) */
+                            meetingDate: string;
+                            location: string;
+                            /** @description Başkanın kurum üyeliği */
+                            chairMembershipId: string;
+                            /** @description Başkanın adı (üyelikten) */
+                            chairName: string;
+                            /** @description Gündem maddesi sayısı */
+                            agendaCount: number;
+                            /** @enum {string} */
+                            status: "draft" | "finalized";
+                            /** @description İmza günü; yalnız kesinleşmiş tutanakta */
+                            signedDate: string | null;
+                            finalizedAt: string | null;
+                            attendeeCount: number;
+                            /** @description "Katıldı" işaretli katılımcı sayısı */
+                            attendedCount: number;
+                            decisionCount: number;
+                            /** @description Açık karar sayısı */
+                            openDecisionCount: number;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createDepartmentMeeting: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Zümrenin dersi (kurum ders kaydı ya da müfredat ders kimliği) */
+                    subjectId: string;
+                    /**
+                     * @description `term_start` dönem başı, `term_end` dönem sonu, `interim` ara toplantı
+                     * @enum {string}
+                     */
+                    kind: "term_start" | "term_end" | "interim";
+                    /** @description Toplantı günü (YYYY-MM-DD) */
+                    meetingDate: string;
+                    /** @description Toplantı yeri */
+                    location: string;
+                    /** @description Toplantı başkanının kurum üyeliği; katılımcılar arasında "katıldı" olmalı */
+                    chairMembershipId: string;
+                    /** @description Gündem maddeleri, görüşülme sırasıyla */
+                    agenda: {
+                        /**
+                         * @description Var olan gündem maddesinin kimliği; yeni maddede boş
+                         * @default null
+                         */
+                        id?: string | null;
+                        /** @description Gündem maddesinin başlığı */
+                        title: string;
+                        /** @description Maddede yapılan görüşmelerin özeti (isteğe bağlı) */
+                        discussion?: string | null;
+                    }[];
+                    /** @description Zümre öğretmenleri ve katılım durumları */
+                    attendees: {
+                        /** @description Katılımcının kurum üyeliği */
+                        membershipId: string;
+                        /**
+                         * @description `attended` katıldı, `absent` katılmadı, `excused` mazeretli
+                         * @enum {string}
+                         */
+                        status: "attended" | "absent" | "excused";
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Zümrenin dersi */
+                            subjectId: string;
+                            /** @description Ders adı (toplantı anındaki kopya) */
+                            subjectName: string;
+                            /** @enum {string} */
+                            kind: "term_start" | "term_end" | "interim";
+                            /** @description Toplantı günü (YYYY-MM-DD) */
+                            meetingDate: string;
+                            location: string;
+                            /** @description Başkanın kurum üyeliği */
+                            chairMembershipId: string;
+                            /** @description Başkanın adı (üyelikten) */
+                            chairName: string;
+                            /** @description Gündem maddesi sayısı */
+                            agendaCount: number;
+                            /** @enum {string} */
+                            status: "draft" | "finalized";
+                            /** @description İmza günü; yalnız kesinleşmiş tutanakta */
+                            signedDate: string | null;
+                            finalizedAt: string | null;
+                            attendeeCount: number;
+                            /** @description "Katıldı" işaretli katılımcı sayısı */
+                            attendedCount: number;
+                            decisionCount: number;
+                            /** @description Açık karar sayısı */
+                            openDecisionCount: number;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Gündem maddeleri, sırasıyla */
+                            agenda: {
+                                id: string;
+                                title: string;
+                                discussion: string | null;
+                            }[];
+                            /** @description Katılımcılar, ada göre */
+                            attendees: {
+                                membershipId: string;
+                                name: string;
+                                role: string;
+                                /** @description Üyelik etkin mi (ayrılmış personel tutanakta kalır) */
+                                active: boolean;
+                                /** @enum {string} */
+                                status: "attended" | "absent" | "excused";
+                            }[];
+                            /** @description Kararlar, numara sırasıyla */
+                            decisions: {
+                                id: string;
+                                /** @description Karar numarası "madde.sıra" (saklanmaz, gündem sırasından) */
+                                number: string;
+                                agendaItemId: string;
+                                text: string;
+                                responsibleMembershipId: string;
+                                /** @description Sorumlunun adı (üyelikten) */
+                                responsibleName: string;
+                                /** @description Termin günü (YYYY-MM-DD) */
+                                dueDate: string | null;
+                                /** @enum {string} */
+                                status: "open" | "completed" | "cancelled";
+                                followUpNote: string | null;
+                                /** @description Termini geçmiş açık karar (İstanbul günü) */
+                                overdue: boolean;
+                                statusChangedAt: string;
+                                createdAt: string;
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listDepartmentMeetingSubjects: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Zümre (ders) seçenekleri */
+                        data: {
+                            id: string;
+                            name: string;
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listDepartmentMeetingDecisions: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Karar durumu */
+                status?: "open" | "completed" | "cancelled";
+                /** @description `true`: yalnız termini geçmiş açık kararlar (İstanbul günü) */
+                overdue?: "true";
+                /** @description Sorumlu */
+                responsibleMembershipId?: string;
+                /** @description Zümre (ders) */
+                subjectId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            meetingId: string;
+                            subjectName: string;
+                            meetingDate: string;
+                            /** @enum {string} */
+                            meetingKind: "term_start" | "term_end" | "interim";
+                            /** @description Bağlı gündem maddesi */
+                            agendaTitle: string;
+                            text: string;
+                            responsibleMembershipId: string;
+                            responsibleName: string;
+                            dueDate: string | null;
+                            /** @enum {string} */
+                            status: "open" | "completed" | "cancelled";
+                            followUpNote: string | null;
+                            overdue: boolean;
+                            /** @description Termin ertesinden bugüne gün; gecikmemişse 0 */
+                            overdueDays: number;
+                            statusChangedAt: string;
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getDepartmentMeeting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                meetingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Zümrenin dersi */
+                            subjectId: string;
+                            /** @description Ders adı (toplantı anındaki kopya) */
+                            subjectName: string;
+                            /** @enum {string} */
+                            kind: "term_start" | "term_end" | "interim";
+                            /** @description Toplantı günü (YYYY-MM-DD) */
+                            meetingDate: string;
+                            location: string;
+                            /** @description Başkanın kurum üyeliği */
+                            chairMembershipId: string;
+                            /** @description Başkanın adı (üyelikten) */
+                            chairName: string;
+                            /** @description Gündem maddesi sayısı */
+                            agendaCount: number;
+                            /** @enum {string} */
+                            status: "draft" | "finalized";
+                            /** @description İmza günü; yalnız kesinleşmiş tutanakta */
+                            signedDate: string | null;
+                            finalizedAt: string | null;
+                            attendeeCount: number;
+                            /** @description "Katıldı" işaretli katılımcı sayısı */
+                            attendedCount: number;
+                            decisionCount: number;
+                            /** @description Açık karar sayısı */
+                            openDecisionCount: number;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Gündem maddeleri, sırasıyla */
+                            agenda: {
+                                id: string;
+                                title: string;
+                                discussion: string | null;
+                            }[];
+                            /** @description Katılımcılar, ada göre */
+                            attendees: {
+                                membershipId: string;
+                                name: string;
+                                role: string;
+                                /** @description Üyelik etkin mi (ayrılmış personel tutanakta kalır) */
+                                active: boolean;
+                                /** @enum {string} */
+                                status: "attended" | "absent" | "excused";
+                            }[];
+                            /** @description Kararlar, numara sırasıyla */
+                            decisions: {
+                                id: string;
+                                /** @description Karar numarası "madde.sıra" (saklanmaz, gündem sırasından) */
+                                number: string;
+                                agendaItemId: string;
+                                text: string;
+                                responsibleMembershipId: string;
+                                /** @description Sorumlunun adı (üyelikten) */
+                                responsibleName: string;
+                                /** @description Termin günü (YYYY-MM-DD) */
+                                dueDate: string | null;
+                                /** @enum {string} */
+                                status: "open" | "completed" | "cancelled";
+                                followUpNote: string | null;
+                                /** @description Termini geçmiş açık karar (İstanbul günü) */
+                                overdue: boolean;
+                                statusChangedAt: string;
+                                createdAt: string;
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateDepartmentMeeting: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                meetingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Zümrenin dersi (kurum ders kaydı ya da müfredat ders kimliği) */
+                    subjectId: string;
+                    /**
+                     * @description `term_start` dönem başı, `term_end` dönem sonu, `interim` ara toplantı
+                     * @enum {string}
+                     */
+                    kind: "term_start" | "term_end" | "interim";
+                    /** @description Toplantı günü (YYYY-MM-DD) */
+                    meetingDate: string;
+                    /** @description Toplantı yeri */
+                    location: string;
+                    /** @description Toplantı başkanının kurum üyeliği; katılımcılar arasında "katıldı" olmalı */
+                    chairMembershipId: string;
+                    /** @description Gündem maddeleri, görüşülme sırasıyla */
+                    agenda: {
+                        /**
+                         * @description Var olan gündem maddesinin kimliği; yeni maddede boş
+                         * @default null
+                         */
+                        id?: string | null;
+                        /** @description Gündem maddesinin başlığı */
+                        title: string;
+                        /** @description Maddede yapılan görüşmelerin özeti (isteğe bağlı) */
+                        discussion?: string | null;
+                    }[];
+                    /** @description Zümre öğretmenleri ve katılım durumları */
+                    attendees: {
+                        /** @description Katılımcının kurum üyeliği */
+                        membershipId: string;
+                        /**
+                         * @description `attended` katıldı, `absent` katılmadı, `excused` mazeretli
+                         * @enum {string}
+                         */
+                        status: "attended" | "absent" | "excused";
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Zümrenin dersi */
+                            subjectId: string;
+                            /** @description Ders adı (toplantı anındaki kopya) */
+                            subjectName: string;
+                            /** @enum {string} */
+                            kind: "term_start" | "term_end" | "interim";
+                            /** @description Toplantı günü (YYYY-MM-DD) */
+                            meetingDate: string;
+                            location: string;
+                            /** @description Başkanın kurum üyeliği */
+                            chairMembershipId: string;
+                            /** @description Başkanın adı (üyelikten) */
+                            chairName: string;
+                            /** @description Gündem maddesi sayısı */
+                            agendaCount: number;
+                            /** @enum {string} */
+                            status: "draft" | "finalized";
+                            /** @description İmza günü; yalnız kesinleşmiş tutanakta */
+                            signedDate: string | null;
+                            finalizedAt: string | null;
+                            attendeeCount: number;
+                            /** @description "Katıldı" işaretli katılımcı sayısı */
+                            attendedCount: number;
+                            decisionCount: number;
+                            /** @description Açık karar sayısı */
+                            openDecisionCount: number;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Gündem maddeleri, sırasıyla */
+                            agenda: {
+                                id: string;
+                                title: string;
+                                discussion: string | null;
+                            }[];
+                            /** @description Katılımcılar, ada göre */
+                            attendees: {
+                                membershipId: string;
+                                name: string;
+                                role: string;
+                                /** @description Üyelik etkin mi (ayrılmış personel tutanakta kalır) */
+                                active: boolean;
+                                /** @enum {string} */
+                                status: "attended" | "absent" | "excused";
+                            }[];
+                            /** @description Kararlar, numara sırasıyla */
+                            decisions: {
+                                id: string;
+                                /** @description Karar numarası "madde.sıra" (saklanmaz, gündem sırasından) */
+                                number: string;
+                                agendaItemId: string;
+                                text: string;
+                                responsibleMembershipId: string;
+                                /** @description Sorumlunun adı (üyelikten) */
+                                responsibleName: string;
+                                /** @description Termin günü (YYYY-MM-DD) */
+                                dueDate: string | null;
+                                /** @enum {string} */
+                                status: "open" | "completed" | "cancelled";
+                                followUpNote: string | null;
+                                /** @description Termini geçmiş açık karar (İstanbul günü) */
+                                overdue: boolean;
+                                statusChangedAt: string;
+                                createdAt: string;
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    finalizeDepartmentMeeting: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                meetingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Tutanağın imzalandığı gün (YYYY-MM-DD) */
+                    signedDate: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Zümrenin dersi */
+                            subjectId: string;
+                            /** @description Ders adı (toplantı anındaki kopya) */
+                            subjectName: string;
+                            /** @enum {string} */
+                            kind: "term_start" | "term_end" | "interim";
+                            /** @description Toplantı günü (YYYY-MM-DD) */
+                            meetingDate: string;
+                            location: string;
+                            /** @description Başkanın kurum üyeliği */
+                            chairMembershipId: string;
+                            /** @description Başkanın adı (üyelikten) */
+                            chairName: string;
+                            /** @description Gündem maddesi sayısı */
+                            agendaCount: number;
+                            /** @enum {string} */
+                            status: "draft" | "finalized";
+                            /** @description İmza günü; yalnız kesinleşmiş tutanakta */
+                            signedDate: string | null;
+                            finalizedAt: string | null;
+                            attendeeCount: number;
+                            /** @description "Katıldı" işaretli katılımcı sayısı */
+                            attendedCount: number;
+                            decisionCount: number;
+                            /** @description Açık karar sayısı */
+                            openDecisionCount: number;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Gündem maddeleri, sırasıyla */
+                            agenda: {
+                                id: string;
+                                title: string;
+                                discussion: string | null;
+                            }[];
+                            /** @description Katılımcılar, ada göre */
+                            attendees: {
+                                membershipId: string;
+                                name: string;
+                                role: string;
+                                /** @description Üyelik etkin mi (ayrılmış personel tutanakta kalır) */
+                                active: boolean;
+                                /** @enum {string} */
+                                status: "attended" | "absent" | "excused";
+                            }[];
+                            /** @description Kararlar, numara sırasıyla */
+                            decisions: {
+                                id: string;
+                                /** @description Karar numarası "madde.sıra" (saklanmaz, gündem sırasından) */
+                                number: string;
+                                agendaItemId: string;
+                                text: string;
+                                responsibleMembershipId: string;
+                                /** @description Sorumlunun adı (üyelikten) */
+                                responsibleName: string;
+                                /** @description Termin günü (YYYY-MM-DD) */
+                                dueDate: string | null;
+                                /** @enum {string} */
+                                status: "open" | "completed" | "cancelled";
+                                followUpNote: string | null;
+                                /** @description Termini geçmiş açık karar (İstanbul günü) */
+                                overdue: boolean;
+                                statusChangedAt: string;
+                                createdAt: string;
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createDepartmentMeetingDecision: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                meetingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * Format: uuid
+                     * @description Kararın bağlı olduğu gündem maddesi
+                     */
+                    agendaItemId: string;
+                    /** @description Karar metni */
+                    text: string;
+                    /** @description Kararın sorumlusu (kurum üyeliği) */
+                    responsibleMembershipId: string;
+                    /**
+                     * @description Termin günü (YYYY-MM-DD); boşsa terminsiz
+                     * @default null
+                     */
+                    dueDate?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Karar numarası "madde.sıra" (saklanmaz, gündem sırasından) */
+                            number: string;
+                            agendaItemId: string;
+                            text: string;
+                            responsibleMembershipId: string;
+                            /** @description Sorumlunun adı (üyelikten) */
+                            responsibleName: string;
+                            /** @description Termin günü (YYYY-MM-DD) */
+                            dueDate: string | null;
+                            /** @enum {string} */
+                            status: "open" | "completed" | "cancelled";
+                            followUpNote: string | null;
+                            /** @description Termini geçmiş açık karar (İstanbul günü) */
+                            overdue: boolean;
+                            statusChangedAt: string;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    removeDepartmentMeetingDecision: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                meetingId: string;
+                decisionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateDepartmentMeetingDecision: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                meetingId: string;
+                decisionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * Format: uuid
+                     * @description Kararın bağlı olduğu gündem maddesi
+                     */
+                    agendaItemId: string;
+                    /** @description Karar metni */
+                    text: string;
+                    /** @description Kararın sorumlusu (kurum üyeliği) */
+                    responsibleMembershipId: string;
+                    /**
+                     * @description Termin günü (YYYY-MM-DD); boşsa terminsiz
+                     * @default null
+                     */
+                    dueDate?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Karar numarası "madde.sıra" (saklanmaz, gündem sırasından) */
+                            number: string;
+                            agendaItemId: string;
+                            text: string;
+                            responsibleMembershipId: string;
+                            /** @description Sorumlunun adı (üyelikten) */
+                            responsibleName: string;
+                            /** @description Termin günü (YYYY-MM-DD) */
+                            dueDate: string | null;
+                            /** @enum {string} */
+                            status: "open" | "completed" | "cancelled";
+                            followUpNote: string | null;
+                            /** @description Termini geçmiş açık karar (İstanbul günü) */
+                            overdue: boolean;
+                            statusChangedAt: string;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    followUpDepartmentMeetingDecision: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                meetingId: string;
+                decisionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description `open` açık, `completed` tamamlandı, `cancelled` iptal
+                     * @enum {string}
+                     */
+                    status: "open" | "completed" | "cancelled";
+                    /** @description Takip notu; iptalde zorunlu */
+                    followUpNote?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Karar numarası "madde.sıra" (saklanmaz, gündem sırasından) */
+                            number: string;
+                            agendaItemId: string;
+                            text: string;
+                            responsibleMembershipId: string;
+                            /** @description Sorumlunun adı (üyelikten) */
+                            responsibleName: string;
+                            /** @description Termin günü (YYYY-MM-DD) */
+                            dueDate: string | null;
+                            /** @enum {string} */
+                            status: "open" | "completed" | "cancelled";
+                            followUpNote: string | null;
+                            /** @description Termini geçmiş açık karar (İstanbul günü) */
+                            overdue: boolean;
+                            statusChangedAt: string;
+                            createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
                             version: number;
                         };
                     };

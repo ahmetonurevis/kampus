@@ -3221,9 +3221,9 @@ const FINANCE: Readonly<Record<string, Proof>> = {
   ...Object.fromEntries(
     (
       [
-        ['liste', 'GET /api/v1/finance/staffing-plans/:academicYear', "call('GET', PLAN, a.admin)"],
+        ['kayıt', 'GET /api/v1/finance/staffing-plans/:academicYear', "call('GET', PLAN, a.admin)"],
         [
-          'gövde',
+          'kayıt',
           'PATCH /api/v1/finance/staffing-plans/:academicYear',
           'institutionId: b.id }, 1)',
         ],

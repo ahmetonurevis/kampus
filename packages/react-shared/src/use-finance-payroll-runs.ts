@@ -24,6 +24,9 @@ export type PayrollRun =
 export type PayrollTaxCarryover =
   operations['listPayrollTaxCarryovers']['responses'][200]['content']['application/json']['data'][number]
 export type CreatePayrollTaxCarryoverBody = JsonBody<'createPayrollTaxCarryover'>
+export type PayrollPayslips =
+  operations['getPayrollPayslips']['responses'][200]['content']['application/json']['data']
+export type PayrollPayslip = PayrollPayslips['payslips'][number]
 
 /** Ücret tanımı anahtarıyla başlar (`use-finance-pay-rates.ts` `PAY_RATES_KEY`). */
 export const PAYROLL_RUNS_KEY = ['finance', 'pay-rates', 'payroll-runs'] as const
@@ -73,6 +76,29 @@ export function usePayrollCalculationExport() {
             parseAs: 'text',
           }),
     invalidates: [],
+  })
+}
+
+/**
+ * Ücret hesap pusulası verisi (DOM-FIN-119; ON-201): ayın kayıtlı hesabından, `membershipId` ile tek
+ * pusula, yoksa bütün personel. Her çağrı PDF üretimidir: taze oturum ister (403
+ * `reauthentication_required` çağıranın parola penceresine gider), denetime düşer; önbelleğe
+ * alınmaz.
+ */
+export function usePayrollPayslips() {
+  return useApiCommand({
+    request: (client, input: { month: string; membershipId?: string }) =>
+      client.GET('/api/v1/finance/payroll-runs/{month}/payslips', {
+        params: {
+          path: { month: input.month },
+          query: input.membershipId === undefined ? {} : { membershipId: input.membershipId },
+        },
+      }),
+    invalidates: [],
+    messages: {
+      not_found:
+        'Pusula kayıtlı hesaptan üretilir; bu ay için kayıtlı hesap ya da hesapta bu personel yok.',
+    },
   })
 }
 

@@ -2896,6 +2896,25 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: ücret hesap pusulası (ON-201; DOM-FIN-119).
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'kayıt',
+          'GET /api/v1/finance/payroll-runs/:month/payslips',
+          "get(slipsUrl('2026-01', bStaff), a.admin), 404",
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-payroll-payslips.test.ts',
+        'DOM-FIN-119: başka kurumun hesabı ve personeli 404, B değişmez; gövde/sorgudaki institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

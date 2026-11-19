@@ -10404,6 +10404,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/payroll-runs/{month}/payslips": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ücret hesap pusulası verisi (PDF)
+         * @description Ayın etkin **kayıtlı** bordro hesabından ücret hesap pusulası verisi (DOM-FIN-119, K-406); canlı önizleme hesabından pusula üretilmez. `membershipId` verilirse tek pusula, verilmezse hesaptaki bütün personel (toplu PDF'te her biri ayrı sayfa), ada göre. Ay için kayıtlı hesap yoksa, personel kayıtlı hesapta değilse ya da başka kurumdaysa 404. Pusula: personel, görev, ay içi giriş/çıkış, çalışma/prim günü, eksik gün (nedeni yok), brüt kalemler, SGK ve işsizlik işçi payları, GV matrahı, önceki ve bu ay dahil kümülatif matrah, hesaplanan GV, asgari ücret GV ve DV istisnaları, DV, net, net düzeltme, bu ay kesilen kesintiler (avans, icra, BES; kaynak kimliği yok) ve ödenecek net; işveren payları ve maliyeti, sağlık raporu günü ve uyarılar yoktur (K-407). `locked` dönemin onaylı olup olmadığıdır; onaysız ayda pusula "dönem onaylanmadı" ibaresi taşır. Her çağrı taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, pusula başına `finance.payroll_payslip.export` denetim kaydı yazar (satır kimliği, yalnız alan adları; K-408). Tutarlar mali müşavir doğrulaması bekler (ADR 0011). Rol: yalnız `yonetici` (K-408). Modül `finance`.
+         */
+        get: operations["getPayrollPayslips"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -109086,6 +109106,201 @@ export interface operations {
                             /** Format: uuid */
                             id: string;
                             archivedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPayrollPayslips: {
+        parameters: {
+            query?: {
+                /** @description Tek pusula için personelin kurum üyeliği; boşsa ayın bütün pusulaları */
+                membershipId?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Bordro ayı (YYYY-AA) */
+                month: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            month: string;
+                            /**
+                             * Format: uuid
+                             * @description Pusulanın üretildiği kayıtlı hesap
+                             */
+                            runId: string;
+                            /** @description Kayıtlı hesabın revizyonu */
+                            revision: number;
+                            /** @description Hesabın kaydedildiği an */
+                            calculatedAt: string;
+                            /** @description Dönem onaylı (kilitli) mı; değilse pusula değişebilir */
+                            locked: boolean;
+                            institutionName: string;
+                            /** @description Ada göre; tek personel istendiyse bir eleman */
+                            payslips: {
+                                membershipId: string;
+                                name: string;
+                                /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                                role: string;
+                                /** @description Ay içinde işe giriş günü */
+                                entryDate: string | null;
+                                /** @description Ay içinde işten çıkış günü */
+                                exitDate: string | null;
+                                /** @description Çalışma / prim günü */
+                                primDays: number;
+                                /** @description Eksik gün (neden yazılmaz) */
+                                missingDays: number;
+                                /** @description Brüt kalemler */
+                                earnings: {
+                                    /**
+                                     * @description `wage`, `lesson`, `benefit`, `adjustment`
+                                     * @enum {string}
+                                     */
+                                    kind: "wage" | "lesson" | "benefit" | "adjustment";
+                                    /** @description Ücret türü, ek ders türü, yan hak türü ya da düzeltme kalemi */
+                                    code: string;
+                                    /** @description Tutar, kuruş */
+                                    amountCents: number;
+                                    /** @description Ek derste saat */
+                                    hours: number | null;
+                                    /** @description Ek derste birim ücret, kuruş */
+                                    rateCents: number | null;
+                                    /** @description SGK prime esas kazanca girer */
+                                    sgk: boolean;
+                                    /** @description Gelir ve damga vergisi matrahına girer */
+                                    taxable: boolean;
+                                }[];
+                                /** @description Brüt, kuruş */
+                                grossCents: number;
+                                /** @description SGK prime esas kazanç, kuruş */
+                                sgkBaseCents: number;
+                                /** @description SGK işçi payı, kuruş */
+                                sgkEmployeeCents: number;
+                                /** @description İşsizlik sigortası işçi payı, kuruş */
+                                unemploymentEmployeeCents: number;
+                                /** @description Ayın gelir vergisi matrahı, kuruş */
+                                incomeTaxBaseCents: number;
+                                /** @description Önceki kümülatif GV matrahı, kuruş */
+                                cumulativeIncomeTaxBaseBeforeCents: number;
+                                /** @description Bu ay dahil kümülatif GV matrahı, kuruş */
+                                cumulativeIncomeTaxBaseCents: number;
+                                /** @description Hesaplanan gelir vergisi, kuruş */
+                                incomeTaxCents: number;
+                                /** @description Asgari ücret gelir vergisi istisnası, kuruş */
+                                incomeTaxExemptionCents: number;
+                                /** @description Ödenecek gelir vergisi, kuruş */
+                                incomeTaxPayableCents: number;
+                                /** @description Damga vergisi matrahı, kuruş */
+                                stampTaxBaseCents: number;
+                                /** @description Hesaplanan damga vergisi, kuruş */
+                                stampTaxCents: number;
+                                /** @description Asgari ücret damga vergisi istisnası, kuruş */
+                                stampTaxExemptionCents: number;
+                                /** @description Ödenecek damga vergisi, kuruş */
+                                stampTaxPayableCents: number;
+                                /** @description Net ücret (kesintilerden önce), kuruş */
+                                netCents: number;
+                                /** @description Net düzeltme (işaretli), kuruş */
+                                netAdjustmentCents: number;
+                                /** @description Bu ay kesilen kesintiler (DOM-FIN-101 sırası) */
+                                deductions: {
+                                    /**
+                                     * @description `advance`, `garnishment`, `pension`
+                                     * @enum {string}
+                                     */
+                                    kind: "advance" | "garnishment" | "pension";
+                                    /** @description Bu ay kesilen tutar, kuruş */
+                                    amountCents: number;
+                                }[];
+                                /** @description Kesinti toplamı, kuruş */
+                                deductionCents: number;
+                                /** @description Ödenecek net, kuruş */
+                                payableCents: number;
+                            }[];
                         };
                     };
                 };

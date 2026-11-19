@@ -41,6 +41,7 @@ import { saveBlob } from '@/lib/download.ts'
 import { notify } from '@/lib/notify.ts'
 import { StatGrid } from '../academic/AcademicParts.tsx'
 import { RootError } from '../management/FormParts.tsx'
+import { FinancePayrollPayslipButton } from './FinancePayrollPayslipButton.tsx'
 import {
   defaultPayrollMonth,
   PAYROLL_CARRYOVER_DEFAULTS,
@@ -64,6 +65,8 @@ const momentText = (iso: string) =>
  * bordroyu kendisi hesaplar (ON-193, ADR 0011). Ay seçilir; satırlar canlı hesaptır, "Hesabı
  * kaydet" ayı kaydeder (kümülatif matraha girer), onaylı ayda kaydetme kapalıdır. Satır panelinde
  * hesabın ayrıntısı ve kümülatif matrah devri vardır. Her görüntüleme ve CSV denetime düşer.
+ * Kayıtlı hesap varken satırda ve başlıkta ücret hesap pusulası (PDF) düğmesi vardır (DOM-FIN-119):
+ * pusula kayıtlı hesaptan üretilir, ekrandaki önizlemeden değil.
  */
 export function FinancePayrollCalculationSection() {
   const [monthInput, setMonthInput] = useState(() => defaultPayrollMonth(dayKey()))
@@ -162,6 +165,13 @@ export function FinancePayrollCalculationSection() {
               Kayıtlı hesabı indir
             </Button>
           ) : null}
+          {data?.saved && month !== null ? (
+            <FinancePayrollPayslipButton
+              month={month}
+              label="Bütün pusulalar (PDF)"
+              accessibleName={`${payrollMonthLabel(month)} bütün ücret hesap pusulaları`}
+            />
+          ) : null}
         </div>
       </header>
       <div className="grid gap-4 px-6 pb-6 max-[650px]:px-4">
@@ -235,7 +245,7 @@ function CalculationBody({
       <p role="status" className="text-sm">
         {data.locked ? 'Ay onaylandı (kilitli); hesap değiştirilemez. ' : ''}
         {saved === null
-          ? 'Bu ayın kayıtlı hesabı yok.'
+          ? 'Bu ayın kayıtlı hesabı yok. Ücret hesap pusulası kayıtlı hesaptan üretilir.'
           : `Kayıtlı hesap ${String(saved.revision)}. revizyon, ${momentText(saved.calculatedAt)}${saved.calculatedByName ? ` · ${saved.calculatedByName}` : ''}; ödenecek net ${money(saved.payableTotalCents)}.`}
       </p>
       <StatGrid label={`${payrollMonthLabel(data.month)} bordro özeti`} items={stats} />
@@ -325,14 +335,25 @@ function CalculationBody({
                     )}
                   </TableCell>
                   <TableCell>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      aria-label={`${row.name} bordro ayrıntısı`}
-                      onClick={() => onOpen(row.membershipId)}
-                    >
-                      Ayrıntı
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        aria-label={`${row.name} bordro ayrıntısı`}
+                        onClick={() => onOpen(row.membershipId)}
+                      >
+                        Ayrıntı
+                      </Button>
+                      {saved !== null && row.complete ? (
+                        <FinancePayrollPayslipButton
+                          month={data.month}
+                          membershipId={row.membershipId}
+                          label="Pusula"
+                          accessibleName={`${row.name} ücret hesap pusulası`}
+                          size="sm"
+                        />
+                      ) : null}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

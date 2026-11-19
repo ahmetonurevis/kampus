@@ -240324,6 +240324,463 @@
         }
       }
     },
+    "/api/v1/finance/payroll-runs/{month}/payslips": {
+      "get": {
+        "operationId": "getPayrollPayslips",
+        "summary": "Ücret hesap pusulası verisi (PDF)",
+        "tags": [
+          "finance-payroll-runs"
+        ],
+        "description": "Ayın etkin **kayıtlı** bordro hesabından ücret hesap pusulası verisi (DOM-FIN-119, K-406); canlı önizleme hesabından pusula üretilmez. `membershipId` verilirse tek pusula, verilmezse hesaptaki bütün personel (toplu PDF'te her biri ayrı sayfa), ada göre. Ay için kayıtlı hesap yoksa, personel kayıtlı hesapta değilse ya da başka kurumdaysa 404. Pusula: personel, görev, ay içi giriş/çıkış, çalışma/prim günü, eksik gün (nedeni yok), brüt kalemler, SGK ve işsizlik işçi payları, GV matrahı, önceki ve bu ay dahil kümülatif matrah, hesaplanan GV, asgari ücret GV ve DV istisnaları, DV, net, net düzeltme, bu ay kesilen kesintiler (avans, icra, BES; kaynak kimliği yok) ve ödenecek net; işveren payları ve maliyeti, sağlık raporu günü ve uyarılar yoktur (K-407). `locked` dönemin onaylı olup olmadığıdır; onaysız ayda pusula \"dönem onaylanmadı\" ibaresi taşır. Her çağrı taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk, pusula başına `finance.payroll_payslip.export` denetim kaydı yazar (satır kimliği, yalnız alan adları; K-408). Tutarlar mali müşavir doğrulaması bekler (ADR 0011). Rol: yalnız `yonetici` (K-408). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "membershipId",
+            "required": false,
+            "description": "Tek pusula için personelin kurum üyeliği; boşsa ayın bütün pusulaları"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^20[2-9]\\d-(0[1-9]|1[0-2])$"
+            },
+            "in": "path",
+            "name": "month",
+            "required": true,
+            "description": "Bordro ayı (YYYY-AA)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "month": {
+                          "type": "string"
+                        },
+                        "runId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                          "description": "Pusulanın üretildiği kayıtlı hesap"
+                        },
+                        "revision": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kayıtlı hesabın revizyonu"
+                        },
+                        "calculatedAt": {
+                          "type": "string",
+                          "description": "Hesabın kaydedildiği an"
+                        },
+                        "locked": {
+                          "type": "boolean",
+                          "description": "Dönem onaylı (kilitli) mı; değilse pusula değişebilir"
+                        },
+                        "institutionName": {
+                          "type": "string"
+                        },
+                        "payslips": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "role": {
+                                "type": "string",
+                                "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                              },
+                              "entryDate": {
+                                "description": "Ay içinde işe giriş günü",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "exitDate": {
+                                "description": "Ay içinde işten çıkış günü",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "primDays": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Çalışma / prim günü"
+                              },
+                              "missingDays": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Eksik gün (neden yazılmaz)"
+                              },
+                              "earnings": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "wage",
+                                        "lesson",
+                                        "benefit",
+                                        "adjustment"
+                                      ],
+                                      "description": "`wage`, `lesson`, `benefit`, `adjustment`"
+                                    },
+                                    "code": {
+                                      "type": "string",
+                                      "description": "Ücret türü, ek ders türü, yan hak türü ya da düzeltme kalemi"
+                                    },
+                                    "amountCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Tutar, kuruş"
+                                    },
+                                    "hours": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Ek derste saat"
+                                    },
+                                    "rateCents": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Ek derste birim ücret, kuruş"
+                                    },
+                                    "sgk": {
+                                      "type": "boolean",
+                                      "description": "SGK prime esas kazanca girer"
+                                    },
+                                    "taxable": {
+                                      "type": "boolean",
+                                      "description": "Gelir ve damga vergisi matrahına girer"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "code",
+                                    "amountCents",
+                                    "hours",
+                                    "rateCents",
+                                    "sgk",
+                                    "taxable"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "Brüt kalemler"
+                              },
+                              "grossCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Brüt, kuruş"
+                              },
+                              "sgkBaseCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "SGK prime esas kazanç, kuruş"
+                              },
+                              "sgkEmployeeCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "SGK işçi payı, kuruş"
+                              },
+                              "unemploymentEmployeeCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "İşsizlik sigortası işçi payı, kuruş"
+                              },
+                              "incomeTaxBaseCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ayın gelir vergisi matrahı, kuruş"
+                              },
+                              "cumulativeIncomeTaxBaseBeforeCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Önceki kümülatif GV matrahı, kuruş"
+                              },
+                              "cumulativeIncomeTaxBaseCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Bu ay dahil kümülatif GV matrahı, kuruş"
+                              },
+                              "incomeTaxCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Hesaplanan gelir vergisi, kuruş"
+                              },
+                              "incomeTaxExemptionCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Asgari ücret gelir vergisi istisnası, kuruş"
+                              },
+                              "incomeTaxPayableCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ödenecek gelir vergisi, kuruş"
+                              },
+                              "stampTaxBaseCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Damga vergisi matrahı, kuruş"
+                              },
+                              "stampTaxCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Hesaplanan damga vergisi, kuruş"
+                              },
+                              "stampTaxExemptionCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Asgari ücret damga vergisi istisnası, kuruş"
+                              },
+                              "stampTaxPayableCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ödenecek damga vergisi, kuruş"
+                              },
+                              "netCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Net ücret (kesintilerden önce), kuruş"
+                              },
+                              "netAdjustmentCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Net düzeltme (işaretli), kuruş"
+                              },
+                              "deductions": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "advance",
+                                        "garnishment",
+                                        "pension"
+                                      ],
+                                      "description": "`advance`, `garnishment`, `pension`"
+                                    },
+                                    "amountCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Bu ay kesilen tutar, kuruş"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "amountCents"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "Bu ay kesilen kesintiler (DOM-FIN-101 sırası)"
+                              },
+                              "deductionCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Kesinti toplamı, kuruş"
+                              },
+                              "payableCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ödenecek net, kuruş"
+                              }
+                            },
+                            "required": [
+                              "membershipId",
+                              "name",
+                              "role",
+                              "entryDate",
+                              "exitDate",
+                              "primDays",
+                              "missingDays",
+                              "earnings",
+                              "grossCents",
+                              "sgkBaseCents",
+                              "sgkEmployeeCents",
+                              "unemploymentEmployeeCents",
+                              "incomeTaxBaseCents",
+                              "cumulativeIncomeTaxBaseBeforeCents",
+                              "cumulativeIncomeTaxBaseCents",
+                              "incomeTaxCents",
+                              "incomeTaxExemptionCents",
+                              "incomeTaxPayableCents",
+                              "stampTaxBaseCents",
+                              "stampTaxCents",
+                              "stampTaxExemptionCents",
+                              "stampTaxPayableCents",
+                              "netCents",
+                              "netAdjustmentCents",
+                              "deductions",
+                              "deductionCents",
+                              "payableCents"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Ada göre; tek personel istendiyse bir eleman"
+                        }
+                      },
+                      "required": [
+                        "month",
+                        "runId",
+                        "revision",
+                        "calculatedAt",
+                        "locked",
+                        "institutionName",
+                        "payslips"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

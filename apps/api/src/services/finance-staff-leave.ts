@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
 import {
+  assertManualLeaveRecord,
   effectiveLeaveTypes,
   leaveEntitlement,
   leaveProfileSchema,
@@ -455,7 +456,10 @@ export function createLeaveRecordCommand(
   )
 }
 
-/** Kaydı gerekçeyle iptal (K-362); `If-Match` kayıt sürümü. */
+/**
+ * Kaydı gerekçeyle iptal (K-362); `If-Match` kayıt sürümü. Onaylanan talepten doğan kayıt talebin
+ * iptaliyle iptal edilir (422 `staff_leave_record_from_request`; DOM-FIN-116, K-398).
+ */
 export function cancelLeaveRecordCommand(
   ctx: ServiceContext,
   id: string,
@@ -476,7 +480,12 @@ export function cancelLeaveRecordCommand(
         const record = await findLeaveRecord(tx, ctx.institutionId, id)
         if (record === null) throw new NotFoundError()
         if (record.version !== expectedVersion) throw new ConflictError()
-        return { run: () => parsed }
+        return {
+          run: () => {
+            assertManualLeaveRecord(record)
+            return parsed
+          },
+        }
       },
       after: async (tx, parsed) => {
         const saved = await cancelLeaveRecord(tx, ctx.institutionId, {

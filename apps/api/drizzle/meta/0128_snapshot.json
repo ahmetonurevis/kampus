@@ -1,5 +1,5 @@
 {
-  "id": "c0ef1f94-f350-436d-8a41-2b354765d0fa",
+  "id": "4b4518ca-26d5-4cb8-ba10-2cf65a81168e",
   "prevId": "78981f86-f6e4-41cd-8f1f-435ced679e7d",
   "version": "7",
   "dialect": "postgresql",
@@ -19943,6 +19943,662 @@
       },
       "isRLSEnabled": false
     },
+    "public.payroll_run_lines": {
+      "name": "payroll_run_lines",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "run_id": {
+          "name": "run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "membership_id": {
+          "name": "membership_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "month": {
+          "name": "month",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "gross_cents": {
+          "name": "gross_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "income_tax_base_cents": {
+          "name": "income_tax_base_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "net_cents": {
+          "name": "net_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payable_cents": {
+          "name": "payable_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "employer_cost_cents": {
+          "name": "employer_cost_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'TRY'"
+        },
+        "line": {
+          "name": "line",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "payroll_run_lines_member_key": {
+          "name": "payroll_run_lines_member_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "run_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "payroll_run_lines_membership_idx": {
+          "name": "payroll_run_lines_membership_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "month",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "payroll_run_lines_institution_id_institutions_id_fk": {
+          "name": "payroll_run_lines_institution_id_institutions_id_fk",
+          "tableFrom": "payroll_run_lines",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "payroll_run_lines_run_fkey": {
+          "name": "payroll_run_lines_run_fkey",
+          "tableFrom": "payroll_run_lines",
+          "tableTo": "payroll_runs",
+          "columnsFrom": [
+            "institution_id",
+            "run_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "payroll_run_lines_membership_fkey": {
+          "name": "payroll_run_lines_membership_fkey",
+          "tableFrom": "payroll_run_lines",
+          "tableTo": "memberships",
+          "columnsFrom": [
+            "institution_id",
+            "membership_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "payroll_run_lines_pkey": {
+          "name": "payroll_run_lines_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "payroll_run_lines_month_check": {
+          "name": "payroll_run_lines_month_check",
+          "value": "\"payroll_run_lines\".\"month\" ~ '^20[2-9][0-9]-(0[1-9]|1[0-2])$'"
+        },
+        "payroll_run_lines_amounts_check": {
+          "name": "payroll_run_lines_amounts_check",
+          "value": "\"payroll_run_lines\".\"gross_cents\" >= 0 and \"payroll_run_lines\".\"income_tax_base_cents\" >= 0\n        and \"payroll_run_lines\".\"employer_cost_cents\" >= 0"
+        },
+        "payroll_run_lines_currency_check": {
+          "name": "payroll_run_lines_currency_check",
+          "value": "\"payroll_run_lines\".\"currency\" = 'TRY'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.payroll_runs": {
+      "name": "payroll_runs",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "month": {
+          "name": "month",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parameter_set_id": {
+          "name": "parameter_set_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parameter_effective_from": {
+          "name": "parameter_effective_from",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "staff_count": {
+          "name": "staff_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "skipped_count": {
+          "name": "skipped_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "gross_total_cents": {
+          "name": "gross_total_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "net_total_cents": {
+          "name": "net_total_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payable_total_cents": {
+          "name": "payable_total_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "employer_cost_total_cents": {
+          "name": "employer_cost_total_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'TRY'"
+        },
+        "calculated_by_user_id": {
+          "name": "calculated_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "archived_by_user_id": {
+          "name": "archived_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "payroll_runs_month_key": {
+          "name": "payroll_runs_month_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "month",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"payroll_runs\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "payroll_runs_revision_key": {
+          "name": "payroll_runs_revision_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "month",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "revision",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "payroll_runs_institution_id_institutions_id_fk": {
+          "name": "payroll_runs_institution_id_institutions_id_fk",
+          "tableFrom": "payroll_runs",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "payroll_runs_pkey": {
+          "name": "payroll_runs_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "payroll_runs_month_check": {
+          "name": "payroll_runs_month_check",
+          "value": "\"payroll_runs\".\"month\" ~ '^20[2-9][0-9]-(0[1-9]|1[0-2])$'"
+        },
+        "payroll_runs_counts_check": {
+          "name": "payroll_runs_counts_check",
+          "value": "\"payroll_runs\".\"revision\" >= 1 and \"payroll_runs\".\"staff_count\" >= 1 and \"payroll_runs\".\"skipped_count\" >= 0\n        and \"payroll_runs\".\"gross_total_cents\" >= 0 and \"payroll_runs\".\"employer_cost_total_cents\" >= 0"
+        },
+        "payroll_runs_currency_check": {
+          "name": "payroll_runs_currency_check",
+          "value": "\"payroll_runs\".\"currency\" = 'TRY'"
+        },
+        "payroll_runs_archive_check": {
+          "name": "payroll_runs_archive_check",
+          "value": "(\"payroll_runs\".\"archived_at\" is null) = (\"payroll_runs\".\"archived_by_user_id\" is null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.payroll_tax_carryovers": {
+      "name": "payroll_tax_carryovers",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "membership_id": {
+          "name": "membership_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "year": {
+          "name": "year",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "income_tax_base_cents": {
+          "name": "income_tax_base_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'TRY'"
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "archived_by_user_id": {
+          "name": "archived_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "payroll_tax_carryovers_member_year_key": {
+          "name": "payroll_tax_carryovers_member_year_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "year",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"payroll_tax_carryovers\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "payroll_tax_carryovers_year_idx": {
+          "name": "payroll_tax_carryovers_year_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "year",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "payroll_tax_carryovers_institution_id_institutions_id_fk": {
+          "name": "payroll_tax_carryovers_institution_id_institutions_id_fk",
+          "tableFrom": "payroll_tax_carryovers",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "payroll_tax_carryovers_membership_fkey": {
+          "name": "payroll_tax_carryovers_membership_fkey",
+          "tableFrom": "payroll_tax_carryovers",
+          "tableTo": "memberships",
+          "columnsFrom": [
+            "institution_id",
+            "membership_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "payroll_tax_carryovers_pkey": {
+          "name": "payroll_tax_carryovers_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "payroll_tax_carryovers_year_check": {
+          "name": "payroll_tax_carryovers_year_check",
+          "value": "\"payroll_tax_carryovers\".\"year\" between 2020 and 2099"
+        },
+        "payroll_tax_carryovers_amount_check": {
+          "name": "payroll_tax_carryovers_amount_check",
+          "value": "\"payroll_tax_carryovers\".\"income_tax_base_cents\" between 1 and 100000000000"
+        },
+        "payroll_tax_carryovers_currency_check": {
+          "name": "payroll_tax_carryovers_currency_check",
+          "value": "\"payroll_tax_carryovers\".\"currency\" = 'TRY'"
+        },
+        "payroll_tax_carryovers_note_check": {
+          "name": "payroll_tax_carryovers_note_check",
+          "value": "\"payroll_tax_carryovers\".\"note\" is null or char_length(\"payroll_tax_carryovers\".\"note\") between 1 and 200"
+        },
+        "payroll_tax_carryovers_archive_check": {
+          "name": "payroll_tax_carryovers_archive_check",
+          "value": "(\"payroll_tax_carryovers\".\"archived_at\" is null) = (\"payroll_tax_carryovers\".\"archived_by_user_id\" is null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.purchase_approval_settings": {
       "name": "purchase_approval_settings",
       "schema": "",
@@ -27150,326 +27806,6 @@
         "staff_leave_types_rules_check": {
           "name": "staff_leave_types_rules_check",
           "value": "(\"staff_leave_types\".\"kind\" <> 'annual' or (\"staff_leave_types\".\"paid\" and \"staff_leave_types\".\"deducts_from_annual\"))\n        and (\"staff_leave_types\".\"kind\" <> 'unpaid' or not (\"staff_leave_types\".\"paid\" or \"staff_leave_types\".\"deducts_from_annual\"))\n        and (\"staff_leave_types\".\"kind\" <> 'sick' or not \"staff_leave_types\".\"deducts_from_annual\")"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.staff_separations": {
-      "name": "staff_separations",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "membership_id": {
-          "name": "membership_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "separation_date": {
-          "name": "separation_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "reason": {
-          "name": "reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "sgk_exit_code": {
-          "name": "sgk_exit_code",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "hire_date": {
-          "name": "hire_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "notice_given_date": {
-          "name": "notice_given_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "note": {
-          "name": "note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'open'"
-        },
-        "deductions_checked_at": {
-          "name": "deductions_checked_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "deductions_checked_by_user_id": {
-          "name": "deductions_checked_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "leave_checked_at": {
-          "name": "leave_checked_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "leave_checked_by_user_id": {
-          "name": "leave_checked_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "severance_checked_at": {
-          "name": "severance_checked_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "severance_checked_by_user_id": {
-          "name": "severance_checked_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "unused_leave_days": {
-          "name": "unused_leave_days",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "completed_at": {
-          "name": "completed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "completed_by_user_id": {
-          "name": "completed_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancelled_at": {
-          "name": "cancelled_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancelled_by_user_id": {
-          "name": "cancelled_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cancel_reason": {
-          "name": "cancel_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "staff_separations_open_key": {
-          "name": "staff_separations_open_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "membership_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"staff_separations\".\"status\" = 'open'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "staff_separations_membership_idx": {
-          "name": "staff_separations_membership_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "membership_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "staff_separations_status_idx": {
-          "name": "staff_separations_status_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "separation_date",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "staff_separations_institution_id_institutions_id_fk": {
-          "name": "staff_separations_institution_id_institutions_id_fk",
-          "tableFrom": "staff_separations",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "staff_separations_membership_fkey": {
-          "name": "staff_separations_membership_fkey",
-          "tableFrom": "staff_separations",
-          "tableTo": "memberships",
-          "columnsFrom": [
-            "institution_id",
-            "membership_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "staff_separations_pkey": {
-          "name": "staff_separations_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "staff_separations_reason_check": {
-          "name": "staff_separations_reason_check",
-          "value": "\"staff_separations\".\"reason\" in ('resignation', 'termination', 'retirement', 'contract_end', 'other')"
-        },
-        "staff_separations_sgk_code_check": {
-          "name": "staff_separations_sgk_code_check",
-          "value": "\"staff_separations\".\"sgk_exit_code\" in ('01', '02', '03', '04', '05', '08', '09', '10', '22', '29')"
-        },
-        "staff_separations_status_check": {
-          "name": "staff_separations_status_check",
-          "value": "\"staff_separations\".\"status\" in ('open', 'completed', 'cancelled')"
-        },
-        "staff_separations_dates_check": {
-          "name": "staff_separations_dates_check",
-          "value": "(\"staff_separations\".\"hire_date\" is null or \"staff_separations\".\"hire_date\" <= \"staff_separations\".\"separation_date\")\n        and (\"staff_separations\".\"notice_given_date\" is null or \"staff_separations\".\"notice_given_date\" <= \"staff_separations\".\"separation_date\")\n        and (\"staff_separations\".\"hire_date\" is null or \"staff_separations\".\"notice_given_date\" is null\n          or \"staff_separations\".\"notice_given_date\" >= \"staff_separations\".\"hire_date\")"
-        },
-        "staff_separations_note_check": {
-          "name": "staff_separations_note_check",
-          "value": "\"staff_separations\".\"note\" is null or char_length(\"staff_separations\".\"note\") between 1 and 500"
-        },
-        "staff_separations_marks_check": {
-          "name": "staff_separations_marks_check",
-          "value": "(\"staff_separations\".\"deductions_checked_at\" is null) = (\"staff_separations\".\"deductions_checked_by_user_id\" is null)\n        and (\"staff_separations\".\"leave_checked_at\" is null) = (\"staff_separations\".\"leave_checked_by_user_id\" is null)\n        and (\"staff_separations\".\"severance_checked_at\" is null) = (\"staff_separations\".\"severance_checked_by_user_id\" is null)"
-        },
-        "staff_separations_complete_check": {
-          "name": "staff_separations_complete_check",
-          "value": "(\"staff_separations\".\"status\" = 'completed') = (\"staff_separations\".\"completed_at\" is not null)\n        and (\"staff_separations\".\"status\" = 'completed') = (\"staff_separations\".\"completed_by_user_id\" is not null)\n        and (\"staff_separations\".\"unused_leave_days\" is null or \"staff_separations\".\"status\" = 'completed')"
-        },
-        "staff_separations_cancel_check": {
-          "name": "staff_separations_cancel_check",
-          "value": "(\"staff_separations\".\"status\" = 'cancelled') = (\"staff_separations\".\"cancelled_at\" is not null)\n        and (\"staff_separations\".\"status\" = 'cancelled') = (\"staff_separations\".\"cancelled_by_user_id\" is not null)\n        and (\"staff_separations\".\"status\" = 'cancelled') = (\"staff_separations\".\"cancel_reason\" is not null)\n        and (\"staff_separations\".\"cancel_reason\" is null or char_length(\"staff_separations\".\"cancel_reason\")\n          between 5 and 500)"
         }
       },
       "isRLSEnabled": false

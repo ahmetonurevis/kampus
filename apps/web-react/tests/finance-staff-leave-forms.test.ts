@@ -56,6 +56,7 @@ const RECORD: LeaveRecordView = {
   endDate: '2026-07-10',
   days: 5,
   note: null,
+  requestId: null,
   createdAt: '2026-07-01T09:00:00.000Z',
   version: 1,
 }

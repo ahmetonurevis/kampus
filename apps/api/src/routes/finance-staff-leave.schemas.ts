@@ -69,6 +69,10 @@ const recordSchema = z.object({
   endDate: z.string(),
   days: z.number().int().describe('Kullanılan iş günü'),
   note: z.string().nullable(),
+  requestId: z
+    .string()
+    .nullable()
+    .describe('Kaydı üreten izin talebi (DOM-FIN-116); elle yazılmış kayıtta boş'),
   createdAt: z.string(),
   version: z.number().int().describe('`If-Match` için kayıt sürümü (iptal)'),
 })

@@ -20,19 +20,39 @@ import {
   type PayRateComponent,
   type PayRateType,
 } from './finance-pay-rates.ts'
+import {
+  PAYROLL_ADJUSTMENT_ITEM_LABELS,
+  payrollMonthLabel,
+  type PayrollAdjustmentItem,
+} from './finance-payroll-periods.ts'
+import {
+  MONTHLY_DEDUCTION_KIND_LABELS,
+  monthlyDeductions,
+  monthsBetween,
+  type MonthlyDeductionKind,
+  type MonthlyDeductionStatus,
+  type StoredAdvanceTerms,
+  type StoredGarnishmentTerms,
+  type StoredPensionTerms,
+} from './finance-staff-deductions.ts'
 import { isStaffRole, STAFF_ROLE_LABELS } from './staff-accounts.ts'
 
 /**
- * Bordro programına aktarım (docs/domain/finans.md DOM-FIN-105; ON-202). Kampüs bordro
- * hesaplamaz (ON-193): seçilen ayın **girdi dosyasını** üretir. Kaynak: o ay yürürlükte olan
- * ücret tanımları (DOM-FIN-099) ve ay için elle girilen ek ders saatleri (personel × ay × tür ×
- * saat; ders saati özeti OG-116 gelene kadar).
+ * Bordro programına aktarım (docs/domain/finans.md DOM-FIN-105; ON-202, ON-343). Bordroyu Kampüs
+ * hesaplar (ADR 0011, DOM-FIN-115); bordroyu dış programda hesaplatan kurum için seçilen ayın
+ * **girdi dosyası** üretilir. Kaynak: o ay yürürlükte olan
+ * ücret tanımları (DOM-FIN-099), ay için elle girilen ek ders saatleri (personel × ay × tür ×
+ * saat; ders saati özeti OG-116 gelene kadar), ayın avans, icra ve BES kesintileri (DOM-FIN-101)
+ * ve aya aktarılan bordro düzeltmeleri (DOM-FIN-108).
  *
  * Dosya kalem başına satırdır (K-336): ana ücret ve yan hak tanımı başına bir satır, ek ders
  * saati kaydı başına bir satır. Ay içinde başlayan ya da biten tanımda tutar orantılanmaz;
  * satır ay içindeki başlangıç ve bitiş gününü, gün sayısını ve ayın gün sayısını taşır, tutar
- * sütunu boş kalır. Satırın yönü (`earning` kazanç) avans ve kesintiler (ON-199) için
- * `deduction` kesinti değeriyle genişler; sütun düzeni değişmez. Fonksiyonlar saftır.
+ * sütunu boş kalır. Kesinti satırları (K-392) `deduction` yönündedir: avans taksiti sabit
+ * tutardır; icra ve BES net ücret ya da matrah bilinmediği için oran, matrah ve üst sınırla
+ * "bordroda hesaplanır" satırıdır. Düzeltme (K-393) işaretinden yön alır, tutarı mutlaktır.
+ * Yeni sütunlar genel dosyanın sonuna eklenir; önceki sütunların yeri değişmez. Fonksiyonlar
+ * saftır.
  */
 
 /** Ücret verisi yalnız yöneticide (K-306, K-338). */
@@ -168,7 +188,7 @@ export function planPayrollLessonHoursUpdate(
 
 // --- Satırlar ------------------------------------------------------------------------------------
 
-/** Satır yönü: kesinti (`deduction`) avans ve kesintiler (ON-199) için ayrılmıştır. */
+/** Satır yönü: kazanç ya da kesinti (avans, icra, BES ve eksi düzeltme). */
 export const PAYROLL_LINE_DIRECTIONS = ['earning', 'deduction'] as const
 export type PayrollLineDirection = (typeof PAYROLL_LINE_DIRECTIONS)[number]
 export const PAYROLL_LINE_DIRECTION_LABELS = {
@@ -176,13 +196,29 @@ export const PAYROLL_LINE_DIRECTION_LABELS = {
   deduction: 'Kesinti',
 } as const satisfies Record<PayrollLineDirection, string>
 
-export const PAYROLL_UNITS = ['month', 'hour', 'lesson_hour'] as const
+/**
+ * Satırın kaynağı: `rate` ücret tanımı, `lesson_hours` ek ders saati, `deduction` avans ya da
+ * kesinti (DOM-FIN-101), `adjustment` kilitli aydan aktarılan düzeltme (DOM-FIN-108).
+ */
+export const PAYROLL_LINE_KINDS = ['rate', 'lesson_hours', 'deduction', 'adjustment'] as const
+export type PayrollLineKind = (typeof PAYROLL_LINE_KINDS)[number]
+
+export const PAYROLL_UNITS = ['month', 'hour', 'lesson_hour', 'once'] as const
 export type PayrollUnit = (typeof PAYROLL_UNITS)[number]
 export const PAYROLL_UNIT_LABELS = {
   month: 'Aylık',
   hour: 'Saat',
   lesson_hour: 'Ders saati',
+  once: 'Tek sefer',
 } as const satisfies Record<PayrollUnit, string>
+
+/** Oranlı kesintinin matrahı (K-392): icra net ücretten, BES katkı matrahından. */
+export const PAYROLL_DEDUCTION_BASES = ['net_wage', 'pension_base'] as const
+export type PayrollDeductionBase = (typeof PAYROLL_DEDUCTION_BASES)[number]
+export const PAYROLL_DEDUCTION_BASE_LABELS = {
+  net_wage: 'Net ücret',
+  pension_base: 'BES matrahı (SGK prime esas kazanç)',
+} as const satisfies Record<PayrollDeductionBase, string>
 
 export const PAYROLL_WARNINGS = [
   'partial_month',
@@ -191,6 +227,10 @@ export const PAYROLL_WARNINGS = [
   'lesson_rate_missing',
   'lesson_rate_changed',
   'staff_inactive',
+  'deduction_on_net',
+  'deduction_on_pension_base',
+  'prior_month_adjustment',
+  'lesson_hours_pending',
 ] as const
 export type PayrollWarning = (typeof PAYROLL_WARNINGS)[number]
 export const PAYROLL_WARNING_LABELS = {
@@ -200,6 +240,10 @@ export const PAYROLL_WARNING_LABELS = {
   lesson_rate_missing: 'Ek ders ücreti tanımı yok; tutar boş',
   lesson_rate_changed: 'Ay içinde birden çok ek ders ücreti; son tanım kullanıldı',
   staff_inactive: 'Personel pasif (ayrıldı)',
+  deduction_on_net: 'Net ücretten oranla bordroda hesaplanır; kalan alacak üst sınırdır',
+  deduction_on_pension_base: 'BES matrahından oranla bordroda hesaplanır',
+  prior_month_adjustment: 'Kilitli ayın düzeltme farkı; ait olduğu ay ayrı sütunda',
+  lesson_hours_pending: 'Ek ders çizelgesi müdür onayı bekliyor; onaylanmadan ödenmez',
 } as const satisfies Record<PayrollWarning, string>
 
 export interface PayrollStaff {
@@ -232,26 +276,75 @@ export interface PayrollLessonHours {
   version: number
 }
 
+/** Ayın avans, icra ve BES kayıtları (DOM-FIN-101); her kayıt personel üyeliğini taşır. */
+export interface PayrollDeductionSources {
+  advances: readonly (StoredAdvanceTerms & { id: string; membershipId: string })[]
+  garnishments: readonly (StoredGarnishmentTerms & { membershipId: string })[]
+  pensions: readonly (StoredPensionTerms & {
+    id: string
+    membershipId: string
+    rateBasisPoints: number
+  })[]
+}
+
+/** Bu aya aktarılan, iptal edilmemiş bordro düzeltmesi (DOM-FIN-108, K-358). */
+export interface PayrollAdjustmentEntry {
+  id: string
+  membershipId: string
+  item: PayrollAdjustmentItem
+  /** İşaretli fark: artı ek ödeme, eksi geri alınacak. */
+  amountCents: number
+  /** Farkın ait olduğu (kilitli) ay. */
+  sourceMonth: string
+}
+
 export interface PayrollExportLine {
-  /** Satırın ekrandaki kimliği (tanım ya da saat kaydı). */
+  /**
+   * Satırın ekrandaki kimliği: `rate:<tanım>`, `hours:<saat kaydı>`,
+   * `deduction:<tür>:<kayıt>` ya da `adjustment:<düzeltme>`.
+   */
   key: string
+  kind: PayrollLineKind
   month: string
   membershipId: string
   staffName: string
   role: string
   staffActive: boolean
-  component: PayRateComponent
-  rateType: PayRateType
-  /** `<bileşen>.<tür>`, ör. `wage.monthly_gross`; bordro programı kalem koduna eşlenir. */
+  /** Ücret tanımı ve ek derste bileşen ve tür; kesinti ve düzeltmede `null`. */
+  component: PayRateComponent | null
+  rateType: PayRateType | null
+  /**
+   * Kalem kodu; bordro programı kalem koduna eşlenir: `<bileşen>.<tür>` (`wage.monthly_gross`),
+   * `deduction.<tür>` (`deduction.advance`) ya da `adjustment.<kalem>` (`adjustment.lesson`).
+   */
   itemCode: string
   direction: PayrollLineDirection
   unit: PayrollUnit
-  /** Tanımın tutarı (birim ücret); ek ders tanımı yoksa `null`. */
+  /** Tanımın tutarı (birim ücret); ek ders tanımı yoksa ve kesinti/düzeltmede `null`. */
   rateCents: number | null
   /** Ek derste saat; diğerlerinde `null`. */
   quantity: number | null
-  /** Tam ay aylık tutar ya da saat × birim ücret; hesaplanamıyorsa `null` (K-336). */
+  /**
+   * Tam ay aylık tutar, saat × birim ücret, avans taksiti ya da düzeltmenin mutlak tutarı;
+   * hesaplanamıyorsa `null` (K-336, K-392).
+   */
   totalCents: number | null
+  /** Kesinti türü (DOM-FIN-101); diğerlerinde `null`. */
+  deductionKind: MonthlyDeductionKind | null
+  /** Personelin ayki kesinti sırası (1'den; K-315 sırası); diğerlerinde `null`. */
+  deductionOrder: number | null
+  /** İcra ve BES oranı, onbinde; diğerlerinde `null`. */
+  rateBasisPoints: number | null
+  /** Oranlı kesintinin matrahı; diğerlerinde `null`. */
+  deductionBase: PayrollDeductionBase | null
+  /** İcrada kalan alacak (kesintinin üst sınırı); diğerlerinde `null`. */
+  capCents: number | null
+  /** Avans taksitinin sırası ve taksit sayısı; diğerlerinde `null`. */
+  installmentNo: number | null
+  installmentCount: number | null
+  /** Düzeltme kalemi ve ait olduğu ay; diğerlerinde `null`. */
+  adjustmentItem: PayrollAdjustmentItem | null
+  sourceMonth: string | null
   taxable: boolean | null
   benefitForm: BenefitForm | null
   /** Tanımın ay içindeki ilk ve son günü (giriş/çıkış); ek derste `null`. */
@@ -272,9 +365,9 @@ export interface PayrollExportTotals {
   staffCount: number
   /** Tutarı olan kazanç satırlarının toplamı (kuruş). */
   earningCents: number
-  /** Tutarı olan kesinti satırlarının toplamı (kuruş); ON-199 gelene kadar 0. */
+  /** Tutarı olan kesinti satırlarının toplamı (kuruş): avans taksiti ve eksi düzeltme. */
   deductionCents: number
-  /** Tutarı boş satır (kısmi ay, saat ücreti, ek ders tanımı yok). */
+  /** Tutarı boş satır (kısmi ay, saat ücreti, ek ders tanımı yok ya da onaysız, icra ve BES). */
   missingTotalCount: number
 }
 
@@ -293,22 +386,67 @@ function wageUnit(rateType: PayRateType): PayrollUnit {
   return 'month'
 }
 
-const typeOrder = (line: PayrollExportLine) =>
-  PAY_RATE_COMPONENTS.indexOf(line.component) * 100 +
-  (PAY_RATE_TYPES as readonly string[]).indexOf(line.rateType)
+/** Personel içinde sıra: ücret bileşeni ve türü, sonra düzeltmeler, en sonda kesinti sırası. */
+function lineRank(line: PayrollExportLine): number {
+  if (line.kind === 'deduction') return 20_000 + (line.deductionOrder ?? 0)
+  if (line.kind === 'adjustment') return 10_000
+  return (
+    PAY_RATE_COMPONENTS.indexOf(line.component ?? 'wage') * 100 +
+    (PAY_RATE_TYPES as readonly string[]).indexOf(line.rateType ?? '')
+  )
+}
+
+/** Kaynağa özgü alanların boş değerleri (ücret tanımı ve ek ders satırı). */
+const NO_DEDUCTION = {
+  deductionKind: null,
+  deductionOrder: null,
+  rateBasisPoints: null,
+  deductionBase: null,
+  capCents: null,
+  installmentNo: null,
+  installmentCount: null,
+  adjustmentItem: null,
+  sourceMonth: null,
+} as const
+
+/** Ayda satır vermeyen kesinti durumları: sırada bekleyen, alacağı biten icra, ara verilen BES. */
+const SILENT_DEDUCTIONS: readonly MonthlyDeductionStatus[] = ['waiting', 'settled', 'paused']
+
+function groupBy<T extends { membershipId: string }>(items: readonly T[]): Map<string, T[]> {
+  const groups = new Map<string, T[]>()
+  for (const item of items)
+    groups.set(item.membershipId, [...(groups.get(item.membershipId) ?? []), item])
+  return groups
+}
 
 /**
  * Ayın girdi satırları (DOM-FIN-105). Ana ücret ve yan hak: ayla kesişen her tanım bir satırdır;
  * ay içinde başlayan ya da biten tanımın tutarı boş kalır (gün oranı bordroda), saatlik ve ders
  * saati ana ücretinde çalışılan saat bilinmediği için tutar boştur. Ek ders: her saat kaydı bir
  * satırdır; birim ücret o türün ayla kesişen en geç başlayan tanımıdır (K-337). Ek ders ücreti
- * tanımı saat girilmemişse satır üretmez. Sıra: personel adı, bileşen, tür, başlangıç.
+ * tanımı saat girilmemişse satır üretmez. Ayın ek ders çizelgesi müdür onaylı değilse (DOM-FIN-120,
+ * K-411) ek ders satırı "onay bekliyor" uyarısıyla tutarsız döner; toplama girmez.
+ *
+ * Kesinti (K-392): personel başına `monthlyDeductions` net ücret ve matrah olmadan çalışır; avans
+ * taksiti tutarıyla, sıradaki ve nafaka icraları net ücret oranı ve kalan alacak üst sınırıyla,
+ * BES katkı oranı ve matrahıyla satır olur (tutar boş). Sırada bekleyen ve alacağı biten icra ile
+ * ara verilen BES satır vermez. Düzeltme (K-393): her düzeltme bir satırdır; artı fark kazanç,
+ * eksi fark kesinti yönündedir, tutar mutlak değerdir.
+ *
+ * Sıra: personel adı, sonra ücret bileşeni ve türü, düzeltmeler, kesinti sırası.
  */
 export function payrollExportLines(input: {
   month: string
   staff: readonly PayrollStaff[]
   rates: readonly PayrollRate[]
   lessonHours: readonly PayrollLessonHours[]
+  deductions?: PayrollDeductionSources
+  adjustments?: readonly PayrollAdjustmentEntry[]
+  /**
+   * Ayın ek ders çizelgesi müdür onaylı mı (DOM-FIN-120, K-411); verilmezse onaylı sayılır.
+   * Onaysız ayda ek ders satırı "onay bekliyor" uyarısıyla tutarsız döner.
+   */
+  lessonHoursApproved?: boolean
 }): PayrollExport {
   const range = payrollMonthRange(input.month)
   const staffById = new Map(input.staff.map((person) => [person.membershipId, person]))
@@ -343,7 +481,9 @@ export function payrollExportLines(input: {
     if (!person.active) warnings.push('staff_inactive')
     lines.push({
       ...base(person),
+      ...NO_DEDUCTION,
       key: `rate:${rate.id}`,
+      kind: 'rate',
       component: rate.component,
       rateType: rate.rateType,
       itemCode: `${rate.component}.${rate.rateType}`,
@@ -363,6 +503,7 @@ export function payrollExportLines(input: {
     })
   }
 
+  const approved = input.lessonHoursApproved ?? true
   for (const entry of input.lessonHours) {
     const person = staffOf(entry.membershipId)
     const candidates = rates.filter(
@@ -379,16 +520,19 @@ export function payrollExportLines(input: {
     if (chosen === null) warnings.push('lesson_rate_missing')
     if (candidates.length > 1) warnings.push('lesson_rate_changed')
     if (!person.active) warnings.push('staff_inactive')
+    if (!approved) warnings.push('lesson_hours_pending')
     lines.push({
       ...base(person),
+      ...NO_DEDUCTION,
       key: `hours:${entry.id}`,
+      kind: 'lesson_hours',
       component: 'lesson',
       rateType: entry.lessonType,
       itemCode: `lesson.${entry.lessonType}`,
       unit: 'hour',
       rateCents: chosen?.amountCents ?? null,
       quantity: entry.hours,
-      totalCents: chosen === null ? null : chosen.amountCents * entry.hours,
+      totalCents: chosen === null || !approved ? null : chosen.amountCents * entry.hours,
       taxable: null,
       benefitForm: null,
       startDate: null,
@@ -401,12 +545,46 @@ export function payrollExportLines(input: {
     })
   }
 
+  lines.push(...deductionLines(input.month, input.deductions, staffOf, base))
+  for (const entry of input.adjustments ?? []) {
+    const person = staffOf(entry.membershipId)
+    const warnings: PayrollWarning[] = ['prior_month_adjustment']
+    if (!person.active) warnings.push('staff_inactive')
+    lines.push({
+      ...base(person),
+      ...NO_DEDUCTION,
+      key: `adjustment:${entry.id}`,
+      kind: 'adjustment',
+      component: null,
+      rateType: null,
+      itemCode: `adjustment.${entry.item}`,
+      direction: entry.amountCents < 0 ? 'deduction' : 'earning',
+      unit: 'once',
+      rateCents: null,
+      quantity: null,
+      totalCents: Math.abs(entry.amountCents),
+      taxable: null,
+      benefitForm: null,
+      startDate: null,
+      endDate: null,
+      days: null,
+      lessonHoursId: null,
+      lessonHoursVersion: null,
+      note: null,
+      adjustmentItem: entry.item,
+      sourceMonth: entry.sourceMonth,
+      warnings,
+    })
+  }
+
   lines.sort(
     (a, b) =>
       a.staffName.localeCompare(b.staffName, 'tr') ||
       a.membershipId.localeCompare(b.membershipId) ||
-      typeOrder(a) - typeOrder(b) ||
-      (a.startDate ?? '').localeCompare(b.startDate ?? ''),
+      lineRank(a) - lineRank(b) ||
+      (a.sourceMonth ?? '').localeCompare(b.sourceMonth ?? '') ||
+      (a.startDate ?? '').localeCompare(b.startDate ?? '') ||
+      a.key.localeCompare(b.key),
   )
   const signed = (direction: PayrollLineDirection) =>
     lines
@@ -426,9 +604,141 @@ export function payrollExportLines(input: {
   }
 }
 
-/** Satırın kalem adı: "Ana ücret · Aylık brüt". */
-export const payrollItemLabel = (line: Pick<PayrollExportLine, 'component' | 'rateType'>) =>
-  `${PAY_RATE_COMPONENT_LABELS[line.component]} · ${PAY_RATE_TYPE_LABELS[line.rateType]}`
+type LineBase = (
+  person: PayrollStaff,
+) => Pick<
+  PayrollExportLine,
+  'month' | 'membershipId' | 'staffName' | 'role' | 'staffActive' | 'direction' | 'monthDays'
+>
+
+/** Ayın kesinti satırları (K-392): personel başına K-315 sırasıyla. */
+function deductionLines(
+  month: string,
+  sources: PayrollDeductionSources | undefined,
+  staffOf: (membershipId: string) => PayrollStaff,
+  base: LineBase,
+): PayrollExportLine[] {
+  if (sources === undefined) return []
+  const advances = groupBy(sources.advances)
+  const garnishments = groupBy(sources.garnishments)
+  const pensions = groupBy(sources.pensions)
+  const members = new Set([...advances.keys(), ...garnishments.keys(), ...pensions.keys()])
+  const lines: PayrollExportLine[] = []
+  for (const membershipId of members) {
+    const own = {
+      advances: advances.get(membershipId) ?? [],
+      garnishments: garnishments.get(membershipId) ?? [],
+      pensions: pensions.get(membershipId) ?? [],
+    }
+    const result = monthlyDeductions({ month, netCents: null, pensionBaseCents: null }, own)
+    const shown = result.lines.filter((line) => !SILENT_DEDUCTIONS.includes(line.status))
+    if (shown.length === 0) continue
+    const person = staffOf(membershipId)
+    shown.forEach((line, index) => {
+      const warnings: PayrollWarning[] = []
+      let fields: Pick<
+        PayrollExportLine,
+        | 'totalCents'
+        | 'rateBasisPoints'
+        | 'deductionBase'
+        | 'capCents'
+        | 'installmentNo'
+        | 'installmentCount'
+      > = {
+        totalCents: null,
+        rateBasisPoints: null,
+        deductionBase: null,
+        capCents: null,
+        installmentNo: null,
+        installmentCount: null,
+      }
+      if (line.kind === 'advance') {
+        const advance = own.advances.find((item) => item.id === line.sourceId)
+        if (advance === undefined) throw new Error(`payroll advance missing: ${line.sourceId}`)
+        fields = {
+          ...fields,
+          totalCents: line.amountCents,
+          installmentNo: monthsBetween(advance.firstMonth, month) + 1,
+          installmentCount: advance.installmentCount,
+        }
+      } else if (line.kind === 'garnishment') {
+        const item = own.garnishments.find((entry) => entry.id === line.sourceId)
+        if (item === undefined) throw new Error(`payroll garnishment missing: ${line.sourceId}`)
+        warnings.push('deduction_on_net')
+        fields = {
+          ...fields,
+          rateBasisPoints: item.rateBasisPoints,
+          deductionBase: 'net_wage',
+          capCents: item.remainingCents,
+        }
+      } else {
+        const item = own.pensions.find((entry) => entry.id === line.sourceId)
+        if (item === undefined) throw new Error(`payroll pension missing: ${line.sourceId}`)
+        warnings.push('deduction_on_pension_base')
+        fields = { ...fields, rateBasisPoints: item.rateBasisPoints, deductionBase: 'pension_base' }
+      }
+      if (!person.active) warnings.push('staff_inactive')
+      lines.push({
+        ...base(person),
+        key: `deduction:${line.kind}:${line.sourceId}`,
+        kind: 'deduction',
+        component: null,
+        rateType: null,
+        itemCode: `deduction.${line.kind}`,
+        direction: 'deduction',
+        unit: 'month',
+        rateCents: null,
+        quantity: null,
+        taxable: null,
+        benefitForm: null,
+        startDate: null,
+        endDate: null,
+        days: null,
+        lessonHoursId: null,
+        lessonHoursVersion: null,
+        note: null,
+        deductionKind: line.kind,
+        deductionOrder: index + 1,
+        adjustmentItem: null,
+        sourceMonth: null,
+        ...fields,
+        warnings,
+      })
+    })
+  }
+  return lines
+}
+
+/**
+ * Satırın kalem adı: "Ana ücret · Aylık brüt", "Kesinti · Avans taksiti (2/6)",
+ * "Düzeltme · Ek ders (Eylül 2026)".
+ */
+export function payrollItemLabel(
+  line: Pick<
+    PayrollExportLine,
+    | 'kind'
+    | 'component'
+    | 'rateType'
+    | 'deductionKind'
+    | 'installmentNo'
+    | 'installmentCount'
+    | 'adjustmentItem'
+    | 'sourceMonth'
+  >,
+): string {
+  if (line.deductionKind !== null) {
+    const label = `Kesinti · ${MONTHLY_DEDUCTION_KIND_LABELS[line.deductionKind]}`
+    return line.installmentNo === null || line.installmentCount === null
+      ? label
+      : `${label} (${String(line.installmentNo)}/${String(line.installmentCount)})`
+  }
+  if (line.adjustmentItem !== null)
+    return `Düzeltme · ${PAYROLL_ADJUSTMENT_ITEM_LABELS[line.adjustmentItem]}${
+      line.sourceMonth === null ? '' : ` (${payrollMonthLabel(line.sourceMonth)})`
+    }`
+  if (line.component === null || line.rateType === null) return ''
+  return `${PAY_RATE_COMPONENT_LABELS[line.component]} · ${PAY_RATE_TYPE_LABELS[line.rateType]}`
+}
 
 const roleText = (role: string) => (isStaffRole(role) ? STAFF_ROLE_LABELS[role] : role)
 const yesNo = (value: boolean | null) => (value === null ? '' : value ? 'Evet' : 'Hayır')
@@ -474,6 +784,23 @@ const SOURCES = {
     kind: 'text',
     read: (line) => line.warnings.map((code) => PAYROLL_WARNING_LABELS[code]).join('; '),
   },
+  // Kesinti ve düzeltme sütunları (K-392, K-393) önceki sütunların yerini değiştirmemek için sonda.
+  deductionKind: {
+    label: 'Kesinti türü kodu',
+    kind: 'text',
+    read: (line) => line.deductionKind ?? '',
+  },
+  deductionOrder: { label: 'Kesinti sırası', kind: 'integer', read: (line) => line.deductionOrder },
+  // Onbinde oran yüzdeye iki ondalıkla yazılır (2500 → 25,00); tutar biçimiyle aynıdır.
+  ratePercent: { label: 'Oran (%)', kind: 'amount', read: (line) => line.rateBasisPoints },
+  deductionBase: {
+    label: 'Matrah',
+    kind: 'text',
+    read: (line) =>
+      line.deductionBase === null ? '' : PAYROLL_DEDUCTION_BASE_LABELS[line.deductionBase],
+  },
+  cap: { label: 'Üst sınır (₺)', kind: 'amount', read: (line) => line.capCents },
+  sourceMonth: { label: 'Ait olduğu ay', kind: 'text', read: (line) => line.sourceMonth ?? '' },
 } as const satisfies Record<string, Source>
 
 /** Seçilebilir sütunlar; sıra genel dosyanın sırasıdır (K-339). */

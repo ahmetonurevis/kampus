@@ -1,5 +1,5 @@
 {
-  "id": "42c7250f-9251-4ecd-94be-06f4415290e3",
+  "id": "aef23b4c-825a-4f4e-b878-fe839228930c",
   "prevId": "b867473d-a5ed-40eb-8f38-8bcabdb65df2",
   "version": "7",
   "dialect": "postgresql",
@@ -21503,216 +21503,8 @@
       },
       "isRLSEnabled": false
     },
-    "public.professional_development_enrollments": {
-      "name": "professional_development_enrollments",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "program_id": {
-          "name": "program_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "membership_id": {
-          "name": "membership_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "origin": {
-          "name": "origin",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "attended_minutes": {
-          "name": "attended_minutes",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status_changed_at": {
-          "name": "status_changed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "professional_development_enrollments_member_key": {
-          "name": "professional_development_enrollments_member_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "program_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "membership_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "professional_development_enrollments_membership_idx": {
-          "name": "professional_development_enrollments_membership_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "membership_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "professional_development_enrollments_institution_id_institutions_id_fk": {
-          "name": "professional_development_enrollments_institution_id_institutions_id_fk",
-          "tableFrom": "professional_development_enrollments",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "professional_development_enrollments_program_fkey": {
-          "name": "professional_development_enrollments_program_fkey",
-          "tableFrom": "professional_development_enrollments",
-          "tableTo": "professional_development_programs",
-          "columnsFrom": [
-            "institution_id",
-            "program_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "professional_development_enrollments_membership_fkey": {
-          "name": "professional_development_enrollments_membership_fkey",
-          "tableFrom": "professional_development_enrollments",
-          "tableTo": "memberships",
-          "columnsFrom": [
-            "institution_id",
-            "membership_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "professional_development_enrollments_pkey": {
-          "name": "professional_development_enrollments_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "professional_development_enrollments_origin_check": {
-          "name": "professional_development_enrollments_origin_check",
-          "value": "\"professional_development_enrollments\".\"origin\" in ('request', 'assignment')"
-        },
-        "professional_development_enrollments_status_check": {
-          "name": "professional_development_enrollments_status_check",
-          "value": "\"professional_development_enrollments\".\"status\" in ('assigned', 'attended', 'not_completed')"
-        },
-        "professional_development_enrollments_attended_check": {
-          "name": "professional_development_enrollments_attended_check",
-          "value": "((\"professional_development_enrollments\".\"status\" = 'attended') = (\"professional_development_enrollments\".\"attended_minutes\" is not null))\n        and (\"professional_development_enrollments\".\"attended_minutes\" is null or (\"professional_development_enrollments\".\"attended_minutes\" > 0 and \"professional_development_enrollments\".\"attended_minutes\" % 30 = 0))"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.professional_development_programs": {
-      "name": "professional_development_programs",
+    "public.performance_periods": {
+      "name": "performance_periods",
       "schema": "",
       "columns": {
         "institution_id": {
@@ -21733,90 +21525,209 @@
           "primaryKey": false,
           "notNull": true
         },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "provider": {
-          "name": "provider",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "duration_minutes": {
-          "name": "duration_minutes",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "ongoing": {
-          "name": "ongoing",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
         "start_date": {
           "name": "start_date",
           "type": "date",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "end_date": {
           "name": "end_date",
           "type": "date",
           "primaryKey": false,
-          "notNull": false
-        },
-        "location": {
-          "name": "location",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "online_url": {
-          "name": "online_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "audience_roles": {
-          "name": "audience_roles",
-          "type": "jsonb",
-          "primaryKey": false,
           "notNull": true
-        },
-        "audience_branches": {
-          "name": "audience_branches",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "fee_cents": {
-          "name": "fee_cents",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "cost_center_id": {
-          "name": "cost_center_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "capacity": {
-          "name": "capacity",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
         },
         "status": {
           "name": "status",
           "type": "text",
           "primaryKey": false,
+          "notNull": true,
+          "default": "'planning'"
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
           "notNull": true
+        },
+        "closed_at": {
+          "name": "closed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closed_by_user_id": {
+          "name": "closed_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "performance_periods_start_idx": {
+          "name": "performance_periods_start_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "start_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "performance_periods_institution_id_institutions_id_fk": {
+          "name": "performance_periods_institution_id_institutions_id_fk",
+          "tableFrom": "performance_periods",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "performance_periods_pkey": {
+          "name": "performance_periods_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "performance_periods_status_check": {
+          "name": "performance_periods_status_check",
+          "value": "\"performance_periods\".\"status\" in ('planning', 'active', 'interim', 'evaluation', 'closed')"
+        },
+        "performance_periods_name_check": {
+          "name": "performance_periods_name_check",
+          "value": "char_length(\"performance_periods\".\"name\") between 2 and 120"
+        },
+        "performance_periods_dates_check": {
+          "name": "performance_periods_dates_check",
+          "value": "\"performance_periods\".\"end_date\" >= \"performance_periods\".\"start_date\""
+        },
+        "performance_periods_closed_check": {
+          "name": "performance_periods_closed_check",
+          "value": "((\"performance_periods\".\"status\" = 'closed') = (\"performance_periods\".\"closed_at\" is not null))\n        and ((\"performance_periods\".\"closed_at\" is null) = (\"performance_periods\".\"closed_by_user_id\" is null))"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.performance_reviews": {
+      "name": "performance_reviews",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_id": {
+          "name": "period_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "membership_id": {
+          "name": "membership_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "goals": {
+          "name": "goals",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "interim_note": {
+          "name": "interim_note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "interim_date": {
+          "name": "interim_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "evaluator_user_id": {
+          "name": "evaluator_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "evaluator_name": {
+          "name": "evaluator_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "evaluated_at": {
+          "name": "evaluated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "staff_comment": {
+          "name": "staff_comment",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_by_user_id": {
           "name": "created_by_user_id",
@@ -21853,8 +21764,8 @@
         }
       },
       "indexes": {
-        "professional_development_programs_status_idx": {
-          "name": "professional_development_programs_status_idx",
+        "performance_reviews_member_key": {
+          "name": "performance_reviews_member_key",
           "columns": [
             {
               "expression": "institution_id",
@@ -21863,25 +21774,25 @@
               "nulls": "last"
             },
             {
-              "expression": "status",
+              "expression": "period_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             },
             {
-              "expression": "start_date",
+              "expression": "membership_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             }
           ],
-          "isUnique": false,
+          "isUnique": true,
           "concurrently": false,
           "method": "btree",
           "with": {}
         },
-        "professional_development_programs_cost_center_idx": {
-          "name": "professional_development_programs_cost_center_idx",
+        "performance_reviews_membership_idx": {
+          "name": "performance_reviews_membership_idx",
           "columns": [
             {
               "expression": "institution_id",
@@ -21890,7 +21801,7 @@
               "nulls": "last"
             },
             {
-              "expression": "cost_center_id",
+              "expression": "membership_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -21903,9 +21814,9 @@
         }
       },
       "foreignKeys": {
-        "professional_development_programs_institution_id_institutions_id_fk": {
-          "name": "professional_development_programs_institution_id_institutions_id_fk",
-          "tableFrom": "professional_development_programs",
+        "performance_reviews_institution_id_institutions_id_fk": {
+          "name": "performance_reviews_institution_id_institutions_id_fk",
+          "tableFrom": "performance_reviews",
           "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
@@ -21916,13 +21827,28 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "professional_development_programs_cost_center_fkey": {
-          "name": "professional_development_programs_cost_center_fkey",
-          "tableFrom": "professional_development_programs",
-          "tableTo": "cost_centers",
+        "performance_reviews_period_fkey": {
+          "name": "performance_reviews_period_fkey",
+          "tableFrom": "performance_reviews",
+          "tableTo": "performance_periods",
           "columnsFrom": [
             "institution_id",
-            "cost_center_id"
+            "period_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "performance_reviews_membership_fkey": {
+          "name": "performance_reviews_membership_fkey",
+          "tableFrom": "performance_reviews",
+          "tableTo": "memberships",
+          "columnsFrom": [
+            "institution_id",
+            "membership_id"
           ],
           "columnsTo": [
             "institution_id",
@@ -21933,8 +21859,8 @@
         }
       },
       "compositePrimaryKeys": {
-        "professional_development_programs_pkey": {
-          "name": "professional_development_programs_pkey",
+        "performance_reviews_pkey": {
+          "name": "performance_reviews_pkey",
           "columns": [
             "institution_id",
             "id"
@@ -21944,37 +21870,17 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "professional_development_programs_kind_check": {
-          "name": "professional_development_programs_kind_check",
-          "value": "\"professional_development_programs\".\"kind\" in ('course', 'seminar', 'conference', 'in_house', 'online')"
+        "performance_reviews_goals_check": {
+          "name": "performance_reviews_goals_check",
+          "value": "jsonb_typeof(\"performance_reviews\".\"goals\") = 'array' and jsonb_array_length(\"performance_reviews\".\"goals\") between 1 and 10"
         },
-        "professional_development_programs_status_check": {
-          "name": "professional_development_programs_status_check",
-          "value": "\"professional_development_programs\".\"status\" in ('draft', 'published', 'archived')"
+        "performance_reviews_notes_check": {
+          "name": "performance_reviews_notes_check",
+          "value": "(\"performance_reviews\".\"interim_note\" is null or char_length(\"performance_reviews\".\"interim_note\") between 1 and 2000)\n        and (\"performance_reviews\".\"staff_comment\" is null or char_length(\"performance_reviews\".\"staff_comment\") between 1 and 2000)"
         },
-        "professional_development_programs_text_check": {
-          "name": "professional_development_programs_text_check",
-          "value": "char_length(\"professional_development_programs\".\"name\") between 2 and 160\n        and char_length(\"professional_development_programs\".\"provider\") between 2 and 160\n        and (\"professional_development_programs\".\"location\" is null or char_length(\"professional_development_programs\".\"location\") between 1 and 200)\n        and (\"professional_development_programs\".\"online_url\" is null or (char_length(\"professional_development_programs\".\"online_url\") <= 500 and \"professional_development_programs\".\"online_url\" like 'https://%'))\n        and (\"professional_development_programs\".\"location\" is not null or \"professional_development_programs\".\"online_url\" is not null)"
-        },
-        "professional_development_programs_duration_check": {
-          "name": "professional_development_programs_duration_check",
-          "value": "\"professional_development_programs\".\"duration_minutes\" > 0 and \"professional_development_programs\".\"duration_minutes\" <= 120000 and \"professional_development_programs\".\"duration_minutes\" % 30 = 0"
-        },
-        "professional_development_programs_dates_check": {
-          "name": "professional_development_programs_dates_check",
-          "value": "(\"professional_development_programs\".\"ongoing\" and \"professional_development_programs\".\"start_date\" is null and \"professional_development_programs\".\"end_date\" is null)\n        or (not \"professional_development_programs\".\"ongoing\" and \"professional_development_programs\".\"start_date\" is not null and \"professional_development_programs\".\"end_date\" is not null\n          and \"professional_development_programs\".\"end_date\" >= \"professional_development_programs\".\"start_date\")"
-        },
-        "professional_development_programs_fee_check": {
-          "name": "professional_development_programs_fee_check",
-          "value": "(\"professional_development_programs\".\"fee_cents\" is null or \"professional_development_programs\".\"fee_cents\" between 0 and 100000000)\n        and (\"professional_development_programs\".\"cost_center_id\" is null or \"professional_development_programs\".\"fee_cents\" is not null)"
-        },
-        "professional_development_programs_capacity_check": {
-          "name": "professional_development_programs_capacity_check",
-          "value": "\"professional_development_programs\".\"capacity\" is null or \"professional_development_programs\".\"capacity\" between 1 and 10000"
-        },
-        "professional_development_programs_audience_check": {
-          "name": "professional_development_programs_audience_check",
-          "value": "jsonb_typeof(\"professional_development_programs\".\"audience_roles\") = 'array' and jsonb_typeof(\"professional_development_programs\".\"audience_branches\") = 'array'"
+        "performance_reviews_evaluator_check": {
+          "name": "performance_reviews_evaluator_check",
+          "value": "((\"performance_reviews\".\"evaluator_user_id\" is null) = (\"performance_reviews\".\"evaluated_at\" is null))\n        and ((\"performance_reviews\".\"evaluator_user_id\" is null) = (\"performance_reviews\".\"evaluator_name\" is null))"
         }
       },
       "isRLSEnabled": false

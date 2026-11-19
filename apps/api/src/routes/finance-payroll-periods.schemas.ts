@@ -2,9 +2,13 @@ import { z } from 'zod'
 
 import {
   PAYROLL_ADJUSTMENT_ITEMS,
+  PAYROLL_CHECK_BLOCKERS,
+  PAYROLL_CHECK_WARNINGS,
+  PAYROLL_LESSON_SHEET_CHECKS,
   PAYROLL_MAX_MONTH,
   PAYROLL_MIN_MONTH,
   PAYROLL_PERIOD_STATES,
+  PAYROLL_RUN_CHECKS,
   payrollMonthSchema,
 } from '@kampus/school-core/lib/finance-payroll-periods.ts'
 
@@ -26,6 +30,40 @@ const summarySchema = z.object({
   inputsHash: z.string().describe('Girdi damgası (SHA-256, onaltılık)'),
 })
 
+const checksSchema = z.object({
+  lessonSheet: z.object({
+    state: z
+      .enum(PAYROLL_LESSON_SHEET_CHECKS)
+      .describe(
+        'Ek ders çizelgesi: `none` saat yok, `draft` taslak, `teacher_review` öğretmen kontrolünde, `approved` onaylı',
+      ),
+    entryCount: z.number().int().describe('Ayın ek ders saati kaydı sayısı'),
+    pendingCount: z.number().int().describe('Müdür onayı bekleyen saat kaydı sayısı'),
+  }),
+  payrollRun: z.object({
+    state: z
+      .enum(PAYROLL_RUN_CHECKS)
+      .describe('Kayıtlı bordro hesabı: `none` yok, `current` güncel, `stale` girdiler değişmiş'),
+    revision: z.number().int().nullable().describe('Etkin hesabın revizyonu'),
+    calculatedAt: z.string().nullable().describe('Etkin hesabın kayıt anı'),
+  }),
+  deductions: z.object({
+    advanceCount: z.number().int().describe('Ayın avans taksiti sayısı'),
+    garnishmentCount: z.number().int().describe('Ayda kesilecek icra sayısı'),
+    pensionCount: z.number().int().describe('Ayda kesilecek BES katkısı sayısı'),
+    advanceTotalCents: z
+      .number()
+      .int()
+      .describe(
+        'Avans taksitlerinin toplamı, kuruş; icra ve BES oranlıdır, tutarı bordro hesabında',
+      ),
+  }),
+  blockers: z
+    .array(z.enum(PAYROLL_CHECK_BLOCKERS))
+    .describe('Onayı durduran engeller; boş değilse onay 409 döner'),
+  warnings: z.array(z.enum(PAYROLL_CHECK_WARNINGS)).describe('Onayı durdurmayan uyarılar'),
+})
+
 const periodSchema = z.object({
   month: z.string().describe('Bordro ayı (YYYY-AA)'),
   state: z
@@ -44,6 +82,11 @@ const periodSchema = z.object({
     .nullable()
     .describe(
       'Onaylanmamış, başlamış ayın güncel girdi özeti; onay isteği `current.inputsHash` taşır',
+    ),
+  checks: checksSchema
+    .nullable()
+    .describe(
+      'Onaylanmamış, başlamış ayın onay öncesi durumu (ek ders, kayıtlı hesap, kesinti; K-425)',
     ),
   reopenedAt: z.string().nullable(),
   reopenedByName: z.string().nullable(),

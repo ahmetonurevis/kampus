@@ -7,7 +7,7 @@ import { expectNoHorizontalOverflow } from './support/ui.ts'
 
 // Bordro onayı ve dönem kilidi (ON-200; DOM-FIN-108). Kural dalları birim ve API testlerindedir
 // (`tests/finance-payroll-periods.test.ts`, `apps/api/test/finance-payroll-periods.test.ts`); burada
-// yönetici geçen ayı onaylar (K-356), ücret tanımı formunda kilitli ay uyarısını ve sunucu reddini
+// yönetici onay öncesi durumu görür (K-425), geçen ayı onaylar (K-356), ücret tanımı formunda kilitli ay uyarısını ve sunucu reddini
 // görür (K-357), düzeltme kaydı girer (K-358), düzeltme varken ayı açamaz, düzeltmeyi iptal edip
 // ayı yeniden açar; ön büro sekmeyi görmez (K-359).
 
@@ -41,9 +41,15 @@ test.describe('DOM-FIN-108: bordro dönemleri', () => {
     await expect(row.getByText('Açık')).toBeVisible()
     await expectNoHorizontalOverflow(page)
 
+    // Onay öncesi durum satırda ve pencerede (K-425): ek ders yok, kayıtlı hesap yok uyarısı.
+    await expect(row.getByText('Kesinti: 0 avans · 0 icra · 0 BES')).toBeVisible()
     await row.getByRole('button', { name: `${label} onayla` }).click()
     const approve = page.getByRole('dialog', { name: `${label} bordrosunu onayla` })
     await expect(approve.getByText('Girdi damgası')).toBeVisible()
+    await expect(approve.getByRole('heading', { name: 'Onay öncesi durum' })).toBeVisible()
+    await expect(approve.getByText('Ek ders yok')).toBeVisible()
+    await expect(approve.getByRole('note')).toContainText('kayıtlı bordro hesabı yok')
+    await expect(approve.getByRole('alert')).toHaveCount(0)
     await approve.getByRole('button', { name: 'Onayla ve kilitle' }).click()
     await expect(approve).toBeHidden()
     await expect(row.getByText('Onaylandı (kilitli)')).toBeVisible()

@@ -11240,6 +11240,110 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/policy-documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Politika belgeleri ve onay oranı
+         * @description Belgeler en yeni yayın önce; her satırda hedef kitledeki etkin personel, bu sürümü onaylayan ve onaylamayan sayısı ile oran (K-438). `status=current` (varsayılan) yalnız geçerli sürümler; yeni sürüm yayımlanınca önceki sürümün onayları yeni sürüme sayılmaz (K-436). Rol: `yonetici` ve `onburo`. Modül `finance`.
+         */
+        get: operations["listPolicyDocuments"];
+        put?: never;
+        /**
+         * Politika belgesi ya da yeni sürüm yayımla
+         * @description Ad, tür, hedef kitle, yayın günü (bugünden sonra olamaz, 422 `policy_published_in_future`) ve PDF (`POST /files` amaç `document`; yükleyenin, hazır ve bağsız olmalı). `replacesDocumentId` verilirse yeni sürüm olur: önceki sürüm geçerli olmalı (422 `policy_previous_not_found`, `policy_previous_superseded`), yayın günü öncekinden önce olamaz (422 `policy_published_before_previous`); önceki sürümün onayları geçersiz sayılır, personel yeniden onaylar (K-436). Denetim `finance.policy_document.create` (ve `supersede`). `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.
+         */
+        post: operations["createPolicyDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/policy-documents/{documentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Politika belgesi sürümü ve sürüm geçmişi
+         * @description Sürümün onay sayıları ve aynı belgenin bütün sürümleri (en yeni önce). Başka kurumun belgesi 404. Rol: `yonetici` ve `onburo`. Modül `finance`.
+         */
+        get: operations["getPolicyDocument"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/policy-documents/{documentId}/staff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Belgeyi onaylamayan ya da onaylayan personel
+         * @description Sürümün hedef kitlesindeki etkin personel ada göre; `status=pending` (varsayılan) onaylamayanlar, `acknowledged` onaylayanlar (onay günü, kanal, tarama). Başka kurumun belgesi 404. Rol: `yonetici` ve `onburo`. Modül `finance`.
+         */
+        get: operations["listPolicyDocumentStaff"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/policy-acknowledgement-staff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Personel başına eksik politika onayları
+         * @description Etkin personel ada göre; her satırda hedef kitlesinde olduğu geçerli sürüm sayısı, onayladığı ve onaylamadığı belgeler. `missing=true` yalnız eksiği olanlar. Rol: `yonetici` ve `onburo`. Modül `finance`.
+         */
+        get: operations["listPolicyAcknowledgementStaff"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/policy-acknowledgements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Personel adına okundu onayı kaydet
+         * @description Personel kendi onayını veremediğinde yönetici ya da ön büro "okundu ve imzalandı" kaydını kanal (ıslak imzalı form, e-posta, yüz yüze) ve onay günüyle girer; ıslak imza taraması isteğe bağlı dosyadır (`POST /files` amaç `document`; K-437). Belge geçerli sürüm olmalı (422 `policy_not_found`, `policy_version_superseded`); personel etkin ve hedef kitlede olmalı (422 `policy_staff_not_found`, `policy_not_staff`, `policy_staff_inactive`, `policy_not_in_audience`); onay günü yayın gününden önce ya da bugünden sonra olamaz (422 `policy_ack_before_publish`, `policy_ack_in_future`). Aynı sürüme ikinci onay 409 `policy_already_acknowledged`. Onay silinmez ve düzeltilmez. Denetim `finance.policy_acknowledgement.create` (alan adları). `Idempotency-Key` zorunlu. Rol: `yonetici` ve `onburo`. Modül `finance`.
+         */
+        post: operations["createPolicyAcknowledgement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -118572,6 +118676,866 @@ export interface operations {
                                     warning: string | null;
                                 };
                             }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listPolicyDocuments: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Belge adında arama */
+                q?: string;
+                /** @description `staff_regulation` personel yönetmeliği, `kvkk_commitment` KVKK taahhüdü, `occupational_safety` iş güvenliği, `discipline` disiplin, `other` diğer */
+                policyType?: "staff_regulation" | "kvkk_commitment" | "occupational_safety" | "discipline" | "other";
+                /** @description `current` yalnız geçerli sürümler (varsayılan), `all` geçmiş sürümler dahil */
+                status?: "current" | "all";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Sürüm kimliği */
+                            id: string;
+                            /** @description Aynı belgenin sürümlerini bağlayan kimlik */
+                            seriesId: string;
+                            /** @description Sürüm numarası (1’den başlar) */
+                            version: number;
+                            title: string;
+                            /**
+                             * @description `staff_regulation` personel yönetmeliği, `kvkk_commitment` KVKK taahhüdü, `occupational_safety` iş güvenliği, `discipline` disiplin, `other` diğer
+                             * @enum {string}
+                             */
+                            policyType: "staff_regulation" | "kvkk_commitment" | "occupational_safety" | "discipline" | "other";
+                            /**
+                             * @description `all_staff` tüm personel, `teachers` öğretmenler, `administrative` yönetici ve ön büro
+                             * @enum {string}
+                             */
+                            audience: "all_staff" | "teachers" | "administrative";
+                            /** @description Yayın günü (YYYY-MM-DD) */
+                            publishedOn: string;
+                            /** @description PDF dosyası; bağlantı `GET /files/{fileId}/url` */
+                            fileId: string;
+                            /** @description Yerine geçtiği önceki sürüm */
+                            replacesId: string | null;
+                            /** @description Yerine yeni sürüm yayımlandığı an */
+                            supersededAt: string | null;
+                            createdAt: string;
+                            /** @description Geçerli sürüm mü (yerine geçilmemiş) */
+                            current: boolean;
+                            /** @description Hedef kitledeki etkin personel sayısı */
+                            targetCount: number;
+                            /** @description Bu sürümü onaylayan etkin hedef personel */
+                            acknowledgedCount: number;
+                            /** @description Onaylamayan etkin hedef personel */
+                            pendingCount: number;
+                            /** @description Onay oranı (yüzde, yuvarlanmış); hedef kitlede personel yoksa `null` */
+                            rate: number | null;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createPolicyDocument: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Belge adı (örn. "Personel yönetmeliği 2026") */
+                    title: string;
+                    /**
+                     * @description `staff_regulation` personel yönetmeliği, `kvkk_commitment` KVKK taahhüdü, `occupational_safety` iş güvenliği, `discipline` disiplin, `other` diğer
+                     * @enum {string}
+                     */
+                    policyType: "staff_regulation" | "kvkk_commitment" | "occupational_safety" | "discipline" | "other";
+                    /**
+                     * @description `all_staff` tüm personel, `teachers` öğretmenler, `administrative` yönetici ve ön büro
+                     * @enum {string}
+                     */
+                    audience: "all_staff" | "teachers" | "administrative";
+                    /** @description Yayın günü; bugünden sonra olamaz */
+                    publishedOn: string;
+                    /**
+                     * Format: uuid
+                     * @description Yüklenmiş `document` amaçlı PDF (`POST /files`); zorunlu
+                     */
+                    fileId: string;
+                    /**
+                     * @description Yeni sürüm yayımlanırken geçerli sürümün kimliği; verilirse önceki sürümün onayları geçersiz sayılır (K-436)
+                     * @default null
+                     */
+                    replacesDocumentId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Sürüm kimliği */
+                            id: string;
+                            /** @description Aynı belgenin sürümlerini bağlayan kimlik */
+                            seriesId: string;
+                            /** @description Sürüm numarası (1’den başlar) */
+                            version: number;
+                            title: string;
+                            /**
+                             * @description `staff_regulation` personel yönetmeliği, `kvkk_commitment` KVKK taahhüdü, `occupational_safety` iş güvenliği, `discipline` disiplin, `other` diğer
+                             * @enum {string}
+                             */
+                            policyType: "staff_regulation" | "kvkk_commitment" | "occupational_safety" | "discipline" | "other";
+                            /**
+                             * @description `all_staff` tüm personel, `teachers` öğretmenler, `administrative` yönetici ve ön büro
+                             * @enum {string}
+                             */
+                            audience: "all_staff" | "teachers" | "administrative";
+                            /** @description Yayın günü (YYYY-MM-DD) */
+                            publishedOn: string;
+                            /** @description PDF dosyası; bağlantı `GET /files/{fileId}/url` */
+                            fileId: string;
+                            /** @description Yerine geçtiği önceki sürüm */
+                            replacesId: string | null;
+                            /** @description Yerine yeni sürüm yayımlandığı an */
+                            supersededAt: string | null;
+                            createdAt: string;
+                            /** @description Geçerli sürüm mü (yerine geçilmemiş) */
+                            current: boolean;
+                            /** @description Hedef kitledeki etkin personel sayısı */
+                            targetCount: number;
+                            /** @description Bu sürümü onaylayan etkin hedef personel */
+                            acknowledgedCount: number;
+                            /** @description Onaylamayan etkin hedef personel */
+                            pendingCount: number;
+                            /** @description Onay oranı (yüzde, yuvarlanmış); hedef kitlede personel yoksa `null` */
+                            rate: number | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPolicyDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Sürüm kimliği */
+                            id: string;
+                            /** @description Aynı belgenin sürümlerini bağlayan kimlik */
+                            seriesId: string;
+                            /** @description Sürüm numarası (1’den başlar) */
+                            version: number;
+                            title: string;
+                            /**
+                             * @description `staff_regulation` personel yönetmeliği, `kvkk_commitment` KVKK taahhüdü, `occupational_safety` iş güvenliği, `discipline` disiplin, `other` diğer
+                             * @enum {string}
+                             */
+                            policyType: "staff_regulation" | "kvkk_commitment" | "occupational_safety" | "discipline" | "other";
+                            /**
+                             * @description `all_staff` tüm personel, `teachers` öğretmenler, `administrative` yönetici ve ön büro
+                             * @enum {string}
+                             */
+                            audience: "all_staff" | "teachers" | "administrative";
+                            /** @description Yayın günü (YYYY-MM-DD) */
+                            publishedOn: string;
+                            /** @description PDF dosyası; bağlantı `GET /files/{fileId}/url` */
+                            fileId: string;
+                            /** @description Yerine geçtiği önceki sürüm */
+                            replacesId: string | null;
+                            /** @description Yerine yeni sürüm yayımlandığı an */
+                            supersededAt: string | null;
+                            createdAt: string;
+                            /** @description Geçerli sürüm mü (yerine geçilmemiş) */
+                            current: boolean;
+                            /** @description Hedef kitledeki etkin personel sayısı */
+                            targetCount: number;
+                            /** @description Bu sürümü onaylayan etkin hedef personel */
+                            acknowledgedCount: number;
+                            /** @description Onaylamayan etkin hedef personel */
+                            pendingCount: number;
+                            /** @description Onay oranı (yüzde, yuvarlanmış); hedef kitlede personel yoksa `null` */
+                            rate: number | null;
+                            /** @description Aynı belgenin bütün sürümleri, en yeni önce */
+                            versions: {
+                                /** @description Sürüm kimliği */
+                                id: string;
+                                /** @description Aynı belgenin sürümlerini bağlayan kimlik */
+                                seriesId: string;
+                                /** @description Sürüm numarası (1’den başlar) */
+                                version: number;
+                                title: string;
+                                /**
+                                 * @description `staff_regulation` personel yönetmeliği, `kvkk_commitment` KVKK taahhüdü, `occupational_safety` iş güvenliği, `discipline` disiplin, `other` diğer
+                                 * @enum {string}
+                                 */
+                                policyType: "staff_regulation" | "kvkk_commitment" | "occupational_safety" | "discipline" | "other";
+                                /**
+                                 * @description `all_staff` tüm personel, `teachers` öğretmenler, `administrative` yönetici ve ön büro
+                                 * @enum {string}
+                                 */
+                                audience: "all_staff" | "teachers" | "administrative";
+                                /** @description Yayın günü (YYYY-MM-DD) */
+                                publishedOn: string;
+                                /** @description PDF dosyası; bağlantı `GET /files/{fileId}/url` */
+                                fileId: string;
+                                /** @description Yerine geçtiği önceki sürüm */
+                                replacesId: string | null;
+                                /** @description Yerine yeni sürüm yayımlandığı an */
+                                supersededAt: string | null;
+                                createdAt: string;
+                                /** @description Geçerli sürüm mü (yerine geçilmemiş) */
+                                current: boolean;
+                                /** @description Hedef kitledeki etkin personel sayısı */
+                                targetCount: number;
+                                /** @description Bu sürümü onaylayan etkin hedef personel */
+                                acknowledgedCount: number;
+                                /** @description Onaylamayan etkin hedef personel */
+                                pendingCount: number;
+                                /** @description Onay oranı (yüzde, yuvarlanmış); hedef kitlede personel yoksa `null` */
+                                rate: number | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listPolicyDocumentStaff: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Personel adında arama */
+                q?: string;
+                /** @description `pending` onaylamayan (varsayılan), `acknowledged` onaylayan etkin hedef personel */
+                status?: "pending" | "acknowledged";
+            };
+            header?: never;
+            path: {
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            membershipId: string;
+                            name: string;
+                            /** @description `yonetici`, `ogretmen` ya da `onburo` */
+                            role: string;
+                            /** @description Onay bilgisi; onaylamayanda `null` */
+                            acknowledgement: {
+                                id: string;
+                                acknowledgedOn: string;
+                                /**
+                                 * @description `self_service` personelin kendi ekranı, `wet_signature` ıslak imzalı form, `email` e-posta, `in_person` yüz yüze
+                                 * @enum {string}
+                                 */
+                                channel: "self_service" | "wet_signature" | "email" | "in_person";
+                                scanFileId: string | null;
+                            } | null;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listPolicyAcknowledgementStaff: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Personel adında arama */
+                q?: string;
+                /** @description `true` yalnız eksik onayı olan etkin personel */
+                missing?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            membershipId: string;
+                            name: string;
+                            role: string;
+                            /** @description Hedef kitlesinde olduğu geçerli sürüm sayısı */
+                            requiredCount: number;
+                            acknowledgedCount: number;
+                            /** @description Onaylanmamış geçerli sürümler */
+                            missingDocuments: {
+                                id: string;
+                                title: string;
+                                /**
+                                 * @description `staff_regulation` personel yönetmeliği, `kvkk_commitment` KVKK taahhüdü, `occupational_safety` iş güvenliği, `discipline` disiplin, `other` diğer
+                                 * @enum {string}
+                                 */
+                                policyType: "staff_regulation" | "kvkk_commitment" | "occupational_safety" | "discipline" | "other";
+                                version: number;
+                                publishedOn: string;
+                            }[];
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createPolicyAcknowledgement: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * Format: uuid
+                     * @description Onaylanan belge sürümü
+                     */
+                    policyDocumentId: string;
+                    /** @description Onaylayan personelin kurum üyeliği */
+                    membershipId: string;
+                    /** @description Personelin okuyup imzaladığı gün; yayın gününden önce ve bugünden sonra olamaz */
+                    acknowledgedOn: string;
+                    /**
+                     * @description `wet_signature` ıslak imzalı form, `email` e-posta, `in_person` yüz yüze beyan
+                     * @enum {string}
+                     */
+                    channel: "wet_signature" | "email" | "in_person";
+                    /**
+                     * @description İsteğe bağlı ıslak imza taraması (`POST /files` amaç `document`, PDF)
+                     * @default null
+                     */
+                    scanFileId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            policyDocumentId: string;
+                            membershipId: string;
+                            /** @description Onay günü (YYYY-MM-DD) */
+                            acknowledgedOn: string;
+                            /**
+                             * @description `self_service` personelin kendi ekranı, `wet_signature` ıslak imzalı form, `email` e-posta, `in_person` yüz yüze
+                             * @enum {string}
+                             */
+                            channel: "self_service" | "wet_signature" | "email" | "in_person";
+                            /** @description Islak imza taraması; bağlantı `GET /files/{fileId}/url` */
+                            scanFileId: string | null;
+                            /** @description Kaydı giren kullanıcı */
+                            recordedByUserId: string;
+                            createdAt: string;
                         };
                     };
                 };

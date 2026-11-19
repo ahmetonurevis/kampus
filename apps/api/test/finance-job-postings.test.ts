@@ -289,6 +289,33 @@ describe('DOM-FIN-128: iş ilanı ve başvuru uçları', () => {
       422,
       'job_application_not_found',
     )
+    const bPostingUrl = `${POSTINGS}/${String(bPosting.id)}`
+    const bApplicationUrl = `${APPLICATIONS}/${String(bApplication.id)}`
+    assertError(await versioned('PATCH', bPostingUrl, a.admin, postingBody, bPosting.version), 404)
+    assertError(
+      await versioned('POST', `${bPostingUrl}/status`, a.admin, { status: 'closed' }, 2),
+      404,
+    )
+    assertError(
+      await versioned('PATCH', bApplicationUrl, a.admin, { note: 'x' }, bApplication.version),
+      404,
+    )
+    assertError(
+      await versioned(
+        'POST',
+        `${bApplicationUrl}/stage`,
+        a.admin,
+        { stage: 'rejected', changedOn: '2026-10-01' },
+        bApplication.version,
+      ),
+      404,
+    )
+    assert.equal((await get(RETENTION, a.admin)).json().meta.total, 0)
+    assert.equal(ok(await get(SETTINGS, a.admin)).version, 1)
+    assertError(
+      await versioned('PATCH', SETTINGS, a.admin, { retentionMonths: 6, institutionId: b.id }, 1),
+      400,
+    )
     assert.equal(await countApplications(b.id), 1)
     const [bRow] = await db.select().from(jobPostings).where(eq(jobPostings.institutionId, b.id))
     assert.equal(bRow?.status, 'published')

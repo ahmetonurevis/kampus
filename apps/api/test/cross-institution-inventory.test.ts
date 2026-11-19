@@ -2915,6 +2915,19 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: İK raporları (ON-192; DOM-FIN-117).
+  ...Object.fromEntries(
+    ([['liste', 'GET /api/v1/finance/hr-reports', 'get(PERIOD, a.admin)']] as const).map(
+      ([kind, key, marker]) => [
+        key,
+        proof(kind)(
+          'finance-hr-reports.test.ts',
+          'başka kurumun personeli ve kaydı raporda yok',
+          marker,
+        ),
+      ],
+    ),
+  ),
 }
 
 /**

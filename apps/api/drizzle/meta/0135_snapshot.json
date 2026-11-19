@@ -1,5 +1,5 @@
 {
-  "id": "daa743cf-3b08-4057-b3dc-59815cec8a2b",
+  "id": "aef23b4c-825a-4f4e-b878-fe839228930c",
   "prevId": "b867473d-a5ed-40eb-8f38-8bcabdb65df2",
   "version": "7",
   "dialect": "postgresql",
@@ -21503,6 +21503,388 @@
       },
       "isRLSEnabled": false
     },
+    "public.performance_periods": {
+      "name": "performance_periods",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_date": {
+          "name": "start_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "end_date": {
+          "name": "end_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'planning'"
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "closed_at": {
+          "name": "closed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closed_by_user_id": {
+          "name": "closed_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "performance_periods_start_idx": {
+          "name": "performance_periods_start_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "start_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "performance_periods_institution_id_institutions_id_fk": {
+          "name": "performance_periods_institution_id_institutions_id_fk",
+          "tableFrom": "performance_periods",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "performance_periods_pkey": {
+          "name": "performance_periods_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "performance_periods_status_check": {
+          "name": "performance_periods_status_check",
+          "value": "\"performance_periods\".\"status\" in ('planning', 'active', 'interim', 'evaluation', 'closed')"
+        },
+        "performance_periods_name_check": {
+          "name": "performance_periods_name_check",
+          "value": "char_length(\"performance_periods\".\"name\") between 2 and 120"
+        },
+        "performance_periods_dates_check": {
+          "name": "performance_periods_dates_check",
+          "value": "\"performance_periods\".\"end_date\" >= \"performance_periods\".\"start_date\""
+        },
+        "performance_periods_closed_check": {
+          "name": "performance_periods_closed_check",
+          "value": "((\"performance_periods\".\"status\" = 'closed') = (\"performance_periods\".\"closed_at\" is not null))\n        and ((\"performance_periods\".\"closed_at\" is null) = (\"performance_periods\".\"closed_by_user_id\" is null))"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.performance_reviews": {
+      "name": "performance_reviews",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_id": {
+          "name": "period_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "membership_id": {
+          "name": "membership_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "goals": {
+          "name": "goals",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "interim_note": {
+          "name": "interim_note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "interim_date": {
+          "name": "interim_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "evaluator_user_id": {
+          "name": "evaluator_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "evaluator_name": {
+          "name": "evaluator_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "evaluated_at": {
+          "name": "evaluated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "staff_comment": {
+          "name": "staff_comment",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "performance_reviews_member_key": {
+          "name": "performance_reviews_member_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "period_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "performance_reviews_membership_idx": {
+          "name": "performance_reviews_membership_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "performance_reviews_institution_id_institutions_id_fk": {
+          "name": "performance_reviews_institution_id_institutions_id_fk",
+          "tableFrom": "performance_reviews",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "performance_reviews_period_fkey": {
+          "name": "performance_reviews_period_fkey",
+          "tableFrom": "performance_reviews",
+          "tableTo": "performance_periods",
+          "columnsFrom": [
+            "institution_id",
+            "period_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "performance_reviews_membership_fkey": {
+          "name": "performance_reviews_membership_fkey",
+          "tableFrom": "performance_reviews",
+          "tableTo": "memberships",
+          "columnsFrom": [
+            "institution_id",
+            "membership_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "performance_reviews_pkey": {
+          "name": "performance_reviews_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "performance_reviews_goals_check": {
+          "name": "performance_reviews_goals_check",
+          "value": "jsonb_typeof(\"performance_reviews\".\"goals\") = 'array' and jsonb_array_length(\"performance_reviews\".\"goals\") between 1 and 10"
+        },
+        "performance_reviews_notes_check": {
+          "name": "performance_reviews_notes_check",
+          "value": "(\"performance_reviews\".\"interim_note\" is null or char_length(\"performance_reviews\".\"interim_note\") between 1 and 2000)\n        and (\"performance_reviews\".\"staff_comment\" is null or char_length(\"performance_reviews\".\"staff_comment\") between 1 and 2000)"
+        },
+        "performance_reviews_evaluator_check": {
+          "name": "performance_reviews_evaluator_check",
+          "value": "((\"performance_reviews\".\"evaluator_user_id\" is null) = (\"performance_reviews\".\"evaluated_at\" is null))\n        and ((\"performance_reviews\".\"evaluator_user_id\" is null) = (\"performance_reviews\".\"evaluator_name\" is null))"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.purchase_approval_settings": {
       "name": "purchase_approval_settings",
       "schema": "",
@@ -29937,303 +30319,6 @@
         "staff_separations_cancel_check": {
           "name": "staff_separations_cancel_check",
           "value": "(\"staff_separations\".\"status\" = 'cancelled') = (\"staff_separations\".\"cancelled_at\" is not null)\n        and (\"staff_separations\".\"status\" = 'cancelled') = (\"staff_separations\".\"cancelled_by_user_id\" is not null)\n        and (\"staff_separations\".\"status\" = 'cancelled') = (\"staff_separations\".\"cancel_reason\" is not null)\n        and (\"staff_separations\".\"cancel_reason\" is null or char_length(\"staff_separations\".\"cancel_reason\")\n          between 5 and 500)"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.staffing_plans": {
-      "name": "staffing_plans",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "academic_year": {
-          "name": "academic_year",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "norm_hours": {
-          "name": "norm_hours",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "lines": {
-          "name": "lines",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[]'::jsonb"
-        },
-        "updated_by_user_id": {
-          "name": "updated_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "staffing_plans_institution_id_institutions_id_fk": {
-          "name": "staffing_plans_institution_id_institutions_id_fk",
-          "tableFrom": "staffing_plans",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "staffing_plans_pkey": {
-          "name": "staffing_plans_pkey",
-          "columns": [
-            "institution_id",
-            "academic_year"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "staffing_plans_year_check": {
-          "name": "staffing_plans_year_check",
-          "value": "\"staffing_plans\".\"academic_year\" between 2000 and 2100"
-        },
-        "staffing_plans_norm_check": {
-          "name": "staffing_plans_norm_check",
-          "value": "\"staffing_plans\".\"norm_hours\" between 1 and 40"
-        },
-        "staffing_plans_lines_check": {
-          "name": "staffing_plans_lines_check",
-          "value": "jsonb_typeof(\"staffing_plans\".\"lines\") = 'array' and jsonb_array_length(\"staffing_plans\".\"lines\") <= 80"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.staffing_positions": {
-      "name": "staffing_positions",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "academic_year": {
-          "name": "academic_year",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "subject_id": {
-          "name": "subject_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "hours": {
-          "name": "hours",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "job_offer_id": {
-          "name": "job_offer_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "note": {
-          "name": "note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "staffing_positions_year_idx": {
-          "name": "staffing_positions_year_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "academic_year",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "staffing_positions_job_offer_idx": {
-          "name": "staffing_positions_job_offer_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "job_offer_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "staffing_positions_institution_id_institutions_id_fk": {
-          "name": "staffing_positions_institution_id_institutions_id_fk",
-          "tableFrom": "staffing_positions",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "staffing_positions_job_offer_fkey": {
-          "name": "staffing_positions_job_offer_fkey",
-          "tableFrom": "staffing_positions",
-          "tableTo": "staff_job_offers",
-          "columnsFrom": [
-            "institution_id",
-            "job_offer_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "staffing_positions_pkey": {
-          "name": "staffing_positions_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "staffing_positions_status_check": {
-          "name": "staffing_positions_status_check",
-          "value": "\"staffing_positions\".\"status\" in ('open', 'posted', 'filled', 'cancelled')"
-        },
-        "staffing_positions_year_check": {
-          "name": "staffing_positions_year_check",
-          "value": "\"staffing_positions\".\"academic_year\" between 2000 and 2100"
-        },
-        "staffing_positions_hours_check": {
-          "name": "staffing_positions_hours_check",
-          "value": "\"staffing_positions\".\"hours\" between 1 and 60"
-        },
-        "staffing_positions_text_check": {
-          "name": "staffing_positions_text_check",
-          "value": "char_length(\"staffing_positions\".\"subject_id\") between 1 and 40\n        and (\"staffing_positions\".\"note\" is null or char_length(\"staffing_positions\".\"note\") between 1 and 500)"
         }
       },
       "isRLSEnabled": false

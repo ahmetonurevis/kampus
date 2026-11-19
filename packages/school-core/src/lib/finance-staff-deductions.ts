@@ -819,3 +819,91 @@ export const fromDayLockRange = (day: string): DayRange => deductionMonthsRange(
 /** BES ara vermesinin kilit aralığı: ilk ve son ay dahil. */
 export const pensionPauseLockRange = (pause: StaffPensionPause): DayRange =>
   deductionMonthsRange(pause.fromMonth, pause.toMonth)
+
+// --- Bordro dönemi özeti (DOM-FIN-108; K-425) ----------------------------------------------------
+
+/** Ayda satır vermeyen kesinti durumları: sırada bekleyen, alacağı biten icra, ara verilen BES. */
+const SILENT_MONTH_DEDUCTIONS: readonly MonthlyDeductionStatus[] = ['waiting', 'settled', 'paused']
+
+/** Kurumun ay kesinti kayıtları; her kayıt üyeliğini taşır (bordro aktarımıyla aynı kaynak). */
+export interface MonthDeductionSources {
+  advances: readonly (StoredAdvanceTerms & { id: string; membershipId: string })[]
+  garnishments: readonly (StoredGarnishmentTerms & { membershipId: string })[]
+  pensions: readonly (StoredPensionTerms & {
+    id: string
+    membershipId: string
+    rateBasisPoints: number
+  })[]
+}
+
+/** Ayın kesinti özeti: türe göre satır sayısı ve sabit tutarlı (avans taksiti) toplam. */
+export interface PayrollDeductionSummary {
+  advanceCount: number
+  garnishmentCount: number
+  pensionCount: number
+  /** Avans taksitlerinin toplamı, kuruş; icra ve BES oranlıdır, tutarı bordro hesabındadır. */
+  advanceTotalCents: number
+}
+
+/**
+ * Bordro dönemi için ayın kesinti özeti (K-425): personel başına `monthlyDeductions` net ücret ve
+ * matrah olmadan çalışır (bordro aktarımı K-392 ile aynı); sırada bekleyen, alacağı biten icra ve
+ * ara verilen BES sayılmaz. `digest` dönem damgasına girer (K-426): satırın personeli, türü,
+ * kaynağı, kural tutarı, durumu ve oranlı satırın oranı ile kalan alacağı. Sıra kararlıdır.
+ */
+export function payrollMonthDeductionSummary(
+  month: string,
+  sources: MonthDeductionSources,
+): { summary: PayrollDeductionSummary; digest: (string | number | null)[][] } {
+  const members = [
+    ...new Set([
+      ...sources.advances.map((item) => item.membershipId),
+      ...sources.garnishments.map((item) => item.membershipId),
+      ...sources.pensions.map((item) => item.membershipId),
+    ]),
+  ].sort((a, b) => a.localeCompare(b))
+  const summary: PayrollDeductionSummary = {
+    advanceCount: 0,
+    garnishmentCount: 0,
+    pensionCount: 0,
+    advanceTotalCents: 0,
+  }
+  const digest: (string | number | null)[][] = []
+  for (const membershipId of members) {
+    const own = <T extends { membershipId: string }>(items: readonly T[]) =>
+      items.filter((item) => item.membershipId === membershipId)
+    const garnishments = own(sources.garnishments)
+    const pensions = own(sources.pensions)
+    const result = monthlyDeductions(
+      { month, netCents: null, pensionBaseCents: null },
+      { advances: own(sources.advances), garnishments, pensions },
+    )
+    for (const line of result.lines) {
+      if (SILENT_MONTH_DEDUCTIONS.includes(line.status)) continue
+      let rate: number | null = null
+      let cap: number | null = null
+      if (line.kind === 'advance') {
+        summary.advanceCount += 1
+        summary.advanceTotalCents += line.amountCents ?? 0
+      } else if (line.kind === 'garnishment') {
+        summary.garnishmentCount += 1
+        const item = garnishments.find((entry) => entry.id === line.sourceId)
+        rate = item?.rateBasisPoints ?? null
+        cap = item?.remainingCents ?? null
+      } else {
+        summary.pensionCount += 1
+        rate = pensions.find((entry) => entry.id === line.sourceId)?.rateBasisPoints ?? null
+      }
+      digest.push([
+        membershipId,
+        line.kind,
+        line.sourceId,
+        line.requestedCents,
+        line.status,
+        rate,
+        cap,
+      ])
+    }
+  }
+  return { summary, digest }
+}

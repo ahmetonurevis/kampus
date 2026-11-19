@@ -3,6 +3,7 @@ import { z } from 'zod'
 import type { Role } from '../modules/navigation.ts'
 import { DomainError } from './errors.ts'
 import { previousDay, type PayRateComponent } from './finance-pay-rates.ts'
+import type { PayrollDeductionSummary } from './finance-staff-deductions.ts'
 import {
   PAYROLL_PLATFORM_DEFAULTS,
   effectivePayrollParameters,
@@ -258,8 +259,19 @@ export interface PayrollInputSummary {
 }
 
 /**
+ * Damgaya ek girdiler (K-426): ayın kesinti satırları (`payrollMonthDeductionSummary().digest`)
+ * ve etkin kayıtlı bordro hesabının kimliği ile revizyonu. Boş olanlar damga kaynağına yazılmaz;
+ * böylece kesintisi ve kayıtlı hesabı olmayan ayın damgası K-426 öncesiyle aynı kalır.
+ */
+export interface PayrollDigestExtras {
+  deductions?: readonly (readonly (string | number | null)[])[]
+  payrollRun?: { id: string; revision: number } | null
+}
+
+/**
  * Ayın girdi özeti ve damga kaynağı (K-356). Damga kaynağı ayla kesişen tanımların, aya aktarılan
- * düzeltmelerin ve geçerli parametre setinin değerlerini sıralı tutar; API bunu SHA-256 ile
+ * düzeltmelerin ve geçerli parametre setinin değerlerini sıralı tutar; K-426 ile ayın kesinti
+ * satırları ve kayıtlı bordro hesabının revizyonu da girer (`extras`). API bunu SHA-256 ile
  * damgalar. Onaydan sonra girdi değişirse damga değişir.
  */
 export function payrollInputSummary(
@@ -268,6 +280,7 @@ export function payrollInputSummary(
   adjustments: readonly PayrollSummaryAdjustment[],
   institutionSets: readonly PayrollInstitutionSet[],
   platform: readonly PayrollPlatformSet[] = PAYROLL_PLATFORM_DEFAULTS,
+  extras: PayrollDigestExtras = {},
 ): { summary: PayrollInputSummary; digestSource: string } {
   const start = monthStart(month)
   const end = monthEnd(month)
@@ -308,8 +321,118 @@ export function payrollInputSummary(
     ]),
     adjustments: ordered.map((item) => [item.id, item.membershipId, item.item, item.amountCents]),
     parameters: parameter === null ? null : { id: parameter.id, values: parameter.values },
+    // K-426: kesinti ve kayıtlı hesap yalnız varsa girer; ikisi de yoksa damga eskisiyle aynıdır.
+    ...(extras.deductions === undefined || extras.deductions.length === 0
+      ? {}
+      : { deductions: extras.deductions }),
+    ...(extras.payrollRun == null
+      ? {}
+      : { payrollRun: [extras.payrollRun.id, extras.payrollRun.revision] }),
   })
   return { summary, digestSource }
+}
+
+// --- Onay öncesi durum (K-425) --------------------------------------------------------------------
+
+/** Ek ders çizelgesinin dönem satırındaki durumu: saat kaydı olmayan ay `none`. */
+export const PAYROLL_LESSON_SHEET_CHECKS = ['none', 'draft', 'teacher_review', 'approved'] as const
+export type PayrollLessonSheetCheck = (typeof PAYROLL_LESSON_SHEET_CHECKS)[number]
+export const PAYROLL_LESSON_SHEET_CHECK_LABELS = {
+  none: 'Ek ders yok',
+  draft: 'Taslak',
+  teacher_review: 'Öğretmen kontrolünde',
+  approved: 'Onaylı',
+} as const satisfies Record<PayrollLessonSheetCheck, string>
+
+/** Kayıtlı bordro hesabının durumu: yok, güncel ya da girdiler değiştiği için güncel değil. */
+export const PAYROLL_RUN_CHECKS = ['none', 'current', 'stale'] as const
+export type PayrollRunCheck = (typeof PAYROLL_RUN_CHECKS)[number]
+export const PAYROLL_RUN_CHECK_LABELS = {
+  none: 'Kayıtlı hesap yok',
+  current: 'Güncel',
+  stale: 'Güncel değil',
+} as const satisfies Record<PayrollRunCheck, string>
+
+/** Onayı durduran engel ve uyarı kodları; engel varken onay düğmesi kapalıdır. */
+export const PAYROLL_CHECK_BLOCKERS = ['payroll_lesson_hours_pending'] as const
+export type PayrollCheckBlocker = (typeof PAYROLL_CHECK_BLOCKERS)[number]
+export const PAYROLL_CHECK_WARNINGS = ['payroll_run_missing', 'payroll_run_stale'] as const
+export type PayrollCheckWarning = (typeof PAYROLL_CHECK_WARNINGS)[number]
+export const PAYROLL_CHECK_MESSAGES = {
+  payroll_lesson_hours_pending:
+    'Ek ders çizelgesi müdür onayı bekliyor. Önce çizelgeyi onaylayın ya da ödenmeyecek saatleri silin.',
+  payroll_run_missing: 'Bu ay için kayıtlı bordro hesabı yok; onay yalnız girdileri kilitler.',
+  payroll_run_stale:
+    'Kayıtlı bordro hesabı güncel girdilerle tutmuyor. Onaydan önce bordro hesabını yeniden kaydedin.',
+} as const satisfies Record<PayrollCheckBlocker | PayrollCheckWarning, string>
+
+export interface PayrollPeriodChecksInput {
+  lessonSheet: {
+    status: Exclude<PayrollLessonSheetCheck, 'none'>
+    entryCount: number
+    pendingCount: number
+  }
+  /** Etkin kayıtlı hesap; `current` canlı hesabın tamamlanan satırları kayıtla aynıysa doğru. */
+  payrollRun: { revision: number; calculatedAt: string; current: boolean } | null
+  deductions: PayrollDeductionSummary
+}
+
+export interface PayrollPeriodChecks {
+  lessonSheet: { state: PayrollLessonSheetCheck; entryCount: number; pendingCount: number }
+  payrollRun: { state: PayrollRunCheck; revision: number | null; calculatedAt: string | null }
+  deductions: PayrollDeductionSummary
+  blockers: PayrollCheckBlocker[]
+  warnings: PayrollCheckWarning[]
+}
+
+/**
+ * Onay öncesi durum (K-425): ek ders çizelgesi, kayıtlı bordro hesabı ve ayın kesinti özeti.
+ * Onay bekleyen ek ders saati engeldir (onay 409 `payroll_lesson_hours_pending` verirdi, K-424);
+ * kayıtlı hesabın olmaması ya da güncel olmaması uyarıdır, onayı durdurmaz.
+ */
+export function payrollPeriodChecks(input: PayrollPeriodChecksInput): PayrollPeriodChecks {
+  const { lessonSheet, payrollRun } = input
+  const blockers: PayrollCheckBlocker[] = []
+  const warnings: PayrollCheckWarning[] = []
+  if (lessonSheet.pendingCount > 0) blockers.push('payroll_lesson_hours_pending')
+  if (payrollRun === null) warnings.push('payroll_run_missing')
+  else if (!payrollRun.current) warnings.push('payroll_run_stale')
+  return {
+    lessonSheet: {
+      state: lessonSheet.entryCount === 0 ? 'none' : lessonSheet.status,
+      entryCount: lessonSheet.entryCount,
+      pendingCount: lessonSheet.pendingCount,
+    },
+    payrollRun: {
+      state: payrollRun === null ? 'none' : payrollRun.current ? 'current' : 'stale',
+      revision: payrollRun?.revision ?? null,
+      calculatedAt: payrollRun?.calculatedAt ?? null,
+    },
+    deductions: input.deductions,
+    blockers,
+    warnings,
+  }
+}
+
+/** Kayıtlı hesabın satırları canlı hesabın tamamlanan satırlarıyla aynı mı (anahtar sırası önemsiz). */
+export function payrollRunRowsMatch(saved: readonly unknown[], live: readonly unknown[]): boolean {
+  if (saved.length !== live.length) return false
+  const canonical = (value: unknown): unknown =>
+    Array.isArray(value)
+      ? value.map(canonical)
+      : value !== null && typeof value === 'object'
+        ? Object.fromEntries(
+            Object.entries(value as Record<string, unknown>)
+              .filter(([, item]) => item !== undefined)
+              .sort(([a], [b]) => a.localeCompare(b))
+              .map(([key, item]) => [key, canonical(item)]),
+          )
+        : value
+  const text = (rows: readonly unknown[]) =>
+    rows.map((row) => JSON.stringify(canonical(row))).sort((a, b) => a.localeCompare(b))
+  const left = text(saved)
+  const right = text(live)
+  return left.every((row, index) => row === right[index])
 }
 
 // --- Onay ve yeniden açma ------------------------------------------------------------------------

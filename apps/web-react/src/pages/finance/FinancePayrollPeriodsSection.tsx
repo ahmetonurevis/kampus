@@ -18,7 +18,10 @@ import {
   PAYROLL_ADJUSTMENT_ITEM_LABELS,
   PAYROLL_ADJUSTMENT_ITEMS,
   PAYROLL_ADJUSTMENT_MAX_CENTS,
+  PAYROLL_CHECK_MESSAGES,
+  PAYROLL_LESSON_SHEET_CHECK_LABELS,
   PAYROLL_PERIOD_STATE_LABELS,
+  PAYROLL_RUN_CHECK_LABELS,
   payrollAdjustmentCancelSchema,
   payrollMonthLabel,
   payrollReopenSchema,
@@ -47,6 +50,7 @@ import { notify } from '@/lib/notify.ts'
 import { RootError } from '../management/FormParts.tsx'
 
 type Summary = NonNullable<PayrollPeriodMonth['current']>
+type Checks = NonNullable<PayrollPeriodMonth['checks']>
 
 const STATE_TONES = { open: 'gray', approved: 'green', reopened: 'amber' } as const
 const YEAR_SPAN = 5
@@ -54,6 +58,34 @@ const YEAR_SPAN = 5
 /** Onaylı ayda onay anının özeti, diğerlerinde güncel özet (başlamamış ayda yok). */
 const summaryOf = (month: PayrollPeriodMonth): Summary | null =>
   month.state === 'approved' ? month.approved : month.current
+
+const LESSON_TONES = {
+  none: 'gray',
+  draft: 'amber',
+  teacher_review: 'amber',
+  approved: 'green',
+} as const
+const RUN_TONES = { none: 'gray', current: 'green', stale: 'amber' } as const
+
+/** Onay öncesi durum satırları (K-425): ek ders çizelgesi, kayıtlı hesap, kesinti özeti. */
+function checkRows(checks: Checks): [string, string][] {
+  const { lessonSheet, payrollRun, deductions } = checks
+  const lesson =
+    lessonSheet.pendingCount > 0
+      ? `${PAYROLL_LESSON_SHEET_CHECK_LABELS[lessonSheet.state]} · ${String(lessonSheet.pendingCount)} kayıt onay bekliyor`
+      : PAYROLL_LESSON_SHEET_CHECK_LABELS[lessonSheet.state]
+  const run =
+    payrollRun.revision === null
+      ? PAYROLL_RUN_CHECK_LABELS[payrollRun.state]
+      : `${PAYROLL_RUN_CHECK_LABELS[payrollRun.state]} · ${String(payrollRun.revision)}. revizyon`
+  const deduction = `${String(deductions.advanceCount)} avans · ${String(deductions.garnishmentCount)} icra · ${String(deductions.pensionCount)} BES`
+  return [
+    ['Ek ders çizelgesi', lesson],
+    ['Kayıtlı bordro hesabı', run],
+    ['Kesintiler', deduction],
+    ['Avans taksiti toplamı', money(deductions.advanceTotalCents)],
+  ]
+}
 
 const approvalText = (month: PayrollPeriodMonth) =>
   month.approvedAt === null
@@ -134,6 +166,7 @@ export function FinancePayrollPeriodsSection() {
                   <TableHead scope="col" className="text-right">
                     Düzeltme
                   </TableHead>
+                  <TableHead scope="col">Onay öncesi</TableHead>
                   <TableHead scope="col">
                     <span className="sr-only">İşlemler</span>
                   </TableHead>
@@ -202,6 +235,7 @@ function MonthRow({
         {summary === null ? '—' : money(summary.monthlyGrossTotalCents)}
       </TableCell>
       <TableCell className="text-right tabular-nums">{month.adjustmentCount}</TableCell>
+      <TableCell>{month.checks === null ? '—' : <ChecksCell checks={month.checks} />}</TableCell>
       <TableCell>
         <div className="flex flex-wrap justify-end gap-2">
           {month.state !== 'approved' && month.current !== null ? (
@@ -232,6 +266,63 @@ function MonthRow({
         </div>
       </TableCell>
     </TableRow>
+  )
+}
+
+/** Dönem satırında kısa durum: ek ders ve hesap rozeti, kesinti sayıları; engel önce. */
+function ChecksCell({ checks }: { checks: Checks }) {
+  const { lessonSheet, payrollRun, deductions } = checks
+  return (
+    <div className="grid gap-1 text-xs">
+      {checks.blockers.length > 0 ? <StatusBadge text="Onay engelli" tone="red" /> : null}
+      <span className="flex flex-wrap items-center gap-1">
+        Ek ders:
+        <StatusBadge
+          text={PAYROLL_LESSON_SHEET_CHECK_LABELS[lessonSheet.state]}
+          tone={LESSON_TONES[lessonSheet.state]}
+        />
+      </span>
+      <span className="flex flex-wrap items-center gap-1">
+        Hesap:
+        <StatusBadge
+          text={PAYROLL_RUN_CHECK_LABELS[payrollRun.state]}
+          tone={RUN_TONES[payrollRun.state]}
+        />
+      </span>
+      <span className="text-muted-foreground tabular-nums">
+        {`Kesinti: ${String(deductions.advanceCount)} avans · ${String(deductions.garnishmentCount)} icra · ${String(deductions.pensionCount)} BES`}
+      </span>
+    </div>
+  )
+}
+
+/** Onay penceresinde durum listesi; engel ve uyarı onay düğmesinden önce görünür. */
+function ChecksList({ checks }: { checks: Checks }) {
+  return (
+    <div className="grid gap-2">
+      <h3 className="text-sm font-semibold">Onay öncesi durum</h3>
+      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+        {checkRows(checks).map(([term, value]) => (
+          <div key={term} className="contents">
+            <dt className="text-muted-foreground">{term}</dt>
+            <dd className="tabular-nums">{value}</dd>
+          </div>
+        ))}
+      </dl>
+      <p className="text-xs text-muted-foreground">
+        İcra ve BES kesintisi oranlıdır; tutarı bordro hesabında çıkar.
+      </p>
+      {checks.blockers.map((code) => (
+        <p key={code} role="alert" className="rounded-lg border border-destructive p-3 text-sm">
+          {PAYROLL_CHECK_MESSAGES[code]}
+        </p>
+      ))}
+      {checks.warnings.map((code) => (
+        <p key={code} role="note" className="rounded-lg border p-3 text-sm text-warning">
+          {PAYROLL_CHECK_MESSAGES[code]}
+        </p>
+      ))}
+    </div>
   )
 }
 
@@ -269,9 +360,10 @@ function ApproveModal({ month, onClose }: { month: PayrollPeriodMonth; onClose: 
   const approve = useApprovePayrollPeriod()
   const [error, setError] = useState<string | undefined>(undefined)
   const summary = month.current
+  const blocked = (month.checks?.blockers.length ?? 0) > 0
   const label = payrollMonthLabel(month.month)
   async function confirm() {
-    if (summary === null) return
+    if (summary === null || blocked) return
     setError(undefined)
     const outcome = await approve.submit(
       { month: month.month, inputsHash: summary.inputsHash },
@@ -296,7 +388,7 @@ function ApproveModal({ month, onClose }: { month: PayrollPeriodMonth; onClose: 
           </Button>
           <Button
             onClick={() => void confirm()}
-            disabled={approve.isPending || summary === null}
+            disabled={approve.isPending || summary === null || blocked}
             aria-busy={approve.isPending || undefined}
           >
             Onayla ve kilitle
@@ -306,6 +398,7 @@ function ApproveModal({ month, onClose }: { month: PayrollPeriodMonth; onClose: 
     >
       <div className="grid gap-3">
         {summary === null ? null : <SummaryList summary={summary} />}
+        {month.checks === null ? null : <ChecksList checks={month.checks} />}
         <RootError message={error} />
       </div>
     </Modal>

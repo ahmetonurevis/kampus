@@ -331,7 +331,7 @@ Ara nokta: yeni öğretim yılı açıldı; pilot okul tam yıl, dil okulu ve ye
 | ON-189 | Personel self-servisi: kendi bilgileri, belge yükleme, izin bakiyesi, bordro pusulası                   | M     | bekliyor    |                    | bağımlılık: K21 bordro pusulası                                                                                                                   |
 | ON-190 | Politika belgesi okundu onayı: personel yönetmeliği, KVKK taahhüdü, iş güvenliği                        | M     | bekliyor    |                    | bağımlılık: K27 belge deposu                                                                                                                      |
 | ON-191 | Anonim personel memnuniyet anketi: IST-069'un personel sürümü                                           | S     | bekliyor    |                    | KVKK: anonimlik eşiği                                                                                                                             |
-| ON-192 | İK raporları: personel devir oranı, kıdem dağılımı, izin kullanımı                                      | M     | çalışılıyor | onur/ik-raporlari  | bağımlılık: K19 küçük grup bastırma                                                                                                               |
+| ON-192 | İK raporları: personel devir oranı, kıdem dağılımı, izin kullanımı                                      | M     | bitti       | 0213e208           | küçük grup bastırma (<5), kişi adı yok, CSV ve PDF; migration yok; DOM-FIN-117                                                                    |
 
 ### K21 · Bordro ve personel ödemeleri
 

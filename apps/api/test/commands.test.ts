@@ -162,12 +162,36 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // Kullanılmış izin kaydı yıllık izin bakiyesinden düşer; çift gönderim izni iki kez düşmez
   // (routes/finance-staff-leave.ts; DOM-FIN-109, ON-181).
   'POST /api/v1/finance/leave-records',
+  // Onaylanan izin talebi kullanılmış izin kaydı üretir; talep ve onayın çift gönderimi izni iki
+  // kez düşmez (routes/finance-leave-requests.ts; DOM-FIN-116, ON-182).
+  'POST /api/v1/finance/leave-requests',
+  'POST /api/v1/finance/leave-requests/{requestId}/approve',
   // Çalışma onayı kaydı açılışı; çift tıklama aynı öğretmene ikinci başvuru açmaz
   // (routes/finance-work-permits.ts; DOM-FIN-114, ON-174).
   'POST /api/v1/finance/work-permits',
   // Gezi planı taslağı numaralı plan açar; çift tıklama ikinci planı açmaz
   // (routes/finance-trip-plans.ts; DOM-FIN-111, ON-155).
   'POST /api/v1/finance/trip-plans',
+  // İş teklifi açılışı; çift tıklama ikinci teklifi açmaz
+  // (routes/finance-staff-onboarding.ts; DOM-FIN-121, ON-179).
+  'POST /api/v1/finance/job-offers',
+  // Bordro hesabının kaydı eski hesabı arşivler ve yeni revizyon yazar; çift tıklama ikinci
+  // revizyonu açmaz (routes/finance-payroll-runs.ts; DOM-FIN-115, ON-198).
+  'POST /api/v1/finance/payroll-runs/{month}/calculate',
+  // Ek ders çizelgesini gönderme, öğretmen yanıtı, müdür onayı (kilit) ve yeniden açma; çift
+  // tıklama ikinci yanıtı ya da ikinci onayı yazmaz (routes/finance-lesson-hour-approvals.ts;
+  // DOM-FIN-120, ON-196).
+  'POST /api/v1/finance/lesson-hour-sheets/{month}/submit',
+  'POST /api/v1/finance/lesson-hour-sheets/{month}/confirmations',
+  'POST /api/v1/finance/lesson-hour-sheets/{month}/approve',
+  'POST /api/v1/finance/lesson-hour-sheets/{month}/reopen',
+  // İşten ayrılış dosyası açılışı ve tamamlanması (ilişik kesme, izin günü dondurulur); çift tıklama
+  // ikinci dosyayı açmaz (routes/finance-staff-separations.ts; DOM-FIN-118, ON-180).
+  'POST /api/v1/finance/staff-separations',
+  'POST /api/v1/finance/staff-separations/{separationId}/complete',
+  // Özlük verisi imhası geri alınamaz; çift tıklama ikinci imha kaydı yazmaz
+  // (routes/finance-staff-retention.ts; DOM-FIN-122, ON-176).
+  'POST /api/v1/finance/staff-data-destructions',
 ]
 // Onur: kayıt ve finans sonu
 

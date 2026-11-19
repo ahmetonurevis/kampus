@@ -3120,6 +3120,30 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: ayrılıştan kalan gezi katılımları (ON-347; DOM-FIN-112, K-419).
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'liste',
+          'GET /api/v1/finance/paid-activity-participants/withdrawn-leftovers',
+          "call('GET', LEFTOVERS, t.cookie)",
+        ],
+        [
+          'gövde',
+          'POST /api/v1/finance/paid-activity-participants/withdrawn-leftovers/cancel',
+          'participantIds: [legacyConsent, otherLegacy]',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'withdrawal-waitlist.test.ts',
+        'K-419: ayrılıştan kalan katılımlar listelenir ve yönetici onayıyla parasız iptal edilir; başka kurum 404',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

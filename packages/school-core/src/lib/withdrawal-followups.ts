@@ -29,8 +29,8 @@ import {
  *   Etkinlik günü ayrılış günü ya da önceyse etkinlik gerçekleşmiştir; ödenmemiş kısım borç kalır.
  * - Etkinlik iadesi ve borcu ayrılışın iade ve borç bakiyesine girmez (K-349): iade katılım
  *   kaydından ödenir (K-303), borç sözleşmesiz etkinlik taksitidir.
- * - Taksiti olmayan yedek ve izin bekleyen katılım (K-369, K-370), etkinlik günü ayrılış gününden
- *   sonraysa aynı işlemde parasız iptal edilir (K-395); dökümde satır açmaz. Asil ya da izin
+ * - Taksiti olmayan yedek ve izin bekleyen katılım (K-369, K-370), etkinlik günü ayrılış günü ya da
+ *   sonraysa aynı işlemde parasız iptal edilir (K-395, K-418); dökümde satır açmaz. Asil ya da izin
  *   bekleyenin boşalttığı yere sıradaki yedek geçer (`freesSeat`; geçişi servis yazar).
  *
  * `withdrawals.ts` bu dosyayı içe aktarmaz: `finance-paid-activities.ts` iade ödemesi için
@@ -105,8 +105,10 @@ function activityOutcomes(
     }
     const upcoming = item.activity.activityDate > withdrawalDate
     if (item.status === 'waitlisted' || item.status === 'awaiting_consent') {
-      // Taksitsiz katılım parasız kapanır, dökümde satır açmaz (K-395).
-      if (upcoming)
+      // Taksitsiz katılım parasız kapanır, dökümde satır açmaz (K-395). Etkinlik ayrılış günündeyse
+      // de kapanır (K-418): ayrılan öğrenciye izinle ya da geçişle taksit açılmaz, satır boşuna
+      // yer tutardı.
+      if (item.activity.activityDate >= withdrawalDate)
         cancels.push({
           participantId: item.participantId,
           activityId: item.activityId,

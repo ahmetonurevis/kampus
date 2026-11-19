@@ -6,11 +6,15 @@ import {
   paidActivityRosterCsv,
   planConsentSync,
   planManualConsent,
+  isWithdrawnLeftover,
+  planWithdrawnLeftoverCancel,
   type ConsentGrantPlan,
   type RosterRow,
+  type WithdrawnLeftoverCancel,
 } from '@kampus/school-core/lib/finance-paid-activity-participants.ts'
 import {
   applyParticipationCancel,
+  holdsSeat,
   participationPaymentStatus,
   type ConsentChannel,
   type ParticipationCancelPlan,
@@ -21,13 +25,18 @@ import { maskPhone } from '@kampus/school-core/lib/parent-contact.ts'
 
 import type { Database } from '../db/client.ts'
 import {
+  findPaidActivity,
   findParticipant,
   invoicePayments,
+  isStudentActive,
+  listWithdrawnLeftovers,
   markParticipantCancelled,
   markParticipantConsentGranted,
   openParticipants,
   rosterParticipants,
+  withdrawnLeftoverCandidates,
   type OpenParticipant,
+  type StoredPaidActivity,
 } from '../db/finance-paid-activities.ts'
 import { loadRecords, loadRecordsByIds } from '../db/records.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
@@ -40,6 +49,7 @@ import {
   promoteWaitlist,
   promotionPreview,
   reloadActivity,
+  writeReasonedCancel,
   reloadParticipant,
   requireActivity,
   requireLoaded,
@@ -48,6 +58,7 @@ import {
   writePromotions,
 } from './finance-paid-activities.ts'
 import { formConsentStatuses } from './finance-paid-activity-consent.ts'
+import { getInstitutionModules } from './modules.ts'
 import {
   FINANCE_TABLE_STORES,
   mapOperationError,
@@ -57,6 +68,7 @@ import {
   type LoadScope,
 } from './operation-runner.ts'
 import { auditWork } from './task-work.ts'
+import { WITHDRAWAL_CANCEL_REASON } from './withdrawals.ts'
 
 /**
  * Gezi katılımcı yönetimi servisi (docs/domain/finans.md DOM-FIN-112; ON-156; K-369…K-371): toplu
@@ -73,6 +85,8 @@ const PARTICIPANT = 'paid_activity_participants'
 const studentsScope = (studentIds: readonly string[]): LoadScope => ({
   match: [{ kind: 'equals', field: 'studentId', values: [...new Set(studentIds)] }],
 })
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 const strings = (input: unknown, key: string): string[] => {
   const value: unknown =
@@ -201,7 +215,8 @@ async function writeGrant(
 
 /**
  * Personelin girdiği veli izni (K-370): kanal (kâğıt, telefon, yüz yüze) ve izni verenin adı. İzin
- * bekleyen asil asil olur ve taksiti açılır; yedeğin izni kaydedilir.
+ * bekleyen asil asil olur ve taksiti açılır; yedeğin izni kaydedilir. Öğrencinin etkinliği kilit
+ * altında okunur; etkin değilse 422 `paid_activity_student_inactive` (K-418).
  */
 export async function grantConsentCommand(
   ctx: ServiceContext,
@@ -225,13 +240,19 @@ export async function grantConsentCommand(
         const row = await findParticipant(tx, ctx.institutionId, participantId)
         if (row === null) throw new NotFoundError()
         if (row.version !== expectedVersion) throw new ConflictError()
-        const activity = await requireActivity(tx, ctx, row.activityId)
+        const [activity, studentActive, institution] = await Promise.all([
+          requireActivity(tx, ctx, row.activityId),
+          isStudentActive(tx, ctx.institutionId, row.studentId),
+          getInstitutionModules(tx, ctx.institutionId),
+        ])
         return {
           run: (state, { makeId }) => {
             const grant = planManualConsent(input)
-            return applyConsentGrant(state, activity, row, grant, {
+            // Ayrılmış ya da mezun öğrenciye izin kaydedilmez, taksit açılmaz (K-418).
+            return applyConsentGrant(state, activity, { ...row, studentActive }, grant, {
               today: dayKey(ctx.now),
               makeId,
+              institutionType: institution?.type ?? 'school',
             })
           },
         }
@@ -249,7 +270,9 @@ export async function grantConsentCommand(
 /**
  * Bağlı dijital izin formundan eşitleme (K-370, IST-067): formda onaylananların izni alınır (izin
  * bekleyen asilin taksiti açılır); formda reddedilenlerin katılımı K-302 kuralıyla iptal edilir ve
- * boşalan yerlere yedekler geçer (K-369). Form bağlı değil ya da kullanılamıyorsa 422.
+ * boşalan yerlere yedekler geçer (K-369). Etkin olmayan öğrencinin yedek ve izin bekleyen katılımı
+ * formdan bağımsız parasız iptal edilir, izni alınmaz (K-418; denetimde gerekçe kodu
+ * `student_inactive`). Form bağlı değil ya da kullanılamıyorsa 422.
  */
 export async function syncConsentsCommand(
   ctx: ServiceContext,
@@ -281,10 +304,14 @@ export async function syncConsentsCommand(
           'İzin formu bulunamadı ya da kullanılamıyor (iletişim modülü kapalı, form iptal ya da arşiv).',
         ),
       )
-    return { activity, open, plan: planConsentSync(open, statuses) }
+    return {
+      activity,
+      open,
+      plan: planConsentSync(open, statuses, { today, activityDate: activity.activityDate }),
+    }
   }
   // Kilitten önce: taksiti açılacak öğrenciler (izni gelen izin bekleyenler, iptal edilecek
-  // asiller ve geçecek yedekler).
+  // asiller ve geçecek yedekler; etkin olmayanın izin bekleyen katılımı da yer boşaltır).
   const before = await readPlan(ctx.db).catch(() => null)
   const preview =
     before === null
@@ -293,7 +320,9 @@ export async function syncConsentsCommand(
           ...before.plan.grant.map((item) => item.studentId),
           ...before.plan.withdraw.map((item) => item.studentId),
           ...promotionPreview(before.activity, before.open, {
-            freed: before.plan.withdraw.length,
+            freed:
+              before.plan.withdraw.length +
+              before.plan.inactive.filter((item) => holdsSeat(item.status)).length,
             today,
           }),
         ]
@@ -337,6 +366,15 @@ export async function syncConsentsCommand(
                 makeId,
               }),
             }))
+            const inactive = plan.inactive.map((participant) => ({
+              participant,
+              plan: applyParticipationCancel(state, activity, participant, {
+                today,
+                kind: 'participant',
+                allocated,
+                makeId,
+              }),
+            }))
             requireLoaded(loaded, [
               ...grants
                 .filter((item) => item.plan.invoiceId !== null)
@@ -345,7 +383,7 @@ export async function syncConsentsCommand(
                 .filter((item) => item.plan.debtInvoiceId !== null)
                 .map((item) => item.participant.studentId),
             ])
-            const withdrawn = new Set(plan.withdraw.map((item) => item.id))
+            const withdrawn = new Set([...plan.withdraw, ...plan.inactive].map((item) => item.id))
             const granted = new Map(grants.map((item) => [item.participant.id, item.plan.status]))
             const remaining: OpenParticipant[] = open
               .filter((item) => !withdrawn.has(item.id))
@@ -360,15 +398,17 @@ export async function syncConsentsCommand(
               makeId,
               loaded,
             })
-            return { grants, cancels, promotions }
+            return { grants, cancels, inactive, promotions }
           },
         }
       },
-      after: async (tx, { grants, cancels, promotions }) => {
+      after: async (tx, { grants, cancels, inactive, promotions }) => {
         for (const { participant, plan } of grants)
           await writeGrant(tx, ctx, participant.id, null, plan)
         for (const { participant, plan } of cancels)
           await writeConsentCancel(tx, ctx, participant.id, plan, 'permission_form')
+        for (const { participant, plan } of inactive)
+          await writeReasonedCancel(tx, ctx, participant.id, plan, INACTIVE_CANCEL_REASON)
         await writePromotions(tx, ctx, promotions)
         await auditWork(tx, ctx, 'paid_activity.consent_sync', entity, ['permissionFormId'])
         body = {
@@ -376,6 +416,7 @@ export async function syncConsentsCommand(
             activity: await reloadActivity(tx, ctx, activityId),
             grantedCount: grants.length,
             withdrawnCount: cancels.length,
+            inactiveCancelledCount: inactive.length,
             promotedCount: promotions.length,
           },
         }
@@ -409,6 +450,130 @@ async function writeConsentCancel(
     { type: PARTICIPANT, id: participantId },
     [...cancelFields(plan), 'consentStatus', 'consentWithdrawnAt', 'consentWithdrawalChannel'],
   )
+}
+
+/** Etkin olmayan öğrencinin taksitsiz katılımının eşitlemedeki iptal gerekçesi (K-418). */
+export const INACTIVE_CANCEL_REASON = 'student_inactive'
+
+// --- Ayrılıştan kalan katılımlar -----------------------------------------------------------------
+
+/**
+ * Ayrılıştan kalan katılımlar (K-419): ayrılmış öğrencinin iptal edilmemiş etkinlikteki yedek ve
+ * izin bekleyen katılımları (etkinlik günü son ayrılış günü ya da sonra). ON-346 öncesi ayrılışlar
+ * bu satırları kapatmıyordu; yönetici listeyi görüp onaylayarak kapatır.
+ */
+export function listWithdrawnLeftoversFor(
+  ctx: ServiceContext,
+  query: { page: number; pageSize: number },
+) {
+  return listWithdrawnLeftovers(ctx.db, ctx.institutionId, query)
+}
+
+interface FreedSeat {
+  activity: StoredPaidActivity
+  open: OpenParticipant[]
+  freed: number
+}
+
+/**
+ * Seçilen kalan katılımlar ve yer boşaltacakları etkinlikler: izin bekleyen kalan katılımın
+ * günü bugün ya da sonra olan, iptal edilmemiş etkinliği (K-369; günü geçmişte geçiş olmaz).
+ */
+async function leftoverSeats(
+  db: Database,
+  ctx: ServiceContext,
+  ids: readonly string[],
+  today: string,
+) {
+  const rows = await withdrawnLeftoverCandidates(db, ctx.institutionId, ids)
+  const freed = new Map<string, number>()
+  for (const row of rows)
+    if (isWithdrawnLeftover(row) && holdsSeat(row.status) && row.activityDate >= today)
+      freed.set(row.activityId, (freed.get(row.activityId) ?? 0) + 1)
+  const seats = new Map<string, FreedSeat>()
+  for (const [activityId, count] of freed) {
+    const activity = await findPaidActivity(db, ctx.institutionId, activityId)
+    if (activity === null || activity.status === 'cancelled') continue
+    seats.set(activityId, {
+      activity,
+      open: await openParticipants(db, ctx.institutionId, activityId),
+      freed: count,
+    })
+  }
+  return { rows, seats }
+}
+
+/**
+ * Ayrılıştan kalan katılımları yönetici onayıyla parasız iptal eder (K-419): iptal türü katılımcı,
+ * iptal günü bugün, denetimde gerekçe kodu `student_withdrawal` (K-395 ile aynı). İzin bekleyenin
+ * boşalttığı yere sıradaki etkin yedek aynı işlemde geçer (K-369, K-396); geçecek yedeklerin
+ * taksitleri kilitten önce okunan plana göre yüklenir, değiştiyse 409. Başka kurumun katılımı 404.
+ */
+export async function cancelWithdrawnLeftoversCommand(
+  ctx: ServiceContext,
+  input: unknown,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  const today = dayKey(ctx.now)
+  const ids = strings(input, 'participantIds').filter((id) => UUID.test(id))
+  const before = await leftoverSeats(ctx.db, ctx, ids, today)
+  const preview = [...before.seats.values()].flatMap(({ activity, open, freed }) =>
+    promotionPreview(activity, open, { freed, today }),
+  )
+  const loaded = new Set(preview)
+  const entity = { type: PARTICIPANT, id: randomUUID() }
+  let body: unknown
+  return runCommand(
+    ctx,
+    {
+      action: 'paid_activity.withdrawn_cleanup',
+      collections: ['invoices'],
+      stores: FINANCE_TABLE_STORES,
+      loadScope: { invoices: studentsScope(preview) },
+      entity,
+      load: async (tx) => {
+        const { rows, seats } = await leftoverSeats(tx, ctx, ids, today)
+        const candidates = new Map(rows.map((row) => [row.id, row]))
+        return {
+          run: (state, { makeId }) => {
+            const cancels = planWithdrawnLeftoverCancel(input, candidates, { today })
+            const cancelled = new Set(cancels.map((item) => item.participant.id))
+            const promotions = [...seats.values()].flatMap(({ activity, open }) =>
+              promoteWaitlist(
+                state,
+                activity,
+                open.filter((item) => !cancelled.has(item.id)),
+                { today, makeId, loaded },
+              ),
+            )
+            return { cancels, promotions }
+          },
+        }
+      },
+      after: async (tx, { cancels, promotions }) => {
+        await writeLeftoverCancels(tx, ctx, cancels)
+        await writePromotions(tx, ctx, promotions)
+        await auditWork(tx, ctx, 'paid_activity.withdrawn_cleanup', entity, ['participantIds'])
+        body = {
+          data: {
+            cancelledIds: cancels.map((item) => item.participant.id),
+            promotedCount: promotions.length,
+          },
+        }
+      },
+    },
+    () => ({ statusCode: 200, body }),
+    idempotency,
+  )
+}
+
+async function writeLeftoverCancels(
+  tx: Database,
+  ctx: ServiceContext,
+  cancels: readonly WithdrawnLeftoverCancel[],
+) {
+  for (const { participant, plan } of cancels)
+    await writeReasonedCancel(tx, ctx, participant.id, plan, WITHDRAWAL_CANCEL_REASON)
 }
 
 // --- Katılım listesi -----------------------------------------------------------------------------

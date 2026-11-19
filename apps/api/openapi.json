@@ -209062,7 +209062,7 @@
         "tags": [
           "finance-paid-activities"
         ],
-        "description": "Bağlı dijital izin formunda (IST-067) onaylananların izni alınır, izin bekleyen asilin taksiti açılır; formda reddedilenlerin (izin bekleyen ya da izni formdan gelmiş) katılımı K-302 kuralıyla iptal edilir, boşalan yere yedek geçer (K-370, K-369). Elle girilen izin formdaki retle düşmez. Form bağlı değilse 422 `paid_activity_permission_form_missing`, kullanılamıyorsa 422 `paid_activity_permission_form_not_found`. `Idempotency-Key` zorunlu. Roller: `yonetici`, `onburo` (K-300). Modül `finance`.",
+        "description": "Bağlı dijital izin formunda (IST-067) onaylananların izni alınır, izin bekleyen asilin taksiti açılır; formda reddedilenlerin (izin bekleyen ya da izni formdan gelmiş) katılımı K-302 kuralıyla iptal edilir, boşalan yere yedek geçer (K-370, K-369). Elle girilen izin formdaki retle düşmez. Etkin olmayan (ayrılmış ya da mezun) öğrencinin yedek ve izin bekleyen katılımı formdan bağımsız parasız iptal edilir, izni alınmaz, taksit açılmaz (`inactiveCancelledCount`; günü geçmiş etkinlikte yapılmaz; K-418). Form bağlı değilse 422 `paid_activity_permission_form_missing`, kullanılamıyorsa 422 `paid_activity_permission_form_not_found`. `Idempotency-Key` zorunlu. Roller: `yonetici`, `onburo` (K-300). Modül `finance`.",
         "parameters": [
           {
             "schema": {
@@ -209272,6 +209272,12 @@
                           "minimum": -9007199254740991,
                           "maximum": 9007199254740991
                         },
+                        "inactiveCancelledCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Etkin olmayan (ayrılmış ya da mezun) öğrencinin parasız iptal edilen yedek ve izin bekleyen katılımı (K-418)"
+                        },
                         "promotedCount": {
                           "type": "integer",
                           "minimum": -9007199254740991,
@@ -209282,6 +209288,7 @@
                         "activity",
                         "grantedCount",
                         "withdrawnCount",
+                        "inactiveCancelledCount",
                         "promotedCount"
                       ],
                       "additionalProperties": false
@@ -209790,7 +209797,7 @@
         "tags": [
           "finance-paid-activities"
         ],
-        "description": "Personelin aldığı izin: kanal (`paper`, `phone`, `in_person`) ve izni veren kişinin adı (2–120). İzin bekleyen asil asil olur ve taksiti açılır (vade son katılım günü, geçtiyse bugün); yedeğin izni kaydedilir (K-370). Etkinlik izin istemiyorsa 422 `paid_activity_consent_not_required`, etkinlik günü geçtiyse 422 `paid_activity_consent_closed`, izin zaten kayıtlıysa 409 `paid_activity_consent_recorded`, katılım iptalse 409 `paid_activity_participation_cancelled`. `If-Match` ve `Idempotency-Key` zorunlu. Roller: `yonetici`, `onburo` (K-300). Modül `finance`.",
+        "description": "Personelin aldığı izin: kanal (`paper`, `phone`, `in_person`) ve izni veren kişinin adı (2–120). İzin bekleyen asil asil olur ve taksiti açılır (vade son katılım günü, geçtiyse bugün); yedeğin izni kaydedilir (K-370). Etkinlik izin istemiyorsa 422 `paid_activity_consent_not_required`, etkinlik günü geçtiyse 422 `paid_activity_consent_closed`, izin zaten kayıtlıysa 409 `paid_activity_consent_recorded`, öğrenci etkin değilse (ayrılmış ya da mezun; taksit açılmaz) 422 `paid_activity_student_inactive` (K-418), katılım iptalse 409 `paid_activity_participation_cancelled`. `If-Match` ve `Idempotency-Key` zorunlu. Roller: `yonetici`, `onburo` (K-300). Modül `finance`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -210706,6 +210713,373 @@
                         "refundBankAccountId",
                         "refundBankAccountLabel",
                         "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/paid-activity-participants/withdrawn-leftovers": {
+      "get": {
+        "operationId": "listWithdrawnPaidActivityLeftovers",
+        "summary": "Ayrılıştan kalan yedek ve izin bekleyen katılımlar",
+        "tags": [
+          "finance-paid-activities"
+        ],
+        "description": "Ayrılmış (bugün etkin olmayan) öğrencinin iptal edilmemiş etkinlikteki yedek ve izin bekleyen katılımları; etkinlik günü öğrencinin son ayrılış günü ya da sonra (K-419). Bu satırları bugünkü ayrılış kapatır (K-395, K-418); liste ON-346 öncesi ayrılışlardan kalanları gösterir. Etkinlik gününe, sonra öğrenci adına göre; yalnız kurumun kayıtları. Rol: `yonetici` (K-300). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "description": "Katılım kimliği"
+                          },
+                          "activityId": {
+                            "type": "string"
+                          },
+                          "activityName": {
+                            "type": "string"
+                          },
+                          "activityDate": {
+                            "type": "string",
+                            "description": "Etkinlik günü (YYYY-MM-DD)"
+                          },
+                          "studentId": {
+                            "type": "string"
+                          },
+                          "studentName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "waitlisted",
+                              "awaiting_consent"
+                            ],
+                            "description": "Yedek ya da izin bekleyen"
+                          },
+                          "withdrawalDate": {
+                            "type": "string",
+                            "description": "Öğrencinin son ayrılış günü (YYYY-MM-DD)"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "activityId",
+                          "activityName",
+                          "activityDate",
+                          "studentId",
+                          "studentName",
+                          "status",
+                          "withdrawalDate",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/paid-activity-participants/withdrawn-leftovers/cancel": {
+      "post": {
+        "operationId": "cancelWithdrawnPaidActivityLeftovers",
+        "summary": "Ayrılıştan kalan katılımları parasız iptal et",
+        "tags": [
+          "finance-paid-activities"
+        ],
+        "description": "Yöneticinin seçtiği (1–100) kalan katılımlar tek işlemde parasız iptal edilir: iptal türü katılımcı, iptal günü bugün, para ve taksit etkisi yok; denetim `paid_activity.participant_cancel` gerekçe kodu `student_withdrawal` (K-419). İzin bekleyenin boşalttığı yere sıradaki etkin yedek aynı işlemde geçer (K-369, K-396). Kurumda olmayan katılım 404 (hiçbiri iptal edilmez), iptal edilmiş katılım 409 `paid_activity_participation_cancelled`, kalan katılım ölçütüne uymayan 422 `paid_activity_leftover_not_eligible`. `Idempotency-Key` zorunlu. Rol: `yonetici` (K-300). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "participantIds": {
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    }
+                  }
+                },
+                "required": [
+                  "participantIds"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "cancelledIds": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Parasız iptal edilen katılımlar"
+                        },
+                        "promotedCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Boşalan yere asile geçen yedek"
+                        }
+                      },
+                      "required": [
+                        "cancelledIds",
+                        "promotedCount"
                       ],
                       "additionalProperties": false
                     }

@@ -195,6 +195,9 @@ const FinanceStaffRetentionSection = lazy(async () => ({
 const FinanceStaffOnboardingSection = lazy(async () => ({
   default: (await import('./FinanceStaffOnboardingSection.tsx')).FinanceStaffOnboardingSection,
 }))
+const FinanceStaffingPlanSection = lazy(async () => ({
+  default: (await import('./FinanceStaffingPlanSection.tsx')).FinanceStaffingPlanSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -259,6 +262,7 @@ const VIEWS = {
   staffSeparations: { label: 'İşten ayrılış', param: 'isten-ayrilis' },
   staffRetention: { label: 'Özlük saklama ve imha', param: 'ozluk-imha' },
   staffOnboarding: { label: 'İşe başlama', param: 'ise-baslama' },
+  staffingPlan: { label: 'Kadro planı', param: 'kadro-plani' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -311,6 +315,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * İşten ayrılış (DOM-FIN-118) yalnız yöneticidedir; dosya avans, icra ve izin bilgisi taşır (K-403).
  * Özlük saklama ve imha (DOM-FIN-122) yalnız yöneticidedir; imha geri alınamaz (K-417).
  * İşe başlama (DOM-FIN-121) yalnız yöneticidedir; aday verisi ve ücret önerisi taşır (K-412).
+ * Kadro planı (DOM-FIN-126) yalnız yöneticidedir; ücret türünden kapasite hesaplar (K-434).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -326,6 +331,7 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'severance' ||
       value === 'freeTuition' ||
       value === 'staffOnboarding' ||
+      value === 'staffingPlan' ||
       value === 'staffRetention' ||
       value === 'staffSeparations' ||
       value === 'hrReports' ||
@@ -549,6 +555,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'staffSeparations' ? <FinanceStaffSeparationsSection /> : null}
         {tab === 'staffRetention' ? <FinanceStaffRetentionSection /> : null}
         {tab === 'staffOnboarding' ? <FinanceStaffOnboardingSection /> : null}
+        {tab === 'staffingPlan' ? <FinanceStaffingPlanSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

@@ -208,6 +208,11 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // ikinci atamayı açmaz (routes/finance-professional-development.ts; DOM-FIN-125, ON-214).
   'POST /api/v1/finance/professional-development',
   'POST /api/v1/finance/professional-development/{programId}/enrollments',
+  // Organizasyon birimi, pozisyonu ve ataması; çift tıklama ikinci birimi, pozisyonu ya da atamayı
+  // açmaz (routes/finance-org-chart.ts; DOM-FIN-129, ON-187).
+  'POST /api/v1/finance/org-units',
+  'POST /api/v1/finance/org-positions',
+  'POST /api/v1/finance/org-assignments',
 ]
 // Onur: kayıt ve finans sonu
 

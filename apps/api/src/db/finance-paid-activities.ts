@@ -29,6 +29,7 @@ import { paidActivities, paidActivityParticipants } from './schema/finance-paid-
 import { invoices } from './schema/invoices.ts'
 import { bankAccounts, paymentAllocations, payments } from './schema/payments.ts'
 import { records } from './schema/records.ts'
+import { studentWithdrawals } from './schema/withdrawals.ts'
 import type { StoredDayRefund } from './withdrawals.ts'
 
 /**
@@ -910,4 +911,128 @@ export async function withdrawalParticipations(
       ),
     )
     .orderBy(asc(paidActivities.activityDate), asc(paidActivityParticipants.id))
+}
+
+/** Öğrenci kurumda etkin mi (K-396, K-418); kaydı yoksa `false`. İzin kaydı taksit açmadan önce. */
+export async function isStudentActive(
+  db: Database,
+  institutionId: string,
+  studentId: string,
+): Promise<boolean> {
+  const [row] = await db
+    .select({ active: studentActive })
+    .from(records)
+    .where(
+      and(
+        eq(records.institutionId, institutionId),
+        eq(records.collection, 'students'),
+        eq(records.id, studentId),
+      ),
+    )
+    .limit(1)
+  return row?.active === true
+}
+
+// --- Ayrılıştan kalan katılımlar (K-419) ---------------------------------------------------------
+
+/** Öğrencinin kurumdaki son ayrılış günü (`student_withdrawals`); ayrılış yoksa boş. */
+const lastWithdrawalDate = sql<
+  string | null
+>`(select max(${studentWithdrawals.withdrawalDate})::text
+  from ${studentWithdrawals}
+  where ${studentWithdrawals.institutionId} = ${paidActivityParticipants.institutionId}
+    and ${studentWithdrawals.studentId} = ${paidActivityParticipants.studentId}
+    and ${studentWithdrawals.archivedAt} is null)`
+
+const ACTIVITY_JOIN = and(
+  eq(paidActivities.institutionId, paidActivityParticipants.institutionId),
+  eq(paidActivities.id, paidActivityParticipants.activityId),
+  isNull(paidActivities.archivedAt),
+)
+
+const LEFTOVER_COLUMNS = {
+  id: paidActivityParticipants.id,
+  activityId: paidActivityParticipants.activityId,
+  studentId: paidActivityParticipants.studentId,
+  status: sql<ParticipationStatus>`${paidActivityParticipants.status}`,
+  activityDate: paidActivities.activityDate,
+  activityStatus: sql<PaidActivityStatus>`${paidActivities.status}`,
+  studentActive,
+  withdrawalDate: lastWithdrawalDate,
+}
+
+/** Ayrılıştan kalan katılımın listedeki satırı (K-419). */
+export interface WithdrawnLeftoverRow {
+  id: string
+  activityId: string
+  activityName: string
+  activityDate: string
+  studentId: string
+  studentName: string | null
+  status: 'waitlisted' | 'awaiting_consent'
+  withdrawalDate: string
+  version: number
+}
+
+/**
+ * Ayrılıştan kalan katılımlar (K-419; `isWithdrawnLeftover` ile aynı ölçüt): taksitsiz (yedek,
+ * izin bekleyen), etkinlik iptal edilmemiş, öğrenci bugün etkin değil ve etkinlik günü son ayrılış
+ * günü ya da sonra. Etkinlik gününe, sonra öğrenci adına göre.
+ */
+export async function listWithdrawnLeftovers(
+  db: Database,
+  institutionId: string,
+  query: { page: number; pageSize: number },
+): Promise<{ items: WithdrawnLeftoverRow[]; total: number }> {
+  const where = and(
+    liveParticipant(institutionId),
+    inArray(paidActivityParticipants.status, ['waitlisted', 'awaiting_consent']),
+    ne(paidActivities.status, 'cancelled'),
+    sql`not ${studentActive}`,
+    sql`${paidActivities.activityDate} >= ${lastWithdrawalDate}::date`,
+  )
+  const [totalRow] = await db
+    .select({ total: count() })
+    .from(paidActivityParticipants)
+    .innerJoin(paidActivities, ACTIVITY_JOIN)
+    .leftJoin(records, STUDENT_JOIN)
+    .where(where)
+  const rows = await db
+    .select({
+      id: paidActivityParticipants.id,
+      activityId: paidActivityParticipants.activityId,
+      activityName: paidActivities.name,
+      activityDate: paidActivities.activityDate,
+      studentId: paidActivityParticipants.studentId,
+      studentName,
+      status: sql<'waitlisted' | 'awaiting_consent'>`${paidActivityParticipants.status}`,
+      withdrawalDate: sql<string>`${lastWithdrawalDate}`,
+      version: paidActivityParticipants.version,
+    })
+    .from(paidActivityParticipants)
+    .innerJoin(paidActivities, ACTIVITY_JOIN)
+    .leftJoin(records, STUDENT_JOIN)
+    .where(where)
+    .orderBy(asc(paidActivities.activityDate), asc(studentName), asc(paidActivityParticipants.id))
+    .limit(query.pageSize)
+    .offset((query.page - 1) * query.pageSize)
+  return { items: rows, total: totalRow?.total ?? 0 }
+}
+
+/**
+ * Kimlikleri verilen katılımların kalan katılım ölçütü alanları (K-419); kurumda olmayan kimlik
+ * dönmez. Kurum kilidi altında yeniden okunur.
+ */
+export async function withdrawnLeftoverCandidates(
+  db: Database,
+  institutionId: string,
+  ids: readonly string[],
+) {
+  if (ids.length === 0) return []
+  return db
+    .select(LEFTOVER_COLUMNS)
+    .from(paidActivityParticipants)
+    .innerJoin(paidActivities, ACTIVITY_JOIN)
+    .leftJoin(records, STUDENT_JOIN)
+    .where(and(liveParticipant(institutionId), inArray(paidActivityParticipants.id, [...ids])))
 }

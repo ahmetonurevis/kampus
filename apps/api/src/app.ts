@@ -60,8 +60,11 @@ import { registerFinanceMaintenanceRequestRoutes } from './routes/finance-mainte
 import { registerFinanceMedicalReportRoutes } from './routes/finance-medical-reports.ts'
 import { registerFinancePayRateRoutes } from './routes/finance-pay-rates.ts'
 import { registerFinanceStaffLeaveRoutes } from './routes/finance-staff-leave.ts'
+import { registerFinanceLeaveCalendarRoutes } from './routes/finance-leave-calendar.ts'
 import { registerFinanceLeaveRequestRoutes } from './routes/finance-leave-requests.ts'
 import { registerFinanceStaffDocumentRoutes } from './routes/finance-staff-documents.ts'
+import { registerFinanceStaffRetentionRoutes } from './routes/finance-staff-retention.ts'
+import { registerFinanceStaffOnboardingRoutes } from './routes/finance-staff-onboarding.ts'
 import { registerFinanceSeveranceRoutes } from './routes/finance-severance.ts'
 import { registerFinancePayrollParameterRoutes } from './routes/finance-payroll-parameters.ts'
 import { registerFinanceStaffDeductionRoutes } from './routes/finance-staff-deductions.ts'
@@ -590,6 +593,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinancePayRateRoutes(app)
   registerFinanceStaffLeaveRoutes(app)
   registerFinanceLeaveRequestRoutes(app)
+  registerFinanceLeaveCalendarRoutes(app)
   registerFinancePaidActivityRoutes(app)
   registerEnrollmentAlumniDocumentRoutes(app)
   registerFinanceStaffDeductionRoutes(app)
@@ -607,6 +611,8 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceHrReportRoutes(app)
   registerFinanceLessonHourApprovalRoutes(app)
   registerFinanceStaffSeparationRoutes(app)
+  registerFinanceStaffRetentionRoutes(app)
+  registerFinanceStaffOnboardingRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

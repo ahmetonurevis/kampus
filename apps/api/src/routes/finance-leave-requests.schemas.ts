@@ -12,6 +12,7 @@ import {
 } from '@kampus/school-core/lib/finance-staff-leave.ts'
 
 import { dataResponse, pageMetaSchema, pageQuerySchema } from './common.schemas.ts'
+import { leaveConflictSchema } from './finance-leave-calendar.schemas.ts'
 
 /** İzin talebi şemaları (DOM-FIN-116; ON-182). Yalnız yöneticiye döner. */
 
@@ -93,6 +94,11 @@ export const leaveRequestResponse = dataResponse(
         'Bekleyen talepte onaylanırsa kalacak yıllık izin (eksi avans izindir); yıllıktan düşmeyen türde ya da karara bağlanmış talepte boş',
       ),
     ownTeacherId: z.string().nullable().describe('Personelin bağlı öğretmen kaydı'),
+    conflicts: z
+      .array(leaveConflictSchema)
+      .describe(
+        'Çakışma uyarıları; kapanmış talepte boş (DOM-FIN-123, K-422; engel değildir): aynı branşta eşzamanlı izin, sınav haftası, yedeği izinli ders',
+      ),
     lessons: z.array(lessonSchema).describe('Etkilenen dersler, başlangıca göre'),
     teachers: z
       .array(teacherSchema)
@@ -108,6 +114,11 @@ export const leaveRequestPreviewResponse = dataResponse(
     ownTeacherId: z.string().nullable(),
     lessonCount: z.number().int().describe('Aralıktaki etkilenen ders sayısı'),
     lessonLimit: z.number().int().describe('Bir talebe bağlanabilecek en çok ders'),
+    conflicts: z
+      .array(leaveConflictSchema)
+      .describe(
+        'Çakışma uyarıları (DOM-FIN-123, K-422; engel değildir): aynı branşta eşzamanlı izin, sınav haftası; yedek henüz seçilmediği için yedek uyarısı yok',
+      ),
     lessons: z.array(lessonSchema).describe('Etkilenen dersler (en çok `lessonLimit`)'),
     teachers: z.array(teacherSchema),
     deductsFromAnnual: z

@@ -5,7 +5,8 @@ import { expectNoHorizontalOverflow } from './support/ui.ts'
 // testlerindedir (`tests/finance-leave-requests.test.ts`, `apps/api/test/finance-leave-requests.test.ts`);
 // burada yönetici öğretmen adına evlilik izni talebi açar, izin aralığındaki dersi ders
 // programından görür ve aynı saatte dersi olan öğretmeni uyarıyla yedek seçer, talebi onaylar;
-// onay kullanılmış izne yazılır ve kayıt orada iptal edilemez. Ön büro sekmeyi görmez. Tarihler
+// onay kullanılmış izne yazılır ve kayıt orada iptal edilemez. Ön büro sekmede yalnız izin
+// takvimini görür (DOM-FIN-123, ON-183); talep açamaz. Tarihler
 // İstanbul gününe göredir: izin üç hafta sonra başlar (seed ders programı iki haftalıktır).
 
 const ADMIN = '/yonetici/finans'
@@ -34,7 +35,7 @@ const lesson = (id: string, classId: string, teacherId: string, subjectId: strin
 })
 
 test.describe('DOM-FIN-116: izin talebi ve onayı', () => {
-  test('DOM-FIN-116: yönetici öğretmen adına talep açar, derse yedek seçer ve onaylar; onay izin kaydına yazılır; ön büro sekmeyi görmez', async ({
+  test('DOM-FIN-116: yönetici öğretmen adına talep açar, derse yedek seçer ve onaylar; onay izin kaydına yazılır; ön büro talep açamaz', async ({
     loginAs,
     tenant,
   }) => {
@@ -112,10 +113,13 @@ test.describe('DOM-FIN-116: izin talebi ve onayı', () => {
     const desk = await loginAs(school.user('onburo'))
     await desk.goto(`${DESK}?gorunum=izin-talep`)
     const tabs = desk.getByRole('toolbar', { name: 'Finans görünümü' })
-    await expect(tabs.getByRole('button', { name: 'Taksitler' })).toHaveAttribute(
+    await expect(tabs.getByRole('button', { name: 'İzin talepleri' })).toHaveAttribute(
       'aria-pressed',
       'true',
     )
-    await expect(tabs.getByRole('button', { name: 'İzin talepleri' })).toHaveCount(0)
+    const deskSection = desk.getByRole('region', { name: 'Personel izin takvimi' })
+    await expect(deskSection.getByRole('heading', { name: /İzin takvimi/ })).toBeVisible()
+    await expect(deskSection.getByRole('button', { name: 'Yeni talep' })).toHaveCount(0)
+    await expect(deskSection.getByRole('button', { name: 'Takvim ayarı' })).toHaveCount(0)
   })
 })

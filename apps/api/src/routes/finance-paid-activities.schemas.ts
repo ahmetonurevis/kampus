@@ -151,7 +151,36 @@ export const consentSyncResponse = dataResponse(
     activity: paidActivitySchema,
     grantedCount: z.number().int(),
     withdrawnCount: z.number().int(),
+    inactiveCancelledCount: z
+      .number()
+      .int()
+      .describe(
+        'Etkin olmayan (ayrılmış ya da mezun) öğrencinin parasız iptal edilen yedek ve izin bekleyen katılımı (K-418)',
+      ),
     promotedCount: z.number().int(),
+  }),
+)
+
+export const withdrawnLeftoverSchema = z.object({
+  id: z.string().describe('Katılım kimliği'),
+  activityId: z.string(),
+  activityName: z.string(),
+  activityDate: z.string().describe('Etkinlik günü (YYYY-MM-DD)'),
+  studentId: z.string(),
+  studentName: z.string().nullable(),
+  status: z.enum(['waitlisted', 'awaiting_consent']).describe('Yedek ya da izin bekleyen'),
+  withdrawalDate: z.string().describe('Öğrencinin son ayrılış günü (YYYY-MM-DD)'),
+  version: z.number().int(),
+})
+export const withdrawnLeftoverListResponse = z.object({
+  data: z.array(withdrawnLeftoverSchema),
+  meta: pageMetaSchema,
+})
+export const withdrawnLeftoverQuery = z.strictObject({ ...pageQuerySchema.shape })
+export const withdrawnLeftoverCancelResponse = dataResponse(
+  z.object({
+    cancelledIds: z.array(z.string()).describe('Parasız iptal edilen katılımlar'),
+    promotedCount: z.number().int().describe('Boşalan yere asile geçen yedek'),
   }),
 )
 

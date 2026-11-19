@@ -127,6 +127,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/paid-activities/{activityId}/consents/sync',
   'POST /api/v1/finance/paid-activity-participants/{participantId}/consent',
   'POST /api/v1/finance/paid-activity-participants/{participantId}/consent-withdraw',
+  // Ayrılıştan kalan katılımların toplu iptali yedek geçirip taksit açar; çift gönderim ikinci
+  // denetim izi yazmaz (routes/finance-paid-activities.ts; DOM-FIN-112, ON-347).
+  'POST /api/v1/finance/paid-activity-participants/withdrawn-leftovers/cancel',
   // Mezun belge talebi ücreti dondurur ve dosya bağlar; çift tıklama ikinci talep açmaz
   // (routes/enrollment-alumni-documents.ts; DOM-KAY-044, ON-260).
   'POST /api/v1/prospects/alumni-document-requests',
@@ -169,6 +172,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // Gezi planı taslağı numaralı plan açar; çift tıklama ikinci planı açmaz
   // (routes/finance-trip-plans.ts; DOM-FIN-111, ON-155).
   'POST /api/v1/finance/trip-plans',
+  // İş teklifi açılışı; çift tıklama ikinci teklifi açmaz
+  // (routes/finance-staff-onboarding.ts; DOM-FIN-121, ON-179).
+  'POST /api/v1/finance/job-offers',
   // Bordro hesabının kaydı eski hesabı arşivler ve yeni revizyon yazar; çift tıklama ikinci
   // revizyonu açmaz (routes/finance-payroll-runs.ts; DOM-FIN-115, ON-198).
   'POST /api/v1/finance/payroll-runs/{month}/calculate',
@@ -183,6 +189,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // ikinci dosyayı açmaz (routes/finance-staff-separations.ts; DOM-FIN-118, ON-180).
   'POST /api/v1/finance/staff-separations',
   'POST /api/v1/finance/staff-separations/{separationId}/complete',
+  // Özlük verisi imhası geri alınamaz; çift tıklama ikinci imha kaydı yazmaz
+  // (routes/finance-staff-retention.ts; DOM-FIN-122, ON-176).
+  'POST /api/v1/finance/staff-data-destructions',
 ]
 // Onur: kayıt ve finans sonu
 

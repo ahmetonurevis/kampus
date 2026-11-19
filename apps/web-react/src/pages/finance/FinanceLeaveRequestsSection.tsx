@@ -33,6 +33,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
+import { LineTabs } from '@/components/LineTabs.tsx'
 import { useDebouncedValue } from '@/hooks/use-debounced-value.ts'
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
 import { useListState } from '@/hooks/use-list-state.ts'
@@ -40,6 +41,8 @@ import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { notify } from '@/lib/notify.ts'
 import { RootError } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
+import { FinanceLeaveCalendar } from './FinanceLeaveCalendar.tsx'
+import { conflictTexts, formConflicts } from './finance-leave-calendar-view.ts'
 import { roleLabel } from './finance-fixed-asset-assignment-forms.ts'
 import {
   balanceText,
@@ -84,13 +87,46 @@ type Row = {
   status: LeaveRequestStatus
 }
 
+type SectionView = 'list' | 'calendar'
+const SECTION_VIEWS = [
+  { value: 'list', label: 'Talepler' },
+  { value: 'calendar', label: 'Takvim' },
+] as const satisfies readonly { value: SectionView; label: string }[]
+
 /**
- * İzin talepleri (DOM-FIN-116; ON-182): Finans "İzin talepleri" sekmesi, yalnız yönetici. Yönetici
- * talebi personel adına açar (personel self-servisi ON-189); onay bekleyen talepler listenin
- * başındadır. Panelde talep, kalan yıllık izin, etkilenen dersler ve yedek öğretmen seçimi, onay
- * (yetersiz bakiyede avans izin işareti), gerekçeli ret ve iptal bulunur.
+ * İzin talepleri (DOM-FIN-116, DOM-FIN-123; ON-182, ON-183): Finans "İzin talepleri" sekmesi.
+ * Yönetici talebi personel adına açar (personel self-servisi ON-189); onay bekleyen talepler
+ * listenin başındadır. Panelde talep, kalan yıllık izin, çakışma uyarıları, etkilenen dersler ve
+ * yedek öğretmen seçimi, onay (yetersiz bakiyede avans izin işareti), gerekçeli ret ve iptal
+ * bulunur. "Takvim" görünümü izinleri ay ya da haftada gösterir; ön büro yalnız takvimi okur
+ * (onaylı izinler, türsüz; K-420).
  */
-export function FinanceLeaveRequestsSection() {
+export function FinanceLeaveRequestsSection({ canManage }: { canManage: boolean }) {
+  const [view, setView] = useState<SectionView>('list')
+  if (!canManage)
+    return (
+      <section
+        aria-labelledby="izin-talepleri"
+        className="panel overflow-hidden rounded-card border bg-surface"
+      >
+        <header className="panel-heading px-6 pt-6 pb-2">
+          <h2 id="izin-talepleri" className="text-lg font-semibold">
+            Personel izin takvimi
+          </h2>
+        </header>
+        <FinanceLeaveCalendar canManage={false} />
+      </section>
+    )
+  return <ManagerSection view={view} onView={setView} />
+}
+
+function ManagerSection({
+  view,
+  onView,
+}: {
+  view: SectionView
+  onView: (view: SectionView) => void
+}) {
   const list = useListState('izin-talepleri', { urlPrefix: 'talep_' })
   const search = useDebouncedValue(list.state.query).trim()
   const status = text(list.state.filters.status)
@@ -162,25 +198,36 @@ export function FinanceLeaveRequestsSection() {
         </div>
         <Button onClick={() => setCreating(true)}>Yeni talep</Button>
       </header>
-      <ServerDataTable
-        list={list}
-        rows={rows}
-        total={requests.data?.meta.total ?? 0}
-        sortable={NO_SORT}
-        columns={columns}
-        filters={FILTERS}
-        mobileColumns={MOBILE}
-        caption="İzin talepleri"
-        empty="Henüz izin talebi yok."
-        emptyFiltered="Bu seçimle eşleşen talep yok."
-        loading={requests.isPending}
-        fetching={requests.isFetching && !requests.isPending}
-        error={
-          requests.error ? (
-            <QueryError error={requests.error} onRetry={() => void requests.refetch()} />
-          ) : undefined
-        }
-      />
+      <div className="px-6 pb-2">
+        <LineTabs
+          label="İzin talepleri görünümü"
+          value={view}
+          options={SECTION_VIEWS}
+          onChange={onView}
+        />
+      </div>
+      {view === 'calendar' ? <FinanceLeaveCalendar canManage /> : null}
+      {view === 'list' ? (
+        <ServerDataTable
+          list={list}
+          rows={rows}
+          total={requests.data?.meta.total ?? 0}
+          sortable={NO_SORT}
+          columns={columns}
+          filters={FILTERS}
+          mobileColumns={MOBILE}
+          caption="İzin talepleri"
+          empty="Henüz izin talebi yok."
+          emptyFiltered="Bu seçimle eşleşen talep yok."
+          loading={requests.isPending}
+          fetching={requests.isFetching && !requests.isPending}
+          error={
+            requests.error ? (
+              <QueryError error={requests.error} onRetry={() => void requests.refetch()} />
+            ) : undefined
+          }
+        />
+      ) : null}
       <SidePanel
         open={panel.selectedId !== ''}
         onOpenChange={(open) => (open ? undefined : panel.close())}
@@ -203,6 +250,24 @@ export function FinanceLeaveRequestsSection() {
           />
         ) : null}
       </Modal>
+    </section>
+  )
+}
+
+/** Çakışma uyarıları (DOM-FIN-123, K-422): engel değildir, bilgi olarak listelenir. */
+function ConflictList({ texts, id }: { texts: readonly string[]; id: string }) {
+  if (texts.length === 0) return null
+  return (
+    <section aria-labelledby={id} className="grid gap-1 rounded-sm border px-3 py-2 text-sm">
+      <h4 id={id} className="font-semibold">
+        Çakışma uyarıları
+      </h4>
+      <ul className="grid list-disc gap-1 pl-5">
+        {texts.map((text) => (
+          <li key={text}>{text}</li>
+        ))}
+      </ul>
+      <p className="text-muted-foreground">Uyarılar izni engellemez.</p>
     </section>
   )
 }
@@ -312,6 +377,12 @@ function RequestForm({ onDone }: { onDone: (id: string) => void }) {
   const balance = balanceText(preview.data?.data.balanceAfterDays ?? null)
   const overLimit =
     preview.data !== undefined && preview.data.data.lessonCount > preview.data.data.lessonLimit
+  const warnings =
+    preview.data === undefined
+      ? []
+      : conflictTexts(
+          formConflicts(preview.data.data.conflicts, lessons, choices, preview.data.data.teachers),
+        )
   return (
     <form
       noValidate
@@ -389,6 +460,9 @@ function RequestForm({ onDone }: { onDone: (id: string) => void }) {
             <Textarea {...control} {...form.register('description')} rows={2} disabled={busy} />
           )}
         </FormField>
+      </div>
+      <div className="sm:col-span-2">
+        <ConflictList texts={warnings} id="talep-uyarilar" />
       </div>
       <section aria-labelledby="talep-dersler" className="grid gap-2 sm:col-span-2">
         <h3 id="talep-dersler" className="text-sm font-semibold">
@@ -497,6 +571,7 @@ function RequestDetail({ requestId }: { requestId: string }) {
         ) : null}
       </dl>
       {balance === null ? null : <p className="text-sm font-medium">{balance}</p>}
+      <ConflictList texts={conflictTexts(data.conflicts)} id="talep-detay-uyarilar" />
       {open ? (
         <div className="flex flex-wrap gap-2">
           {data.status === 'pending' ? (
@@ -639,6 +714,7 @@ function ApproveForm({ data, onDone }: { data: LeaveRequestDetail; onDone: () =>
       {data.balanceAfterDays === null ? null : (
         <p className="text-sm">{balanceText(data.balanceAfterDays)}</p>
       )}
+      <ConflictList texts={conflictTexts(data.conflicts)} id="onay-uyarilar" />
       {short ? (
         <div className="flex min-h-11 items-center gap-2">
           <Checkbox

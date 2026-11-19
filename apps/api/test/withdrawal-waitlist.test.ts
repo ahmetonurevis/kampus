@@ -2,19 +2,22 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { after, before, describe, test } from 'node:test'
 
-import { and, eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 
 import { createSeed } from '@kampus/school-core/data/seed.ts'
 
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
+import { insertParticipant } from '../src/db/finance-paid-activities.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { paidActivityParticipants } from '../src/db/schema/finance-paid-activities.ts'
 import { invoices } from '../src/db/schema/invoices.ts'
+import { records } from '../src/db/schema/records.ts'
 import {
   buildTestApp,
   createInstitution,
+  createMember,
   createTestDatabase,
   FIXED_NOW,
   signInAs,
@@ -67,7 +70,7 @@ const TRIP = {
   lateRefundPercent: 50,
   lateCostCents: null,
 }
-/** Etkinlik ayrılış günü: ayrılıştan sonraki etkinlik sayılmaz, yedek katılım kalır (K-395). */
+/** Etkinlik ayrılış günü: taksitsiz katılım da ayrılışla kapanır (K-418); asil kalır (K-348). */
 const SAME_DAY = {
   ...TRIP,
   name: 'Test tiyatro',
@@ -236,6 +239,46 @@ describe('ON-346: ayrılışta yedek ve izin bekleyen etkinlik katılımları', 
       }),
     )
 
+  /**
+   * ON-346 öncesi ayrılıştan kalmış gibi: ayrılışın iptal ettiği taksitsiz katılımı canlı duruma
+   * döndürür (eski kayıt; K-419 temizliği ve K-418 denetimi için).
+   */
+  const reviveLegacy = async (participantId: string, status: 'waitlisted' | 'awaiting_consent') =>
+    db
+      .update(paidActivityParticipants)
+      .set({
+        status,
+        cancelKind: null,
+        cancelledDate: null,
+        paidCents: null,
+        retainedCents: null,
+        cancelledByUserId: null,
+      })
+      .where(eq(paidActivityParticipants.id, participantId))
+  /** Ayrılmış öğrenciye eski kayıt olarak taksitsiz katılım ekler (ON-346 öncesi). */
+  const plantLegacy = async (
+    t: { id: string; admin: { id: string } },
+    activityId: string,
+    status: 'waitlisted' | 'awaiting_consent',
+    waitlistPosition: number | null = null,
+  ) => {
+    const id = randomUUID()
+    await insertParticipant(db, t.id, {
+      id,
+      activityId,
+      studentId: FIRST_ID,
+      invoiceId: null,
+      feeCents: TRIP.feeCents,
+      joinedDate: '2026-09-30',
+      status,
+      waitlistPosition,
+      consentStatus: 'pending',
+      createdByUserId: t.admin.id,
+      now: FIXED_NOW,
+    })
+    return id
+  }
+
   test('K-395, K-369: ayrılış yedek ve izin bekleyen katılımı parasız iptal eder; boşalan yere yedek geçer', async () => {
     const t = await institution()
     // Ayrılanın asil katılımı; yerine ikinci öğrenci yedekte bekler.
@@ -321,7 +364,7 @@ describe('ON-346: ayrılışta yedek ve izin bekleyen etkinlik katılımları', 
     assert.deepEqual(firstOpen, [], 'ayrılan öğrencide açık etkinlik taksiti yok')
   })
 
-  test('K-396: ayrılış günündeki etkinlikte kalan yedek asile geçmez; toplu ekleme ayrılanı atlar', async () => {
+  test('K-418, K-396: ayrılış günündeki etkinlikte taksitsiz katılım kapanır; kalan yedek asile geçmez; toplu ekleme ayrılanı atlar', async () => {
     const t = await institution()
     const sameDay = await create(t, SAME_DAY)
     await join(t, sameDay, SECOND_ID)
@@ -329,12 +372,17 @@ describe('ON-346: ayrılışta yedek ve izin bekleyen etkinlik katılımları', 
     await join(t, sameDay, THIRD_ID)
 
     await withdraw(t)
-    // Etkinlik ayrılış günü: ayrılıştan sonra değildir, yedek katılım kalır (K-395 sınırı).
-    const kept = await rowOf(t, sameDay, FIRST_ID)
-    assert.equal(kept.id, firstWaiting.id)
-    assert.equal(kept.status, 'waitlisted')
+    // Etkinlik ayrılış günü: yedek katılım da ayrılışla parasız kapanır (K-418, K-395 sınırı).
+    const closed = await rowOf(t, sameDay, FIRST_ID)
+    assert.equal(closed.id, firstWaiting.id)
+    assert.equal(closed.status, 'cancelled')
+    assert.equal(closed.cancelledDate, TODAY)
+    // Yedeğin iptali yer boşaltmaz.
+    assert.equal((await rowOf(t, sameDay, SECOND_ID)).status, 'active')
 
-    // Yer açılınca etkin olmayan öğrencinin yedeği atlanır, sıradaki geçer (K-396).
+    // ON-346 öncesi ayrılıştan kalan satır: yer açılınca etkin olmayan öğrencinin yedeği atlanır,
+    // sıradaki geçer (K-396).
+    await reviveLegacy(firstWaiting.id as string, 'waitlisted')
     await cancel(t, await rowOf(t, sameDay, SECOND_ID))
     assert.equal((await rowOf(t, sameDay, FIRST_ID)).status, 'waitlisted')
     const third = await rowOf(t, sameDay, THIRD_ID)
@@ -362,5 +410,242 @@ describe('ON-346: ayrılışta yedek ve izin bekleyen etkinlik katılımları', 
     assert.ok(!(bulk.skippedStudentIds as string[]).includes(FIRST_ID))
     assert.ok(!(await rows(t, bulkActivity)).some((row) => row.studentId === FIRST_ID))
     assert.deepEqual(await activityInvoices(t, FIRST_ID), [])
+  })
+
+  test('K-418: ayrılış günündeki etkinlikte eski kaydın elle izni 422, taksit açılmaz', async () => {
+    const t = await institution()
+    const consent = await create(t, { ...SAME_DAY, requiresConsent: true, capacity: 2 })
+    const firstConsent = await join(t, consent, FIRST_ID)
+    assert.equal(firstConsent.status, 'awaiting_consent')
+
+    await withdraw(t)
+    // Ayrılış günündeki izin bekleyen katılım ayrılışla parasız kapanır (K-418).
+    assert.equal((await rowOf(t, consent, FIRST_ID)).status, 'cancelled')
+
+    // ON-346 öncesi ayrılıştan kalan satır: aynı gün elle izin kaydedilemez.
+    await reviveLegacy(firstConsent.id as string, 'awaiting_consent')
+    const legacy = await rowOf(t, consent, FIRST_ID)
+    const response = await call(
+      'POST',
+      `${PARTICIPANTS}/${legacy.id}/consent`,
+      t.cookie,
+      { channel: 'paper', grantorName: 'Test İzin Velisi' },
+      { 'if-match': `"${String(legacy.version)}"`, ...key() },
+    )
+    assert.equal(response.statusCode, 422, response.body)
+    assert.equal(response.json().code, 'paid_activity_student_inactive')
+    // Kayıt değişmez, ayrılan öğrenciye etkinlik taksiti açılmaz.
+    assert.deepEqual(await rowOf(t, consent, FIRST_ID), legacy)
+    assert.deepEqual(await activityInvoices(t, FIRST_ID), [])
+    // Etkin öğrencinin aynı gün izni taksit açar.
+    const second = await join(t, consent, SECOND_ID)
+    const granted = await ok(
+      await call(
+        'POST',
+        `${PARTICIPANTS}/${String(second.id)}/consent`,
+        t.cookie,
+        { channel: 'phone', grantorName: 'Test İzin Velisi' },
+        { 'if-match': `"${String(second.version)}"`, ...key() },
+      ),
+    )
+    assert.equal(granted.status, 'active')
+    assert.ok(granted.invoiceId)
+  })
+
+  test('K-418, IST-067: form eşitlemesi etkin olmayanın izin bekleyen katılımını sessizce iptal eder, taksit açmaz', async () => {
+    const t = await institution()
+    const parentCookie = async (studentId: string) =>
+      signInAs(app, await createMember(app, t.id, 'veli', [{ kind: 'child', recordId: studentId }]))
+    const form = await ok(
+      await call(
+        'POST',
+        '/api/v1/permission-forms',
+        t.cookie,
+        {
+          topic: 'trip',
+          title: 'Test tiyatro izni',
+          description: 'Tiyatro gösterisi.',
+          deadline: TODAY,
+          studentIds: [FIRST_ID, SECOND_ID],
+        },
+        key(),
+      ),
+      201,
+    )
+    const activity = await create(t, {
+      ...SAME_DAY,
+      requiresConsent: true,
+      permissionFormId: form.id,
+    })
+    const first = await join(t, activity, FIRST_ID)
+    const second = await join(t, activity, SECOND_ID)
+    assert.deepEqual([first.status, second.status], ['awaiting_consent', 'waitlisted'])
+    for (const studentId of [FIRST_ID, SECOND_ID])
+      await ok(
+        await call(
+          'POST',
+          `/api/v1/permission-forms/${String(form.id)}/decisions`,
+          await parentCookie(studentId),
+          { studentId, decision: 'approved' },
+          key(),
+        ),
+        201,
+      )
+    // Öğrenci etkinliğini yitirir (ON-346 öncesi ayrılış ya da mezuniyet; kayıt pasif).
+    await db
+      .update(records)
+      .set({ data: sql`${records.data} || '{"isActive": false}'::jsonb` })
+      .where(
+        and(
+          eq(records.institutionId, t.id),
+          eq(records.collection, 'students'),
+          eq(records.id, FIRST_ID),
+        ),
+      )
+
+    const synced = await ok(
+      await call('POST', `${ACTIVITIES}/${activity}/consents/sync`, t.cookie, undefined, key()),
+    )
+    assert.deepEqual(
+      [
+        synced.grantedCount,
+        synced.withdrawnCount,
+        synced.inactiveCancelledCount,
+        synced.promotedCount,
+      ],
+      [1, 0, 1, 1],
+    )
+    const closed = await rowOf(t, activity, FIRST_ID)
+    assert.equal(closed.status, 'cancelled')
+    assert.equal(closed.cancelKind, 'participant')
+    assert.equal(closed.consentStatus, 'pending')
+    assert.equal(closed.invoiceId, null)
+    const audit = (await auditsOf(t, closed.id)).find(
+      (item) => item.action === 'paid_activity.participant_cancel',
+    )
+    assert.equal(audit?.changes?.reason, 'student_inactive')
+    assert.deepEqual(await activityInvoices(t, FIRST_ID), [])
+    // Boşalan yere izni formdan gelen yedek geçer, taksiti açılır (K-369).
+    const promoted = await rowOf(t, activity, SECOND_ID)
+    assert.equal(promoted.status, 'active')
+    assert.equal(promoted.consentChannel, 'permission_form')
+    assert.ok(promoted.invoiceId)
+    // İkinci eşitleme bir şey değiştirmez.
+    const again = await ok(
+      await call('POST', `${ACTIVITIES}/${activity}/consents/sync`, t.cookie, undefined, key()),
+    )
+    assert.deepEqual([again.grantedCount, again.inactiveCancelledCount], [0, 0])
+  })
+
+  test('K-419: ayrılıştan kalan katılımlar listelenir ve yönetici onayıyla parasız iptal edilir; başka kurum 404', async () => {
+    const LEFTOVERS = `${PARTICIPANTS}/withdrawn-leftovers`
+    const t = await institution()
+    const other = await institution()
+    await withdraw(t)
+    await withdraw(other)
+    // ON-346 öncesi ayrılıştan kalmış satırlar: izin bekleyen (yer tutar), yedek ve ayrılış günü.
+    const consent = await create(t, { ...TRIP, requiresConsent: true })
+    const legacyConsent = await plantLegacy(t, consent, 'awaiting_consent')
+    const secondWaiting = await join(t, consent, SECOND_ID)
+    assert.equal(secondWaiting.status, 'waitlisted')
+    const waiting = await create(t, {
+      ...TRIP,
+      name: 'Test planetaryum',
+      activityDate: '2026-10-21',
+    })
+    const secondSeat = await join(t, waiting, SECOND_ID)
+    const legacyWaiting = await plantLegacy(t, waiting, 'waitlisted', 90)
+    const sameDay = await create(t, { ...SAME_DAY, requiresConsent: true })
+    const legacySameDay = await plantLegacy(t, sameDay, 'awaiting_consent')
+    // Başka kurumun kalan satırı.
+    const otherActivity = await create(other, { ...TRIP, requiresConsent: true })
+    const otherLegacy = await plantLegacy(other, otherActivity, 'awaiting_consent')
+    const otherBefore = await rows(other, otherActivity)
+
+    const listed = await call('GET', LEFTOVERS, t.cookie)
+    assert.equal(listed.statusCode, 200, listed.body)
+    const items = listed.json().data as Json[]
+    assert.deepEqual(
+      items.map((item) => [item.id, item.status, item.activityDate, item.withdrawalDate]),
+      [
+        [legacySameDay, 'awaiting_consent', TODAY, TODAY],
+        [legacyConsent, 'awaiting_consent', '2026-10-20', TODAY],
+        [legacyWaiting, 'waitlisted', '2026-10-21', TODAY],
+      ],
+    )
+    assert.equal(listed.json().meta.total, 3)
+    assert.ok(!items.some((item) => item.id === otherLegacy))
+    // Ön büro kalanları göremez ve kapatamaz.
+    const front = await signInAs(app, await createMember(app, t.id, 'onburo', []))
+    assert.equal((await call('GET', LEFTOVERS, front)).statusCode, 403)
+    const body = { participantIds: [legacyConsent, legacyWaiting, legacySameDay] }
+    assert.equal((await call('POST', `${LEFTOVERS}/cancel`, front, body, key())).statusCode, 403)
+    // Başka kurumun katılımı 404; hiçbiri iptal edilmez, B değişmez.
+    const crossed = await call(
+      'POST',
+      `${LEFTOVERS}/cancel`,
+      t.cookie,
+      { participantIds: [legacyConsent, otherLegacy] },
+      key(),
+    )
+    assert.equal(crossed.statusCode, 404, crossed.body)
+    assert.equal((await rowOf(t, consent, FIRST_ID)).status, 'awaiting_consent')
+    assert.deepEqual(await rows(other, otherActivity), otherBefore)
+    // Ölçüt dışı (etkin öğrencinin asil katılımı) 422; gövde hatası 400; anahtarsız 400.
+    const ineligible = await call(
+      'POST',
+      `${LEFTOVERS}/cancel`,
+      t.cookie,
+      { participantIds: [legacyConsent, String(secondSeat.id)] },
+      key(),
+    )
+    assert.equal(ineligible.statusCode, 422, ineligible.body)
+    assert.equal(ineligible.json().code, 'paid_activity_leftover_not_eligible')
+    assert.equal(
+      (await call('POST', `${LEFTOVERS}/cancel`, t.cookie, { participantIds: [] }, key()))
+        .statusCode,
+      400,
+    )
+    assert.equal((await call('POST', `${LEFTOVERS}/cancel`, t.cookie, body)).statusCode, 400)
+    assert.equal((await rowOf(t, consent, FIRST_ID)).status, 'awaiting_consent')
+
+    const idempotency = key()
+    const done = await ok(await call('POST', `${LEFTOVERS}/cancel`, t.cookie, body, idempotency))
+    assert.deepEqual(done.cancelledIds, body.participantIds)
+    assert.equal(done.promotedCount, 1)
+    for (const [activityId, participantId] of [
+      [consent, legacyConsent],
+      [waiting, legacyWaiting],
+      [sameDay, legacySameDay],
+    ] as const) {
+      const row = await rowOf(t, activityId, FIRST_ID)
+      assert.equal(row.id, participantId)
+      assert.equal(row.status, 'cancelled')
+      assert.equal(row.cancelKind, 'participant')
+      assert.equal(row.cancelledDate, TODAY)
+      assert.deepEqual([row.paidCents, row.retainedCents, row.refundCents], [0, 0, 0])
+      assert.equal(row.invoiceId, null)
+      const audit = (await auditsOf(t, participantId)).find(
+        (item) => item.action === 'paid_activity.participant_cancel',
+      )
+      assert.equal(audit?.changes?.reason, 'student_withdrawal')
+    }
+    assert.deepEqual(await activityInvoices(t, FIRST_ID), [])
+    // İzin bekleyenin boşalttığı yere yedek izin bekleyen olarak geçer, taksit izinle açılır.
+    const promoted = await rowOf(t, consent, SECOND_ID)
+    assert.equal(promoted.status, 'awaiting_consent')
+    assert.equal(promoted.invoiceId, null)
+    // Yedeğin iptali yer boşaltmaz; asil yerinde.
+    assert.equal((await rowOf(t, waiting, SECOND_ID)).status, 'active')
+    // Aynı anahtarla tekrar aynı yanıt; yeni anahtarla 409, liste boş, B değişmez.
+    const replay = await call('POST', `${LEFTOVERS}/cancel`, t.cookie, body, idempotency)
+    assert.equal(replay.statusCode, 200, replay.body)
+    assert.equal(replay.headers['idempotent-replayed'], 'true')
+    const repeated = await call('POST', `${LEFTOVERS}/cancel`, t.cookie, body, key())
+    assert.equal(repeated.statusCode, 409, repeated.body)
+    assert.equal(repeated.json().code, 'paid_activity_participation_cancelled')
+    assert.equal((await call('GET', LEFTOVERS, t.cookie)).json().meta.total, 0)
+    assert.deepEqual(await rows(other, otherActivity), otherBefore)
+    assert.equal((await call('GET', LEFTOVERS, other.cookie)).json().meta.total, 1)
   })
 })

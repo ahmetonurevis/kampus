@@ -30,7 +30,6 @@ import { studentFreeTuitionCoverage } from '../db/finance-free-tuition.ts'
 import { insertPackageHourEntry, loadWithdrawalPackageSales } from '../db/finance-packages.ts'
 import {
   findPaidActivity,
-  markParticipantCancelled,
   openParticipants,
   withdrawalParticipations,
   type OpenParticipant,
@@ -52,10 +51,10 @@ import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { environment, type CommandOptions } from './commands.ts'
 import {
-  cancelFields,
   promoteWaitlist,
   promotionPreview,
   writePromotions,
+  writeReasonedCancel,
 } from './finance-paid-activities.ts'
 import { applyWithdrawalToReferralRewards } from './finance-referrals.ts'
 import { archiveCancelledRenewalAwards } from './finance-scholarships.ts'
@@ -252,26 +251,8 @@ async function cancelActivityParticipations(
   ctx: ServiceContext,
   cancels: readonly WithdrawalActivityCancel[],
 ): Promise<void> {
-  for (const { participantId, plan } of cancels) {
-    const saved = await markParticipantCancelled(tx, ctx.institutionId, {
-      id: participantId,
-      expectedVersion: null,
-      ...plan,
-      userId: ctx.actor.userId,
-      now: ctx.now,
-    })
-    if (!saved) throw new ConflictError()
-    await tx.insert(auditLog).values({
-      institutionId: ctx.institutionId,
-      actorUserId: ctx.actor.userId,
-      actorRole: ctx.actor.role,
-      action: 'paid_activity.participant_cancel',
-      entityType: 'paid_activity_participants',
-      entityId: participantId,
-      changes: { fields: cancelFields(plan), reason: WITHDRAWAL_CANCEL_REASON },
-      createdAt: ctx.now,
-    })
-  }
+  for (const { participantId, plan } of cancels)
+    await writeReasonedCancel(tx, ctx, participantId, plan, WITHDRAWAL_CANCEL_REASON)
 }
 
 interface SeatContext {

@@ -523,7 +523,7 @@ test('K-348, K-349: ayrılış gerçekleşmemiş katılımı aynı işlemde ipta
   assert.equal(held?.openCents, 200_000)
 })
 
-test('K-395, DOM-FIN-112: yedek ve izin bekleyen katılım ayrılıştan sonraki etkinlikte parasız iptal edilir', () => {
+test('K-395, K-418, DOM-FIN-112: yedek ve izin bekleyen katılım ayrılış günü ve sonraki etkinlikte parasız iptal edilir', () => {
   const fx = fixture()
   fx.state.invoices.push(fx.invoice('a-1', 7, 300_000, 'activity'))
   const seatless = (
@@ -540,8 +540,10 @@ test('K-395, DOM-FIN-112: yedek ve izin bekleyen katılım ayrılıştan sonraki
     participation(fx.studentId),
     seatless('pp-wait', 'waitlisted', '2026-10-20'),
     seatless('pp-consent', 'awaiting_consent', '2026-10-06'),
-    // Sınır: etkinlik ayrılış günü (2026-10-05) ya da önce; katılım değişmez.
+    // Sınır (K-418): etkinlik ayrılış günü (2026-10-05) olan taksitsiz katılım da kapanır; önceki
+    // günün etkinliği değişmez.
     seatless('pp-same', 'waitlisted', '2026-10-05'),
+    seatless('pp-same-consent', 'awaiting_consent', '2026-10-05'),
     seatless('pp-past', 'awaiting_consent', '2026-10-01'),
   ]
   const plain = withdrawStudentWithFollowups(
@@ -571,6 +573,8 @@ test('K-395, DOM-FIN-112: yedek ve izin bekleyen katılım ayrılıştan sonraki
   assert.deepEqual(
     result.activityCancels.map((item) => [item.participantId, item.activityId, item.freesSeat]),
     [
+      ['pp-same', 'act-pp-same', false],
+      ['pp-same-consent', 'act-pp-same-consent', true],
       ['pp-consent', 'act-pp-consent', true],
       ['pp-1', 'act-1', true],
       ['pp-wait', 'act-pp-wait', false],

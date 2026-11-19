@@ -3051,6 +3051,116 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: özlük verisi saklama ve imha (ON-176; DOM-FIN-122).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/staff-retention-policies', 'get(POLICY, a.admin)'],
+        [
+          'gövde',
+          'PATCH /api/v1/finance/staff-retention-policies',
+          "call('PATCH', POLICY, a.admin",
+        ],
+        ['liste', 'GET /api/v1/finance/staff-retention-candidates', 'listOf(a.admin, CANDIDATES)'],
+        ['liste', 'GET /api/v1/finance/staff-data-destructions', 'listOf(a.admin, DESTRUCTIONS)'],
+        ['gövde', 'POST /api/v1/finance/staff-data-destructions', 'institutionId: b.id'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)('finance-staff-retention.test.ts', 'başka kurum 404 ve B değişmez', marker),
+    ]),
+  ),
+  // Onur: iş teklifi ve işe başlama listesi (ON-179; DOM-FIN-121).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/staff-onboarding-settings', 'get(SETTINGS, a.admin)'],
+        [
+          'gövde',
+          'PATCH /api/v1/finance/staff-onboarding-settings',
+          "call('PATCH', SETTINGS, a.admin",
+        ],
+        ['liste', 'GET /api/v1/finance/staff-onboarding-staff', 'get(STAFF, a.admin)'],
+        ['liste', 'GET /api/v1/finance/job-offers', 'listOf(a.admin)'],
+        ['gövde', 'POST /api/v1/finance/job-offers', 'institutionId: b.id'],
+        ['kayıt', 'GET /api/v1/finance/job-offers/:offerId', 'get(bUrl, a.admin)'],
+        ['kayıt', 'GET /api/v1/finance/job-offers/:offerId/letter', '/letter`, a.admin'],
+        ['kayıt', 'PATCH /api/v1/finance/job-offers/:offerId', "call('PATCH', bUrl, a.admin"],
+        ['kayıt', 'POST /api/v1/finance/job-offers/:offerId/send', 'act(a.admin, bOffer, verb'],
+        ['kayıt', 'POST /api/v1/finance/job-offers/:offerId/accept', 'act(a.admin, bOffer, verb'],
+        ['kayıt', 'POST /api/v1/finance/job-offers/:offerId/reject', 'act(a.admin, bOffer, verb'],
+        ['kayıt', 'POST /api/v1/finance/job-offers/:offerId/withdraw', 'act(a.admin, bOffer, verb'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/job-offers/:offerId/link-account',
+          'act(a.admin, bOffer, verb',
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/job-offers/:offerId/steps/:stepId',
+          'stepUrl(bOffer, bStep),',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/job-offers/:offerId/steps/:stepId/complete',
+          'complete(a.admin, bOffer, bStep)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/job-offers/:offerId/steps/:stepId/reopen',
+          "stepUrl(bOffer, bStep, 'reopen')",
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-staff-onboarding.test.ts',
+        'DOM-FIN-121: başka kurumun teklifi ve personeli 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: ayrılıştan kalan gezi katılımları (ON-347; DOM-FIN-112, K-419).
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'liste',
+          'GET /api/v1/finance/paid-activity-participants/withdrawn-leftovers',
+          "call('GET', LEFTOVERS, t.cookie)",
+        ],
+        [
+          'gövde',
+          'POST /api/v1/finance/paid-activity-participants/withdrawn-leftovers/cancel',
+          'participantIds: [legacyConsent, otherLegacy]',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'withdrawal-waitlist.test.ts',
+        'K-419: ayrılıştan kalan katılımlar listelenir ve yönetici onayıyla parasız iptal edilir; başka kurum 404',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: izin takvimi ve çakışma uyarısı (ON-183; DOM-FIN-123).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/leave-calendar', 'get(NOVEMBER, a.admin)'],
+        ['liste', 'GET /api/v1/finance/leave-calendar-settings', 'get(SETTINGS, a.admin)'],
+        ['gövde', 'PATCH /api/v1/finance/leave-calendar-settings', 'institutionId: b.id'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-leave-calendar.test.ts',
+        'başka kurumun izinleri takvimde yok; ayar kurumlar arası ayrı',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

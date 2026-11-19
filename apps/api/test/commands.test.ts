@@ -159,6 +159,10 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // Kullanılmış izin kaydı yıllık izin bakiyesinden düşer; çift gönderim izni iki kez düşmez
   // (routes/finance-staff-leave.ts; DOM-FIN-109, ON-181).
   'POST /api/v1/finance/leave-records',
+  // Onaylanan izin talebi kullanılmış izin kaydı üretir; talep ve onayın çift gönderimi izni iki
+  // kez düşmez (routes/finance-leave-requests.ts; DOM-FIN-116, ON-182).
+  'POST /api/v1/finance/leave-requests',
+  'POST /api/v1/finance/leave-requests/{requestId}/approve',
   // Çalışma onayı kaydı açılışı; çift tıklama aynı öğretmene ikinci başvuru açmaz
   // (routes/finance-work-permits.ts; DOM-FIN-114, ON-174).
   'POST /api/v1/finance/work-permits',

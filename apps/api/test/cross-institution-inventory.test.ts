@@ -2963,6 +2963,52 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: izin talebi ve onayı (ON-182; DOM-FIN-116).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/leave-requests', 'listOf(a.admin)'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/leave-requests/preview',
+          '`${REQUESTS}/preview?membershipId=${bStaff}',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/leave-requests/:requestId',
+          '`${REQUESTS}/${String(bRequest.id)}`',
+        ],
+        ['gövde', 'POST /api/v1/finance/leave-requests', 'institutionId: b.id'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/leave-requests/:requestId/approve',
+          'approveReq(a.admin, bRequest)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/leave-requests/:requestId/reject',
+          'rejectReq(a.admin, bRequest)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/leave-requests/:requestId/cancel',
+          'cancelReq(a.admin, bRequest)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/leave-requests/:requestId/assign-substitutes',
+          'substitutes(a.admin, bRequest',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-leave-requests.test.ts',
+        'DOM-FIN-116: başka kurumun talebi 404 ve B değişmez; listede yok; gövdedeki institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

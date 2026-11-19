@@ -3144,6 +3144,23 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: izin takvimi ve çakışma uyarısı (ON-183; DOM-FIN-123).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/leave-calendar', 'get(NOVEMBER, a.admin)'],
+        ['liste', 'GET /api/v1/finance/leave-calendar-settings', 'get(SETTINGS, a.admin)'],
+        ['gövde', 'PATCH /api/v1/finance/leave-calendar-settings', 'institutionId: b.id'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-leave-calendar.test.ts',
+        'başka kurumun izinleri takvimde yok; ayar kurumlar arası ayrı',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

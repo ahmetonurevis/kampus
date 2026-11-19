@@ -59,6 +59,7 @@ import { loadRecords } from '../db/records.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { dayRange } from './list-filters.ts'
+import { conflictsFor } from './finance-leave-calendar.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
 import { auditWork } from './task-work.ts'
 
@@ -188,8 +189,20 @@ async function requestDetail(tx: Database, ctx: ServiceContext, request: StoredL
     loadLeaveRecords(tx, ctx.institutionId, [request.membershipId]),
     deactivationTimes(tx, ctx.institutionId, [request.membershipId]),
   ])
+  // Uyarılar (DOM-FIN-123, K-422) yalnız açık talepte; kapanmış talepte boş.
+  const open = request.status === 'pending' || request.status === 'approved'
+  const conflicts = open
+    ? await conflictsFor(tx, ctx.institutionId, {
+        membershipId: request.membershipId,
+        name: request.name,
+        startDate: request.startDate,
+        endDate: request.endDate,
+        lessons,
+      })
+    : []
   return {
     ...request,
+    conflicts,
     balanceAfterDays:
       request.status === 'pending'
         ? leaveBalanceAfterRequest(request, profile, records, endDayOf(ends, request.membershipId))
@@ -213,14 +226,22 @@ export async function previewLeaveRequestFor(
   },
 ) {
   return ctx.db.transaction(async (tx) => {
-    await staffOf(tx, ctx, query.membershipId)
-    const [ownTeacherId, context, types, profile, records, ends] = await Promise.all([
+    const staff = await staffOf(tx, ctx, query.membershipId)
+    const [ownTeacherId, context, types, profile, records, ends, conflicts] = await Promise.all([
       ownTeacherOf(tx, ctx, query.membershipId),
       lessonContext(tx, ctx, query),
       loadStoredLeaveTypes(tx, ctx.institutionId),
       findLeaveProfile(tx, ctx.institutionId, query.membershipId),
       loadLeaveRecords(tx, ctx.institutionId, [query.membershipId]),
       deactivationTimes(tx, ctx.institutionId, [query.membershipId]),
+      // Önizlemede yedek seçilmemiştir: yedeğin izni aday uyarısında (`on_leave`) görünür.
+      conflictsFor(tx, ctx.institutionId, {
+        membershipId: query.membershipId,
+        name: staff.name,
+        startDate: query.startDate,
+        endDate: query.endDate,
+        lessons: [],
+      }),
     ])
     const affected =
       ownTeacherId === null ? [] : affectedLessons(context.schedule, ownTeacherId, query)
@@ -232,6 +253,7 @@ export async function previewLeaveRequestFor(
       ownTeacherId,
       lessonCount: affected.length,
       lessonLimit: LEAVE_REQUEST_LESSONS_MAX,
+      conflicts,
       lessons: lessonViews(
         affected.slice(0, LEAVE_REQUEST_LESSONS_MAX).map((item) => lessonSnapshot(item, null)),
         context,

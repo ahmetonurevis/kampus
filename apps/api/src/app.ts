@@ -60,6 +60,7 @@ import { registerFinanceMaintenanceRequestRoutes } from './routes/finance-mainte
 import { registerFinanceMedicalReportRoutes } from './routes/finance-medical-reports.ts'
 import { registerFinancePayRateRoutes } from './routes/finance-pay-rates.ts'
 import { registerFinanceStaffLeaveRoutes } from './routes/finance-staff-leave.ts'
+import { registerFinanceLeaveCalendarRoutes } from './routes/finance-leave-calendar.ts'
 import { registerFinanceLeaveRequestRoutes } from './routes/finance-leave-requests.ts'
 import { registerFinanceStaffDocumentRoutes } from './routes/finance-staff-documents.ts'
 import { registerFinanceStaffRetentionRoutes } from './routes/finance-staff-retention.ts'
@@ -592,6 +593,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinancePayRateRoutes(app)
   registerFinanceStaffLeaveRoutes(app)
   registerFinanceLeaveRequestRoutes(app)
+  registerFinanceLeaveCalendarRoutes(app)
   registerFinancePaidActivityRoutes(app)
   registerEnrollmentAlumniDocumentRoutes(app)
   registerFinanceStaffDeductionRoutes(app)

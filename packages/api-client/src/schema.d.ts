@@ -8736,6 +8736,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/leave-calendar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * İzin takvimi
+         * @description Aralığa (en çok 62 gün) değen izinler: bekleyen ve onaylı izin talepleri, elle yazılmış kullanılmış izin kayıtları ve sağlık raporları (talepten doğan kayıt talebiyle tek görünür). Yönetici tür adını görür; rapor türü ve tanı gösterilmez, rapor yalnız `sick` ("Raporlu") kategorisindedir. Ön büro yalnız onaylı izinleri `absent` kategorisinde türsüz görür, `status` süzgeci onda etkisizdir, `busyDays` ve eşik boştur (K-420). Branş öğretmen kaydının dersidir (K-421). Sınav haftaları ve yönetici için aynı branşta izinli sayısının eşiğe ulaştığı günler (K-422). Rol: `yonetici`, `onburo` (okuma). Modül `finance`.
+         */
+        get: operations["getLeaveCalendar"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/leave-calendar-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * İzin takvimi ayarı
+         * @description Aynı branşta eşzamanlı izin eşiği (varsayılan 2) ve sınav haftaları; ayar hiç kaydedilmediyse varsayılan ve sürüm 1 (K-421, K-422). Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        get: operations["getLeaveCalendarSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * İzin takvimi ayarını kaydet
+         * @description Eşik (2–20) ve sınav haftaları (en çok 40, her biri en çok 31 gün, birbiriyle çakışmaz; 400) değişir; gönderilmeyen alan korunur, sınav haftası listesi bütün olarak yazılır, boş liste uyarıyı kapatır. Değişiklik yoksa 422 `leave_calendar_settings_unchanged`. `If-Match` zorunlu (`GET` yanıtındaki sürüm; hiç kaydedilmediyse 1); sürüm tutmazsa 409 `version_conflict`. Uyarılar engel değildir. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        patch: operations["setLeaveCalendarSettings"];
+        trace?: never;
+    };
     "/api/v1/finance/paid-activities": {
         parameters: {
             query?: never;
@@ -94081,6 +94125,37 @@ export interface operations {
                             balanceAfterDays: number | null;
                             /** @description Personelin bağlı öğretmen kaydı */
                             ownTeacherId: string | null;
+                            /** @description Çakışma uyarıları; kapanmış talepte boş (DOM-FIN-123, K-422; engel değildir): aynı branşta eşzamanlı izin, sınav haftası, yedeği izinli ders */
+                            conflicts: ({
+                                /** @enum {string} */
+                                code: "branch_concurrent";
+                                subjectId: string;
+                                subjectName: string;
+                                startDate: string;
+                                endDate: string;
+                                /** @description En kalabalık gündeki izinli personel (talep dahil) */
+                                peak: number;
+                                threshold: number;
+                                /** @description Eşiğe ulaşılan günlerde izinli diğer personel */
+                                staff: {
+                                    membershipId: string;
+                                    name: string;
+                                }[];
+                            } | {
+                                /** @enum {string} */
+                                code: "exam_week";
+                                label: string;
+                                startDate: string;
+                                endDate: string;
+                            } | {
+                                /** @enum {string} */
+                                code: "substitute_on_leave";
+                                lessonId: string;
+                                startsAt: string;
+                                title: string;
+                                teacherId: string;
+                                teacherName: string;
+                            })[];
                             /** @description Etkilenen dersler, başlangıca göre */
                             lessons: {
                                 lessonId: string;
@@ -94221,6 +94296,37 @@ export interface operations {
                             lessonCount: number;
                             /** @description Bir talebe bağlanabilecek en çok ders */
                             lessonLimit: number;
+                            /** @description Çakışma uyarıları (DOM-FIN-123, K-422; engel değildir): aynı branşta eşzamanlı izin, sınav haftası; yedek henüz seçilmediği için yedek uyarısı yok */
+                            conflicts: ({
+                                /** @enum {string} */
+                                code: "branch_concurrent";
+                                subjectId: string;
+                                subjectName: string;
+                                startDate: string;
+                                endDate: string;
+                                /** @description En kalabalık gündeki izinli personel (talep dahil) */
+                                peak: number;
+                                threshold: number;
+                                /** @description Eşiğe ulaşılan günlerde izinli diğer personel */
+                                staff: {
+                                    membershipId: string;
+                                    name: string;
+                                }[];
+                            } | {
+                                /** @enum {string} */
+                                code: "exam_week";
+                                label: string;
+                                startDate: string;
+                                endDate: string;
+                            } | {
+                                /** @enum {string} */
+                                code: "substitute_on_leave";
+                                lessonId: string;
+                                startsAt: string;
+                                title: string;
+                                teacherId: string;
+                                teacherName: string;
+                            })[];
                             /** @description Etkilenen dersler (en çok `lessonLimit`) */
                             lessons: {
                                 lessonId: string;
@@ -94390,6 +94496,37 @@ export interface operations {
                             balanceAfterDays: number | null;
                             /** @description Personelin bağlı öğretmen kaydı */
                             ownTeacherId: string | null;
+                            /** @description Çakışma uyarıları; kapanmış talepte boş (DOM-FIN-123, K-422; engel değildir): aynı branşta eşzamanlı izin, sınav haftası, yedeği izinli ders */
+                            conflicts: ({
+                                /** @enum {string} */
+                                code: "branch_concurrent";
+                                subjectId: string;
+                                subjectName: string;
+                                startDate: string;
+                                endDate: string;
+                                /** @description En kalabalık gündeki izinli personel (talep dahil) */
+                                peak: number;
+                                threshold: number;
+                                /** @description Eşiğe ulaşılan günlerde izinli diğer personel */
+                                staff: {
+                                    membershipId: string;
+                                    name: string;
+                                }[];
+                            } | {
+                                /** @enum {string} */
+                                code: "exam_week";
+                                label: string;
+                                startDate: string;
+                                endDate: string;
+                            } | {
+                                /** @enum {string} */
+                                code: "substitute_on_leave";
+                                lessonId: string;
+                                startsAt: string;
+                                title: string;
+                                teacherId: string;
+                                teacherName: string;
+                            })[];
                             /** @description Etkilenen dersler, başlangıca göre */
                             lessons: {
                                 lessonId: string;
@@ -94571,6 +94708,37 @@ export interface operations {
                             balanceAfterDays: number | null;
                             /** @description Personelin bağlı öğretmen kaydı */
                             ownTeacherId: string | null;
+                            /** @description Çakışma uyarıları; kapanmış talepte boş (DOM-FIN-123, K-422; engel değildir): aynı branşta eşzamanlı izin, sınav haftası, yedeği izinli ders */
+                            conflicts: ({
+                                /** @enum {string} */
+                                code: "branch_concurrent";
+                                subjectId: string;
+                                subjectName: string;
+                                startDate: string;
+                                endDate: string;
+                                /** @description En kalabalık gündeki izinli personel (talep dahil) */
+                                peak: number;
+                                threshold: number;
+                                /** @description Eşiğe ulaşılan günlerde izinli diğer personel */
+                                staff: {
+                                    membershipId: string;
+                                    name: string;
+                                }[];
+                            } | {
+                                /** @enum {string} */
+                                code: "exam_week";
+                                label: string;
+                                startDate: string;
+                                endDate: string;
+                            } | {
+                                /** @enum {string} */
+                                code: "substitute_on_leave";
+                                lessonId: string;
+                                startsAt: string;
+                                title: string;
+                                teacherId: string;
+                                teacherName: string;
+                            })[];
                             /** @description Etkilenen dersler, başlangıca göre */
                             lessons: {
                                 lessonId: string;
@@ -94749,6 +94917,37 @@ export interface operations {
                             balanceAfterDays: number | null;
                             /** @description Personelin bağlı öğretmen kaydı */
                             ownTeacherId: string | null;
+                            /** @description Çakışma uyarıları; kapanmış talepte boş (DOM-FIN-123, K-422; engel değildir): aynı branşta eşzamanlı izin, sınav haftası, yedeği izinli ders */
+                            conflicts: ({
+                                /** @enum {string} */
+                                code: "branch_concurrent";
+                                subjectId: string;
+                                subjectName: string;
+                                startDate: string;
+                                endDate: string;
+                                /** @description En kalabalık gündeki izinli personel (talep dahil) */
+                                peak: number;
+                                threshold: number;
+                                /** @description Eşiğe ulaşılan günlerde izinli diğer personel */
+                                staff: {
+                                    membershipId: string;
+                                    name: string;
+                                }[];
+                            } | {
+                                /** @enum {string} */
+                                code: "exam_week";
+                                label: string;
+                                startDate: string;
+                                endDate: string;
+                            } | {
+                                /** @enum {string} */
+                                code: "substitute_on_leave";
+                                lessonId: string;
+                                startsAt: string;
+                                title: string;
+                                teacherId: string;
+                                teacherName: string;
+                            })[];
                             /** @description Etkilenen dersler, başlangıca göre */
                             lessons: {
                                 lessonId: string;
@@ -94927,6 +95126,37 @@ export interface operations {
                             balanceAfterDays: number | null;
                             /** @description Personelin bağlı öğretmen kaydı */
                             ownTeacherId: string | null;
+                            /** @description Çakışma uyarıları; kapanmış talepte boş (DOM-FIN-123, K-422; engel değildir): aynı branşta eşzamanlı izin, sınav haftası, yedeği izinli ders */
+                            conflicts: ({
+                                /** @enum {string} */
+                                code: "branch_concurrent";
+                                subjectId: string;
+                                subjectName: string;
+                                startDate: string;
+                                endDate: string;
+                                /** @description En kalabalık gündeki izinli personel (talep dahil) */
+                                peak: number;
+                                threshold: number;
+                                /** @description Eşiğe ulaşılan günlerde izinli diğer personel */
+                                staff: {
+                                    membershipId: string;
+                                    name: string;
+                                }[];
+                            } | {
+                                /** @enum {string} */
+                                code: "exam_week";
+                                label: string;
+                                startDate: string;
+                                endDate: string;
+                            } | {
+                                /** @enum {string} */
+                                code: "substitute_on_leave";
+                                lessonId: string;
+                                startsAt: string;
+                                title: string;
+                                teacherId: string;
+                                teacherName: string;
+                            })[];
                             /** @description Etkilenen dersler, başlangıca göre */
                             lessons: {
                                 lessonId: string;
@@ -95110,6 +95340,37 @@ export interface operations {
                             balanceAfterDays: number | null;
                             /** @description Personelin bağlı öğretmen kaydı */
                             ownTeacherId: string | null;
+                            /** @description Çakışma uyarıları; kapanmış talepte boş (DOM-FIN-123, K-422; engel değildir): aynı branşta eşzamanlı izin, sınav haftası, yedeği izinli ders */
+                            conflicts: ({
+                                /** @enum {string} */
+                                code: "branch_concurrent";
+                                subjectId: string;
+                                subjectName: string;
+                                startDate: string;
+                                endDate: string;
+                                /** @description En kalabalık gündeki izinli personel (talep dahil) */
+                                peak: number;
+                                threshold: number;
+                                /** @description Eşiğe ulaşılan günlerde izinli diğer personel */
+                                staff: {
+                                    membershipId: string;
+                                    name: string;
+                                }[];
+                            } | {
+                                /** @enum {string} */
+                                code: "exam_week";
+                                label: string;
+                                startDate: string;
+                                endDate: string;
+                            } | {
+                                /** @enum {string} */
+                                code: "substitute_on_leave";
+                                lessonId: string;
+                                startsAt: string;
+                                title: string;
+                                teacherId: string;
+                                teacherName: string;
+                            })[];
                             /** @description Etkilenen dersler, başlangıca göre */
                             lessons: {
                                 lessonId: string;
@@ -95138,6 +95399,387 @@ export interface operations {
                                 name: string;
                                 subjectId: string | null;
                             }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getLeaveCalendar: {
+        parameters: {
+            query: {
+                /** @description İlk gün */
+                startDate: string;
+                /** @description Son gün (dahil; en çok 62 gün) */
+                endDate: string;
+                /** @description Branş (ders kimliği) */
+                subjectId?: string;
+                /** @description Personel rolü */
+                role?: "yonetici" | "ogretmen" | "onburo";
+                /** @description Yalnız bekleyen ya da onaylı (ön büroda etkisiz: yalnız onaylı) */
+                status?: "pending" | "approved";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            startDate: string;
+                            endDate: string;
+                            /** @description Aralığa değen izinler, başlangıca göre */
+                            entries: {
+                                id: string;
+                                /**
+                                 * @description `request` izin talebi, `record` elle yazılmış izin kaydı, `medical_report` rapor
+                                 * @enum {string}
+                                 */
+                                source: "request" | "record" | "medical_report";
+                                membershipId: string;
+                                /** @description Personelin adı */
+                                name: string;
+                                /** @description Rol: `yonetici`, `ogretmen` ya da `onburo` */
+                                role: string;
+                                /** @description Branşlar (bağlı öğretmen kaydının dersi) */
+                                subjectIds: string[];
+                                /** @enum {string} */
+                                status: "pending" | "approved";
+                                /**
+                                 * @description `leave` tür adıyla, `sick` "Raporlu" (tür ve tanı yok), `absent` türsüz (ön büro)
+                                 * @enum {string}
+                                 */
+                                category: "leave" | "sick" | "absent";
+                                /** @description Tür adı; yalnız `leave` kategorisinde */
+                                typeLabel: string | null;
+                                startDate: string;
+                                endDate: string;
+                            }[];
+                            /** @description Aralığa değen sınav haftaları */
+                            examWeeks: {
+                                label: string;
+                                startDate: string;
+                                endDate: string;
+                            }[];
+                            /** @description Aynı branşta izinli sayısının eşiğe ulaştığı günler (ön büroda boş) */
+                            busyDays: {
+                                day: string;
+                                subjectId: string;
+                                count: number;
+                            }[];
+                            /** @description Branş seçenekleri (öğretmen kaydı bağlı personelin dersleri) */
+                            subjects: {
+                                id: string;
+                                name: string;
+                            }[];
+                            /** @description Eşik (ön büroda boş) */
+                            concurrentThreshold: number | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getLeaveCalendarSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            concurrentThreshold: number;
+                            examWeeks: {
+                                label: string;
+                                startDate: string;
+                                endDate: string;
+                            }[];
+                            /** @description `If-Match` için ayar sürümü (hiç kaydedilmediyse 1) */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    setLeaveCalendarSettings: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Aynı branşta aynı gün izinli personel sayısı bu sayıya ulaşınca uyarı (2–20) */
+                    concurrentThreshold?: number;
+                    /** @description Sınav haftaları; liste bütün olarak yazılır, boş liste uyarıyı kapatır */
+                    examWeeks?: {
+                        /** @description Ör. "1. dönem ara sınavları" */
+                        label: string;
+                        /** @description İlk gün */
+                        startDate: string;
+                        /** @description Son gün (dahil) */
+                        endDate: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            concurrentThreshold: number;
+                            examWeeks: {
+                                label: string;
+                                startDate: string;
+                                endDate: string;
+                            }[];
+                            /** @description `If-Match` için ayar sürümü (hiç kaydedilmediyse 1) */
+                            version: number;
                         };
                     };
                 };

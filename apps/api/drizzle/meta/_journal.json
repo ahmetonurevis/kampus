@@ -939,6 +939,13 @@
       "when": 1795048120387,
       "tag": "0133_create_staff_onboarding",
       "breakpoints": true
+    },
+    {
+      "idx": 134,
+      "version": "7",
+      "when": 1795048154394,
+      "tag": "0134_leave_calendar_settings",
+      "breakpoints": true
     }
   ]
 }

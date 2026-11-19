@@ -202062,6 +202062,142 @@
                             "null"
                           ]
                         },
+                        "conflicts": {
+                          "type": "array",
+                          "items": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "branch_concurrent"
+                                    ]
+                                  },
+                                  "subjectId": {
+                                    "type": "string"
+                                  },
+                                  "subjectName": {
+                                    "type": "string"
+                                  },
+                                  "startDate": {
+                                    "type": "string"
+                                  },
+                                  "endDate": {
+                                    "type": "string"
+                                  },
+                                  "peak": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "En kalabalık gündeki izinli personel (talep dahil)"
+                                  },
+                                  "threshold": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "staff": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "membershipId": {
+                                          "type": "string"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "membershipId",
+                                        "name"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "description": "Eşiğe ulaşılan günlerde izinli diğer personel"
+                                  }
+                                },
+                                "required": [
+                                  "code",
+                                  "subjectId",
+                                  "subjectName",
+                                  "startDate",
+                                  "endDate",
+                                  "peak",
+                                  "threshold",
+                                  "staff"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "exam_week"
+                                    ]
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "startDate": {
+                                    "type": "string"
+                                  },
+                                  "endDate": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "code",
+                                  "label",
+                                  "startDate",
+                                  "endDate"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "substitute_on_leave"
+                                    ]
+                                  },
+                                  "lessonId": {
+                                    "type": "string"
+                                  },
+                                  "startsAt": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "teacherId": {
+                                    "type": "string"
+                                  },
+                                  "teacherName": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "code",
+                                  "lessonId",
+                                  "startsAt",
+                                  "title",
+                                  "teacherId",
+                                  "teacherName"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ],
+                            "description": "`branch_concurrent` aynı branşta eşzamanlı izin, `exam_week` sınav haftası, `substitute_on_leave` yedek öğretmen o gün izinli"
+                          },
+                          "description": "Çakışma uyarıları; kapanmış talepte boş (DOM-FIN-123, K-422; engel değildir): aynı branşta eşzamanlı izin, sınav haftası, yedeği izinli ders"
+                        },
                         "lessons": {
                           "type": "array",
                           "items": {
@@ -202221,6 +202357,7 @@
                         "version",
                         "balanceAfterDays",
                         "ownTeacherId",
+                        "conflicts",
                         "lessons",
                         "teachers"
                       ],
@@ -202416,6 +202553,142 @@
                           "maximum": 9007199254740991,
                           "description": "Bir talebe bağlanabilecek en çok ders"
                         },
+                        "conflicts": {
+                          "type": "array",
+                          "items": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "branch_concurrent"
+                                    ]
+                                  },
+                                  "subjectId": {
+                                    "type": "string"
+                                  },
+                                  "subjectName": {
+                                    "type": "string"
+                                  },
+                                  "startDate": {
+                                    "type": "string"
+                                  },
+                                  "endDate": {
+                                    "type": "string"
+                                  },
+                                  "peak": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "En kalabalık gündeki izinli personel (talep dahil)"
+                                  },
+                                  "threshold": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "staff": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "membershipId": {
+                                          "type": "string"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "membershipId",
+                                        "name"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "description": "Eşiğe ulaşılan günlerde izinli diğer personel"
+                                  }
+                                },
+                                "required": [
+                                  "code",
+                                  "subjectId",
+                                  "subjectName",
+                                  "startDate",
+                                  "endDate",
+                                  "peak",
+                                  "threshold",
+                                  "staff"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "exam_week"
+                                    ]
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "startDate": {
+                                    "type": "string"
+                                  },
+                                  "endDate": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "code",
+                                  "label",
+                                  "startDate",
+                                  "endDate"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "substitute_on_leave"
+                                    ]
+                                  },
+                                  "lessonId": {
+                                    "type": "string"
+                                  },
+                                  "startsAt": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "teacherId": {
+                                    "type": "string"
+                                  },
+                                  "teacherName": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "code",
+                                  "lessonId",
+                                  "startsAt",
+                                  "title",
+                                  "teacherId",
+                                  "teacherName"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ],
+                            "description": "`branch_concurrent` aynı branşta eşzamanlı izin, `exam_week` sınav haftası, `substitute_on_leave` yedek öğretmen o gün izinli"
+                          },
+                          "description": "Çakışma uyarıları (DOM-FIN-123, K-422; engel değildir): aynı branşta eşzamanlı izin, sınav haftası; yedek henüz seçilmediği için yedek uyarısı yok"
+                        },
                         "lessons": {
                           "type": "array",
                           "items": {
@@ -202576,6 +202849,7 @@
                         "ownTeacherId",
                         "lessonCount",
                         "lessonLimit",
+                        "conflicts",
                         "lessons",
                         "teachers",
                         "deductsFromAnnual",
@@ -202839,6 +203113,142 @@
                             "null"
                           ]
                         },
+                        "conflicts": {
+                          "type": "array",
+                          "items": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "branch_concurrent"
+                                    ]
+                                  },
+                                  "subjectId": {
+                                    "type": "string"
+                                  },
+                                  "subjectName": {
+                                    "type": "string"
+                                  },
+                                  "startDate": {
+                                    "type": "string"
+                                  },
+                                  "endDate": {
+                                    "type": "string"
+                                  },
+                                  "peak": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "En kalabalık gündeki izinli personel (talep dahil)"
+                                  },
+                                  "threshold": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "staff": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "membershipId": {
+                                          "type": "string"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "membershipId",
+                                        "name"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "description": "Eşiğe ulaşılan günlerde izinli diğer personel"
+                                  }
+                                },
+                                "required": [
+                                  "code",
+                                  "subjectId",
+                                  "subjectName",
+                                  "startDate",
+                                  "endDate",
+                                  "peak",
+                                  "threshold",
+                                  "staff"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "exam_week"
+                                    ]
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "startDate": {
+                                    "type": "string"
+                                  },
+                                  "endDate": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "code",
+                                  "label",
+                                  "startDate",
+                                  "endDate"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "substitute_on_leave"
+                                    ]
+                                  },
+                                  "lessonId": {
+                                    "type": "string"
+                                  },
+                                  "startsAt": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "teacherId": {
+                                    "type": "string"
+                                  },
+                                  "teacherName": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "code",
+                                  "lessonId",
+                                  "startsAt",
+                                  "title",
+                                  "teacherId",
+                                  "teacherName"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ],
+                            "description": "`branch_concurrent` aynı branşta eşzamanlı izin, `exam_week` sınav haftası, `substitute_on_leave` yedek öğretmen o gün izinli"
+                          },
+                          "description": "Çakışma uyarıları; kapanmış talepte boş (DOM-FIN-123, K-422; engel değildir): aynı branşta eşzamanlı izin, sınav haftası, yedeği izinli ders"
+                        },
                         "lessons": {
                           "type": "array",
                           "items": {
@@ -202998,6 +203408,7 @@
                         "version",
                         "balanceAfterDays",
                         "ownTeacherId",
+                        "conflicts",
                         "lessons",
                         "teachers"
                       ],
@@ -203297,6 +203708,142 @@
                             "null"
                           ]
                         },
+                        "conflicts": {
+                          "type": "array",
+                          "items": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "branch_concurrent"
+                                    ]
+                                  },
+                                  "subjectId": {
+                                    "type": "string"
+                                  },
+                                  "subjectName": {
+                                    "type": "string"
+                                  },
+                                  "startDate": {
+                                    "type": "string"
+                                  },
+                                  "endDate": {
+                                    "type": "string"
+                                  },
+                                  "peak": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "En kalabalık gündeki izinli personel (talep dahil)"
+                                  },
+                                  "threshold": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "staff": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "membershipId": {
+                                          "type": "string"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "membershipId",
+                                        "name"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "description": "Eşiğe ulaşılan günlerde izinli diğer personel"
+                                  }
+                                },
+                                "required": [
+                                  "code",
+                                  "subjectId",
+                                  "subjectName",
+                                  "startDate",
+                                  "endDate",
+                                  "peak",
+                                  "threshold",
+                                  "staff"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "exam_week"
+                                    ]
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "startDate": {
+                                    "type": "string"
+                                  },
+                                  "endDate": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "code",
+                                  "label",
+                                  "startDate",
+                                  "endDate"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "substitute_on_leave"
+                                    ]
+                                  },
+                                  "lessonId": {
+                                    "type": "string"
+                                  },
+                                  "startsAt": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "teacherId": {
+                                    "type": "string"
+                                  },
+                                  "teacherName": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "code",
+                                  "lessonId",
+                                  "startsAt",
+                                  "title",
+                                  "teacherId",
+                                  "teacherName"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ],
+                            "description": "`branch_concurrent` aynı branşta eşzamanlı izin, `exam_week` sınav haftası, `substitute_on_leave` yedek öğretmen o gün izinli"
+                          },
+                          "description": "Çakışma uyarıları; kapanmış talepte boş (DOM-FIN-123, K-422; engel değildir): aynı branşta eşzamanlı izin, sınav haftası, yedeği izinli ders"
+                        },
                         "lessons": {
                           "type": "array",
                           "items": {
@@ -203456,6 +204003,7 @@
                         "version",
                         "balanceAfterDays",
                         "ownTeacherId",
+                        "conflicts",
                         "lessons",
                         "teachers"
                       ],
@@ -203759,6 +204307,142 @@
                             "null"
                           ]
                         },
+                        "conflicts": {
+                          "type": "array",
+                          "items": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "branch_concurrent"
+                                    ]
+                                  },
+                                  "subjectId": {
+                                    "type": "string"
+                                  },
+                                  "subjectName": {
+                                    "type": "string"
+                                  },
+                                  "startDate": {
+                                    "type": "string"
+                                  },
+                                  "endDate": {
+                                    "type": "string"
+                                  },
+                                  "peak": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "En kalabalık gündeki izinli personel (talep dahil)"
+                                  },
+                                  "threshold": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "staff": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "membershipId": {
+                                          "type": "string"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "membershipId",
+                                        "name"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "description": "Eşiğe ulaşılan günlerde izinli diğer personel"
+                                  }
+                                },
+                                "required": [
+                                  "code",
+                                  "subjectId",
+                                  "subjectName",
+                                  "startDate",
+                                  "endDate",
+                                  "peak",
+                                  "threshold",
+                                  "staff"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "exam_week"
+                                    ]
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "startDate": {
+                                    "type": "string"
+                                  },
+                                  "endDate": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "code",
+                                  "label",
+                                  "startDate",
+                                  "endDate"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "substitute_on_leave"
+                                    ]
+                                  },
+                                  "lessonId": {
+                                    "type": "string"
+                                  },
+                                  "startsAt": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "teacherId": {
+                                    "type": "string"
+                                  },
+                                  "teacherName": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "code",
+                                  "lessonId",
+                                  "startsAt",
+                                  "title",
+                                  "teacherId",
+                                  "teacherName"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ],
+                            "description": "`branch_concurrent` aynı branşta eşzamanlı izin, `exam_week` sınav haftası, `substitute_on_leave` yedek öğretmen o gün izinli"
+                          },
+                          "description": "Çakışma uyarıları; kapanmış talepte boş (DOM-FIN-123, K-422; engel değildir): aynı branşta eşzamanlı izin, sınav haftası, yedeği izinli ders"
+                        },
                         "lessons": {
                           "type": "array",
                           "items": {
@@ -203918,6 +204602,7 @@
                         "version",
                         "balanceAfterDays",
                         "ownTeacherId",
+                        "conflicts",
                         "lessons",
                         "teachers"
                       ],
@@ -204221,6 +204906,142 @@
                             "null"
                           ]
                         },
+                        "conflicts": {
+                          "type": "array",
+                          "items": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "branch_concurrent"
+                                    ]
+                                  },
+                                  "subjectId": {
+                                    "type": "string"
+                                  },
+                                  "subjectName": {
+                                    "type": "string"
+                                  },
+                                  "startDate": {
+                                    "type": "string"
+                                  },
+                                  "endDate": {
+                                    "type": "string"
+                                  },
+                                  "peak": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "En kalabalık gündeki izinli personel (talep dahil)"
+                                  },
+                                  "threshold": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "staff": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "membershipId": {
+                                          "type": "string"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "membershipId",
+                                        "name"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "description": "Eşiğe ulaşılan günlerde izinli diğer personel"
+                                  }
+                                },
+                                "required": [
+                                  "code",
+                                  "subjectId",
+                                  "subjectName",
+                                  "startDate",
+                                  "endDate",
+                                  "peak",
+                                  "threshold",
+                                  "staff"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "exam_week"
+                                    ]
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "startDate": {
+                                    "type": "string"
+                                  },
+                                  "endDate": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "code",
+                                  "label",
+                                  "startDate",
+                                  "endDate"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "substitute_on_leave"
+                                    ]
+                                  },
+                                  "lessonId": {
+                                    "type": "string"
+                                  },
+                                  "startsAt": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "teacherId": {
+                                    "type": "string"
+                                  },
+                                  "teacherName": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "code",
+                                  "lessonId",
+                                  "startsAt",
+                                  "title",
+                                  "teacherId",
+                                  "teacherName"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ],
+                            "description": "`branch_concurrent` aynı branşta eşzamanlı izin, `exam_week` sınav haftası, `substitute_on_leave` yedek öğretmen o gün izinli"
+                          },
+                          "description": "Çakışma uyarıları; kapanmış talepte boş (DOM-FIN-123, K-422; engel değildir): aynı branşta eşzamanlı izin, sınav haftası, yedeği izinli ders"
+                        },
                         "lessons": {
                           "type": "array",
                           "items": {
@@ -204380,6 +205201,7 @@
                         "version",
                         "balanceAfterDays",
                         "ownTeacherId",
+                        "conflicts",
                         "lessons",
                         "teachers"
                       ],
@@ -204712,6 +205534,142 @@
                             "null"
                           ]
                         },
+                        "conflicts": {
+                          "type": "array",
+                          "items": {
+                            "oneOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "branch_concurrent"
+                                    ]
+                                  },
+                                  "subjectId": {
+                                    "type": "string"
+                                  },
+                                  "subjectName": {
+                                    "type": "string"
+                                  },
+                                  "startDate": {
+                                    "type": "string"
+                                  },
+                                  "endDate": {
+                                    "type": "string"
+                                  },
+                                  "peak": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "En kalabalık gündeki izinli personel (talep dahil)"
+                                  },
+                                  "threshold": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "staff": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "membershipId": {
+                                          "type": "string"
+                                        },
+                                        "name": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "membershipId",
+                                        "name"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "description": "Eşiğe ulaşılan günlerde izinli diğer personel"
+                                  }
+                                },
+                                "required": [
+                                  "code",
+                                  "subjectId",
+                                  "subjectName",
+                                  "startDate",
+                                  "endDate",
+                                  "peak",
+                                  "threshold",
+                                  "staff"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "exam_week"
+                                    ]
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "startDate": {
+                                    "type": "string"
+                                  },
+                                  "endDate": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "code",
+                                  "label",
+                                  "startDate",
+                                  "endDate"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "substitute_on_leave"
+                                    ]
+                                  },
+                                  "lessonId": {
+                                    "type": "string"
+                                  },
+                                  "startsAt": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "teacherId": {
+                                    "type": "string"
+                                  },
+                                  "teacherName": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "code",
+                                  "lessonId",
+                                  "startsAt",
+                                  "title",
+                                  "teacherId",
+                                  "teacherName"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ],
+                            "description": "`branch_concurrent` aynı branşta eşzamanlı izin, `exam_week` sınav haftası, `substitute_on_leave` yedek öğretmen o gün izinli"
+                          },
+                          "description": "Çakışma uyarıları; kapanmış talepte boş (DOM-FIN-123, K-422; engel değildir): aynı branşta eşzamanlı izin, sınav haftası, yedeği izinli ders"
+                        },
                         "lessons": {
                           "type": "array",
                           "items": {
@@ -204871,8 +205829,740 @@
                         "version",
                         "balanceAfterDays",
                         "ownTeacherId",
+                        "conflicts",
                         "lessons",
                         "teachers"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/leave-calendar": {
+      "get": {
+        "operationId": "getLeaveCalendar",
+        "summary": "İzin takvimi",
+        "tags": [
+          "finance-leave-requests"
+        ],
+        "description": "Aralığa (en çok 62 gün) değen izinler: bekleyen ve onaylı izin talepleri, elle yazılmış kullanılmış izin kayıtları ve sağlık raporları (talepten doğan kayıt talebiyle tek görünür). Yönetici tür adını görür; rapor türü ve tanı gösterilmez, rapor yalnız `sick` (\"Raporlu\") kategorisindedir. Ön büro yalnız onaylı izinleri `absent` kategorisinde türsüz görür, `status` süzgeci onda etkisizdir, `busyDays` ve eşik boştur (K-420). Branş öğretmen kaydının dersidir (K-421). Sınav haftaları ve yönetici için aynı branşta izinli sayısının eşiğe ulaştığı günler (K-422). Rol: `yonetici`, `onburo` (okuma). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "startDate",
+            "required": true,
+            "description": "İlk gün"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "endDate",
+            "required": true,
+            "description": "Son gün (dahil; en çok 62 gün)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "in": "query",
+            "name": "subjectId",
+            "required": false,
+            "description": "Branş (ders kimliği)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "yonetici",
+                "ogretmen",
+                "onburo"
+              ]
+            },
+            "in": "query",
+            "name": "role",
+            "required": false,
+            "description": "Personel rolü"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "approved"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Yalnız bekleyen ya da onaylı (ön büroda etkisiz: yalnız onaylı)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "startDate": {
+                          "type": "string"
+                        },
+                        "endDate": {
+                          "type": "string"
+                        },
+                        "entries": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "source": {
+                                "type": "string",
+                                "enum": [
+                                  "request",
+                                  "record",
+                                  "medical_report"
+                                ],
+                                "description": "`request` izin talebi, `record` elle yazılmış izin kaydı, `medical_report` rapor"
+                              },
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string",
+                                "description": "Personelin adı"
+                              },
+                              "role": {
+                                "type": "string",
+                                "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                              },
+                              "subjectIds": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "description": "Branşlar (bağlı öğretmen kaydının dersi)"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "pending",
+                                  "approved"
+                                ]
+                              },
+                              "category": {
+                                "type": "string",
+                                "enum": [
+                                  "leave",
+                                  "sick",
+                                  "absent"
+                                ],
+                                "description": "`leave` tür adıyla, `sick` \"Raporlu\" (tür ve tanı yok), `absent` türsüz (ön büro)"
+                              },
+                              "typeLabel": {
+                                "description": "Tür adı; yalnız `leave` kategorisinde",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "startDate": {
+                                "type": "string"
+                              },
+                              "endDate": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "source",
+                              "membershipId",
+                              "name",
+                              "role",
+                              "subjectIds",
+                              "status",
+                              "category",
+                              "typeLabel",
+                              "startDate",
+                              "endDate"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Aralığa değen izinler, başlangıca göre"
+                        },
+                        "examWeeks": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "label": {
+                                "type": "string"
+                              },
+                              "startDate": {
+                                "type": "string"
+                              },
+                              "endDate": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "label",
+                              "startDate",
+                              "endDate"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Aralığa değen sınav haftaları"
+                        },
+                        "busyDays": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "day": {
+                                "type": "string"
+                              },
+                              "subjectId": {
+                                "type": "string"
+                              },
+                              "count": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "day",
+                              "subjectId",
+                              "count"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Aynı branşta izinli sayısının eşiğe ulaştığı günler (ön büroda boş)"
+                        },
+                        "subjects": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Branş seçenekleri (öğretmen kaydı bağlı personelin dersleri)"
+                        },
+                        "concurrentThreshold": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Eşik (ön büroda boş)"
+                        }
+                      },
+                      "required": [
+                        "startDate",
+                        "endDate",
+                        "entries",
+                        "examWeeks",
+                        "busyDays",
+                        "subjects",
+                        "concurrentThreshold"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/leave-calendar-settings": {
+      "get": {
+        "operationId": "getLeaveCalendarSettings",
+        "summary": "İzin takvimi ayarı",
+        "tags": [
+          "finance-leave-requests"
+        ],
+        "description": "Aynı branşta eşzamanlı izin eşiği (varsayılan 2) ve sınav haftaları; ayar hiç kaydedilmediyse varsayılan ve sürüm 1 (K-421, K-422). Rol: yalnız `yonetici`. Modül `finance`.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "concurrentThreshold": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "examWeeks": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "label": {
+                                "type": "string"
+                              },
+                              "startDate": {
+                                "type": "string"
+                              },
+                              "endDate": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "label",
+                              "startDate",
+                              "endDate"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için ayar sürümü (hiç kaydedilmediyse 1)"
+                        }
+                      },
+                      "required": [
+                        "concurrentThreshold",
+                        "examWeeks",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "setLeaveCalendarSettings",
+        "summary": "İzin takvimi ayarını kaydet",
+        "tags": [
+          "finance-leave-requests"
+        ],
+        "description": "Eşik (2–20) ve sınav haftaları (en çok 40, her biri en çok 31 gün, birbiriyle çakışmaz; 400) değişir; gönderilmeyen alan korunur, sınav haftası listesi bütün olarak yazılır, boş liste uyarıyı kapatır. Değişiklik yoksa 422 `leave_calendar_settings_unchanged`. `If-Match` zorunlu (`GET` yanıtındaki sürüm; hiç kaydedilmediyse 1); sürüm tutmazsa 409 `version_conflict`. Uyarılar engel değildir. Rol: yalnız `yonetici`. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "concurrentThreshold": {
+                    "description": "Aynı branşta aynı gün izinli personel sayısı bu sayıya ulaşınca uyarı (2–20)",
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 20
+                  },
+                  "examWeeks": {
+                    "description": "Sınav haftaları; liste bütün olarak yazılır, boş liste uyarıyı kapatır",
+                    "maxItems": 40,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "label": {
+                          "type": "string",
+                          "minLength": 2,
+                          "maxLength": 80,
+                          "description": "Ör. \"1. dönem ara sınavları\""
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                          "description": "İlk gün"
+                        },
+                        "endDate": {
+                          "type": "string",
+                          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                          "description": "Son gün (dahil)"
+                        }
+                      },
+                      "required": [
+                        "label",
+                        "startDate",
+                        "endDate"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "concurrentThreshold": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "examWeeks": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "label": {
+                                "type": "string"
+                              },
+                              "startDate": {
+                                "type": "string"
+                              },
+                              "endDate": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "label",
+                              "startDate",
+                              "endDate"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için ayar sürümü (hiç kaydedilmediyse 1)"
+                        }
+                      },
+                      "required": [
+                        "concurrentThreshold",
+                        "examWeeks",
+                        "version"
                       ],
                       "additionalProperties": false
                     }

@@ -3217,6 +3217,32 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: kadro planı ve açık pozisyon (ON-188; DOM-FIN-126).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/staffing-plans/:academicYear', "call('GET', PLAN, a.admin)"],
+        [
+          'gövde',
+          'PATCH /api/v1/finance/staffing-plans/:academicYear',
+          'institutionId: b.id }, 1)',
+        ],
+        ['gövde', 'POST /api/v1/finance/staffing-positions', 'hours: 5, institutionId: b.id'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/staffing-positions/:positionId',
+          'patchPosition(a.admin, position.id',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-staffing-plans.test.ts',
+        'başka kurumun pozisyonu ve teklifi 404/422, B değişmez; gövdedeki kurum etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

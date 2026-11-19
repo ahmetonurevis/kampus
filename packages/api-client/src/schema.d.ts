@@ -11432,6 +11432,70 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/staffing-plans/{academicYear}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kadro planı
+         * @description Eğitim yılının planı (norm, elle girilen branş ihtiyaçları; hiç kaydedilmediyse norm 20, sürüm 1) ve branş başına hesap: ders programı önerisi (seçilen haftanın iptal edilmemiş her dersi bir saat; plan satırı yoksa ihtiyaç budur, K-433), tam zamanlı ve saatlik öğretmen sayısı, kapasite (tam zamanlı × norm; birden çok branşlı öğretmenin normu bölünür, saatlik/ders saati ücretli kapasiteye girmez, K-434), açık, açık/ilandaki pozisyon saati, önerilen yeni pozisyon saati ve tam zamanlı eşdeğeri (K-435). Branş öğretmen kaydının dersidir (K-421). Ücret tutarı yanıta girmez. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        get: operations["getStaffingPlan"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Kadro planını kaydet
+         * @description Norm (1–40) ve branş ihtiyaç satırları (en çok 80, saat 0–2000, aynı branş bir kez; 400) bütün olarak yazılır; satırı olmayan branşta ihtiyaç program önerisidir. Değişiklik yoksa 422 `staffing_plan_unchanged`. `If-Match` zorunlu (`GET` yanıtındaki sürüm; hiç kaydedilmediyse 1); tutmazsa 409 `version_conflict`. Denetim kaydına alan adları yazılır. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        patch: operations["saveStaffingPlan"];
+        trace?: never;
+    };
+    "/api/v1/finance/staffing-positions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Açık pozisyon aç
+         * @description Eğitim yılı, branş, haftalık saat (1–60), isteğe bağlı not ve iş teklifi bağı; durum `open`. Teklif kurumda yoksa 422 `staffing_position_offer_not_found`. Denetim kaydına alan adları yazılır. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        post: operations["createStaffingPosition"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staffing-positions/{positionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Açık pozisyonu güncelle
+         * @description Durum (açık ↔ ilanda, açık/ilanda → dolduruldu ya da iptal), saat, not ve teklif bağı değişir. Dolduruldu ya da iptal pozisyon değişmez (422 `staffing_position_closed`); izinsiz geçiş 422 `staffing_position_transition`; değişiklik yoksa 422 `staffing_position_unchanged`; teklif kurumda yoksa 422 `staffing_position_offer_not_found`. `If-Match` zorunlu; tutmazsa 409. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        patch: operations["updateStaffingPosition"];
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -120619,6 +120683,578 @@ export interface operations {
                             /** @description Kaydı giren kullanıcı */
                             recordedByUserId: string;
                             createdAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getStaffingPlan: {
+        parameters: {
+            query?: {
+                /** @description Ders programı önerisinin haftası: bu günün pazartesi–pazar haftası (varsayılan bugün) */
+                weekOf?: string;
+            };
+            header?: never;
+            path: {
+                /** @description Eğitim yılının başlangıç yılı (2026 = 2026-2027) */
+                academicYear: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            academicYear: number;
+                            /** @description Tam zamanlı öğretmen başına haftalık zorunlu ders saati */
+                            normHours: number;
+                            /** @description Elle girilen branş ihtiyaç saatleri */
+                            lines: {
+                                subjectId: string;
+                                requiredHours: number;
+                            }[];
+                            /** @description `If-Match` için plan sürümü (hiç kaydedilmediyse 1) */
+                            version: number;
+                            updatedAt: string | null;
+                            week: {
+                                startDate: string;
+                                endDate: string;
+                            };
+                            rows: {
+                                subjectId: string;
+                                subjectName: string;
+                                /**
+                                 * @description `plan` elle girildi, `schedule` plan satırı yok, programdan
+                                 * @enum {string}
+                                 */
+                                requiredSource: "plan" | "schedule";
+                                /** @description Tam zamanlı öğretmen (ücret tanımı aylık ya da yok) */
+                                fullTimeTeachers: number;
+                                /** @description Saatlik ya da ders saati ücretli öğretmen (kapasiteye girmez) */
+                                hourlyTeachers: number;
+                                /** @description Haftalık ihtiyaç saati */
+                                requiredHours: number;
+                                /** @description Ders programından öneri (seçilen hafta) */
+                                scheduleHours: number;
+                                /** @description Tam zamanlı öğretmen × norm (branşlara bölünmüş) */
+                                capacityHours: number;
+                                /** @description Açık: ihtiyaç − kapasite (eksiye düşmez) */
+                                gapHours: number;
+                                /** @description Fazla: kapasite − ihtiyaç (eksiye düşmez) */
+                                surplusHours: number;
+                                /** @description Açık ya da ilandaki pozisyonların saati */
+                                openPositionHours: number;
+                                /** @description Önerilen yeni pozisyon saati: açık − pozisyonlar */
+                                suggestedHours: number;
+                                /** @description Önerinin tam zamanlı eşdeğeri (saat / norm, onda bir) */
+                                suggestedFte: number;
+                            }[];
+                            totals: {
+                                /** @description Haftalık ihtiyaç saati */
+                                requiredHours: number;
+                                /** @description Ders programından öneri (seçilen hafta) */
+                                scheduleHours: number;
+                                /** @description Tam zamanlı öğretmen × norm (branşlara bölünmüş) */
+                                capacityHours: number;
+                                /** @description Açık: ihtiyaç − kapasite (eksiye düşmez) */
+                                gapHours: number;
+                                /** @description Fazla: kapasite − ihtiyaç (eksiye düşmez) */
+                                surplusHours: number;
+                                /** @description Açık ya da ilandaki pozisyonların saati */
+                                openPositionHours: number;
+                                /** @description Önerilen yeni pozisyon saati: açık − pozisyonlar */
+                                suggestedHours: number;
+                                /** @description Önerinin tam zamanlı eşdeğeri (saat / norm, onda bir) */
+                                suggestedFte: number;
+                            };
+                            /** @description Yürürlükte ana ücret tanımı olmayan öğretmen (tam zamanlı sayıldı) */
+                            teachersWithoutPayRate: number;
+                            positions: {
+                                id: string;
+                                academicYear: number;
+                                subjectId: string;
+                                /** @description Haftalık ders saati */
+                                hours: number;
+                                /**
+                                 * @description `open` açık, `posted` ilanda, `filled` dolduruldu, `cancelled` iptal
+                                 * @enum {string}
+                                 */
+                                status: "open" | "posted" | "filled" | "cancelled";
+                                /** @description Bağlı iş teklifi (DOM-FIN-121) */
+                                jobOfferId: string | null;
+                                /** @description Bağlı teklifin pozisyon adı */
+                                jobOfferPosition: string | null;
+                                note: string | null;
+                                createdAt: string;
+                                updatedAt: string;
+                                version: number;
+                                subjectName: string;
+                            }[];
+                            /** @description Branş seçenekleri */
+                            subjects: {
+                                id: string;
+                                name: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    saveStaffingPlan: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Eğitim yılının başlangıç yılı (2026 = 2026-2027) */
+                academicYear: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    normHours: number;
+                    lines: {
+                        subjectId: string;
+                        requiredHours: number;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            academicYear: number;
+                            /** @description Tam zamanlı öğretmen başına haftalık zorunlu ders saati */
+                            normHours: number;
+                            /** @description Elle girilen branş ihtiyaç saatleri */
+                            lines: {
+                                subjectId: string;
+                                requiredHours: number;
+                            }[];
+                            /** @description `If-Match` için plan sürümü (hiç kaydedilmediyse 1) */
+                            version: number;
+                            updatedAt: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createStaffingPosition: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    academicYear: number;
+                    subjectId: string;
+                    hours: number;
+                    note?: string | null;
+                    /** @default null */
+                    jobOfferId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            academicYear: number;
+                            subjectId: string;
+                            /** @description Haftalık ders saati */
+                            hours: number;
+                            /**
+                             * @description `open` açık, `posted` ilanda, `filled` dolduruldu, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            status: "open" | "posted" | "filled" | "cancelled";
+                            /** @description Bağlı iş teklifi (DOM-FIN-121) */
+                            jobOfferId: string | null;
+                            /** @description Bağlı teklifin pozisyon adı */
+                            jobOfferPosition: string | null;
+                            note: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateStaffingPosition: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                positionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    status?: "open" | "posted" | "filled" | "cancelled";
+                    hours?: number;
+                    note?: string | null;
+                    jobOfferId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            academicYear: number;
+                            subjectId: string;
+                            /** @description Haftalık ders saati */
+                            hours: number;
+                            /**
+                             * @description `open` açık, `posted` ilanda, `filled` dolduruldu, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            status: "open" | "posted" | "filled" | "cancelled";
+                            /** @description Bağlı iş teklifi (DOM-FIN-121) */
+                            jobOfferId: string | null;
+                            /** @description Bağlı teklifin pozisyon adı */
+                            jobOfferPosition: string | null;
+                            note: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            version: number;
                         };
                     };
                 };

@@ -201,6 +201,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // (routes/finance-policy-acknowledgements.ts; DOM-FIN-127, ON-190).
   'POST /api/v1/finance/policy-documents',
   'POST /api/v1/finance/policy-acknowledgements',
+  // Açık pozisyon açılışı; çift tıklama ikinci pozisyonu açmaz
+  // (routes/finance-staffing-plans.ts; DOM-FIN-126, ON-188).
+  'POST /api/v1/finance/staffing-positions',
 ]
 // Onur: kayıt ve finans sonu
 

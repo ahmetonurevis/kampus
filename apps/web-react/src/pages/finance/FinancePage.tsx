@@ -279,7 +279,8 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Sağlık raporları (DOM-FIN-110) yalnız yöneticidedir; sağlık verisi özel niteliklidir (K-363).
  * Bordro dönemleri (DOM-FIN-108) yalnız yöneticidedir; ücret verisiyle aynı (K-359).
  * Personel izinleri (DOM-FIN-109) yalnız yöneticidedir; personel kişisel verisidir.
- * İzin talepleri (DOM-FIN-116) yalnız yöneticidedir; izin verisiyle aynı.
+ * İzin talepleri (DOM-FIN-116) yöneticidedir; ön büro sekmede yalnız izin takvimini okur
+ * (DOM-FIN-123, K-420: onaylı izinler, türsüz).
  * SGK hazırlık listesi (DOM-FIN-107) yalnız yöneticidedir; liste ücret taşır (K-355).
  * Çalışma onayları (DOM-FIN-114) yalnız yöneticidedir; öğretmen özlük verisidir (K-377).
  * Gezi planları (DOM-FIN-111) ikisine açıktır; ön büro taslak yazar, yönetici onaylar (K-367).
@@ -301,7 +302,6 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'workPermits' ||
       value === 'sgkPreparation' ||
       value === 'staffLeave' ||
-      value === 'leaveRequests' ||
       value === 'payrollPeriods' ||
       value === 'medicalReports' ||
       value === 'payrollExport' ||
@@ -508,7 +508,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'medicalReports' ? <FinanceMedicalReportsSection /> : null}
         {tab === 'payrollPeriods' ? <FinancePayrollPeriodsSection /> : null}
         {tab === 'staffLeave' ? <FinanceStaffLeaveSection /> : null}
-        {tab === 'leaveRequests' ? <FinanceLeaveRequestsSection /> : null}
+        {tab === 'leaveRequests' ? <FinanceLeaveRequestsSection canManage={isManager} /> : null}
         {tab === 'sgkPreparation' ? <FinanceSgkPreparationSection /> : null}
         {tab === 'workPermits' ? <FinanceWorkPermitsSection /> : null}
         {tab === 'tripPlans' ? <FinanceTripPlansSection /> : null}

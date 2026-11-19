@@ -299,6 +299,32 @@ describe('DOM-FIN-108: bordro onayı ve dönem kilidi uçları', () => {
     assert.deepEqual(audit[0]?.changes, { fields: ['status', 'approvedAt', 'inputsHash'] })
   })
 
+  test('DOM-FIN-108 K-426: K-426 öncesi onaylanan dönem değişmez; yeniden açılan ay yeni damgayla onaylanır', async () => {
+    const t = await institution()
+    const selin = await person(t, 'ogretmen', 'Selin Kaya')
+    ok(await createRate(t.admin, wage(selin, '2026-01-01')), 201)
+    const view = await approved(t.admin, '2026-08')
+    // Eski biçimle üretilmiş damga (kesinti ve hesap revizyonu kapsamıyordu) saklı kalır.
+    const legacy = 'c'.repeat(64)
+    await db
+      .update(payrollPeriods)
+      .set({ inputsHash: legacy })
+      .where(and(eq(payrollPeriods.institutionId, t.id), eq(payrollPeriods.month, '2026-08')))
+    const august = await monthOf(t.admin, '2026-08')
+    assert.equal(august.state, 'approved')
+    assert.equal((august.approved as Json).inputsHash, legacy)
+    assert.equal(august.current, null)
+    assert.equal(august.checks, null)
+    assert.deepEqual((await yearOf(t.admin)).lockedMonths, ['2026-08'])
+    // Yeniden açılan ayın güncel damgası yeniden hesaplanır ve onay onunla geçer.
+    ok(await reopen(t.admin, '2026-08', view.version))
+    const reopened = await monthOf(t.admin, '2026-08')
+    assert.notEqual(reopened.current?.inputsHash, legacy)
+    assert.ok(reopened.checks)
+    assertError(await approve(t.admin, '2026-08', legacy), 409, 'payroll_inputs_changed')
+    assert.equal((await approved(t.admin, '2026-08')).state, 'approved')
+  })
+
   test('DOM-FIN-108: onay hataları ve mükerrer onay (K-356)', async () => {
     const t = await institution()
     const september = await monthOf(t.admin, '2026-09')

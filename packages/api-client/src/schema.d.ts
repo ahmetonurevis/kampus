@@ -105007,6 +105007,45 @@ export interface operations {
                                     /** @description Girdi damgası (SHA-256, onaltılık) */
                                     inputsHash: string;
                                 } | null;
+                                /** @description Onaylanmamış, başlamış ayın onay öncesi durumu (ek ders, kayıtlı hesap, kesinti; K-425) */
+                                checks: {
+                                    lessonSheet: {
+                                        /**
+                                         * @description Ek ders çizelgesi: `none` saat yok, `draft` taslak, `teacher_review` öğretmen kontrolünde, `approved` onaylı
+                                         * @enum {string}
+                                         */
+                                        state: "none" | "draft" | "teacher_review" | "approved";
+                                        /** @description Ayın ek ders saati kaydı sayısı */
+                                        entryCount: number;
+                                        /** @description Müdür onayı bekleyen saat kaydı sayısı */
+                                        pendingCount: number;
+                                    };
+                                    payrollRun: {
+                                        /**
+                                         * @description Kayıtlı bordro hesabı: `none` yok, `current` güncel, `stale` girdiler değişmiş
+                                         * @enum {string}
+                                         */
+                                        state: "none" | "current" | "stale";
+                                        /** @description Etkin hesabın revizyonu */
+                                        revision: number | null;
+                                        /** @description Etkin hesabın kayıt anı */
+                                        calculatedAt: string | null;
+                                    };
+                                    deductions: {
+                                        /** @description Ayın avans taksiti sayısı */
+                                        advanceCount: number;
+                                        /** @description Ayda kesilecek icra sayısı */
+                                        garnishmentCount: number;
+                                        /** @description Ayda kesilecek BES katkısı sayısı */
+                                        pensionCount: number;
+                                        /** @description Avans taksitlerinin toplamı, kuruş; icra ve BES oranlıdır, tutarı bordro hesabında */
+                                        advanceTotalCents: number;
+                                    };
+                                    /** @description Onayı durduran engeller; boş değilse onay 409 döner */
+                                    blockers: "payroll_lesson_hours_pending"[];
+                                    /** @description Onayı durdurmayan uyarılar */
+                                    warnings: ("payroll_run_missing" | "payroll_run_stale")[];
+                                } | null;
                                 reopenedAt: string | null;
                                 reopenedByName: string | null;
                                 /** @description Son yeniden açma gerekçesi */
@@ -105175,6 +105214,45 @@ export interface operations {
                                 /** @description Girdi damgası (SHA-256, onaltılık) */
                                 inputsHash: string;
                             } | null;
+                            /** @description Onaylanmamış, başlamış ayın onay öncesi durumu (ek ders, kayıtlı hesap, kesinti; K-425) */
+                            checks: {
+                                lessonSheet: {
+                                    /**
+                                     * @description Ek ders çizelgesi: `none` saat yok, `draft` taslak, `teacher_review` öğretmen kontrolünde, `approved` onaylı
+                                     * @enum {string}
+                                     */
+                                    state: "none" | "draft" | "teacher_review" | "approved";
+                                    /** @description Ayın ek ders saati kaydı sayısı */
+                                    entryCount: number;
+                                    /** @description Müdür onayı bekleyen saat kaydı sayısı */
+                                    pendingCount: number;
+                                };
+                                payrollRun: {
+                                    /**
+                                     * @description Kayıtlı bordro hesabı: `none` yok, `current` güncel, `stale` girdiler değişmiş
+                                     * @enum {string}
+                                     */
+                                    state: "none" | "current" | "stale";
+                                    /** @description Etkin hesabın revizyonu */
+                                    revision: number | null;
+                                    /** @description Etkin hesabın kayıt anı */
+                                    calculatedAt: string | null;
+                                };
+                                deductions: {
+                                    /** @description Ayın avans taksiti sayısı */
+                                    advanceCount: number;
+                                    /** @description Ayda kesilecek icra sayısı */
+                                    garnishmentCount: number;
+                                    /** @description Ayda kesilecek BES katkısı sayısı */
+                                    pensionCount: number;
+                                    /** @description Avans taksitlerinin toplamı, kuruş; icra ve BES oranlıdır, tutarı bordro hesabında */
+                                    advanceTotalCents: number;
+                                };
+                                /** @description Onayı durduran engeller; boş değilse onay 409 döner */
+                                blockers: "payroll_lesson_hours_pending"[];
+                                /** @description Onayı durdurmayan uyarılar */
+                                warnings: ("payroll_run_missing" | "payroll_run_stale")[];
+                            } | null;
                             reopenedAt: string | null;
                             reopenedByName: string | null;
                             /** @description Son yeniden açma gerekçesi */
@@ -105245,6 +105323,45 @@ export interface operations {
                                 parameterEffectiveFrom: string | null;
                                 /** @description Girdi damgası (SHA-256, onaltılık) */
                                 inputsHash: string;
+                            } | null;
+                            /** @description Onaylanmamış, başlamış ayın onay öncesi durumu (ek ders, kayıtlı hesap, kesinti; K-425) */
+                            checks: {
+                                lessonSheet: {
+                                    /**
+                                     * @description Ek ders çizelgesi: `none` saat yok, `draft` taslak, `teacher_review` öğretmen kontrolünde, `approved` onaylı
+                                     * @enum {string}
+                                     */
+                                    state: "none" | "draft" | "teacher_review" | "approved";
+                                    /** @description Ayın ek ders saati kaydı sayısı */
+                                    entryCount: number;
+                                    /** @description Müdür onayı bekleyen saat kaydı sayısı */
+                                    pendingCount: number;
+                                };
+                                payrollRun: {
+                                    /**
+                                     * @description Kayıtlı bordro hesabı: `none` yok, `current` güncel, `stale` girdiler değişmiş
+                                     * @enum {string}
+                                     */
+                                    state: "none" | "current" | "stale";
+                                    /** @description Etkin hesabın revizyonu */
+                                    revision: number | null;
+                                    /** @description Etkin hesabın kayıt anı */
+                                    calculatedAt: string | null;
+                                };
+                                deductions: {
+                                    /** @description Ayın avans taksiti sayısı */
+                                    advanceCount: number;
+                                    /** @description Ayda kesilecek icra sayısı */
+                                    garnishmentCount: number;
+                                    /** @description Ayda kesilecek BES katkısı sayısı */
+                                    pensionCount: number;
+                                    /** @description Avans taksitlerinin toplamı, kuruş; icra ve BES oranlıdır, tutarı bordro hesabında */
+                                    advanceTotalCents: number;
+                                };
+                                /** @description Onayı durduran engeller; boş değilse onay 409 döner */
+                                blockers: "payroll_lesson_hours_pending"[];
+                                /** @description Onayı durdurmayan uyarılar */
+                                warnings: ("payroll_run_missing" | "payroll_run_stale")[];
                             } | null;
                             reopenedAt: string | null;
                             reopenedByName: string | null;
@@ -105414,6 +105531,45 @@ export interface operations {
                                 parameterEffectiveFrom: string | null;
                                 /** @description Girdi damgası (SHA-256, onaltılık) */
                                 inputsHash: string;
+                            } | null;
+                            /** @description Onaylanmamış, başlamış ayın onay öncesi durumu (ek ders, kayıtlı hesap, kesinti; K-425) */
+                            checks: {
+                                lessonSheet: {
+                                    /**
+                                     * @description Ek ders çizelgesi: `none` saat yok, `draft` taslak, `teacher_review` öğretmen kontrolünde, `approved` onaylı
+                                     * @enum {string}
+                                     */
+                                    state: "none" | "draft" | "teacher_review" | "approved";
+                                    /** @description Ayın ek ders saati kaydı sayısı */
+                                    entryCount: number;
+                                    /** @description Müdür onayı bekleyen saat kaydı sayısı */
+                                    pendingCount: number;
+                                };
+                                payrollRun: {
+                                    /**
+                                     * @description Kayıtlı bordro hesabı: `none` yok, `current` güncel, `stale` girdiler değişmiş
+                                     * @enum {string}
+                                     */
+                                    state: "none" | "current" | "stale";
+                                    /** @description Etkin hesabın revizyonu */
+                                    revision: number | null;
+                                    /** @description Etkin hesabın kayıt anı */
+                                    calculatedAt: string | null;
+                                };
+                                deductions: {
+                                    /** @description Ayın avans taksiti sayısı */
+                                    advanceCount: number;
+                                    /** @description Ayda kesilecek icra sayısı */
+                                    garnishmentCount: number;
+                                    /** @description Ayda kesilecek BES katkısı sayısı */
+                                    pensionCount: number;
+                                    /** @description Avans taksitlerinin toplamı, kuruş; icra ve BES oranlıdır, tutarı bordro hesabında */
+                                    advanceTotalCents: number;
+                                };
+                                /** @description Onayı durduran engeller; boş değilse onay 409 döner */
+                                blockers: "payroll_lesson_hours_pending"[];
+                                /** @description Onayı durdurmayan uyarılar */
+                                warnings: ("payroll_run_missing" | "payroll_run_stale")[];
                             } | null;
                             reopenedAt: string | null;
                             reopenedByName: string | null;

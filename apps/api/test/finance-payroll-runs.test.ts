@@ -43,6 +43,7 @@ const PERIODS = `${FINANCE}/payroll-periods`
 const GARNISHMENTS = `${FINANCE}/staff-garnishments`
 const LESSON_HOURS = `${FINANCE}/payroll-lesson-hours`
 const SHEETS = `${FINANCE}/lesson-hour-sheets`
+const ADVANCES = `${FINANCE}/staff-advances`
 
 type Json = Record<string, unknown>
 type Response = Awaited<ReturnType<App['inject']>>
@@ -386,6 +387,117 @@ describe('DOM-FIN-115: bordro hesabı uçları', () => {
       pendingStaffCount: 0,
       pendingHours: 0,
     })
+  })
+
+  test('DOM-FIN-108: dönem satırı ek ders, kayıtlı hesap ve kesinti durumunu önceden gösterir; damga ikisini kapsar (K-425, K-426)', async () => {
+    const t = await institution()
+    const selin = await person(t, 'ogretmen', 'Selin Kaya')
+    await rate(t, wage(selin, 15_000_000))
+    await rate(t, {
+      component: 'lesson',
+      membershipId: selin,
+      rateType: 'extra',
+      amountCents: 25_000,
+      startDate: '2026-01-01',
+    })
+    const monthView = async (month: string) => {
+      const year = ok(await get(`${PERIODS}?year=2026`, t.admin)) as { months: Json[] }
+      const view = year.months.find((item) => item.month === month)
+      assert.ok(view)
+      return view as Json & { checks: Json | null; current: Json | null }
+    }
+    const hashOf = async (month: string) => (await monthView(month)).current?.inputsHash
+    const january = await hashOf('2026-01')
+
+    ok(
+      await call('POST', LESSON_HOURS, t.admin, {
+        membershipId: selin,
+        month: '2026-02',
+        lessonType: 'extra',
+        hours: 10,
+      }),
+      201,
+    )
+    const draft = await monthView('2026-02')
+    assert.deepEqual(draft.checks, {
+      lessonSheet: { state: 'draft', entryCount: 1, pendingCount: 1 },
+      payrollRun: { state: 'none', revision: null, calculatedAt: null },
+      deductions: { advanceCount: 0, garnishmentCount: 0, pensionCount: 0, advanceTotalCents: 0 },
+      blockers: ['payroll_lesson_hours_pending'],
+      warnings: ['payroll_run_missing'],
+    })
+    // Saat kaydı olmayan ay: çizelge "yok", engel yok.
+    const march = await monthView('2026-03')
+    assert.deepEqual((march.checks as Json).lessonSheet, {
+      state: 'none',
+      entryCount: 0,
+      pendingCount: 0,
+    })
+    assert.deepEqual((march.checks as Json).blockers, [])
+    // Başlamamış ve onaylı ayın durumu yoktur.
+    assert.equal((await monthView('2026-11')).checks, null)
+
+    // Kesinti: avans taksiti sayılır ve damgaya girer (K-426).
+    const beforeAdvance = draft.current?.inputsHash
+    ok(
+      await call(
+        'POST',
+        ADVANCES,
+        t.admin,
+        {
+          membershipId: selin,
+          amountCents: 1_000_000,
+          givenDate: '2026-02-01',
+          paymentMethod: 'bank_transfer',
+          installmentCount: 2,
+          firstMonth: '2026-02',
+        },
+        key(),
+      ),
+      201,
+    )
+    const withAdvance = await monthView('2026-02')
+    assert.deepEqual((withAdvance.checks as Json).deductions, {
+      advanceCount: 1,
+      garnishmentCount: 0,
+      pensionCount: 0,
+      advanceTotalCents: 500_000,
+    })
+    assert.notEqual(withAdvance.current?.inputsHash, beforeAdvance)
+    // Kesintisi ve kayıtlı hesabı olmayan ayın damgası değişmez.
+    assert.equal(await hashOf('2026-01'), january)
+
+    // Çizelge onaylanır, hesap kaydedilir: engel ve uyarı kalkar; revizyon damgaya girer.
+    await approveSheet(t, '2026-02')
+    const sheetApproved = await monthView('2026-02')
+    assert.deepEqual((sheetApproved.checks as Json).blockers, [])
+    ok(await save(t.admin, '2026-02', null), 201)
+    const saved = await monthView('2026-02')
+    assert.deepEqual((saved.checks as Json).payrollRun, {
+      state: 'current',
+      revision: 1,
+      calculatedAt: FIXED_NOW.toISOString(),
+    })
+    assert.deepEqual((saved.checks as Json).warnings, [])
+    assert.notEqual(saved.current?.inputsHash, sheetApproved.current?.inputsHash)
+    // Hesap okuması denetime düşmez: tutar dönmez.
+    assert.equal((await auditOf(t.id, 'finance.payroll_calculation.read')).length, 0)
+
+    // Ücret değişir: kayıtlı hesap güncel değil (uyarı, engel değil).
+    await rate(t, wage(selin, 16_000_000, '2026-02-15'))
+    const stale = await monthView('2026-02')
+    assert.equal(((stale.checks as Json).payrollRun as Json).state, 'stale')
+    assert.deepEqual((stale.checks as Json).warnings, ['payroll_run_stale'])
+    assert.deepEqual((stale.checks as Json).blockers, [])
+
+    // Onay güncel damgayla geçer; onaylı ayın durumu dönmez, saklanan damga gördüğümüzdür.
+    const approved = ok(await approvePeriod(t, '2026-02'), 201)
+    assert.equal(approved.checks, null)
+    assert.equal((approved.approved as Json).inputsHash, stale.current?.inputsHash)
+    // Şubat onayı ocağın damgasını değiştirmez (ocakta kesinti ve kayıtlı hesap yok).
+    const januaryNow = await hashOf('2026-01')
+    const januaryApproved = ok(await approvePeriod(t, '2026-01'), 201)
+    assert.equal((januaryApproved.approved as Json).inputsHash, januaryNow)
   })
 
   test('DOM-FIN-115: icra kesintisi net ücretin dörtte biri, ödenecek netten düşer', async () => {

@@ -2864,7 +2864,7 @@ const FINANCE: Readonly<Record<string, Proof>> = {
   ...Object.fromEntries(
     (
       [
-        ['liste', 'GET /api/v1/finance/payroll-calculations/:month', 'rowsOf(aPreview).length, 0'],
+        ['kayıt', 'GET /api/v1/finance/payroll-calculations/:month', 'rowsOf(aPreview).length, 0'],
         [
           'kayıt',
           'GET /api/v1/finance/payroll-runs/:month',

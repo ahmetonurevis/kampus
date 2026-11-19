@@ -208,6 +208,12 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // ikinci atamayı açmaz (routes/finance-professional-development.ts; DOM-FIN-125, ON-214).
   'POST /api/v1/finance/professional-development',
   'POST /api/v1/finance/professional-development/{programId}/enrollments',
+  // İş ilanı açılışı, başvuru kaydı ve toplu anonimleştirme; çift tıklama ikinci ilanı ya da
+  // başvuruyu açmaz, anonimleştirme geri alınamaz (routes/finance-job-postings.ts; DOM-FIN-128,
+  // ON-177).
+  'POST /api/v1/finance/job-postings',
+  'POST /api/v1/finance/job-applications',
+  'POST /api/v1/finance/job-application-anonymizations',
 ]
 // Onur: kayıt ve finans sonu
 

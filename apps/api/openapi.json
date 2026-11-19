@@ -270143,6 +270143,4028 @@
         }
       }
     },
+    "/api/v1/finance/job-postings": {
+      "get": {
+        "operationId": "listJobPostings",
+        "summary": "İş ilanları",
+        "tags": [
+          "finance-job-postings"
+        ],
+        "description": "İlanlar: taslak ve yayındakiler önce, son başvuru gününe göre. Satırda başvuru, süren başvuru ve işe alınan sayısı; yayındaki ilanın son başvuru günü geçtiyse `deadlinePassed` (K-439). Arama başlık ve pozisyonda. Rol: `yonetici` ve `onburo`. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "İlan başlığı ve pozisyonda arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "published",
+                "closed"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "`draft` taslak, `published` yayında, `closed` kapandı"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "full_time",
+                "part_time",
+                "extra_lessons"
+              ]
+            },
+            "in": "query",
+            "name": "employmentType",
+            "required": false,
+            "description": "`full_time` tam zamanlı, `part_time` yarı zamanlı, `extra_lessons` ek ders"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "position": {
+                            "type": "string",
+                            "description": "Pozisyon / branş"
+                          },
+                          "employmentType": {
+                            "type": "string",
+                            "enum": [
+                              "full_time",
+                              "part_time",
+                              "extra_lessons"
+                            ],
+                            "description": "`full_time` tam zamanlı, `part_time` yarı zamanlı, `extra_lessons` ek ders"
+                          },
+                          "description": {
+                            "type": "string"
+                          },
+                          "requirements": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "publishOn": {
+                            "type": "string",
+                            "description": "Yayın günü (YYYY-MM-DD)"
+                          },
+                          "deadlineOn": {
+                            "type": "string",
+                            "description": "Son başvuru günü (YYYY-MM-DD)"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "draft",
+                              "published",
+                              "closed"
+                            ],
+                            "description": "`draft` taslak, `published` yayında, `closed` kapandı"
+                          },
+                          "closedOn": {
+                            "description": "Kapanış günü; yalnız kapanan ilanda",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "deadlinePassed": {
+                            "type": "boolean",
+                            "description": "Yayındaki ilanın son başvuru günü geçti mi (kapatılması önerilir)"
+                          },
+                          "applicationCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Bütün başvurular (anonimleştirilmişler dahil)"
+                          },
+                          "openApplicationCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Süren başvurular (yeni → teklif)"
+                          },
+                          "hiredCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "title",
+                          "position",
+                          "employmentType",
+                          "description",
+                          "requirements",
+                          "publishOn",
+                          "deadlineOn",
+                          "status",
+                          "closedOn",
+                          "deadlinePassed",
+                          "applicationCount",
+                          "openApplicationCount",
+                          "hiredCount",
+                          "createdAt",
+                          "updatedAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createJobPosting",
+        "summary": "İş ilanı aç",
+        "tags": [
+          "finance-job-postings"
+        ],
+        "description": "Başlık (2–160), pozisyon/branş (2–120), çalışma türü, açıklama (10–4000), isteğe bağlı nitelikler (≤ 4000), yayın ve son başvuru günü (yayından önce olamaz, 400). İlan taslak açılır (K-439). Denetim `finance.job_posting.create`. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 160,
+                    "description": "İlan başlığı (2–160), ör. \"2027–2028 İngilizce öğretmeni\""
+                  },
+                  "position": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120,
+                    "description": "Pozisyon / branş (2–120), ör. İngilizce öğretmeni"
+                  },
+                  "employmentType": {
+                    "type": "string",
+                    "enum": [
+                      "full_time",
+                      "part_time",
+                      "extra_lessons"
+                    ],
+                    "description": "`full_time` tam zamanlı, `part_time` yarı zamanlı, `extra_lessons` ek ders"
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 4000,
+                    "description": "İş tanımı (10–4000)"
+                  },
+                  "requirements": {
+                    "description": "Aranan nitelikler (≤ 4000, isteğe bağlı)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 4000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "publishOn": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Yayın günü (YYYY-MM-DD)"
+                  },
+                  "deadlineOn": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Son başvuru günü (YYYY-MM-DD); yayın gününden önce olamaz"
+                  }
+                },
+                "required": [
+                  "title",
+                  "position",
+                  "employmentType",
+                  "description",
+                  "publishOn",
+                  "deadlineOn"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "position": {
+                          "type": "string",
+                          "description": "Pozisyon / branş"
+                        },
+                        "employmentType": {
+                          "type": "string",
+                          "enum": [
+                            "full_time",
+                            "part_time",
+                            "extra_lessons"
+                          ],
+                          "description": "`full_time` tam zamanlı, `part_time` yarı zamanlı, `extra_lessons` ek ders"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "requirements": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "publishOn": {
+                          "type": "string",
+                          "description": "Yayın günü (YYYY-MM-DD)"
+                        },
+                        "deadlineOn": {
+                          "type": "string",
+                          "description": "Son başvuru günü (YYYY-MM-DD)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "closed"
+                          ],
+                          "description": "`draft` taslak, `published` yayında, `closed` kapandı"
+                        },
+                        "closedOn": {
+                          "description": "Kapanış günü; yalnız kapanan ilanda",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "deadlinePassed": {
+                          "type": "boolean",
+                          "description": "Yayındaki ilanın son başvuru günü geçti mi (kapatılması önerilir)"
+                        },
+                        "applicationCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Bütün başvurular (anonimleştirilmişler dahil)"
+                        },
+                        "openApplicationCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Süren başvurular (yeni → teklif)"
+                        },
+                        "hiredCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "position",
+                        "employmentType",
+                        "description",
+                        "requirements",
+                        "publishOn",
+                        "deadlineOn",
+                        "status",
+                        "closedOn",
+                        "deadlinePassed",
+                        "applicationCount",
+                        "openApplicationCount",
+                        "hiredCount",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/job-postings/{postingId}": {
+      "get": {
+        "operationId": "getJobPosting",
+        "summary": "İş ilanı",
+        "tags": [
+          "finance-job-postings"
+        ],
+        "description": "İlan ve başvuru sayıları. Başka kurumun ilanı 404. Rol: `yonetici` ve `onburo`. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "postingId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "position": {
+                          "type": "string",
+                          "description": "Pozisyon / branş"
+                        },
+                        "employmentType": {
+                          "type": "string",
+                          "enum": [
+                            "full_time",
+                            "part_time",
+                            "extra_lessons"
+                          ],
+                          "description": "`full_time` tam zamanlı, `part_time` yarı zamanlı, `extra_lessons` ek ders"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "requirements": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "publishOn": {
+                          "type": "string",
+                          "description": "Yayın günü (YYYY-MM-DD)"
+                        },
+                        "deadlineOn": {
+                          "type": "string",
+                          "description": "Son başvuru günü (YYYY-MM-DD)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "closed"
+                          ],
+                          "description": "`draft` taslak, `published` yayında, `closed` kapandı"
+                        },
+                        "closedOn": {
+                          "description": "Kapanış günü; yalnız kapanan ilanda",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "deadlinePassed": {
+                          "type": "boolean",
+                          "description": "Yayındaki ilanın son başvuru günü geçti mi (kapatılması önerilir)"
+                        },
+                        "applicationCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Bütün başvurular (anonimleştirilmişler dahil)"
+                        },
+                        "openApplicationCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Süren başvurular (yeni → teklif)"
+                        },
+                        "hiredCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "position",
+                        "employmentType",
+                        "description",
+                        "requirements",
+                        "publishOn",
+                        "deadlineOn",
+                        "status",
+                        "closedOn",
+                        "deadlinePassed",
+                        "applicationCount",
+                        "openApplicationCount",
+                        "hiredCount",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateJobPosting",
+        "summary": "İş ilanını düzelt",
+        "tags": [
+          "finance-job-postings"
+        ],
+        "description": "Tam gövde. Kapanan ilan 422 `job_posting_closed`; değişiklik yoksa 422 `job_posting_unchanged`; yayındaki ilanın yayın günü 422 `job_posting_publish_locked`; son başvuru günü alınmış başvuruların gününden önceye 422 `job_posting_deadline_before_applications` (K-439). `If-Match` zorunlu; sürüm tutmazsa 409. Denetim `finance.job_posting.update` (alan adları). Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 160,
+                    "description": "İlan başlığı (2–160), ör. \"2027–2028 İngilizce öğretmeni\""
+                  },
+                  "position": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120,
+                    "description": "Pozisyon / branş (2–120), ör. İngilizce öğretmeni"
+                  },
+                  "employmentType": {
+                    "type": "string",
+                    "enum": [
+                      "full_time",
+                      "part_time",
+                      "extra_lessons"
+                    ],
+                    "description": "`full_time` tam zamanlı, `part_time` yarı zamanlı, `extra_lessons` ek ders"
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 4000,
+                    "description": "İş tanımı (10–4000)"
+                  },
+                  "requirements": {
+                    "description": "Aranan nitelikler (≤ 4000, isteğe bağlı)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 4000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "publishOn": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Yayın günü (YYYY-MM-DD)"
+                  },
+                  "deadlineOn": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Son başvuru günü (YYYY-MM-DD); yayın gününden önce olamaz"
+                  }
+                },
+                "required": [
+                  "title",
+                  "position",
+                  "employmentType",
+                  "description",
+                  "publishOn",
+                  "deadlineOn"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "postingId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "position": {
+                          "type": "string",
+                          "description": "Pozisyon / branş"
+                        },
+                        "employmentType": {
+                          "type": "string",
+                          "enum": [
+                            "full_time",
+                            "part_time",
+                            "extra_lessons"
+                          ],
+                          "description": "`full_time` tam zamanlı, `part_time` yarı zamanlı, `extra_lessons` ek ders"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "requirements": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "publishOn": {
+                          "type": "string",
+                          "description": "Yayın günü (YYYY-MM-DD)"
+                        },
+                        "deadlineOn": {
+                          "type": "string",
+                          "description": "Son başvuru günü (YYYY-MM-DD)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "closed"
+                          ],
+                          "description": "`draft` taslak, `published` yayında, `closed` kapandı"
+                        },
+                        "closedOn": {
+                          "description": "Kapanış günü; yalnız kapanan ilanda",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "deadlinePassed": {
+                          "type": "boolean",
+                          "description": "Yayındaki ilanın son başvuru günü geçti mi (kapatılması önerilir)"
+                        },
+                        "applicationCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Bütün başvurular (anonimleştirilmişler dahil)"
+                        },
+                        "openApplicationCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Süren başvurular (yeni → teklif)"
+                        },
+                        "hiredCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "position",
+                        "employmentType",
+                        "description",
+                        "requirements",
+                        "publishOn",
+                        "deadlineOn",
+                        "status",
+                        "closedOn",
+                        "deadlinePassed",
+                        "applicationCount",
+                        "openApplicationCount",
+                        "hiredCount",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/job-postings/{postingId}/status": {
+      "post": {
+        "operationId": "changeJobPostingStatus",
+        "summary": "İş ilanını yayımla ya da kapat",
+        "tags": [
+          "finance-job-postings"
+        ],
+        "description": "Taslak → yayında → kapandı; taslak doğrudan kapanabilir, kapanan ilan yeniden açılmaz (422 `job_posting_transition`). Son başvuru günü geçmiş ilan yayımlanmaz (422 `job_posting_deadline_passed`). Kapanış günü bugündür; kapanan ilandaki işe alınmamış başvuruların saklama süresi bu günden başlar (K-441). `If-Match` zorunlu. Denetim `finance.job_posting.status`. Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "published",
+                      "closed"
+                    ],
+                    "description": "`published` yayımla, `closed` kapat"
+                  }
+                },
+                "required": [
+                  "status"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "postingId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "position": {
+                          "type": "string",
+                          "description": "Pozisyon / branş"
+                        },
+                        "employmentType": {
+                          "type": "string",
+                          "enum": [
+                            "full_time",
+                            "part_time",
+                            "extra_lessons"
+                          ],
+                          "description": "`full_time` tam zamanlı, `part_time` yarı zamanlı, `extra_lessons` ek ders"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "requirements": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "publishOn": {
+                          "type": "string",
+                          "description": "Yayın günü (YYYY-MM-DD)"
+                        },
+                        "deadlineOn": {
+                          "type": "string",
+                          "description": "Son başvuru günü (YYYY-MM-DD)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "closed"
+                          ],
+                          "description": "`draft` taslak, `published` yayında, `closed` kapandı"
+                        },
+                        "closedOn": {
+                          "description": "Kapanış günü; yalnız kapanan ilanda",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "deadlinePassed": {
+                          "type": "boolean",
+                          "description": "Yayındaki ilanın son başvuru günü geçti mi (kapatılması önerilir)"
+                        },
+                        "applicationCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Bütün başvurular (anonimleştirilmişler dahil)"
+                        },
+                        "openApplicationCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Süren başvurular (yeni → teklif)"
+                        },
+                        "hiredCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "position",
+                        "employmentType",
+                        "description",
+                        "requirements",
+                        "publishOn",
+                        "deadlineOn",
+                        "status",
+                        "closedOn",
+                        "deadlinePassed",
+                        "applicationCount",
+                        "openApplicationCount",
+                        "hiredCount",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/job-applications": {
+      "get": {
+        "operationId": "listJobApplications",
+        "summary": "Başvuru havuzu",
+        "tags": [
+          "finance-job-postings"
+        ],
+        "description": "Başvurular en yeni önce; satır iletişim ve not taşımaz (K-440). Süzgeç ilan, aşama, kanal ve `open=true` (süren başvurular); arama aday adı ve ilan başlığında. Satırda saklama süresinin dolduğu gün (K-441). Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Aday adı ve ilan başlığında arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "jobPostingId",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "new",
+                "screening",
+                "interview",
+                "offer",
+                "hired",
+                "rejected"
+              ]
+            },
+            "in": "query",
+            "name": "stage",
+            "required": false,
+            "description": "`new` yeni, `screening` ön eleme, `interview` mülakat, `offer` teklif, `hired` işe alındı, `rejected` reddedildi"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "website",
+                "email",
+                "in_person",
+                "referral"
+              ]
+            },
+            "in": "query",
+            "name": "channel",
+            "required": false,
+            "description": "`website` kurum sitesi, `email` e-posta, `in_person` elden, `referral` tavsiye"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "in": "query",
+            "name": "open",
+            "required": false,
+            "description": "`true` yalnız süren (yeni → teklif, anonimleştirilmemiş) başvurular"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "jobPostingId": {
+                            "type": "string"
+                          },
+                          "postingTitle": {
+                            "type": "string"
+                          },
+                          "candidateName": {
+                            "type": "string",
+                            "description": "Anonimleştirilmişte \"Anonim aday\""
+                          },
+                          "channel": {
+                            "type": "string",
+                            "enum": [
+                              "website",
+                              "email",
+                              "in_person",
+                              "referral"
+                            ],
+                            "description": "`website` kurum sitesi, `email` e-posta, `in_person` elden, `referral` tavsiye"
+                          },
+                          "receivedOn": {
+                            "type": "string"
+                          },
+                          "stage": {
+                            "type": "string",
+                            "enum": [
+                              "new",
+                              "screening",
+                              "interview",
+                              "offer",
+                              "hired",
+                              "rejected"
+                            ],
+                            "description": "`new` yeni, `screening` ön eleme, `interview` mülakat, `offer` teklif, `hired` işe alındı, `rejected` reddedildi"
+                          },
+                          "stageChangedOn": {
+                            "type": "string",
+                            "description": "Son aşama değişikliğinin günü"
+                          },
+                          "hasCv": {
+                            "type": "boolean"
+                          },
+                          "anonymized": {
+                            "type": "boolean"
+                          },
+                          "retentionDueOn": {
+                            "description": "Saklama süresinin dolduğu gün; işe alınan ve süren başvuruda boş (K-441)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "jobPostingId",
+                          "postingTitle",
+                          "candidateName",
+                          "channel",
+                          "receivedOn",
+                          "stage",
+                          "stageChangedOn",
+                          "hasCv",
+                          "anonymized",
+                          "retentionDueOn",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createJobApplication",
+        "summary": "Başvuru kaydet",
+        "tags": [
+          "finance-job-postings"
+        ],
+        "description": "Personel başvuruyu girer (kurum sitesi, e-posta, elden, tavsiye): ilan, aday adı, e-posta ya da telefon (biri zorunlu, 400), kanal, başvuru günü, isteğe bağlı özgeçmiş (`POST /files` amaç `document`, PDF; yükleyenin, hazır ve bağsız), gösterilen aday aydınlatma metni sürümü ve günü (zorunlu), not. İlan yok 422 `job_application_posting_not_found`, taslak 422 `job_application_posting_draft`; başvuru günü yayından önce 422 `job_application_before_publish`, son başvurudan sonra 422 `job_application_after_deadline`, bugünden sonra 422 `job_application_received_in_future`; aydınlatma günü bugünden sonra 422 `job_application_notice_in_future`. Aynı ilana aynı e-posta ya da telefon 409 `job_application_duplicate` (K-440). Aşama `new`, geçmişe ilk satır yazılır. Denetim `finance.job_application.create` (alan adları; aday verisi yok). `Idempotency-Key` zorunlu. Rol: `yonetici` ve `onburo`. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "jobPostingId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "description": "Başvurulan ilan"
+                  },
+                  "candidateName": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120,
+                    "description": "Adayın adı soyadı (2–120)"
+                  },
+                  "email": {
+                    "description": "Adayın e-postası (isteğe bağlı)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 254
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "phone": {
+                    "description": "Adayın telefonu (isteğe bağlı, 0XXXXXXXXXX); e-posta ya da telefondan biri zorunlu",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "website",
+                      "email",
+                      "in_person",
+                      "referral"
+                    ],
+                    "description": "`website` kurum sitesi, `email` e-posta, `in_person` elden, `referral` tavsiye"
+                  },
+                  "receivedOn": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Başvurunun alındığı gün; yayın gününden önce, son başvuru gününden ve bugünden sonra olamaz"
+                  },
+                  "cvFileId": {
+                    "default": null,
+                    "description": "Özgeçmiş (`POST /files` amaç `document`, PDF); isteğe bağlı",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "privacyNoticeVersion": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40,
+                    "description": "Adaya gösterilen aday aydınlatma metninin sürümü (zorunlu)"
+                  },
+                  "privacyNoticeShownOn": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Aydınlatma metninin adaya gösterildiği gün (zorunlu); bugünden sonra olamaz"
+                  },
+                  "note": {
+                    "description": "İç not (≤ 1000); denetime ve loga yazılmaz",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "jobPostingId",
+                  "candidateName",
+                  "channel",
+                  "receivedOn",
+                  "privacyNoticeVersion",
+                  "privacyNoticeShownOn"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "jobPostingId": {
+                          "type": "string"
+                        },
+                        "postingTitle": {
+                          "type": "string"
+                        },
+                        "candidateName": {
+                          "type": "string",
+                          "description": "Anonimleştirilmişte \"Anonim aday\""
+                        },
+                        "channel": {
+                          "type": "string",
+                          "enum": [
+                            "website",
+                            "email",
+                            "in_person",
+                            "referral"
+                          ],
+                          "description": "`website` kurum sitesi, `email` e-posta, `in_person` elden, `referral` tavsiye"
+                        },
+                        "receivedOn": {
+                          "type": "string"
+                        },
+                        "stage": {
+                          "type": "string",
+                          "enum": [
+                            "new",
+                            "screening",
+                            "interview",
+                            "offer",
+                            "hired",
+                            "rejected"
+                          ],
+                          "description": "`new` yeni, `screening` ön eleme, `interview` mülakat, `offer` teklif, `hired` işe alındı, `rejected` reddedildi"
+                        },
+                        "stageChangedOn": {
+                          "type": "string",
+                          "description": "Son aşama değişikliğinin günü"
+                        },
+                        "hasCv": {
+                          "type": "boolean"
+                        },
+                        "anonymized": {
+                          "type": "boolean"
+                        },
+                        "retentionDueOn": {
+                          "description": "Saklama süresinin dolduğu gün; işe alınan ve süren başvuruda boş (K-441)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        },
+                        "email": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "phone": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cvFileId": {
+                          "description": "Özgeçmiş; bağlantı `GET /files/{fileId}/url`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "privacyNoticeVersion": {
+                          "type": "string",
+                          "description": "Gösterilen aday aydınlatma metni sürümü"
+                        },
+                        "privacyNoticeShownOn": {
+                          "type": "string",
+                          "description": "Aydınlatmanın gösterildiği gün"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "postingStatus": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "closed"
+                          ],
+                          "description": "`draft` taslak, `published` yayında, `closed` kapandı"
+                        },
+                        "anonymizedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "anonymizationReason": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "retention_expired",
+                                "data_subject_request"
+                              ],
+                              "description": "`retention_expired` saklama süresi doldu, `data_subject_request` adayın silme talebi"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "history": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "fromStage": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "new",
+                                      "screening",
+                                      "interview",
+                                      "offer",
+                                      "hired",
+                                      "rejected"
+                                    ],
+                                    "description": "`new` yeni, `screening` ön eleme, `interview` mülakat, `offer` teklif, `hired` işe alındı, `rejected` reddedildi"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "toStage": {
+                                "type": "string",
+                                "enum": [
+                                  "new",
+                                  "screening",
+                                  "interview",
+                                  "offer",
+                                  "hired",
+                                  "rejected"
+                                ],
+                                "description": "`new` yeni, `screening` ön eleme, `interview` mülakat, `offer` teklif, `hired` işe alındı, `rejected` reddedildi"
+                              },
+                              "changedOn": {
+                                "type": "string"
+                              },
+                              "changedByUserId": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "fromStage",
+                              "toStage",
+                              "changedOn",
+                              "changedByUserId"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Aşama geçmişi, eskiden yeniye; ilk satır kayıt"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "jobPostingId",
+                        "postingTitle",
+                        "candidateName",
+                        "channel",
+                        "receivedOn",
+                        "stage",
+                        "stageChangedOn",
+                        "hasCv",
+                        "anonymized",
+                        "retentionDueOn",
+                        "version",
+                        "email",
+                        "phone",
+                        "cvFileId",
+                        "privacyNoticeVersion",
+                        "privacyNoticeShownOn",
+                        "note",
+                        "postingStatus",
+                        "anonymizedAt",
+                        "anonymizationReason",
+                        "createdAt",
+                        "updatedAt",
+                        "history"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/job-applications/{applicationId}": {
+      "get": {
+        "operationId": "getJobApplication",
+        "summary": "Başvuru ayrıntısı",
+        "tags": [
+          "finance-job-postings"
+        ],
+        "description": "İletişim, özgeçmiş, aydınlatma kaydı, not ve aşama geçmişi. Anonimleştirilmiş başvuruda kişisel alanlar boştur. Başka kurumun başvurusu 404. Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "applicationId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "jobPostingId": {
+                          "type": "string"
+                        },
+                        "postingTitle": {
+                          "type": "string"
+                        },
+                        "candidateName": {
+                          "type": "string",
+                          "description": "Anonimleştirilmişte \"Anonim aday\""
+                        },
+                        "channel": {
+                          "type": "string",
+                          "enum": [
+                            "website",
+                            "email",
+                            "in_person",
+                            "referral"
+                          ],
+                          "description": "`website` kurum sitesi, `email` e-posta, `in_person` elden, `referral` tavsiye"
+                        },
+                        "receivedOn": {
+                          "type": "string"
+                        },
+                        "stage": {
+                          "type": "string",
+                          "enum": [
+                            "new",
+                            "screening",
+                            "interview",
+                            "offer",
+                            "hired",
+                            "rejected"
+                          ],
+                          "description": "`new` yeni, `screening` ön eleme, `interview` mülakat, `offer` teklif, `hired` işe alındı, `rejected` reddedildi"
+                        },
+                        "stageChangedOn": {
+                          "type": "string",
+                          "description": "Son aşama değişikliğinin günü"
+                        },
+                        "hasCv": {
+                          "type": "boolean"
+                        },
+                        "anonymized": {
+                          "type": "boolean"
+                        },
+                        "retentionDueOn": {
+                          "description": "Saklama süresinin dolduğu gün; işe alınan ve süren başvuruda boş (K-441)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        },
+                        "email": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "phone": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cvFileId": {
+                          "description": "Özgeçmiş; bağlantı `GET /files/{fileId}/url`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "privacyNoticeVersion": {
+                          "type": "string",
+                          "description": "Gösterilen aday aydınlatma metni sürümü"
+                        },
+                        "privacyNoticeShownOn": {
+                          "type": "string",
+                          "description": "Aydınlatmanın gösterildiği gün"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "postingStatus": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "closed"
+                          ],
+                          "description": "`draft` taslak, `published` yayında, `closed` kapandı"
+                        },
+                        "anonymizedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "anonymizationReason": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "retention_expired",
+                                "data_subject_request"
+                              ],
+                              "description": "`retention_expired` saklama süresi doldu, `data_subject_request` adayın silme talebi"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "history": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "fromStage": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "new",
+                                      "screening",
+                                      "interview",
+                                      "offer",
+                                      "hired",
+                                      "rejected"
+                                    ],
+                                    "description": "`new` yeni, `screening` ön eleme, `interview` mülakat, `offer` teklif, `hired` işe alındı, `rejected` reddedildi"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "toStage": {
+                                "type": "string",
+                                "enum": [
+                                  "new",
+                                  "screening",
+                                  "interview",
+                                  "offer",
+                                  "hired",
+                                  "rejected"
+                                ],
+                                "description": "`new` yeni, `screening` ön eleme, `interview` mülakat, `offer` teklif, `hired` işe alındı, `rejected` reddedildi"
+                              },
+                              "changedOn": {
+                                "type": "string"
+                              },
+                              "changedByUserId": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "fromStage",
+                              "toStage",
+                              "changedOn",
+                              "changedByUserId"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Aşama geçmişi, eskiden yeniye; ilk satır kayıt"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "jobPostingId",
+                        "postingTitle",
+                        "candidateName",
+                        "channel",
+                        "receivedOn",
+                        "stage",
+                        "stageChangedOn",
+                        "hasCv",
+                        "anonymized",
+                        "retentionDueOn",
+                        "version",
+                        "email",
+                        "phone",
+                        "cvFileId",
+                        "privacyNoticeVersion",
+                        "privacyNoticeShownOn",
+                        "note",
+                        "postingStatus",
+                        "anonymizedAt",
+                        "anonymizationReason",
+                        "createdAt",
+                        "updatedAt",
+                        "history"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateJobApplication",
+        "summary": "Başvuruyu düzelt",
+        "tags": [
+          "finance-job-postings"
+        ],
+        "description": "Gönderilen alanlar değişir: ad, e-posta, telefon, not. Anonimleştirilmiş 422 `job_application_anonymized`; değişiklik yoksa 422 `job_application_unchanged`; iletişim kalmazsa 422 `job_application_contact_required`; aynı ilanda aynı iletişim 409 `job_application_duplicate`. `If-Match` zorunlu. Denetim `finance.job_application.update` (alan adları). Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "candidateName": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  },
+                  "email": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 254
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "phone": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "note": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "applicationId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "jobPostingId": {
+                          "type": "string"
+                        },
+                        "postingTitle": {
+                          "type": "string"
+                        },
+                        "candidateName": {
+                          "type": "string",
+                          "description": "Anonimleştirilmişte \"Anonim aday\""
+                        },
+                        "channel": {
+                          "type": "string",
+                          "enum": [
+                            "website",
+                            "email",
+                            "in_person",
+                            "referral"
+                          ],
+                          "description": "`website` kurum sitesi, `email` e-posta, `in_person` elden, `referral` tavsiye"
+                        },
+                        "receivedOn": {
+                          "type": "string"
+                        },
+                        "stage": {
+                          "type": "string",
+                          "enum": [
+                            "new",
+                            "screening",
+                            "interview",
+                            "offer",
+                            "hired",
+                            "rejected"
+                          ],
+                          "description": "`new` yeni, `screening` ön eleme, `interview` mülakat, `offer` teklif, `hired` işe alındı, `rejected` reddedildi"
+                        },
+                        "stageChangedOn": {
+                          "type": "string",
+                          "description": "Son aşama değişikliğinin günü"
+                        },
+                        "hasCv": {
+                          "type": "boolean"
+                        },
+                        "anonymized": {
+                          "type": "boolean"
+                        },
+                        "retentionDueOn": {
+                          "description": "Saklama süresinin dolduğu gün; işe alınan ve süren başvuruda boş (K-441)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        },
+                        "email": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "phone": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cvFileId": {
+                          "description": "Özgeçmiş; bağlantı `GET /files/{fileId}/url`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "privacyNoticeVersion": {
+                          "type": "string",
+                          "description": "Gösterilen aday aydınlatma metni sürümü"
+                        },
+                        "privacyNoticeShownOn": {
+                          "type": "string",
+                          "description": "Aydınlatmanın gösterildiği gün"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "postingStatus": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "closed"
+                          ],
+                          "description": "`draft` taslak, `published` yayında, `closed` kapandı"
+                        },
+                        "anonymizedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "anonymizationReason": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "retention_expired",
+                                "data_subject_request"
+                              ],
+                              "description": "`retention_expired` saklama süresi doldu, `data_subject_request` adayın silme talebi"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "history": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "fromStage": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "new",
+                                      "screening",
+                                      "interview",
+                                      "offer",
+                                      "hired",
+                                      "rejected"
+                                    ],
+                                    "description": "`new` yeni, `screening` ön eleme, `interview` mülakat, `offer` teklif, `hired` işe alındı, `rejected` reddedildi"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "toStage": {
+                                "type": "string",
+                                "enum": [
+                                  "new",
+                                  "screening",
+                                  "interview",
+                                  "offer",
+                                  "hired",
+                                  "rejected"
+                                ],
+                                "description": "`new` yeni, `screening` ön eleme, `interview` mülakat, `offer` teklif, `hired` işe alındı, `rejected` reddedildi"
+                              },
+                              "changedOn": {
+                                "type": "string"
+                              },
+                              "changedByUserId": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "fromStage",
+                              "toStage",
+                              "changedOn",
+                              "changedByUserId"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Aşama geçmişi, eskiden yeniye; ilk satır kayıt"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "jobPostingId",
+                        "postingTitle",
+                        "candidateName",
+                        "channel",
+                        "receivedOn",
+                        "stage",
+                        "stageChangedOn",
+                        "hasCv",
+                        "anonymized",
+                        "retentionDueOn",
+                        "version",
+                        "email",
+                        "phone",
+                        "cvFileId",
+                        "privacyNoticeVersion",
+                        "privacyNoticeShownOn",
+                        "note",
+                        "postingStatus",
+                        "anonymizedAt",
+                        "anonymizationReason",
+                        "createdAt",
+                        "updatedAt",
+                        "history"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/job-applications/{applicationId}/stage": {
+      "post": {
+        "operationId": "changeJobApplicationStage",
+        "summary": "Başvurunun aşamasını değiştir",
+        "tags": [
+          "finance-job-postings"
+        ],
+        "description": "Yalnız ileri (ara aşama atlanabilir) ya da açık her aşamadan `rejected`; geri 422 `job_application_stage_transition`, aynı aşama 422 `job_application_stage_unchanged`, işe alındı ve reddedildi sondur (422 `job_application_closed`). Gün bugünden sonra (422 `job_application_stage_in_future`) ve önceki aşama gününden önce (422 `job_application_stage_before_previous`) olamaz. Geçmişe satır yazılır (K-440). `If-Match` zorunlu. Denetim `finance.job_application.stage`. Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "stage": {
+                    "type": "string",
+                    "enum": [
+                      "new",
+                      "screening",
+                      "interview",
+                      "offer",
+                      "hired",
+                      "rejected"
+                    ],
+                    "description": "`new` yeni, `screening` ön eleme, `interview` mülakat, `offer` teklif, `hired` işe alındı, `rejected` reddedildi"
+                  },
+                  "changedOn": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Aşamanın değiştiği gün; bugünden sonra olamaz"
+                  }
+                },
+                "required": [
+                  "stage",
+                  "changedOn"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "applicationId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "jobPostingId": {
+                          "type": "string"
+                        },
+                        "postingTitle": {
+                          "type": "string"
+                        },
+                        "candidateName": {
+                          "type": "string",
+                          "description": "Anonimleştirilmişte \"Anonim aday\""
+                        },
+                        "channel": {
+                          "type": "string",
+                          "enum": [
+                            "website",
+                            "email",
+                            "in_person",
+                            "referral"
+                          ],
+                          "description": "`website` kurum sitesi, `email` e-posta, `in_person` elden, `referral` tavsiye"
+                        },
+                        "receivedOn": {
+                          "type": "string"
+                        },
+                        "stage": {
+                          "type": "string",
+                          "enum": [
+                            "new",
+                            "screening",
+                            "interview",
+                            "offer",
+                            "hired",
+                            "rejected"
+                          ],
+                          "description": "`new` yeni, `screening` ön eleme, `interview` mülakat, `offer` teklif, `hired` işe alındı, `rejected` reddedildi"
+                        },
+                        "stageChangedOn": {
+                          "type": "string",
+                          "description": "Son aşama değişikliğinin günü"
+                        },
+                        "hasCv": {
+                          "type": "boolean"
+                        },
+                        "anonymized": {
+                          "type": "boolean"
+                        },
+                        "retentionDueOn": {
+                          "description": "Saklama süresinin dolduğu gün; işe alınan ve süren başvuruda boş (K-441)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        },
+                        "email": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "phone": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cvFileId": {
+                          "description": "Özgeçmiş; bağlantı `GET /files/{fileId}/url`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "privacyNoticeVersion": {
+                          "type": "string",
+                          "description": "Gösterilen aday aydınlatma metni sürümü"
+                        },
+                        "privacyNoticeShownOn": {
+                          "type": "string",
+                          "description": "Aydınlatmanın gösterildiği gün"
+                        },
+                        "note": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "postingStatus": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "closed"
+                          ],
+                          "description": "`draft` taslak, `published` yayında, `closed` kapandı"
+                        },
+                        "anonymizedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "anonymizationReason": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "retention_expired",
+                                "data_subject_request"
+                              ],
+                              "description": "`retention_expired` saklama süresi doldu, `data_subject_request` adayın silme talebi"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "history": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "fromStage": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "new",
+                                      "screening",
+                                      "interview",
+                                      "offer",
+                                      "hired",
+                                      "rejected"
+                                    ],
+                                    "description": "`new` yeni, `screening` ön eleme, `interview` mülakat, `offer` teklif, `hired` işe alındı, `rejected` reddedildi"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "toStage": {
+                                "type": "string",
+                                "enum": [
+                                  "new",
+                                  "screening",
+                                  "interview",
+                                  "offer",
+                                  "hired",
+                                  "rejected"
+                                ],
+                                "description": "`new` yeni, `screening` ön eleme, `interview` mülakat, `offer` teklif, `hired` işe alındı, `rejected` reddedildi"
+                              },
+                              "changedOn": {
+                                "type": "string"
+                              },
+                              "changedByUserId": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "fromStage",
+                              "toStage",
+                              "changedOn",
+                              "changedByUserId"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Aşama geçmişi, eskiden yeniye; ilk satır kayıt"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "jobPostingId",
+                        "postingTitle",
+                        "candidateName",
+                        "channel",
+                        "receivedOn",
+                        "stage",
+                        "stageChangedOn",
+                        "hasCv",
+                        "anonymized",
+                        "retentionDueOn",
+                        "version",
+                        "email",
+                        "phone",
+                        "cvFileId",
+                        "privacyNoticeVersion",
+                        "privacyNoticeShownOn",
+                        "note",
+                        "postingStatus",
+                        "anonymizedAt",
+                        "anonymizationReason",
+                        "createdAt",
+                        "updatedAt",
+                        "history"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/job-application-retention": {
+      "get": {
+        "operationId": "listJobApplicationRetention",
+        "summary": "Saklama süresi dolan başvurular",
+        "tags": [
+          "finance-job-postings"
+        ],
+        "description": "Anonimleştirilmemiş, işe alınmamış ve saklama süresi dolmuş başvurular, en eski süre sonu önce: reddedilende ret gününden, kapanan ilandaki süren başvuruda kapanış gününden itibaren kurum ayarlı süre (K-441). Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "jobPostingId": {
+                            "type": "string"
+                          },
+                          "postingTitle": {
+                            "type": "string"
+                          },
+                          "candidateName": {
+                            "type": "string",
+                            "description": "Anonimleştirilmişte \"Anonim aday\""
+                          },
+                          "channel": {
+                            "type": "string",
+                            "enum": [
+                              "website",
+                              "email",
+                              "in_person",
+                              "referral"
+                            ],
+                            "description": "`website` kurum sitesi, `email` e-posta, `in_person` elden, `referral` tavsiye"
+                          },
+                          "receivedOn": {
+                            "type": "string"
+                          },
+                          "stage": {
+                            "type": "string",
+                            "enum": [
+                              "new",
+                              "screening",
+                              "interview",
+                              "offer",
+                              "hired",
+                              "rejected"
+                            ],
+                            "description": "`new` yeni, `screening` ön eleme, `interview` mülakat, `offer` teklif, `hired` işe alındı, `rejected` reddedildi"
+                          },
+                          "stageChangedOn": {
+                            "type": "string",
+                            "description": "Son aşama değişikliğinin günü"
+                          },
+                          "hasCv": {
+                            "type": "boolean"
+                          },
+                          "anonymized": {
+                            "type": "boolean"
+                          },
+                          "retentionDueOn": {
+                            "description": "Saklama süresinin dolduğu gün; işe alınan ve süren başvuruda boş (K-441)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "jobPostingId",
+                          "postingTitle",
+                          "candidateName",
+                          "channel",
+                          "receivedOn",
+                          "stage",
+                          "stageChangedOn",
+                          "hasCv",
+                          "anonymized",
+                          "retentionDueOn",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991,
+                          "description": "Sayfa numarası (1’den başlar)"
+                        },
+                        "pageSize": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100,
+                          "description": "Sayfa boyutu"
+                        },
+                        "total": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991,
+                          "description": "Filtre uygulanmış toplam kayıt sayısı"
+                        },
+                        "retentionMonths": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kurumun saklama süresi (ay)"
+                        }
+                      },
+                      "required": [
+                        "page",
+                        "pageSize",
+                        "total",
+                        "retentionMonths"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/job-application-anonymizations": {
+      "post": {
+        "operationId": "anonymizeJobApplications",
+        "summary": "Başvuruları anonimleştir",
+        "tags": [
+          "finance-job-postings"
+        ],
+        "description": "1–100 başvuru tek işlemde; biri reddedilirse hiçbiri değişmez. Ad \"Anonim aday\" olur, e-posta, telefon, not ve özgeçmiş bağı silinir; özgeçmiş dosyasının saklama sonu şimdiye çekilir, nesneyi platformun saklama sonu imhası siler. İlan, kanal, günler, aşama geçmişi ve aydınlatma kaydı kalır (K-441). `retention_expired` yalnız süresi dolanlarda (422 `job_application_retention_not_due`); `data_subject_request` süre beklemez. Olmayan ya da başka kurumun 422 `job_application_not_found`, anonim 422 `job_application_already_anonymized`, işe alınan 422 `job_application_hired`. Başvuru başına `finance.job_application.anonymize` denetimi. Taze oturum (403 `reauthentication_required`) ve `Idempotency-Key` zorunlu. Geri alınamaz. Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "applicationIds": {
+                    "minItems": 1,
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "description": "Anonimleştirilecek başvurular (1–100)"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "retention_expired",
+                      "data_subject_request"
+                    ],
+                    "description": "`retention_expired` saklama süresi dolanlar, `data_subject_request` adayın silme talebi (süre beklenmez)"
+                  }
+                },
+                "required": [
+                  "applicationIds",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "anonymizedCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "cvFileCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "İmhaya işaretlenen özgeçmiş dosyası"
+                        },
+                        "reason": {
+                          "type": "string",
+                          "enum": [
+                            "retention_expired",
+                            "data_subject_request"
+                          ],
+                          "description": "`retention_expired` saklama süresi doldu, `data_subject_request` adayın silme talebi"
+                        }
+                      },
+                      "required": [
+                        "anonymizedCount",
+                        "cvFileCount",
+                        "reason"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/job-application-settings": {
+      "get": {
+        "operationId": "getJobApplicationSettings",
+        "summary": "Başvuru havuzu ayarı",
+        "tags": [
+          "finance-job-postings"
+        ],
+        "description": "Saklama süresi (ay; varsayılan 12) ve geçerli aday aydınlatma metni sürümü; hiç kaydedilmediyse varsayılan ve sürüm 1 (K-441). Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "retentionMonths": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "privacyNoticeVersion": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü; hiç kaydedilmediyse 1"
+                        }
+                      },
+                      "required": [
+                        "retentionMonths",
+                        "privacyNoticeVersion",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "setJobApplicationSettings",
+        "summary": "Başvuru havuzu ayarını kaydet",
+        "tags": [
+          "finance-job-postings"
+        ],
+        "description": "Saklama süresi (1–60 ay, 400) ve aydınlatma sürümü (≤ 40, boş bırakılabilir); gönderilmeyen alan korunur, değişiklik yoksa 422 `job_application_settings_unchanged`. Süre değişince süre sonları yeniden hesaplanır. `If-Match` zorunlu (hiç kaydedilmediyse 1). Denetim `finance.job_application.settings`. Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "retentionMonths": {
+                    "description": "Saklama süresi (ay, 1–60; varsayılan 12)",
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 60
+                  },
+                  "privacyNoticeVersion": {
+                    "description": "Geçerli aday aydınlatma metninin sürümü; başvuru formunda önerilir, boş bırakılabilir",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 40
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "retentionMonths": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "privacyNoticeVersion": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü; hiç kaydedilmediyse 1"
+                        }
+                      },
+                      "required": [
+                        "retentionMonths",
+                        "privacyNoticeVersion",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

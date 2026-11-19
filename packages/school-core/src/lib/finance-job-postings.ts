@@ -458,13 +458,18 @@ export function assertJobApplication(
       'Aydınlatma metninin gösterildiği gün bugünden sonra olamaz.',
       ['privacyNoticeShownOn'],
     )
-  if (checks.duplicate !== null)
+  assertNoDuplicateApplication(checks.duplicate)
+}
+
+/** Aynı ilana aynı e-posta ya da telefonla ikinci başvuru 409 (K-440); kayıtta ve düzeltmede. */
+export function assertNoDuplicateApplication(duplicate: 'email' | 'phone' | null): void {
+  if (duplicate !== null)
     throw new DomainError(
       'job_application_duplicate',
-      checks.duplicate === 'email'
+      duplicate === 'email'
         ? 'Bu ilana aynı e-postayla başvuru zaten kayıtlı.'
         : 'Bu ilana aynı telefonla başvuru zaten kayıtlı.',
-      { kind: 'conflict', path: [checks.duplicate] },
+      { kind: 'conflict', path: [duplicate] },
     )
 }
 

@@ -19,7 +19,9 @@ import {
   payrollMonthLabel,
   payrollMonthSchema,
   payrollParameterRange,
+  payrollPeriodChecks,
   payrollPeriodState,
+  payrollRunRowsMatch,
   payrollReopenSchema,
   payrollYearMonths,
   planPayrollAdjustment,
@@ -314,4 +316,92 @@ test('DOM-FIN-108 K-358: düzeltme şeması', () => {
   assert.equal(payrollAdjustmentCancelSchema.safeParse({ reason: 'Yanlış personel' }).success, true)
   assert.equal(adjustmentDirectionLabel(100), 'Ek ödeme')
   assert.equal(adjustmentDirectionLabel(-100), 'Geri alınacak')
+})
+
+test('DOM-FIN-108 K-426: damga kesintileri ve kayıtlı hesabın revizyonunu kapsar, eskisi değişmez', () => {
+  const rates = [rate({ id: 'r-1' })]
+  const base = payrollInputSummary('2026-09', rates, [], [])
+  // Kesintisi ve kayıtlı hesabı olmayan ayın damgası K-426 öncesiyle aynıdır (onaylı dönemler).
+  const empty = payrollInputSummary('2026-09', rates, [], [], undefined, {
+    deductions: [],
+    payrollRun: null,
+  })
+  assert.equal(empty.digestSource, base.digestSource)
+  assert.equal(
+    base.digestSource,
+    JSON.stringify({
+      month: '2026-09',
+      rates: [['r-1', 'm-1', 'wage', 'monthly_gross', 4_000_000, '2026-01-01', null]],
+      adjustments: [],
+      parameters: JSON.parse(base.digestSource).parameters,
+    }),
+  )
+  const deductions = [['m-1', 'advance', 'adv-1', 333_333, 'applied', null, null]]
+  const withDeduction = payrollInputSummary('2026-09', rates, [], [], undefined, { deductions })
+  assert.notEqual(withDeduction.digestSource, base.digestSource)
+  assert.deepEqual(withDeduction.summary, base.summary)
+  const run1 = payrollInputSummary('2026-09', rates, [], [], undefined, {
+    deductions,
+    payrollRun: { id: 'run-1', revision: 1 },
+  })
+  const run2 = payrollInputSummary('2026-09', rates, [], [], undefined, {
+    deductions,
+    payrollRun: { id: 'run-2', revision: 2 },
+  })
+  assert.notEqual(run1.digestSource, withDeduction.digestSource)
+  assert.notEqual(run1.digestSource, run2.digestSource)
+})
+
+test('DOM-FIN-108 K-425: onay öncesi durum, engel ve uyarılar', () => {
+  const deductions = {
+    advanceCount: 1,
+    garnishmentCount: 0,
+    pensionCount: 2,
+    advanceTotalCents: 50_000,
+  }
+  const ready = payrollPeriodChecks({
+    lessonSheet: { status: 'approved', entryCount: 3, pendingCount: 0 },
+    payrollRun: { revision: 2, calculatedAt: '2026-09-30T10:00:00.000Z', current: true },
+    deductions,
+  })
+  assert.deepEqual(ready, {
+    lessonSheet: { state: 'approved', entryCount: 3, pendingCount: 0 },
+    payrollRun: { state: 'current', revision: 2, calculatedAt: '2026-09-30T10:00:00.000Z' },
+    deductions,
+    blockers: [],
+    warnings: [],
+  })
+  const pending = payrollPeriodChecks({
+    lessonSheet: { status: 'teacher_review', entryCount: 2, pendingCount: 2 },
+    payrollRun: { revision: 1, calculatedAt: '2026-09-30T10:00:00.000Z', current: false },
+    deductions,
+  })
+  assert.equal(pending.lessonSheet.state, 'teacher_review')
+  assert.deepEqual(pending.blockers, ['payroll_lesson_hours_pending'])
+  assert.deepEqual(pending.warnings, ['payroll_run_stale'])
+  assert.equal(pending.payrollRun.state, 'stale')
+  // Saat kaydı olmayan ay: çizelge "yok", engel yok; kayıtlı hesap yok uyarısı.
+  const none = payrollPeriodChecks({
+    lessonSheet: { status: 'draft', entryCount: 0, pendingCount: 0 },
+    payrollRun: null,
+    deductions,
+  })
+  assert.equal(none.lessonSheet.state, 'none')
+  assert.deepEqual(none.blockers, [])
+  assert.deepEqual(none.warnings, ['payroll_run_missing'])
+  assert.deepEqual(none.payrollRun, { state: 'none', revision: null, calculatedAt: null })
+})
+
+test('DOM-FIN-108 K-425: kayıtlı hesap satırları anahtar ve satır sırasından bağımsız karşılaştırılır', () => {
+  const live = [
+    { membershipId: 'm-1', grossCents: 100, lines: [{ a: 1, b: 2 }] },
+    { membershipId: 'm-2', grossCents: 200, lines: [] },
+  ]
+  const saved = [
+    { lines: [], grossCents: 200, membershipId: 'm-2' },
+    { lines: [{ b: 2, a: 1 }], grossCents: 100, membershipId: 'm-1' },
+  ]
+  assert.equal(payrollRunRowsMatch(saved, live), true)
+  assert.equal(payrollRunRowsMatch(saved.slice(1), live), false)
+  assert.equal(payrollRunRowsMatch([{ ...saved[0], grossCents: 201 }, saved[1]], live), false)
 })

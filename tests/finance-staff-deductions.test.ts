@@ -14,6 +14,7 @@ import {
   garnishmentQueue,
   monthlyDeductionRequestSchema,
   monthlyDeductions,
+  payrollMonthDeductionSummary,
   monthsBetween,
   pensionOptOutKind,
   pensionStateIn,
@@ -536,5 +537,64 @@ test('DOM-FIN-101: kesinti yazmalarının dönem kilidi aralıkları (DOM-FIN-10
         [advanceLockRange({ firstMonth: '2026-10', installmentCount: 2 })],
       ),
     isDomainError('payroll_period_locked', 'conflict'),
+  )
+})
+
+test('DOM-FIN-108 K-425 K-426: bordro dönemi için ayın kesinti özeti ve damga satırları', () => {
+  const sources = {
+    advances: [
+      { ...advanceTerms(), membershipId: 'm-1' },
+      // Başka ayın taksiti sayılmaz.
+      { ...advanceTerms({ id: 'adv-2', firstMonth: '2027-03' }), membershipId: 'm-1' },
+    ],
+    garnishments: [
+      { ...garnishment({ id: 'first' }), membershipId: 'm-2' },
+      // Sırada bekleyen ikinci icra satır vermez.
+      {
+        ...garnishment({ id: 'second', receivedDate: '2026-10-10', sequence: 2 }),
+        membershipId: 'm-2',
+      },
+    ],
+    pensions: [
+      { ...pension(), membershipId: 'm-2' },
+      // Ara verilen BES sayılmaz.
+      {
+        ...pension({ id: 'p-2', pauses: [{ fromMonth: '2026-11', toMonth: '2026-12' }] }),
+        membershipId: 'm-3',
+      },
+    ],
+  }
+  const { summary, digest } = payrollMonthDeductionSummary('2026-11', sources)
+  assert.deepEqual(summary, {
+    advanceCount: 1,
+    garnishmentCount: 1,
+    pensionCount: 1,
+    advanceTotalCents: 333_333,
+  })
+  assert.deepEqual(digest, [
+    ['m-1', 'advance', 'adv-1', 333_333, 'applied', null, null],
+    ['m-2', 'garnishment', 'first', null, 'needs_net', 2500, 5_000_000],
+    ['m-2', 'pension', 'p-1', null, 'needs_base', 300, null],
+  ])
+  // Kaynak sırası damgayı değiştirmez; kalan alacak değişirse değişir.
+  const reversed = payrollMonthDeductionSummary('2026-11', {
+    advances: [...sources.advances].reverse(),
+    garnishments: [...sources.garnishments].reverse(),
+    pensions: [...sources.pensions].reverse(),
+  })
+  assert.deepEqual(reversed.digest, digest)
+  const paid = payrollMonthDeductionSummary('2026-11', {
+    ...sources,
+    garnishments: sources.garnishments.map((item) =>
+      item.id === 'first' ? { ...item, remainingCents: 4_000_000 } : item,
+    ),
+  })
+  assert.notDeepEqual(paid.digest, digest)
+  assert.deepEqual(
+    payrollMonthDeductionSummary('2026-11', { advances: [], garnishments: [], pensions: [] }),
+    {
+      summary: { advanceCount: 0, garnishmentCount: 0, pensionCount: 0, advanceTotalCents: 0 },
+      digest: [],
+    },
   )
 })

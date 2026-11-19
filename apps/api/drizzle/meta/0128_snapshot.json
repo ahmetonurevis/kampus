@@ -1,5 +1,5 @@
 {
-  "id": "45e7079d-c11d-487d-b535-5a1f41d30e6a",
+  "id": "4b4518ca-26d5-4cb8-ba10-2cf65a81168e",
   "prevId": "78981f86-f6e4-41cd-8f1f-435ced679e7d",
   "version": "7",
   "dialect": "postgresql",
@@ -14341,403 +14341,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.lesson_hour_approvals": {
-      "name": "lesson_hour_approvals",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "month": {
-          "name": "month",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "submitted_at": {
-          "name": "submitted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "submitted_by_user_id": {
-          "name": "submitted_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "approved_at": {
-          "name": "approved_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "approved_by_user_id": {
-          "name": "approved_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "approval_count": {
-          "name": "approval_count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "reopened_at": {
-          "name": "reopened_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reopened_by_user_id": {
-          "name": "reopened_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reopen_reason": {
-          "name": "reopen_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "lesson_hour_approvals_month_key": {
-          "name": "lesson_hour_approvals_month_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "month",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"lesson_hour_approvals\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "lesson_hour_approvals_institution_id_institutions_id_fk": {
-          "name": "lesson_hour_approvals_institution_id_institutions_id_fk",
-          "tableFrom": "lesson_hour_approvals",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "lesson_hour_approvals_pkey": {
-          "name": "lesson_hour_approvals_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "lesson_hour_approvals_month_check": {
-          "name": "lesson_hour_approvals_month_check",
-          "value": "\"lesson_hour_approvals\".\"month\" ~ '^20[2-9][0-9]-(0[1-9]|1[0-2])$'"
-        },
-        "lesson_hour_approvals_status_check": {
-          "name": "lesson_hour_approvals_status_check",
-          "value": "\"lesson_hour_approvals\".\"status\" in ('draft', 'teacher_review', 'approved')"
-        },
-        "lesson_hour_approvals_approval_check": {
-          "name": "lesson_hour_approvals_approval_check",
-          "value": "\"lesson_hour_approvals\".\"approval_count\" >= 0\n        and ((\"lesson_hour_approvals\".\"approved_at\" is null) = (\"lesson_hour_approvals\".\"approved_by_user_id\" is null))\n        and ((\"lesson_hour_approvals\".\"approved_at\" is null) = (\"lesson_hour_approvals\".\"approval_count\" = 0))\n        and (\"lesson_hour_approvals\".\"status\" <> 'approved' or \"lesson_hour_approvals\".\"approved_at\" is not null)"
-        },
-        "lesson_hour_approvals_reopen_check": {
-          "name": "lesson_hour_approvals_reopen_check",
-          "value": "((\"lesson_hour_approvals\".\"reopened_at\" is null) = (\"lesson_hour_approvals\".\"reopened_by_user_id\" is null))\n        and ((\"lesson_hour_approvals\".\"reopened_at\" is null) = (\"lesson_hour_approvals\".\"reopen_reason\" is null))\n        and (\"lesson_hour_approvals\".\"reopen_reason\" is null or char_length(\"lesson_hour_approvals\".\"reopen_reason\")\n          between 5 and 500)"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.lesson_hour_confirmations": {
-      "name": "lesson_hour_confirmations",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "approval_id": {
-          "name": "approval_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "membership_id": {
-          "name": "membership_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "sequence": {
-          "name": "sequence",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "outcome": {
-          "name": "outcome",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "channel": {
-          "name": "channel",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "reason": {
-          "name": "reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "entries_hash": {
-          "name": "entries_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "recorded_by_user_id": {
-          "name": "recorded_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "lesson_hour_confirmations_sequence_key": {
-          "name": "lesson_hour_confirmations_sequence_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "approval_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "sequence",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "lesson_hour_confirmations_membership_idx": {
-          "name": "lesson_hour_confirmations_membership_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "membership_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "lesson_hour_confirmations_institution_id_institutions_id_fk": {
-          "name": "lesson_hour_confirmations_institution_id_institutions_id_fk",
-          "tableFrom": "lesson_hour_confirmations",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "lesson_hour_confirmations_approval_fkey": {
-          "name": "lesson_hour_confirmations_approval_fkey",
-          "tableFrom": "lesson_hour_confirmations",
-          "tableTo": "lesson_hour_approvals",
-          "columnsFrom": [
-            "institution_id",
-            "approval_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "lesson_hour_confirmations_membership_fkey": {
-          "name": "lesson_hour_confirmations_membership_fkey",
-          "tableFrom": "lesson_hour_confirmations",
-          "tableTo": "memberships",
-          "columnsFrom": [
-            "institution_id",
-            "membership_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "lesson_hour_confirmations_pkey": {
-          "name": "lesson_hour_confirmations_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "lesson_hour_confirmations_outcome_check": {
-          "name": "lesson_hour_confirmations_outcome_check",
-          "value": "\"lesson_hour_confirmations\".\"outcome\" in ('confirmed', 'disputed')"
-        },
-        "lesson_hour_confirmations_channel_check": {
-          "name": "lesson_hour_confirmations_channel_check",
-          "value": "\"lesson_hour_confirmations\".\"channel\" in ('in_person', 'phone', 'email', 'message', 'signed_sheet')"
-        },
-        "lesson_hour_confirmations_reason_check": {
-          "name": "lesson_hour_confirmations_reason_check",
-          "value": "(\"lesson_hour_confirmations\".\"outcome\" = 'disputed') = (\"lesson_hour_confirmations\".\"reason\" is not null)\n        and (\"lesson_hour_confirmations\".\"reason\" is null or char_length(\"lesson_hour_confirmations\".\"reason\")\n          between 5 and 500)"
-        },
-        "lesson_hour_confirmations_hash_check": {
-          "name": "lesson_hour_confirmations_hash_check",
-          "value": "\"lesson_hour_confirmations\".\"entries_hash\" ~ '^[0-9a-f]{64}$'"
-        },
-        "lesson_hour_confirmations_sequence_check": {
-          "name": "lesson_hour_confirmations_sequence_check",
-          "value": "\"lesson_hour_confirmations\".\"sequence\" >= 1"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.maintenance_inspections": {
       "name": "maintenance_inspections",
       "schema": "",
@@ -20336,6 +19939,662 @@
         "payroll_periods_reopen_check": {
           "name": "payroll_periods_reopen_check",
           "value": "((\"payroll_periods\".\"reopened_at\" is null) = (\"payroll_periods\".\"reopened_by_user_id\" is null))\n        and ((\"payroll_periods\".\"reopened_at\" is null) = (\"payroll_periods\".\"reopen_reason\" is null))\n        and (\"payroll_periods\".\"status\" <> 'reopened' or \"payroll_periods\".\"reopened_at\" is not null)\n        and (\"payroll_periods\".\"reopen_reason\" is null or char_length(\"payroll_periods\".\"reopen_reason\")\n          between 5 and 500)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.payroll_run_lines": {
+      "name": "payroll_run_lines",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "run_id": {
+          "name": "run_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "membership_id": {
+          "name": "membership_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "month": {
+          "name": "month",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "gross_cents": {
+          "name": "gross_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "income_tax_base_cents": {
+          "name": "income_tax_base_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "net_cents": {
+          "name": "net_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payable_cents": {
+          "name": "payable_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "employer_cost_cents": {
+          "name": "employer_cost_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'TRY'"
+        },
+        "line": {
+          "name": "line",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "payroll_run_lines_member_key": {
+          "name": "payroll_run_lines_member_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "run_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "payroll_run_lines_membership_idx": {
+          "name": "payroll_run_lines_membership_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "month",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "payroll_run_lines_institution_id_institutions_id_fk": {
+          "name": "payroll_run_lines_institution_id_institutions_id_fk",
+          "tableFrom": "payroll_run_lines",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "payroll_run_lines_run_fkey": {
+          "name": "payroll_run_lines_run_fkey",
+          "tableFrom": "payroll_run_lines",
+          "tableTo": "payroll_runs",
+          "columnsFrom": [
+            "institution_id",
+            "run_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "payroll_run_lines_membership_fkey": {
+          "name": "payroll_run_lines_membership_fkey",
+          "tableFrom": "payroll_run_lines",
+          "tableTo": "memberships",
+          "columnsFrom": [
+            "institution_id",
+            "membership_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "payroll_run_lines_pkey": {
+          "name": "payroll_run_lines_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "payroll_run_lines_month_check": {
+          "name": "payroll_run_lines_month_check",
+          "value": "\"payroll_run_lines\".\"month\" ~ '^20[2-9][0-9]-(0[1-9]|1[0-2])$'"
+        },
+        "payroll_run_lines_amounts_check": {
+          "name": "payroll_run_lines_amounts_check",
+          "value": "\"payroll_run_lines\".\"gross_cents\" >= 0 and \"payroll_run_lines\".\"income_tax_base_cents\" >= 0\n        and \"payroll_run_lines\".\"employer_cost_cents\" >= 0"
+        },
+        "payroll_run_lines_currency_check": {
+          "name": "payroll_run_lines_currency_check",
+          "value": "\"payroll_run_lines\".\"currency\" = 'TRY'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.payroll_runs": {
+      "name": "payroll_runs",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "month": {
+          "name": "month",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parameter_set_id": {
+          "name": "parameter_set_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "parameter_effective_from": {
+          "name": "parameter_effective_from",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "staff_count": {
+          "name": "staff_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "skipped_count": {
+          "name": "skipped_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "gross_total_cents": {
+          "name": "gross_total_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "net_total_cents": {
+          "name": "net_total_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payable_total_cents": {
+          "name": "payable_total_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "employer_cost_total_cents": {
+          "name": "employer_cost_total_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'TRY'"
+        },
+        "calculated_by_user_id": {
+          "name": "calculated_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "archived_by_user_id": {
+          "name": "archived_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "payroll_runs_month_key": {
+          "name": "payroll_runs_month_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "month",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"payroll_runs\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "payroll_runs_revision_key": {
+          "name": "payroll_runs_revision_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "month",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "revision",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "payroll_runs_institution_id_institutions_id_fk": {
+          "name": "payroll_runs_institution_id_institutions_id_fk",
+          "tableFrom": "payroll_runs",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "payroll_runs_pkey": {
+          "name": "payroll_runs_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "payroll_runs_month_check": {
+          "name": "payroll_runs_month_check",
+          "value": "\"payroll_runs\".\"month\" ~ '^20[2-9][0-9]-(0[1-9]|1[0-2])$'"
+        },
+        "payroll_runs_counts_check": {
+          "name": "payroll_runs_counts_check",
+          "value": "\"payroll_runs\".\"revision\" >= 1 and \"payroll_runs\".\"staff_count\" >= 1 and \"payroll_runs\".\"skipped_count\" >= 0\n        and \"payroll_runs\".\"gross_total_cents\" >= 0 and \"payroll_runs\".\"employer_cost_total_cents\" >= 0"
+        },
+        "payroll_runs_currency_check": {
+          "name": "payroll_runs_currency_check",
+          "value": "\"payroll_runs\".\"currency\" = 'TRY'"
+        },
+        "payroll_runs_archive_check": {
+          "name": "payroll_runs_archive_check",
+          "value": "(\"payroll_runs\".\"archived_at\" is null) = (\"payroll_runs\".\"archived_by_user_id\" is null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.payroll_tax_carryovers": {
+      "name": "payroll_tax_carryovers",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "membership_id": {
+          "name": "membership_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "year": {
+          "name": "year",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "income_tax_base_cents": {
+          "name": "income_tax_base_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'TRY'"
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "archived_by_user_id": {
+          "name": "archived_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "payroll_tax_carryovers_member_year_key": {
+          "name": "payroll_tax_carryovers_member_year_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "year",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"payroll_tax_carryovers\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "payroll_tax_carryovers_year_idx": {
+          "name": "payroll_tax_carryovers_year_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "year",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "payroll_tax_carryovers_institution_id_institutions_id_fk": {
+          "name": "payroll_tax_carryovers_institution_id_institutions_id_fk",
+          "tableFrom": "payroll_tax_carryovers",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "payroll_tax_carryovers_membership_fkey": {
+          "name": "payroll_tax_carryovers_membership_fkey",
+          "tableFrom": "payroll_tax_carryovers",
+          "tableTo": "memberships",
+          "columnsFrom": [
+            "institution_id",
+            "membership_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "payroll_tax_carryovers_pkey": {
+          "name": "payroll_tax_carryovers_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "payroll_tax_carryovers_year_check": {
+          "name": "payroll_tax_carryovers_year_check",
+          "value": "\"payroll_tax_carryovers\".\"year\" between 2020 and 2099"
+        },
+        "payroll_tax_carryovers_amount_check": {
+          "name": "payroll_tax_carryovers_amount_check",
+          "value": "\"payroll_tax_carryovers\".\"income_tax_base_cents\" between 1 and 100000000000"
+        },
+        "payroll_tax_carryovers_currency_check": {
+          "name": "payroll_tax_carryovers_currency_check",
+          "value": "\"payroll_tax_carryovers\".\"currency\" = 'TRY'"
+        },
+        "payroll_tax_carryovers_note_check": {
+          "name": "payroll_tax_carryovers_note_check",
+          "value": "\"payroll_tax_carryovers\".\"note\" is null or char_length(\"payroll_tax_carryovers\".\"note\") between 1 and 200"
+        },
+        "payroll_tax_carryovers_archive_check": {
+          "name": "payroll_tax_carryovers_archive_check",
+          "value": "(\"payroll_tax_carryovers\".\"archived_at\" is null) = (\"payroll_tax_carryovers\".\"archived_by_user_id\" is null)"
         }
       },
       "isRLSEnabled": false

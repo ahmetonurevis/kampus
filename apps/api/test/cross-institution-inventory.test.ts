@@ -3070,6 +3070,56 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       proof(kind)('finance-staff-retention.test.ts', 'başka kurum 404 ve B değişmez', marker),
     ]),
   ),
+  // Onur: iş teklifi ve işe başlama listesi (ON-179; DOM-FIN-121).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/staff-onboarding-settings', 'get(SETTINGS, a.admin)'],
+        [
+          'gövde',
+          'PATCH /api/v1/finance/staff-onboarding-settings',
+          "call('PATCH', SETTINGS, a.admin",
+        ],
+        ['liste', 'GET /api/v1/finance/staff-onboarding-staff', 'get(STAFF, a.admin)'],
+        ['liste', 'GET /api/v1/finance/job-offers', 'listOf(a.admin)'],
+        ['gövde', 'POST /api/v1/finance/job-offers', 'institutionId: b.id'],
+        ['kayıt', 'GET /api/v1/finance/job-offers/:offerId', 'get(bUrl, a.admin)'],
+        ['kayıt', 'GET /api/v1/finance/job-offers/:offerId/letter', '/letter`, a.admin'],
+        ['kayıt', 'PATCH /api/v1/finance/job-offers/:offerId', "call('PATCH', bUrl, a.admin"],
+        ['kayıt', 'POST /api/v1/finance/job-offers/:offerId/send', 'act(a.admin, bOffer, verb'],
+        ['kayıt', 'POST /api/v1/finance/job-offers/:offerId/accept', 'act(a.admin, bOffer, verb'],
+        ['kayıt', 'POST /api/v1/finance/job-offers/:offerId/reject', 'act(a.admin, bOffer, verb'],
+        ['kayıt', 'POST /api/v1/finance/job-offers/:offerId/withdraw', 'act(a.admin, bOffer, verb'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/job-offers/:offerId/link-account',
+          'act(a.admin, bOffer, verb',
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/job-offers/:offerId/steps/:stepId',
+          'stepUrl(bOffer, bStep),',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/job-offers/:offerId/steps/:stepId/complete',
+          'complete(a.admin, bOffer, bStep)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/job-offers/:offerId/steps/:stepId/reopen',
+          "stepUrl(bOffer, bStep, 'reopen')",
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-staff-onboarding.test.ts',
+        'DOM-FIN-121: başka kurumun teklifi ve personeli 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

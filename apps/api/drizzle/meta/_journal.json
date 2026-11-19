@@ -932,6 +932,13 @@
       "when": 1795048097666,
       "tag": "0132_create_staff_data_retention",
       "breakpoints": true
+    },
+    {
+      "idx": 133,
+      "version": "7",
+      "when": 1795048120387,
+      "tag": "0133_create_staff_onboarding",
+      "breakpoints": true
     }
   ]
 }

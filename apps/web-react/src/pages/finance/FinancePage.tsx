@@ -186,6 +186,9 @@ const FinancePayrollCalculationSection = lazy(async () => ({
 const FinanceHrReportsSection = lazy(async () => ({
   default: (await import('./FinanceHrReportsSection.tsx')).FinanceHrReportsSection,
 }))
+const FinanceStaffSeparationsSection = lazy(async () => ({
+  default: (await import('./FinanceStaffSeparationsSection.tsx')).FinanceStaffSeparationsSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -247,6 +250,7 @@ const VIEWS = {
   staffDocuments: { label: 'Özlük belgeleri', param: 'ozluk-belgeleri' },
   payrollCalculation: { label: 'Bordro hesabı', param: 'bordro-hesabi' },
   hrReports: { label: 'İK raporları', param: 'ik-raporlari' },
+  staffSeparations: { label: 'İşten ayrılış', param: 'isten-ayrilis' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -295,6 +299,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Özlük belgeleri (DOM-FIN-113) ikisine açıktır; tür ayarı ve özel nitelikli belge yöneticide (K-374).
  * Bordro hesabı (DOM-FIN-115) yalnız yöneticidedir; ücret ve icra taşır (K-391).
  * İK raporları (DOM-FIN-117) yalnız yöneticidedir; personel verisi toplamıdır (K-401).
+ * İşten ayrılış (DOM-FIN-118) yalnız yöneticidedir; dosya avans, icra ve izin bilgisi taşır (K-403).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -309,6 +314,7 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'fixedAssets' ||
       value === 'severance' ||
       value === 'freeTuition' ||
+      value === 'staffSeparations' ||
       value === 'hrReports' ||
       value === 'payrollCalculation' ||
       value === 'workPermits' ||
@@ -528,6 +534,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'staffDocuments' ? <FinanceStaffDocumentsSection isManager={isManager} /> : null}
         {tab === 'payrollCalculation' ? <FinancePayrollCalculationSection /> : null}
         {tab === 'hrReports' ? <FinanceHrReportsSection /> : null}
+        {tab === 'staffSeparations' ? <FinanceStaffSeparationsSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

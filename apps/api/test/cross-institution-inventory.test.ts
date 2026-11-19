@@ -3009,6 +3009,48 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: işten ayrılış süreci (ON-180; DOM-FIN-118).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/staff-separations', 'listOf(a.admin)'],
+        ['gövde', 'POST /api/v1/finance/staff-separations', 'institutionId: b.id'],
+        ['kayıt', 'GET /api/v1/finance/staff-separations/:separationId', 'get(bUrl, a.admin)'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/staff-separations/:separationId',
+          "call('PATCH', bUrl, a.admin",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-separations/:separationId/mark-step',
+          '`${bUrl}/mark-step`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-separations/:separationId/complete',
+          '`${bUrl}/complete`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-separations/:separationId/cancel',
+          '`${bUrl}/cancel`',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/staff-separations/:separationId/document',
+          '`${bUrl}/document`',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-staff-separations.test.ts',
+        'başka kurumun personeli ve dosyası 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

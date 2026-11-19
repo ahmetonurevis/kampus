@@ -334,7 +334,7 @@ export const DEFAULT_JOB_APPLICATION_SETTINGS: JobApplicationSettings = {
 
 // --- Kurallar ------------------------------------------------------------------------------------
 
-const ruleError = (code: string, message: string, path: (string | number)[]) =>
+const ruleError = (code: string, message: string, path: string[]) =>
   new DomainError(code, message, { kind: 'rule', path })
 
 export interface StoredJobPostingState {
@@ -614,7 +614,7 @@ export function assertJobApplicationAnonymization(
   checks: { retentionMonths: number; today: string },
 ): void {
   for (const [index, id] of input.applicationIds.entries()) {
-    const path = ['applicationIds', index]
+    const path = ['applicationIds', String(index)]
     const target = found.get(id)
     if (target === undefined)
       throw ruleError('job_application_not_found', 'Başvuru bulunamadı.', path)

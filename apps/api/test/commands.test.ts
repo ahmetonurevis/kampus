@@ -168,6 +168,13 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // Bordro hesabının kaydı eski hesabı arşivler ve yeni revizyon yazar; çift tıklama ikinci
   // revizyonu açmaz (routes/finance-payroll-runs.ts; DOM-FIN-115, ON-198).
   'POST /api/v1/finance/payroll-runs/{month}/calculate',
+  // Ek ders çizelgesini gönderme, öğretmen yanıtı, müdür onayı (kilit) ve yeniden açma; çift
+  // tıklama ikinci yanıtı ya da ikinci onayı yazmaz (routes/finance-lesson-hour-approvals.ts;
+  // DOM-FIN-120, ON-196).
+  'POST /api/v1/finance/lesson-hour-sheets/{month}/submit',
+  'POST /api/v1/finance/lesson-hour-sheets/{month}/confirmations',
+  'POST /api/v1/finance/lesson-hour-sheets/{month}/approve',
+  'POST /api/v1/finance/lesson-hour-sheets/{month}/reopen',
 ]
 // Onur: kayıt ve finans sonu
 

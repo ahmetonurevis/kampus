@@ -2928,6 +2928,41 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ],
     ),
   ),
+  // Onur: ek ders çizelgesi onayı (ON-196; DOM-FIN-120).
+  ...Object.fromEntries(
+    (
+      [
+        ['kayıt', 'GET /api/v1/finance/lesson-hour-sheets/:month', 'ok(await sheetOf(a.admin))'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/lesson-hour-sheets/:month/submit',
+          'ok(await submit(a.admin))',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/lesson-hour-sheets/:month/confirmations',
+          'confirm(a.admin, b.selin)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/lesson-hour-sheets/:month/approve',
+          'approve(a.admin, ready.entriesHash)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/lesson-hour-sheets/:month/reopen',
+          "reopen(a.admin, 'Kurum A yeniden açtı')",
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-lesson-hour-approvals.test.ts',
+        'başka kurumun çizelgesi ve personeli görünmez, işlenmez ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

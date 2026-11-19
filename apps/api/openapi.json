@@ -216493,7 +216493,7 @@
         "tags": [
           "finance-payroll-exports"
         ],
-        "description": "Seçilen ayın bordro girdi satırları (DOM-FIN-105). Bordroyu dış programda hesaplatan kurum içindir; Kampüs'ün kendi hesabı `GET /api/v1/finance/payroll-calculations/{month}` ucundadır (ADR 0011, DOM-FIN-115). Ana ücret ve yan hak: ayla kesişen her ücret tanımı (DOM-FIN-099) bir satırdır; ay içinde başlayan ya da biten tanım ay içindeki başlangıç/bitiş gününü ve gün sayısını taşır, tutarı orantılanmaz ve boş kalır; saatlik ve ders saati ana ücretinde çalışılan saat bilinmediği için tutar boştur; aylık net ücret brüte çevrilmez (K-336). Ek ders: ay için girilen her saat kaydı bir satırdır, tutar saat × o türün ayla kesişen en geç başlayan ek ders ücretidir; tanım yoksa tutar boş (K-337). Kesinti (DOM-FIN-101, K-392): ayın avans taksiti tutarıyla; sıradaki ve nafaka icraları net ücret oranı (`rateBasisPoints`, `deductionBase: net_wage`) ve kalan alacak üst sınırıyla (`capCents`), BES katkı oranı ve matrahıyla (`pension_base`) `deduction` yönünde satırdır; icra ve BES tutarı boştur (net ücret ve matrah bordroda). Sırada bekleyen ve alacağı biten icra ile ara verilen BES satır vermez. Düzeltme (DOM-FIN-108, K-393): bu aya aktarılan her düzeltme bir satırdır; artı fark `earning`, eksi fark `deduction`, tutar mutlak, ait olduğu ay `sourceMonth`. Tutar içerdiği için her okuma denetim kaydına `finance.payroll_export.read` olarak düşer (yalnız alan adı; icra satırı varsa icra alan adları da, K-315). Rol: yalnız `yonetici` (K-306, K-338; muhasebe rolü açılsa da ücret görmez). Modül `finance`.",
+        "description": "Seçilen ayın bordro girdi satırları (DOM-FIN-105). Bordroyu dış programda hesaplatan kurum içindir; Kampüs'ün kendi hesabı `GET /api/v1/finance/payroll-calculations/{month}` ucundadır (ADR 0011, DOM-FIN-115). Ana ücret ve yan hak: ayla kesişen her ücret tanımı (DOM-FIN-099) bir satırdır; ay içinde başlayan ya da biten tanım ay içindeki başlangıç/bitiş gününü ve gün sayısını taşır, tutarı orantılanmaz ve boş kalır; saatlik ve ders saati ana ücretinde çalışılan saat bilinmediği için tutar boştur; aylık net ücret brüte çevrilmez (K-336). Ek ders: ay için girilen her saat kaydı bir satırdır, tutar saat × o türün ayla kesişen en geç başlayan ek ders ücretidir; tanım yoksa tutar boş (K-337); ayın ek ders çizelgesi müdür onaylı değilse (DOM-FIN-120) satır `lesson_hours_pending` uyarısıyla tutarsızdır ve toplama girmez (K-411). Kesinti (DOM-FIN-101, K-392): ayın avans taksiti tutarıyla; sıradaki ve nafaka icraları net ücret oranı (`rateBasisPoints`, `deductionBase: net_wage`) ve kalan alacak üst sınırıyla (`capCents`), BES katkı oranı ve matrahıyla (`pension_base`) `deduction` yönünde satırdır; icra ve BES tutarı boştur (net ücret ve matrah bordroda). Sırada bekleyen ve alacağı biten icra ile ara verilen BES satır vermez. Düzeltme (DOM-FIN-108, K-393): bu aya aktarılan her düzeltme bir satırdır; artı fark `earning`, eksi fark `deduction`, tutar mutlak, ait olduğu ay `sourceMonth`. Tutar içerdiği için her okuma denetim kaydına `finance.payroll_export.read` olarak düşer (yalnız alan adı; icra satırı varsa icra alan adları da, K-315). Rol: yalnız `yonetici` (K-306, K-338; muhasebe rolü açılsa da ücret görmez). Modül `finance`.",
         "parameters": [
           {
             "schema": {
@@ -216885,7 +216885,8 @@
                                     "staff_inactive",
                                     "deduction_on_net",
                                     "deduction_on_pension_base",
-                                    "prior_month_adjustment"
+                                    "prior_month_adjustment",
+                                    "lesson_hours_pending"
                                   ]
                                 },
                                 "description": "Satır uyarı kodları"
@@ -217426,7 +217427,7 @@
         "tags": [
           "finance-payroll-exports"
         ],
-        "description": "Ders saati özeti (OG-116) gelene kadar ay için elle girilen ek ders saati: personel, ay (`YYYY-AA`), tür (`extra` ek ders, `duty` nöbet) ve ayın toplam saati (tam sayı, 1–400), isteğe bağlı not (K-337). Ay içinde ayrılan (pasif) personele de girilir. Olmayan ya da başka kurumun üyeliği 422 `payroll_lesson_hours_staff_not_found`, öğrenci ya da veli 422 `payroll_lesson_hours_not_staff`, gelecek ay 422 `payroll_lesson_hours_future_month`; aynı personel, ay ve türde kayıt varsa 409 `payroll_lesson_hours_exist` (kayıt düzeltilir). Denetim kaydına alan adları yazılır. `Idempotency-Key` isteğe bağlı. Rol: yalnız `yonetici` (K-306, K-338; muhasebe rolü açılsa da ücret görmez). Modül `finance`.",
+        "description": "Ders saati özeti (OG-116) gelene kadar ay için elle girilen ek ders saati: personel, ay (`YYYY-AA`), tür (`extra` ek ders, `duty` nöbet) ve ayın toplam saati (tam sayı, 1–400), isteğe bağlı not (K-337). Ay içinde ayrılan (pasif) personele de girilir. Olmayan ya da başka kurumun üyeliği 422 `payroll_lesson_hours_staff_not_found`, öğrenci ya da veli 422 `payroll_lesson_hours_not_staff`, gelecek ay 422 `payroll_lesson_hours_future_month`; aynı personel, ay ve türde kayıt varsa 409 `payroll_lesson_hours_exist` (kayıt düzeltilir). Ayın ek ders çizelgesi müdür onaylıysa 409 `lesson_hours_locked` (DOM-FIN-120, K-410); bordro dönemi kilitliyse 409 `payroll_period_locked` (DOM-FIN-108). Denetim kaydına alan adları yazılır. `Idempotency-Key` isteğe bağlı. Rol: `yonetici`, `onburo` (K-409; saat girişi ücret içermez). Modül `finance`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -217650,7 +217651,7 @@
         "tags": [
           "finance-payroll-exports"
         ],
-        "description": "Saat ya da not düzeltilir; değişiklik yoksa 422 `payroll_lesson_hours_unchanged`. `If-Match` zorunlu, sürüm tutmazsa 409. Olmayan, silinmiş ya da başka kurumun kaydı 404. Rol: yalnız `yonetici` (K-306, K-338; muhasebe rolü açılsa da ücret görmez). Modül `finance`.",
+        "description": "Saat ya da not düzeltilir; değişiklik yoksa 422 `payroll_lesson_hours_unchanged`. `If-Match` zorunlu, sürüm tutmazsa 409. Olmayan, silinmiş ya da başka kurumun kaydı 404. Ayın ek ders çizelgesi müdür onaylıysa 409 `lesson_hours_locked` (DOM-FIN-120, K-410); bordro dönemi kilitliyse 409 `payroll_period_locked` (DOM-FIN-108). Rol: `yonetici`, `onburo` (K-409; saat girişi ücret içermez). Modül `finance`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -217867,7 +217868,7 @@
         "tags": [
           "finance-payroll-exports"
         ],
-        "description": "Kayıt arşivlenir; dosyaya girmez, aynı ay ve türde yeni kayıt açılabilir. `If-Match` zorunlu, sürüm tutmazsa 409. Olmayan ya da başka kurumun kaydı 404. Rol: yalnız `yonetici` (K-306, K-338; muhasebe rolü açılsa da ücret görmez). Modül `finance`.",
+        "description": "Kayıt arşivlenir; dosyaya girmez, aynı ay ve türde yeni kayıt açılabilir. `If-Match` zorunlu, sürüm tutmazsa 409. Olmayan ya da başka kurumun kaydı 404. Ayın ek ders çizelgesi müdür onaylıysa 409 `lesson_hours_locked` (DOM-FIN-120, K-410); bordro dönemi kilitliyse 409 `payroll_period_locked` (DOM-FIN-108). Rol: `yonetici`, `onburo` (K-409; saat girişi ücret içermez). Modül `finance`.",
         "parameters": [
           {
             "schema": {
@@ -241501,6 +241502,2133 @@
                         "seniority",
                         "leave",
                         "warnings"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/lesson-hour-sheets/{month}": {
+      "get": {
+        "operationId": "getLessonHourSheet",
+        "summary": "Ayın ek ders çizelgesi ve onay durumu",
+        "tags": [
+          "finance-lesson-hour-sheets"
+        ],
+        "description": "Ayın ek ders çizelgesi (DOM-FIN-120): durum (`draft` taslak, `teacher_review` öğretmen kontrolünde, `approved` müdür onaylı ve kilitli), son gönderen, onaylayan ve yeniden açan, ayın saat kayıtları (tutarsız) ve saati olan her personelin teyit durumu ile son yanıtı. Teyit personelin o anki saat kayıtlarına bağlıdır; kayıt sonradan değişirse durum `pending` olur. `entriesHash` ayın bütün saat kayıtlarının damgasıdır, müdür onayı bunu gönderir. `payrollLocked` bordro döneminin (DOM-FIN-108) kilitli olduğunu gösterir. Hiç gönderilmemiş ay taslaktır, `version` boştur. Tutar dönmediği için okuma denetime düşmez. Rol: `yonetici`, `onburo` (K-409). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^20[2-9]\\d-(0[1-9]|1[0-2])$"
+            },
+            "in": "path",
+            "name": "month",
+            "required": true,
+            "description": "Çizelge ayı (YYYY-AA)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "month": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "teacher_review",
+                            "approved"
+                          ],
+                          "description": "`draft` taslak, `teacher_review` öğretmen kontrolünde, `approved` müdür onaylı"
+                        },
+                        "version": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Çizelge sürümü; hiç gönderilmemiş ayda boş"
+                        },
+                        "payrollLocked": {
+                          "type": "boolean",
+                          "description": "Bordro dönemi kilitli mi (DOM-FIN-108)"
+                        },
+                        "entriesHash": {
+                          "type": "string",
+                          "description": "Ayın saat kayıtlarının SHA-256 damgası; müdür onayı bunu gönderir"
+                        },
+                        "submittedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "submittedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "description": "Son müdür onayı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvalCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "reopenedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reopenedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reopenReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "entries": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "staffName": {
+                                "type": "string"
+                              },
+                              "role": {
+                                "type": "string",
+                                "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                              },
+                              "staffActive": {
+                                "type": "boolean"
+                              },
+                              "lessonType": {
+                                "type": "string",
+                                "enum": [
+                                  "extra",
+                                  "duty"
+                                ]
+                              },
+                              "hours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için saat kaydı sürümü"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "membershipId",
+                              "staffName",
+                              "role",
+                              "staffActive",
+                              "lessonType",
+                              "hours",
+                              "note",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "staff": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "staffName": {
+                                "type": "string"
+                              },
+                              "role": {
+                                "type": "string"
+                              },
+                              "staffActive": {
+                                "type": "boolean"
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "pending",
+                                  "confirmed",
+                                  "disputed"
+                                ],
+                                "description": "`pending` teyit bekleniyor (yanıt yok ya da saat sonradan değişti), `confirmed` teyit edildi, `disputed` itiraz etti"
+                              },
+                              "totalHours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Personelin ayın toplam saati (ek ders ve nöbet)"
+                              },
+                              "entryCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "lastResponse": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "outcome": {
+                                        "type": "string",
+                                        "enum": [
+                                          "confirmed",
+                                          "disputed"
+                                        ]
+                                      },
+                                      "channel": {
+                                        "type": "string",
+                                        "enum": [
+                                          "in_person",
+                                          "phone",
+                                          "email",
+                                          "message",
+                                          "signed_sheet"
+                                        ]
+                                      },
+                                      "reason": {
+                                        "description": "İtiraz gerekçesi",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "recordedAt": {
+                                        "type": "string"
+                                      },
+                                      "recordedByName": {
+                                        "description": "Yanıtı öğretmen adına işleyen kullanıcı",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "current": {
+                                        "type": "boolean",
+                                        "description": "Yanıt bugünkü saat kayıtlarına mı verildi"
+                                      }
+                                    },
+                                    "required": [
+                                      "outcome",
+                                      "channel",
+                                      "reason",
+                                      "recordedAt",
+                                      "recordedByName",
+                                      "current"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "membershipId",
+                              "staffName",
+                              "role",
+                              "staffActive",
+                              "state",
+                              "totalHours",
+                              "entryCount",
+                              "lastResponse"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Saati girilmiş personel ve teyit durumu, ada göre"
+                        }
+                      },
+                      "required": [
+                        "month",
+                        "status",
+                        "version",
+                        "payrollLocked",
+                        "entriesHash",
+                        "submittedAt",
+                        "submittedByName",
+                        "approvedAt",
+                        "approvedByName",
+                        "approvalCount",
+                        "reopenedAt",
+                        "reopenedByName",
+                        "reopenReason",
+                        "entries",
+                        "staff"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/lesson-hour-sheets/{month}/submit": {
+      "post": {
+        "operationId": "submitLessonHourSheet",
+        "summary": "Çizelgeyi öğretmen kontrolüne gönder",
+        "tags": [
+          "finance-lesson-hour-sheets"
+        ],
+        "description": "Taslak çizelge öğretmen kontrolüne geçer (K-409); ilk gönderim çizelge kaydını açar. Taslak olmayan çizelge 409 `lesson_sheet_not_draft`; ayda saat kaydı yoksa 422 `lesson_sheet_empty`. Kontrol sırasında saat düzeltilebilir; düzeltilen personelin teyidi yeniden alınır. Gövde boş nesnedir. `Idempotency-Key` zorunlu. Rol: `yonetici`, `onburo` (K-409). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^20[2-9]\\d-(0[1-9]|1[0-2])$"
+            },
+            "in": "path",
+            "name": "month",
+            "required": true,
+            "description": "Çizelge ayı (YYYY-AA)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "month": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "teacher_review",
+                            "approved"
+                          ],
+                          "description": "`draft` taslak, `teacher_review` öğretmen kontrolünde, `approved` müdür onaylı"
+                        },
+                        "version": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Çizelge sürümü; hiç gönderilmemiş ayda boş"
+                        },
+                        "payrollLocked": {
+                          "type": "boolean",
+                          "description": "Bordro dönemi kilitli mi (DOM-FIN-108)"
+                        },
+                        "entriesHash": {
+                          "type": "string",
+                          "description": "Ayın saat kayıtlarının SHA-256 damgası; müdür onayı bunu gönderir"
+                        },
+                        "submittedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "submittedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "description": "Son müdür onayı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvalCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "reopenedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reopenedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reopenReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "entries": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "staffName": {
+                                "type": "string"
+                              },
+                              "role": {
+                                "type": "string",
+                                "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                              },
+                              "staffActive": {
+                                "type": "boolean"
+                              },
+                              "lessonType": {
+                                "type": "string",
+                                "enum": [
+                                  "extra",
+                                  "duty"
+                                ]
+                              },
+                              "hours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için saat kaydı sürümü"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "membershipId",
+                              "staffName",
+                              "role",
+                              "staffActive",
+                              "lessonType",
+                              "hours",
+                              "note",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "staff": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "staffName": {
+                                "type": "string"
+                              },
+                              "role": {
+                                "type": "string"
+                              },
+                              "staffActive": {
+                                "type": "boolean"
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "pending",
+                                  "confirmed",
+                                  "disputed"
+                                ],
+                                "description": "`pending` teyit bekleniyor (yanıt yok ya da saat sonradan değişti), `confirmed` teyit edildi, `disputed` itiraz etti"
+                              },
+                              "totalHours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Personelin ayın toplam saati (ek ders ve nöbet)"
+                              },
+                              "entryCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "lastResponse": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "outcome": {
+                                        "type": "string",
+                                        "enum": [
+                                          "confirmed",
+                                          "disputed"
+                                        ]
+                                      },
+                                      "channel": {
+                                        "type": "string",
+                                        "enum": [
+                                          "in_person",
+                                          "phone",
+                                          "email",
+                                          "message",
+                                          "signed_sheet"
+                                        ]
+                                      },
+                                      "reason": {
+                                        "description": "İtiraz gerekçesi",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "recordedAt": {
+                                        "type": "string"
+                                      },
+                                      "recordedByName": {
+                                        "description": "Yanıtı öğretmen adına işleyen kullanıcı",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "current": {
+                                        "type": "boolean",
+                                        "description": "Yanıt bugünkü saat kayıtlarına mı verildi"
+                                      }
+                                    },
+                                    "required": [
+                                      "outcome",
+                                      "channel",
+                                      "reason",
+                                      "recordedAt",
+                                      "recordedByName",
+                                      "current"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "membershipId",
+                              "staffName",
+                              "role",
+                              "staffActive",
+                              "state",
+                              "totalHours",
+                              "entryCount",
+                              "lastResponse"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Saati girilmiş personel ve teyit durumu, ada göre"
+                        }
+                      },
+                      "required": [
+                        "month",
+                        "status",
+                        "version",
+                        "payrollLocked",
+                        "entriesHash",
+                        "submittedAt",
+                        "submittedByName",
+                        "approvedAt",
+                        "approvedByName",
+                        "approvalCount",
+                        "reopenedAt",
+                        "reopenedByName",
+                        "reopenReason",
+                        "entries",
+                        "staff"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/lesson-hour-sheets/{month}/confirmations": {
+      "post": {
+        "operationId": "recordLessonHourConfirmation",
+        "summary": "Öğretmenin teyidini ya da itirazını işle",
+        "tags": [
+          "finance-lesson-hour-sheets"
+        ],
+        "description": "Öğretmen ekranı yoktur: ön büro ya da yönetici öğretmenin teyidini ya da gerekçeli itirazını alındığı kanalla (`in_person`, `phone`, `email`, `message`, `signed_sheet`) öğretmen adına işler (K-409). Yanıt personelin o anki saat kayıtlarının damgasını taşır; itiraz (gerekçe 5–500) çizelgeyi taslağa döndürür. Çizelge öğretmen kontrolünde değilse 409 `lesson_sheet_not_in_review`; personelin bu ay saat kaydı yoksa (başka kurumun üyeliği dahil) 422 `lesson_confirmation_no_hours`. Yanıt satırı değişmez; denetim kaydına alan adları yazılır, gerekçe yazılmaz. `Idempotency-Key` zorunlu. Rol: `yonetici`, `onburo` (K-409). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "membershipId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Saati girilmiş personelin kurum üyeliği"
+                  },
+                  "outcome": {
+                    "type": "string",
+                    "enum": [
+                      "confirmed",
+                      "disputed"
+                    ],
+                    "description": "`confirmed` teyit, `disputed` itiraz (çizelge taslağa döner)"
+                  },
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "in_person",
+                      "phone",
+                      "email",
+                      "message",
+                      "signed_sheet"
+                    ],
+                    "description": "Yanıtın alındığı kanal: `in_person`, `phone`, `email`, `message`, `signed_sheet`"
+                  },
+                  "reason": {
+                    "default": null,
+                    "description": "İtiraz gerekçesi (5–500); teyitte boş",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 5,
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "membershipId",
+                  "outcome",
+                  "channel"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^20[2-9]\\d-(0[1-9]|1[0-2])$"
+            },
+            "in": "path",
+            "name": "month",
+            "required": true,
+            "description": "Çizelge ayı (YYYY-AA)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "month": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "teacher_review",
+                            "approved"
+                          ],
+                          "description": "`draft` taslak, `teacher_review` öğretmen kontrolünde, `approved` müdür onaylı"
+                        },
+                        "version": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Çizelge sürümü; hiç gönderilmemiş ayda boş"
+                        },
+                        "payrollLocked": {
+                          "type": "boolean",
+                          "description": "Bordro dönemi kilitli mi (DOM-FIN-108)"
+                        },
+                        "entriesHash": {
+                          "type": "string",
+                          "description": "Ayın saat kayıtlarının SHA-256 damgası; müdür onayı bunu gönderir"
+                        },
+                        "submittedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "submittedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "description": "Son müdür onayı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvalCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "reopenedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reopenedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reopenReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "entries": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "staffName": {
+                                "type": "string"
+                              },
+                              "role": {
+                                "type": "string",
+                                "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                              },
+                              "staffActive": {
+                                "type": "boolean"
+                              },
+                              "lessonType": {
+                                "type": "string",
+                                "enum": [
+                                  "extra",
+                                  "duty"
+                                ]
+                              },
+                              "hours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için saat kaydı sürümü"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "membershipId",
+                              "staffName",
+                              "role",
+                              "staffActive",
+                              "lessonType",
+                              "hours",
+                              "note",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "staff": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "staffName": {
+                                "type": "string"
+                              },
+                              "role": {
+                                "type": "string"
+                              },
+                              "staffActive": {
+                                "type": "boolean"
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "pending",
+                                  "confirmed",
+                                  "disputed"
+                                ],
+                                "description": "`pending` teyit bekleniyor (yanıt yok ya da saat sonradan değişti), `confirmed` teyit edildi, `disputed` itiraz etti"
+                              },
+                              "totalHours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Personelin ayın toplam saati (ek ders ve nöbet)"
+                              },
+                              "entryCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "lastResponse": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "outcome": {
+                                        "type": "string",
+                                        "enum": [
+                                          "confirmed",
+                                          "disputed"
+                                        ]
+                                      },
+                                      "channel": {
+                                        "type": "string",
+                                        "enum": [
+                                          "in_person",
+                                          "phone",
+                                          "email",
+                                          "message",
+                                          "signed_sheet"
+                                        ]
+                                      },
+                                      "reason": {
+                                        "description": "İtiraz gerekçesi",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "recordedAt": {
+                                        "type": "string"
+                                      },
+                                      "recordedByName": {
+                                        "description": "Yanıtı öğretmen adına işleyen kullanıcı",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "current": {
+                                        "type": "boolean",
+                                        "description": "Yanıt bugünkü saat kayıtlarına mı verildi"
+                                      }
+                                    },
+                                    "required": [
+                                      "outcome",
+                                      "channel",
+                                      "reason",
+                                      "recordedAt",
+                                      "recordedByName",
+                                      "current"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "membershipId",
+                              "staffName",
+                              "role",
+                              "staffActive",
+                              "state",
+                              "totalHours",
+                              "entryCount",
+                              "lastResponse"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Saati girilmiş personel ve teyit durumu, ada göre"
+                        }
+                      },
+                      "required": [
+                        "month",
+                        "status",
+                        "version",
+                        "payrollLocked",
+                        "entriesHash",
+                        "submittedAt",
+                        "submittedByName",
+                        "approvedAt",
+                        "approvedByName",
+                        "approvalCount",
+                        "reopenedAt",
+                        "reopenedByName",
+                        "reopenReason",
+                        "entries",
+                        "staff"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/lesson-hour-sheets/{month}/approve": {
+      "post": {
+        "operationId": "approveLessonHourSheet",
+        "summary": "Çizelgeye müdür onayı ver (kilitle)",
+        "tags": [
+          "finance-lesson-hour-sheets"
+        ],
+        "description": "Öğretmen kontrolündeki çizelge müdür onayıyla kilitlenir (K-409, K-410): o ayın ek ders saati yazmaları 409 `lesson_hours_locked` olur ve bordro aktarımı saatleri tutarıyla verir (K-411). Saati olan her personel bugünkü kayıtlarını teyit etmiş olmalı (eksikse 422 `lesson_sheet_unconfirmed`); `entriesHash` çizelgedeki damgayla aynı değilse 409 `lesson_hours_changed`. Öğretmen kontrolünde olmayan çizelge 409 `lesson_sheet_not_in_review`; bordro dönemi kilitliyse 409 `payroll_period_locked`. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (müdür onayı, K-409). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "entriesHash": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{64}$",
+                    "description": "Çizelgenin `entriesHash` değeri; onaylanan saatler bunlardır"
+                  }
+                },
+                "required": [
+                  "entriesHash"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^20[2-9]\\d-(0[1-9]|1[0-2])$"
+            },
+            "in": "path",
+            "name": "month",
+            "required": true,
+            "description": "Çizelge ayı (YYYY-AA)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "month": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "teacher_review",
+                            "approved"
+                          ],
+                          "description": "`draft` taslak, `teacher_review` öğretmen kontrolünde, `approved` müdür onaylı"
+                        },
+                        "version": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Çizelge sürümü; hiç gönderilmemiş ayda boş"
+                        },
+                        "payrollLocked": {
+                          "type": "boolean",
+                          "description": "Bordro dönemi kilitli mi (DOM-FIN-108)"
+                        },
+                        "entriesHash": {
+                          "type": "string",
+                          "description": "Ayın saat kayıtlarının SHA-256 damgası; müdür onayı bunu gönderir"
+                        },
+                        "submittedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "submittedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "description": "Son müdür onayı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvalCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "reopenedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reopenedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reopenReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "entries": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "staffName": {
+                                "type": "string"
+                              },
+                              "role": {
+                                "type": "string",
+                                "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                              },
+                              "staffActive": {
+                                "type": "boolean"
+                              },
+                              "lessonType": {
+                                "type": "string",
+                                "enum": [
+                                  "extra",
+                                  "duty"
+                                ]
+                              },
+                              "hours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için saat kaydı sürümü"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "membershipId",
+                              "staffName",
+                              "role",
+                              "staffActive",
+                              "lessonType",
+                              "hours",
+                              "note",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "staff": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "staffName": {
+                                "type": "string"
+                              },
+                              "role": {
+                                "type": "string"
+                              },
+                              "staffActive": {
+                                "type": "boolean"
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "pending",
+                                  "confirmed",
+                                  "disputed"
+                                ],
+                                "description": "`pending` teyit bekleniyor (yanıt yok ya da saat sonradan değişti), `confirmed` teyit edildi, `disputed` itiraz etti"
+                              },
+                              "totalHours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Personelin ayın toplam saati (ek ders ve nöbet)"
+                              },
+                              "entryCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "lastResponse": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "outcome": {
+                                        "type": "string",
+                                        "enum": [
+                                          "confirmed",
+                                          "disputed"
+                                        ]
+                                      },
+                                      "channel": {
+                                        "type": "string",
+                                        "enum": [
+                                          "in_person",
+                                          "phone",
+                                          "email",
+                                          "message",
+                                          "signed_sheet"
+                                        ]
+                                      },
+                                      "reason": {
+                                        "description": "İtiraz gerekçesi",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "recordedAt": {
+                                        "type": "string"
+                                      },
+                                      "recordedByName": {
+                                        "description": "Yanıtı öğretmen adına işleyen kullanıcı",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "current": {
+                                        "type": "boolean",
+                                        "description": "Yanıt bugünkü saat kayıtlarına mı verildi"
+                                      }
+                                    },
+                                    "required": [
+                                      "outcome",
+                                      "channel",
+                                      "reason",
+                                      "recordedAt",
+                                      "recordedByName",
+                                      "current"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "membershipId",
+                              "staffName",
+                              "role",
+                              "staffActive",
+                              "state",
+                              "totalHours",
+                              "entryCount",
+                              "lastResponse"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Saati girilmiş personel ve teyit durumu, ada göre"
+                        }
+                      },
+                      "required": [
+                        "month",
+                        "status",
+                        "version",
+                        "payrollLocked",
+                        "entriesHash",
+                        "submittedAt",
+                        "submittedByName",
+                        "approvedAt",
+                        "approvedByName",
+                        "approvalCount",
+                        "reopenedAt",
+                        "reopenedByName",
+                        "reopenReason",
+                        "entries",
+                        "staff"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/lesson-hour-sheets/{month}/reopen": {
+      "post": {
+        "operationId": "reopenLessonHourSheet",
+        "summary": "Müdür onaylı çizelgeyi yeniden aç",
+        "tags": [
+          "finance-lesson-hour-sheets"
+        ],
+        "description": "Müdür onaylı çizelge gerekçeyle (5–500) taslağa döner; saat yeniden yazılabilir, çizelge yeniden gönderilip onaylanır (K-410). Onaylı olmayan çizelge 409 `lesson_sheet_not_approved`; bordro dönemi kilitliyse 409 `payroll_period_locked` (fark düzeltme kaydıyla, DOM-FIN-108). Gerekçe çizelgede kalır, denetim kaydına yazılmaz. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (müdür onayı, K-409). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500,
+                    "description": "Yeniden açma gerekçesi (5–500); çizelge kaydında kalır, denetim kaydına yazılmaz"
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^20[2-9]\\d-(0[1-9]|1[0-2])$"
+            },
+            "in": "path",
+            "name": "month",
+            "required": true,
+            "description": "Çizelge ayı (YYYY-AA)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "month": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "teacher_review",
+                            "approved"
+                          ],
+                          "description": "`draft` taslak, `teacher_review` öğretmen kontrolünde, `approved` müdür onaylı"
+                        },
+                        "version": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Çizelge sürümü; hiç gönderilmemiş ayda boş"
+                        },
+                        "payrollLocked": {
+                          "type": "boolean",
+                          "description": "Bordro dönemi kilitli mi (DOM-FIN-108)"
+                        },
+                        "entriesHash": {
+                          "type": "string",
+                          "description": "Ayın saat kayıtlarının SHA-256 damgası; müdür onayı bunu gönderir"
+                        },
+                        "submittedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "submittedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedAt": {
+                          "description": "Son müdür onayı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "approvalCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "reopenedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reopenedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reopenReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "entries": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "staffName": {
+                                "type": "string"
+                              },
+                              "role": {
+                                "type": "string",
+                                "description": "Rol: `yonetici`, `ogretmen` ya da `onburo`"
+                              },
+                              "staffActive": {
+                                "type": "boolean"
+                              },
+                              "lessonType": {
+                                "type": "string",
+                                "enum": [
+                                  "extra",
+                                  "duty"
+                                ]
+                              },
+                              "hours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "`If-Match` için saat kaydı sürümü"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "membershipId",
+                              "staffName",
+                              "role",
+                              "staffActive",
+                              "lessonType",
+                              "hours",
+                              "note",
+                              "version"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "staff": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "staffName": {
+                                "type": "string"
+                              },
+                              "role": {
+                                "type": "string"
+                              },
+                              "staffActive": {
+                                "type": "boolean"
+                              },
+                              "state": {
+                                "type": "string",
+                                "enum": [
+                                  "pending",
+                                  "confirmed",
+                                  "disputed"
+                                ],
+                                "description": "`pending` teyit bekleniyor (yanıt yok ya da saat sonradan değişti), `confirmed` teyit edildi, `disputed` itiraz etti"
+                              },
+                              "totalHours": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Personelin ayın toplam saati (ek ders ve nöbet)"
+                              },
+                              "entryCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "lastResponse": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "outcome": {
+                                        "type": "string",
+                                        "enum": [
+                                          "confirmed",
+                                          "disputed"
+                                        ]
+                                      },
+                                      "channel": {
+                                        "type": "string",
+                                        "enum": [
+                                          "in_person",
+                                          "phone",
+                                          "email",
+                                          "message",
+                                          "signed_sheet"
+                                        ]
+                                      },
+                                      "reason": {
+                                        "description": "İtiraz gerekçesi",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "recordedAt": {
+                                        "type": "string"
+                                      },
+                                      "recordedByName": {
+                                        "description": "Yanıtı öğretmen adına işleyen kullanıcı",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "current": {
+                                        "type": "boolean",
+                                        "description": "Yanıt bugünkü saat kayıtlarına mı verildi"
+                                      }
+                                    },
+                                    "required": [
+                                      "outcome",
+                                      "channel",
+                                      "reason",
+                                      "recordedAt",
+                                      "recordedByName",
+                                      "current"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "membershipId",
+                              "staffName",
+                              "role",
+                              "staffActive",
+                              "state",
+                              "totalHours",
+                              "entryCount",
+                              "lastResponse"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Saati girilmiş personel ve teyit durumu, ada göre"
+                        }
+                      },
+                      "required": [
+                        "month",
+                        "status",
+                        "version",
+                        "payrollLocked",
+                        "entriesHash",
+                        "submittedAt",
+                        "submittedByName",
+                        "approvedAt",
+                        "approvedByName",
+                        "approvalCount",
+                        "reopenedAt",
+                        "reopenedByName",
+                        "reopenReason",
+                        "entries",
+                        "staff"
                       ],
                       "additionalProperties": false
                     }

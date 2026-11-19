@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useLessonHourSheet } from '@kampus/react-shared/use-finance-lesson-hour-sheets.ts'
 import { usePayRateStaff } from '@kampus/react-shared/use-finance-pay-rates.ts'
 import {
   useArchivePayrollLessonHours,
@@ -35,6 +36,7 @@ import { notify } from '@/lib/notify.ts'
 import { StatGrid } from '../academic/AcademicParts.tsx'
 import { RootError } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
+import { FinanceLessonHourSheetPanel } from './FinanceLessonHourSheetPanel.tsx'
 import { FinancePayrollExportProfileModal } from './FinancePayrollExportProfileModal.tsx'
 import {
   isPayrollMonth,
@@ -49,6 +51,7 @@ import {
   type LessonHoursFormValues,
   type PayrollRow,
 } from './finance-payroll-export-forms.ts'
+import { sheetActions } from './finance-lesson-sheet-forms.ts'
 
 const BOM = '\uFEFF'
 const MOBILE = ['staff', 'item', 'total']
@@ -65,13 +68,18 @@ type Dialog =
  * (K-338). Bordroyu dış programda hesaplatan kurum içindir (ADR 0011): ay seçilir, o ayın girdi satırları (ücret tanımları, elle
  * girilen ek ders saatleri, avans/icra/BES kesintileri ve aya aktarılan düzeltmeler) önizlenir, CSV
  * indirilir. Önizleme tutar içerir ve her açılışı denetime düşer; dosya taze oturum ister ve her
- * üretim özet satırı yazar. Dosya üretimi dönem kilidine bağlı değildir.
+ * üretim özet satırı yazar. Dosya üretimi dönem kilidine bağlı değildir. Ek ders saatleri ayın
+ * çizelgesiyle onaylanır (DOM-FIN-120): müdür onaylı ya da bordro dönemi kilitli ayda saat
+ * eklenmez, düzeltilmez, silinmez.
  */
 export function FinancePayrollExportSection() {
   const today = dayKey()
   const [month, setMonth] = useState(today.slice(0, 7))
   const valid = isPayrollMonth(month)
   const preview = usePayrollPreview(month, valid)
+  const sheet = useLessonHourSheet(month, valid)
+  const sheetData = valid ? sheet.data?.data : undefined
+  const hoursLocked = sheetData === undefined || sheetActions(sheetData).hoursLocked
   const exporter = usePayrollExportFile()
   const [dialog, setDialog] = useState<Dialog>(null)
   const [reauth, setReauth] = useState(false)
@@ -95,7 +103,7 @@ export function FinancePayrollExportSection() {
         label: 'İşlemler',
         cell: (row: PayrollRow) => {
           const line = lines.get(row.id)
-          if (line === undefined || row.lessonHoursId === null) return null
+          if (line === undefined || row.lessonHoursId === null || hoursLocked) return null
           return (
             <span className="flex flex-wrap gap-2">
               <Button
@@ -119,7 +127,7 @@ export function FinancePayrollExportSection() {
         },
       },
     ],
-    [lines],
+    [lines, hoursLocked],
   )
 
   async function download() {
@@ -179,7 +187,7 @@ export function FinancePayrollExportSection() {
           </Button>
           <Button
             variant="secondary"
-            disabled={!valid}
+            disabled={!valid || hoursLocked}
             onClick={() => setDialog({ kind: 'create' })}
           >
             <Icon name="Plus" size={17} aria-hidden="true" />
@@ -194,6 +202,10 @@ export function FinancePayrollExportSection() {
           <QueryError error={preview.error} onRetry={() => void preview.refetch()} />
         ) : null}
         {valid && !data && !preview.error ? <SummaryLoading /> : null}
+        {sheet.error ? (
+          <QueryError error={sheet.error} onRetry={() => void sheet.refetch()} />
+        ) : null}
+        {sheetData ? <FinanceLessonHourSheetPanel sheet={sheetData} /> : null}
         {data ? (
           <>
             <StatGrid

@@ -230,6 +230,7 @@ export const PAYROLL_WARNINGS = [
   'deduction_on_net',
   'deduction_on_pension_base',
   'prior_month_adjustment',
+  'lesson_hours_pending',
 ] as const
 export type PayrollWarning = (typeof PAYROLL_WARNINGS)[number]
 export const PAYROLL_WARNING_LABELS = {
@@ -242,6 +243,7 @@ export const PAYROLL_WARNING_LABELS = {
   deduction_on_net: 'Net ücretten oranla bordroda hesaplanır; kalan alacak üst sınırdır',
   deduction_on_pension_base: 'BES matrahından oranla bordroda hesaplanır',
   prior_month_adjustment: 'Kilitli ayın düzeltme farkı; ait olduğu ay ayrı sütunda',
+  lesson_hours_pending: 'Ek ders çizelgesi müdür onayı bekliyor; onaylanmadan ödenmez',
 } as const satisfies Record<PayrollWarning, string>
 
 export interface PayrollStaff {
@@ -365,7 +367,7 @@ export interface PayrollExportTotals {
   earningCents: number
   /** Tutarı olan kesinti satırlarının toplamı (kuruş): avans taksiti ve eksi düzeltme. */
   deductionCents: number
-  /** Tutarı boş satır (kısmi ay, saat ücreti, ek ders tanımı yok, oranlı icra ve BES). */
+  /** Tutarı boş satır (kısmi ay, saat ücreti, ek ders tanımı yok ya da onaysız, icra ve BES). */
   missingTotalCount: number
 }
 
@@ -422,7 +424,8 @@ function groupBy<T extends { membershipId: string }>(items: readonly T[]): Map<s
  * ay içinde başlayan ya da biten tanımın tutarı boş kalır (gün oranı bordroda), saatlik ve ders
  * saati ana ücretinde çalışılan saat bilinmediği için tutar boştur. Ek ders: her saat kaydı bir
  * satırdır; birim ücret o türün ayla kesişen en geç başlayan tanımıdır (K-337). Ek ders ücreti
- * tanımı saat girilmemişse satır üretmez.
+ * tanımı saat girilmemişse satır üretmez. Ayın ek ders çizelgesi müdür onaylı değilse (DOM-FIN-120,
+ * K-411) ek ders satırı "onay bekliyor" uyarısıyla tutarsız döner; toplama girmez.
  *
  * Kesinti (K-392): personel başına `monthlyDeductions` net ücret ve matrah olmadan çalışır; avans
  * taksiti tutarıyla, sıradaki ve nafaka icraları net ücret oranı ve kalan alacak üst sınırıyla,
@@ -439,6 +442,11 @@ export function payrollExportLines(input: {
   lessonHours: readonly PayrollLessonHours[]
   deductions?: PayrollDeductionSources
   adjustments?: readonly PayrollAdjustmentEntry[]
+  /**
+   * Ayın ek ders çizelgesi müdür onaylı mı (DOM-FIN-120, K-411); verilmezse onaylı sayılır.
+   * Onaysız ayda ek ders satırı "onay bekliyor" uyarısıyla tutarsız döner.
+   */
+  lessonHoursApproved?: boolean
 }): PayrollExport {
   const range = payrollMonthRange(input.month)
   const staffById = new Map(input.staff.map((person) => [person.membershipId, person]))
@@ -495,6 +503,7 @@ export function payrollExportLines(input: {
     })
   }
 
+  const approved = input.lessonHoursApproved ?? true
   for (const entry of input.lessonHours) {
     const person = staffOf(entry.membershipId)
     const candidates = rates.filter(
@@ -511,6 +520,7 @@ export function payrollExportLines(input: {
     if (chosen === null) warnings.push('lesson_rate_missing')
     if (candidates.length > 1) warnings.push('lesson_rate_changed')
     if (!person.active) warnings.push('staff_inactive')
+    if (!approved) warnings.push('lesson_hours_pending')
     lines.push({
       ...base(person),
       ...NO_DEDUCTION,
@@ -522,7 +532,7 @@ export function payrollExportLines(input: {
       unit: 'hour',
       rateCents: chosen?.amountCents ?? null,
       quantity: entry.hours,
-      totalCents: chosen === null ? null : chosen.amountCents * entry.hours,
+      totalCents: chosen === null || !approved ? null : chosen.amountCents * entry.hours,
       taxable: null,
       benefitForm: null,
       startDate: null,

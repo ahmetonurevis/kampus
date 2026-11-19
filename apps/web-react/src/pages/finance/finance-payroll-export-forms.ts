@@ -68,9 +68,15 @@ export function payrollRateText(line: PayrollLine): string {
   return line.rateCents === null ? '—' : money(line.rateCents)
 }
 
-/** Tutar: kesinti eksi işaretle; hesaplanamıyorsa bordroya bırakılır. */
-export function payrollTotalText(line: Pick<PayrollLine, 'direction' | 'totalCents'>): string {
-  if (line.totalCents === null) return 'Bordroda hesaplanır'
+/**
+ * Tutar: kesinti eksi işaretle; onaysız ek ders "Onay bekliyor" (DOM-FIN-120, K-411); öteki
+ * hesaplanamayan tutar bordroya bırakılır.
+ */
+export function payrollTotalText(
+  line: Pick<PayrollLine, 'direction' | 'totalCents'> & { warnings?: PayrollLine['warnings'] },
+): string {
+  if (line.totalCents === null)
+    return line.warnings?.includes('lesson_hours_pending') ? 'Onay bekliyor' : 'Bordroda hesaplanır'
   return money(line.direction === 'deduction' ? -line.totalCents : line.totalCents)
 }
 

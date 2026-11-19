@@ -10816,6 +10816,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/staff-retention-policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Özlük verisi saklama politikası
+         * @description Altı veri kategorisinin (istirahat raporları, sağlık raporu belgeleri, adli sicil kayıtları, özlük dosyası, izin kayıtları, mali kayıtlar) ayrılış sonrası saklama süresi, yasal en az süresi, başlangıç olayı ve imha yöntemi. Ayarlanmamış kategori yasal en az süreyi kullanır (`customized: false`; K-415). Süreler **doğrulanmalı** (H-89, M-85). Rol: yalnız `yonetici` (ön büro, öğretmen, veli, öğrenci 403). Modül `finance`.
+         */
+        get: operations["getStaffRetentionPolicies"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Özlük verisi saklama sürelerini değiştir
+         * @description Gönderilen kategorilerin süresi (ay, en çok 360) yazılır; `null` yasal en az süreye döner. Yasal en az sürenin altı 400 (K-415). Süre değişikliği yalnız henüz imha edilmemiş kayıtların imha gününü değiştirir. Denetim `finance.staff_retention.update` (kategori adları). `Idempotency-Key` isteğe bağlı. Rol: yalnız `yonetici` (ön büro, öğretmen, veli, öğrenci 403). Modül `finance`.
+         */
+        patch: operations["updateStaffRetentionPolicies"];
+        trace?: never;
+    };
+    "/api/v1/finance/staff-retention-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * İmha adayları
+         * @description Pasifleştirilmiş (ayrılmış) personel × kaydı bulunan veri kategorisi: ayrılış günü, kayıt sayısı, imha edilebileceği ilk gün ve kalan gün. Süresi dolanlar (`status: due`) önce, sonra imha günü. Ayrılış günü üyeliğin pasifleştirildiği Europe/Istanbul günüdür; yeniden etkinleştirilen personel aday olmaz (K-415). Ad, kategori ve durumla süzülür, sayfalıdır. Rol: yalnız `yonetici` (ön büro, öğretmen, veli, öğrenci 403). Modül `finance`.
+         */
+        get: operations["listStaffRetentionCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staff-data-destructions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * İmha kayıtları
+         * @description Onaylı imhaların kaydı, en yeni önce: kategori, yöntem, kayıt ve dosya sayısı, uygulanan süre, imha eden ve an. İmha edilen personelin kimliği ve adı tutulmaz; kayıt değişmez ve silinmez (K-417). Rol: yalnız `yonetici` (ön büro, öğretmen, veli, öğrenci 403). Modül `finance`.
+         */
+        get: operations["listStaffDataDestructions"];
+        put?: never;
+        /**
+         * Özlük verisini imha et
+         * @description Ayrılmış personelin bir kategorideki bütün kayıtlarını (iptal edilmişler dahil) imha eder (K-416): istirahat raporu, sağlık raporu, adli sicil, özlük dosyası ve izin kayıtları fiziksel silinir; mali kayıtlar kişi düzeyinde silinerek anonimleşir (onaylı bordro dönemi ve aktarım özetleri kişisiz kalır). Bağlı dosyaların saklama sonu şimdiye çekilir, nesneyi platformun saklama sonu imhası siler. Aynı işlemde kişisel veri içermeyen imha kaydı ve `finance.staff_data.destroy` denetimi yazılır. Olmayan, başka kurumun ya da personel olmayan üyelik 404; etkin personel 422 `staff_retention_member_active`; süresi dolmamış kategori 422 `staff_retention_not_due`; kaydı olmayan kategori 422 `staff_retention_nothing_to_destroy`. Taze oturum ister (eskiyse 403 `reauthentication_required`); `Idempotency-Key` zorunlu. Geri alınamaz. Rol: yalnız `yonetici` (ön büro, öğretmen, veli, öğrenci 403). Modül `finance`.
+         */
+        post: operations["destroyStaffData"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -113839,6 +113907,690 @@ export interface operations {
                             serviceCertificateLabel: string | null;
                             /** @description Verinin üretildiği an */
                             generatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getStaffRetentionPolicies: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /**
+                             * @description `sick_leave_reports` istirahat raporları, `health_reports` sağlık raporu belgeleri, `criminal_records` adli sicil kayıtları, `personnel_file` özlük dosyası, `leave_records` izin kayıtları, `payroll_records` mali kayıtlar
+                             * @enum {string}
+                             */
+                            category: "sick_leave_reports" | "health_reports" | "criminal_records" | "personnel_file" | "leave_records" | "payroll_records";
+                            /** @description Geçerli saklama süresi (ay) */
+                            retentionMonths: number;
+                            /** @description Yasal en az süre (ay); varsayılan budur, altına inilemez */
+                            legalMinimumMonths: number;
+                            /** @description Girilebilecek en uzun süre (ay) */
+                            maximumMonths: number;
+                            /**
+                             * @description `separation_day` ayrılış günü, `year_after_separation` ayrılış yılını izleyen yıl başı
+                             * @enum {string}
+                             */
+                            startEvent: "separation_day" | "year_after_separation";
+                            /**
+                             * @description `delete` fiziksel silme, `anonymize` kişi düzeyinde silinerek anonimleştirme (K-416)
+                             * @enum {string}
+                             */
+                            method: "delete" | "anonymize";
+                            /** @description Özel nitelikli kişisel veri (KVKK md. 6) */
+                            special: boolean;
+                            /** @description Kurum ayarı mı (`false` ise yasal en az süre) */
+                            customized: boolean;
+                            updatedAt: string | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateStaffRetentionPolicies: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description İstirahat raporları */
+                    sick_leave_reports?: {
+                        /** @description Saklama süresi (ay); `null` yasal en az süreye (varsayılan) döner */
+                        retentionMonths: number | null;
+                    };
+                    /** @description Sağlık raporu belgeleri */
+                    health_reports?: {
+                        /** @description Saklama süresi (ay); `null` yasal en az süreye (varsayılan) döner */
+                        retentionMonths: number | null;
+                    };
+                    /** @description Adli sicil kayıtları */
+                    criminal_records?: {
+                        /** @description Saklama süresi (ay); `null` yasal en az süreye (varsayılan) döner */
+                        retentionMonths: number | null;
+                    };
+                    /** @description Özlük dosyası */
+                    personnel_file?: {
+                        /** @description Saklama süresi (ay); `null` yasal en az süreye (varsayılan) döner */
+                        retentionMonths: number | null;
+                    };
+                    /** @description İzin kayıtları */
+                    leave_records?: {
+                        /** @description Saklama süresi (ay); `null` yasal en az süreye (varsayılan) döner */
+                        retentionMonths: number | null;
+                    };
+                    /** @description Mali kayıtlar */
+                    payroll_records?: {
+                        /** @description Saklama süresi (ay); `null` yasal en az süreye (varsayılan) döner */
+                        retentionMonths: number | null;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /**
+                             * @description `sick_leave_reports` istirahat raporları, `health_reports` sağlık raporu belgeleri, `criminal_records` adli sicil kayıtları, `personnel_file` özlük dosyası, `leave_records` izin kayıtları, `payroll_records` mali kayıtlar
+                             * @enum {string}
+                             */
+                            category: "sick_leave_reports" | "health_reports" | "criminal_records" | "personnel_file" | "leave_records" | "payroll_records";
+                            /** @description Geçerli saklama süresi (ay) */
+                            retentionMonths: number;
+                            /** @description Yasal en az süre (ay); varsayılan budur, altına inilemez */
+                            legalMinimumMonths: number;
+                            /** @description Girilebilecek en uzun süre (ay) */
+                            maximumMonths: number;
+                            /**
+                             * @description `separation_day` ayrılış günü, `year_after_separation` ayrılış yılını izleyen yıl başı
+                             * @enum {string}
+                             */
+                            startEvent: "separation_day" | "year_after_separation";
+                            /**
+                             * @description `delete` fiziksel silme, `anonymize` kişi düzeyinde silinerek anonimleştirme (K-416)
+                             * @enum {string}
+                             */
+                            method: "delete" | "anonymize";
+                            /** @description Özel nitelikli kişisel veri (KVKK md. 6) */
+                            special: boolean;
+                            /** @description Kurum ayarı mı (`false` ise yasal en az süre) */
+                            customized: boolean;
+                            updatedAt: string | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listStaffRetentionCandidates: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Personel adında arama */
+                q?: string;
+                /** @description `sick_leave_reports` istirahat raporları, `health_reports` sağlık raporu belgeleri, `criminal_records` adli sicil kayıtları, `personnel_file` özlük dosyası, `leave_records` izin kayıtları, `payroll_records` mali kayıtlar */
+                category?: "sick_leave_reports" | "health_reports" | "criminal_records" | "personnel_file" | "leave_records" | "payroll_records";
+                /** @description `due` yalnız süresi dolan, `waiting` yalnız süresi süren */
+                status?: "due" | "waiting";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Ayrılmış personelin kurum üyeliği */
+                            membershipId: string;
+                            name: string;
+                            /** @description Ayrılıştaki rol (`yonetici`, `ogretmen`, `onburo`) */
+                            role: string;
+                            /** @description Ayrılış günü: pasifleştirildiği Europe/Istanbul günü */
+                            separationDate: string;
+                            /**
+                             * @description `sick_leave_reports` istirahat raporları, `health_reports` sağlık raporu belgeleri, `criminal_records` adli sicil kayıtları, `personnel_file` özlük dosyası, `leave_records` izin kayıtları, `payroll_records` mali kayıtlar
+                             * @enum {string}
+                             */
+                            category: "sick_leave_reports" | "health_reports" | "criminal_records" | "personnel_file" | "leave_records" | "payroll_records";
+                            /**
+                             * @description `delete` fiziksel silme, `anonymize` kişi düzeyinde silinerek anonimleştirme (K-416)
+                             * @enum {string}
+                             */
+                            method: "delete" | "anonymize";
+                            special: boolean;
+                            /** @description Kategoride imha edilecek kayıt sayısı */
+                            recordCount: number;
+                            retentionMonths: number;
+                            /** @description İmha edilebileceği ilk gün (dahil) */
+                            dueDate: string;
+                            /**
+                             * @description `due` süre doldu, imha edilebilir; `waiting` süre sürüyor
+                             * @enum {string}
+                             */
+                            status: "due" | "waiting";
+                            /** @description İmhaya kalan gün; dolmuşsa 0 ya da eksi */
+                            daysLeft: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listStaffDataDestructions: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description `sick_leave_reports` istirahat raporları, `health_reports` sağlık raporu belgeleri, `criminal_records` adli sicil kayıtları, `personnel_file` özlük dosyası, `leave_records` izin kayıtları, `payroll_records` mali kayıtlar */
+                category?: "sick_leave_reports" | "health_reports" | "criminal_records" | "personnel_file" | "leave_records" | "payroll_records";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            id: string;
+                            /**
+                             * @description `sick_leave_reports` istirahat raporları, `health_reports` sağlık raporu belgeleri, `criminal_records` adli sicil kayıtları, `personnel_file` özlük dosyası, `leave_records` izin kayıtları, `payroll_records` mali kayıtlar
+                             * @enum {string}
+                             */
+                            category: "sick_leave_reports" | "health_reports" | "criminal_records" | "personnel_file" | "leave_records" | "payroll_records";
+                            /**
+                             * @description `delete` fiziksel silme, `anonymize` kişi düzeyinde silinerek anonimleştirme (K-416)
+                             * @enum {string}
+                             */
+                            method: "delete" | "anonymize";
+                            /** @description İmha edilen kayıt sayısı */
+                            recordCount: number;
+                            /** @description İmhaya işaretlenen dosya sayısı */
+                            fileCount: number;
+                            /** @description Uygulanan saklama süresi (ay) */
+                            retentionMonths: number;
+                            /**
+                             * @description `separation_day` ayrılış günü, `year_after_separation` ayrılış yılını izleyen yıl başı
+                             * @enum {string}
+                             */
+                            startEvent: "separation_day" | "year_after_separation";
+                            destroyedAt: string;
+                            /** @description İmhayı onaylayan yönetici */
+                            destroyedByUserId: string;
+                            destroyedByName: string | null;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    destroyStaffData: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Verisi imha edilecek ayrılmış personelin kurum üyeliği */
+                    membershipId: string;
+                    /**
+                     * @description `sick_leave_reports` istirahat raporları, `health_reports` sağlık raporu belgeleri, `criminal_records` adli sicil kayıtları, `personnel_file` özlük dosyası, `leave_records` izin kayıtları, `payroll_records` mali kayıtlar
+                     * @enum {string}
+                     */
+                    category: "sick_leave_reports" | "health_reports" | "criminal_records" | "personnel_file" | "leave_records" | "payroll_records";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            id: string;
+                            /**
+                             * @description `sick_leave_reports` istirahat raporları, `health_reports` sağlık raporu belgeleri, `criminal_records` adli sicil kayıtları, `personnel_file` özlük dosyası, `leave_records` izin kayıtları, `payroll_records` mali kayıtlar
+                             * @enum {string}
+                             */
+                            category: "sick_leave_reports" | "health_reports" | "criminal_records" | "personnel_file" | "leave_records" | "payroll_records";
+                            /**
+                             * @description `delete` fiziksel silme, `anonymize` kişi düzeyinde silinerek anonimleştirme (K-416)
+                             * @enum {string}
+                             */
+                            method: "delete" | "anonymize";
+                            /** @description İmha edilen kayıt sayısı */
+                            recordCount: number;
+                            /** @description İmhaya işaretlenen dosya sayısı */
+                            fileCount: number;
+                            /** @description Uygulanan saklama süresi (ay) */
+                            retentionMonths: number;
+                            /**
+                             * @description `separation_day` ayrılış günü, `year_after_separation` ayrılış yılını izleyen yıl başı
+                             * @enum {string}
+                             */
+                            startEvent: "separation_day" | "year_after_separation";
+                            destroyedAt: string;
+                            /** @description İmhayı onaylayan yönetici */
+                            destroyedByUserId: string;
+                            destroyedByName: string | null;
                         };
                     };
                 };

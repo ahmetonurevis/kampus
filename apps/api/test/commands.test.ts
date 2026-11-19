@@ -183,6 +183,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // ikinci dosyayı açmaz (routes/finance-staff-separations.ts; DOM-FIN-118, ON-180).
   'POST /api/v1/finance/staff-separations',
   'POST /api/v1/finance/staff-separations/{separationId}/complete',
+  // Özlük verisi imhası geri alınamaz; çift tıklama ikinci imha kaydı yazmaz
+  // (routes/finance-staff-retention.ts; DOM-FIN-122, ON-176).
+  'POST /api/v1/finance/staff-data-destructions',
 ]
 // Onur: kayıt ve finans sonu
 

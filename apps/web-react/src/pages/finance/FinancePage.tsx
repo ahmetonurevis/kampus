@@ -189,6 +189,9 @@ const FinanceHrReportsSection = lazy(async () => ({
 const FinanceStaffSeparationsSection = lazy(async () => ({
   default: (await import('./FinanceStaffSeparationsSection.tsx')).FinanceStaffSeparationsSection,
 }))
+const FinanceStaffRetentionSection = lazy(async () => ({
+  default: (await import('./FinanceStaffRetentionSection.tsx')).FinanceStaffRetentionSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -251,6 +254,7 @@ const VIEWS = {
   payrollCalculation: { label: 'Bordro hesabı', param: 'bordro-hesabi' },
   hrReports: { label: 'İK raporları', param: 'ik-raporlari' },
   staffSeparations: { label: 'İşten ayrılış', param: 'isten-ayrilis' },
+  staffRetention: { label: 'Özlük saklama ve imha', param: 'ozluk-imha' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -300,6 +304,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Bordro hesabı (DOM-FIN-115) yalnız yöneticidedir; ücret ve icra taşır (K-391).
  * İK raporları (DOM-FIN-117) yalnız yöneticidedir; personel verisi toplamıdır (K-401).
  * İşten ayrılış (DOM-FIN-118) yalnız yöneticidedir; dosya avans, icra ve izin bilgisi taşır (K-403).
+ * Özlük saklama ve imha (DOM-FIN-122) yalnız yöneticidedir; imha geri alınamaz (K-417).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -314,6 +319,7 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'fixedAssets' ||
       value === 'severance' ||
       value === 'freeTuition' ||
+      value === 'staffRetention' ||
       value === 'staffSeparations' ||
       value === 'hrReports' ||
       value === 'payrollCalculation' ||
@@ -535,6 +541,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'payrollCalculation' ? <FinancePayrollCalculationSection /> : null}
         {tab === 'hrReports' ? <FinanceHrReportsSection /> : null}
         {tab === 'staffSeparations' ? <FinanceStaffSeparationsSection /> : null}
+        {tab === 'staffRetention' ? <FinanceStaffRetentionSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

@@ -3051,6 +3051,25 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: özlük verisi saklama ve imha (ON-176; DOM-FIN-122).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/staff-retention-policies', 'get(POLICY, a.admin)'],
+        [
+          'gövde',
+          'PATCH /api/v1/finance/staff-retention-policies',
+          "call('PATCH', POLICY, a.admin",
+        ],
+        ['liste', 'GET /api/v1/finance/staff-retention-candidates', 'listOf(a.admin, CANDIDATES)'],
+        ['liste', 'GET /api/v1/finance/staff-data-destructions', 'listOf(a.admin, DESTRUCTIONS)'],
+        ['gövde', 'POST /api/v1/finance/staff-data-destructions', 'institutionId: b.id'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)('finance-staff-retention.test.ts', 'başka kurum 404 ve B değişmez', marker),
+    ]),
+  ),
 }
 
 /**

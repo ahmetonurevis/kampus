@@ -10,6 +10,7 @@ import {
   claimSeat,
   CONSENT_CHANNEL_LABELS,
   CONSENT_STATUS_LABELS,
+  holdsSeat,
   joinPlanFor,
   MANUAL_CONSENT_CHANNELS,
   openActivityInvoice,
@@ -18,7 +19,9 @@ import {
   type ConsentChannel,
   type ConsentStatus,
   type JoinPlan,
+  type PaidActivityStatus,
   type PaidActivityTerms,
+  type ParticipationCancelPlan,
   type ParticipationPaymentStatus,
   type ParticipationStatus,
   type SeatCounts,
@@ -36,6 +39,9 @@ import {
  *   açılır. İzin personelce (kâğıt, telefon, yüz yüze; veren kişinin adıyla) girilir ya da bağlı
  *   dijital izin formundan (IST-067) eşitlenir. İzin geri çekilir ya da formda reddedilirse katılım
  *   iptal edilir; iade K-302 kuralıyladır (katılımcı iptali gibi).
+ * - Etkin olmayan (ayrılmış ya da mezun) öğrenciye izin kaydedilmez, eşitleme onun taksitsiz
+ *   katılımını parasız iptal eder (K-418); yedekten geçiş onu atlar (K-396). Eski ayrılışlardan
+ *   kalan taksitsiz katılımlar yönetici onayıyla parasız kapatılır (K-419).
  *
  * Fonksiyonlar saftır; zaman `today` (Europe/Istanbul günü) parametresiyle gelir.
  */
@@ -74,6 +80,21 @@ export const withdrawConsentSchema = z.strictObject({
   channel: z.enum(MANUAL_CONSENT_CHANNELS, 'Geri çekmenin geldiği kanalı seçin.'),
 })
 export type WithdrawConsentInput = z.input<typeof withdrawConsentSchema>
+
+/** Ayrılıştan kalan katılımların tek seferde kapatılabilen üst sınırı (K-419). */
+export const WITHDRAWN_LEFTOVER_CANCEL_MAX = 100
+
+export const cancelWithdrawnLeftoversSchema = z.strictObject({
+  participantIds: z
+    .array(z.uuid('Katılım kimliği geçersiz.'), 'Katılım seçin.')
+    .min(1, 'En az bir katılım seçin.')
+    .max(
+      WITHDRAWN_LEFTOVER_CANCEL_MAX,
+      `Bir seferde en çok ${String(WITHDRAWN_LEFTOVER_CANCEL_MAX)} katılım kapatılır.`,
+    )
+    .refine((list) => new Set(list).size === list.length, 'Aynı katılım bir kez seçilir.'),
+})
+export type CancelWithdrawnLeftoversInput = z.input<typeof cancelWithdrawnLeftoversSchema>
 
 // --- Toplu katılım -------------------------------------------------------------------------------
 
@@ -159,6 +180,11 @@ export interface WaitlistEntry {
   studentId: string
   waitlistPosition: number
   consentStatus: ConsentStatus
+  /**
+   * Öğrenci kurumda etkin mi; `false` (ayrılmış ya da mezun) yedek asile geçmez, sıradaki geçer
+   * (K-396). Verilmezse etkin sayılır.
+   */
+  studentActive?: boolean
 }
 
 export interface Promotion {
@@ -170,16 +196,20 @@ export interface Promotion {
 
 /**
  * Asile geçecek yedekler (K-369): boş yer kadar, en küçük sıra numarasından. Etkinlik iptal
- * edilmişse ya da günü geçmişse yoktur. Saf seçim; taksit açmaz.
+ * edilmişse ya da günü geçmişse yoktur. Etkin olmayan (ayrılmış ya da mezun) öğrencinin yedeği
+ * atlanır, katılımdaki gibi (K-396). Saf seçim; taksit açmaz.
  */
-export function promotionCandidates<T extends Pick<WaitlistEntry, 'waitlistPosition'>>(
+export function promotionCandidates<
+  T extends Pick<WaitlistEntry, 'waitlistPosition' | 'studentActive'>,
+>(
   activity: Pick<PaidActivityTerms, 'status' | 'activityDate' | 'capacity'>,
   input: { seatCount: number; waitlisted: readonly T[] },
   today: string,
 ): T[] {
   if (activity.status === 'cancelled' || today > activity.activityDate) return []
   const free = Math.max(0, activity.capacity - input.seatCount)
-  return [...input.waitlisted]
+  return input.waitlisted
+    .filter((item) => item.studentActive !== false)
     .sort((a, b) => a.waitlistPosition - b.waitlistPosition)
     .slice(0, free)
 }
@@ -212,6 +242,8 @@ export interface ConsentParticipation {
   studentId: string
   status: ParticipationStatus
   consentStatus: ConsentStatus
+  /** Öğrenci kurumda etkin mi; `false` (ayrılmış ya da mezun) izin kaydedilmez (K-418). */
+  studentActive?: boolean
 }
 
 function assertConsentApplies(
@@ -240,14 +272,16 @@ export interface ConsentGrantPlan {
 /**
  * Veli izninin kaydı (K-370): etkinlik izin istemeli, açık olmalı ve günü geçmemiş olmalı; katılım
  * iptal edilmemiş ve izni bekliyor olmalıdır. İzin bekleyen asil asil olur ve taksiti açılır;
- * yedeğin izni kaydedilir, taksiti asile geçince açılır. State'i değiştirir.
+ * yedeğin izni kaydedilir, taksiti asile geçince açılır. Öğrenci etkin değilse (ayrılmış ya da
+ * mezun) izin kaydedilmez, taksit açılmaz (422 `paid_activity_student_inactive`, K-418). State'i
+ * değiştirir.
  */
 export function applyConsentGrant(
   state: Pick<State, 'invoices'>,
   activity: PaidActivityTerms,
   participation: ConsentParticipation,
   grant: { channel: ConsentChannel; grantorName: string | null },
-  context: { today: string; makeId: (prefix: string) => string },
+  context: { today: string; makeId: (prefix: string) => string; institutionType?: InstitutionType },
 ): ConsentGrantPlan {
   assertConsentApplies(activity, participation)
   if (participation.consentStatus !== 'pending')
@@ -258,6 +292,13 @@ export function applyConsentGrant(
     )
   if (context.today > activity.activityDate)
     throw new DomainError('paid_activity_consent_closed', 'Etkinlik günü geçti; izin kaydedilmez.')
+  if (participation.studentActive === false) {
+    const learner = learnerWords(context.institutionType)
+    throw new DomainError(
+      'paid_activity_student_inactive',
+      `${learner.title} etkin değil (ayrılmış ya da mezun); izin kaydedilmez, katılımı iptal edin.`,
+    )
+  }
   return {
     status: participation.status === 'awaiting_consent' ? 'active' : participation.status,
     invoiceId:
@@ -298,6 +339,11 @@ export type FormConsentStatus = 'pending' | 'approved' | 'rejected' | 'not_targe
  * olan) iptal edilir. Personelin elle girdiği izin formdaki retle düşmez (çelişki listede görünür,
  * H-74). Form kararı düşmüşse (DOM-ILT-032, durum yeniden `pending`) alınmış izin kendiliğinden
  * geri alınmaz.
+ *
+ * Etkin olmayan (ayrılmış ya da mezun) öğrencinin taksitsiz (yedek, izin bekleyen) katılımı
+ * formdaki durumdan bağımsız sessizce `inactive` listesine çıkar; servis onu parasız iptal eder,
+ * izni alınmaz ve taksiti açılmaz (K-418). Günü geçmiş etkinlikte bu iptal yapılmaz (geçmiş
+ * kaydı değiştirmez). Taksitli asil katılım öteki kurallarla değerlendirilir.
  */
 export function planConsentSync<
   T extends {
@@ -306,10 +352,22 @@ export function planConsentSync<
     status: ParticipationStatus
     consentStatus: ConsentStatus
     consentChannel: ConsentChannel | null
+    studentActive?: boolean
   },
->(participants: readonly T[], statuses: ReadonlyMap<string, FormConsentStatus>) {
-  const live = participants.filter((item) => item.status !== 'cancelled')
+>(
+  participants: readonly T[],
+  statuses: ReadonlyMap<string, FormConsentStatus>,
+  context: { today: string; activityDate: string },
+) {
+  const unbilledInactive = (item: T) =>
+    item.studentActive === false &&
+    (item.status === 'waitlisted' || item.status === 'awaiting_consent')
+  const open = participants.filter((item) => item.status !== 'cancelled')
+  const inactive = context.today > context.activityDate ? [] : open.filter(unbilledInactive)
+  const skipped = new Set(inactive)
+  const live = open.filter((item) => !skipped.has(item))
   return {
+    inactive,
     grant: live.filter(
       (item) => item.consentStatus === 'pending' && statuses.get(item.studentId) === 'approved',
     ),
@@ -320,6 +378,92 @@ export function planConsentSync<
           (item.consentStatus === 'granted' && item.consentChannel === 'permission_form')),
     ),
   }
+}
+
+// --- Ayrılıştan kalan katılımlar ----------------------------------------------------------------
+
+/** Ayrılıştan kalan katılım adayı: katılım, etkinliği ve öğrencinin son ayrılış günü. */
+export interface WithdrawnLeftoverCandidate {
+  id: string
+  activityId: string
+  studentId: string
+  status: ParticipationStatus
+  activityDate: string
+  activityStatus: PaidActivityStatus
+  /** Öğrenci kurumda etkin mi (kaydı var, arşivli değil, `isActive` `false` değil). */
+  studentActive: boolean
+  /** Öğrencinin son ayrılış günü; ayrılış kaydı yoksa `null`. */
+  withdrawalDate: string | null
+}
+
+/**
+ * Ayrılıştan kalan katılım mı (K-419): taksitsiz (yedek ya da izin bekleyen), iptal edilmemiş
+ * etkinlikte, öğrenci bugün etkin değil ve etkinlik günü son ayrılış günü ya da sonra. Bu satırları
+ * bugünkü ayrılış kuralı (K-395, K-418) ayrılış işleminde kapatırdı; ON-346 öncesi ayrılışlardan
+ * kalmıştır. Yeniden kayıtla etkinleşen öğrencinin katılımı kalan sayılmaz.
+ */
+export function isWithdrawnLeftover(row: WithdrawnLeftoverCandidate): boolean {
+  return (
+    (row.status === 'waitlisted' || row.status === 'awaiting_consent') &&
+    row.activityStatus !== 'cancelled' &&
+    !row.studentActive &&
+    row.withdrawalDate !== null &&
+    row.activityDate >= row.withdrawalDate
+  )
+}
+
+export interface WithdrawnLeftoverCancel {
+  participant: WithdrawnLeftoverCandidate
+  plan: ParticipationCancelPlan
+  /** İzin bekleyen yer tutuyordu; yere sıradaki etkin yedek geçer (K-369, K-396). */
+  freesSeat: boolean
+}
+
+/**
+ * Yöneticinin seçtiği kalan katılımların parasız iptali (K-419): her kimlik kurumda olmalı (yoksa
+ * 404), iptal edilmemiş olmalı (409 `paid_activity_participation_cancelled`) ve kalan katılım
+ * olmalıdır (422 `paid_activity_leftover_not_eligible`). İptal türü katılımcı, iptal günü bugün;
+ * para ve taksit etkisi yoktur. Saf; hata olursa hiçbiri iptal edilmez.
+ */
+export function planWithdrawnLeftoverCancel(
+  input: unknown,
+  rows: ReadonlyMap<string, WithdrawnLeftoverCandidate>,
+  context: { today: string },
+): WithdrawnLeftoverCancel[] {
+  const { participantIds } = cancelWithdrawnLeftoversSchema.parse(input)
+  return participantIds.map((id, index) => {
+    const path = ['participantIds', String(index)]
+    const row = rows.get(id)
+    if (row === undefined)
+      throw new DomainError('paid_activity_participant_not_found', 'Katılım bulunamadı.', {
+        kind: 'not_found',
+        path,
+      })
+    if (row.status === 'cancelled')
+      throw new DomainError('paid_activity_participation_cancelled', 'Bu katılım iptal edilmiş.', {
+        kind: 'conflict',
+        path,
+      })
+    if (!isWithdrawnLeftover(row))
+      throw new DomainError(
+        'paid_activity_leftover_not_eligible',
+        'Seçilen katılım ayrılmış öğrencinin yedek ya da izin bekleyen katılımı değil.',
+        { path },
+      )
+    return {
+      participant: row,
+      freesSeat: holdsSeat(row.status),
+      plan: {
+        cancelKind: 'participant',
+        cancelledDate: context.today,
+        paidCents: 0,
+        retainedCents: 0,
+        refundCents: 0,
+        closedInvoiceId: null,
+        debtInvoiceId: null,
+      },
+    }
+  })
 }
 
 // --- Katılım listesi -----------------------------------------------------------------------------

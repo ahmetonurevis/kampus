@@ -39,7 +39,7 @@ import { STAFF_ROLE_LABELS, isStaffRole } from './staff-accounts.ts'
  *   ücret × (yürürlükteki gün ÷ ayın günü); saatlik ve ders saati ücreti × atamadaki tahmini aylık
  *   saat × gün oranı; ek ders ve nöbet ücreti × atamadaki tahmini saat × gün oranı. Pasifleştirilen
  *   personelin pasifleştirme gününden sonraki günleri sayılmaz. Net tanımlı ana ücret dahil
- *   edilmez (bordro ön hesabı yok) ve uyarıyla işaretlenir; saati girilmemiş saatli ücret de öyle.
+ *   edilmez (tahmin; brüte çevirme bordro hesabındadır, DOM-FIN-115) ve uyarıyla işaretlenir; saati girilmemiş saatli ücret de öyle.
  * - **İşveren payları:** ayın ilk günü geçerli bordro parametre setinden (DOM-FIN-100): SGK
  *   işveren payı (prim indirimi düşülmüş) ve işsizlik sigortası işveren payı; matrah brüttür, SGK
  *   tavanını aşmaz, taban uygulanmaz.

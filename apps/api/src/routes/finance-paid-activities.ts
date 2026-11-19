@@ -17,6 +17,7 @@ import {
 } from '@kampus/school-core/lib/finance-paid-activities.ts'
 import {
   bulkJoinPaidActivitySchema,
+  cancelWithdrawnLeftoversSchema,
   grantConsentSchema,
   withdrawConsentSchema,
 } from '@kampus/school-core/lib/finance-paid-activity-participants.ts'
@@ -37,7 +38,9 @@ import {
 } from '../services/finance-paid-activities.ts'
 import {
   bulkJoinPaidActivityCommand,
+  cancelWithdrawnLeftoversCommand,
   grantConsentCommand,
+  listWithdrawnLeftoversFor,
   paidActivityRosterCsvFor,
   paidActivityRosterFor,
   syncConsentsCommand,
@@ -57,6 +60,9 @@ import {
   participantQuery,
   participantResponse,
   rosterResponse,
+  withdrawnLeftoverCancelResponse,
+  withdrawnLeftoverListResponse,
+  withdrawnLeftoverQuery,
 } from './finance-paid-activities.schemas.ts'
 
 /**
@@ -363,7 +369,7 @@ export function registerFinancePaidActivityRoutes(app: FastifyInstance) {
         operationId: 'syncPaidActivityConsents',
         tags,
         summary: 'Veli izinlerini izin formundan eşitle',
-        description: `Bağlı dijital izin formunda (IST-067) onaylananların izni alınır, izin bekleyen asilin taksiti açılır; formda reddedilenlerin (izin bekleyen ya da izni formdan gelmiş) katılımı K-302 kuralıyla iptal edilir, boşalan yere yedek geçer (K-370, K-369). Elle girilen izin formdaki retle düşmez. Form bağlı değilse 422 \`paid_activity_permission_form_missing\`, kullanılamıyorsa 422 \`paid_activity_permission_form_not_found\`. \`Idempotency-Key\` zorunlu. ${READERS}`,
+        description: `Bağlı dijital izin formunda (IST-067) onaylananların izni alınır, izin bekleyen asilin taksiti açılır; formda reddedilenlerin (izin bekleyen ya da izni formdan gelmiş) katılımı K-302 kuralıyla iptal edilir, boşalan yere yedek geçer (K-370, K-369). Elle girilen izin formdaki retle düşmez. Etkin olmayan (ayrılmış ya da mezun) öğrencinin yedek ve izin bekleyen katılımı formdan bağımsız parasız iptal edilir, izni alınmaz, taksit açılmaz (\`inactiveCancelledCount\`; günü geçmiş etkinlikte yapılmaz; K-418). Form bağlı değilse 422 \`paid_activity_permission_form_missing\`, kullanılamıyorsa 422 \`paid_activity_permission_form_not_found\`. \`Idempotency-Key\` zorunlu. ${READERS}`,
         headers: commandHeadersSchema('required', { ifMatch: false }),
         params: paidActivityParams,
         response: { 200: consentSyncResponse, ...commandErrors },
@@ -424,7 +430,7 @@ export function registerFinancePaidActivityRoutes(app: FastifyInstance) {
         operationId: 'grantPaidActivityConsent',
         tags,
         summary: 'Veli iznini kaydet',
-        description: `Personelin aldığı izin: kanal (\`paper\`, \`phone\`, \`in_person\`) ve izni veren kişinin adı (2–120). İzin bekleyen asil asil olur ve taksiti açılır (vade son katılım günü, geçtiyse bugün); yedeğin izni kaydedilir (K-370). Etkinlik izin istemiyorsa 422 \`paid_activity_consent_not_required\`, etkinlik günü geçtiyse 422 \`paid_activity_consent_closed\`, izin zaten kayıtlıysa 409 \`paid_activity_consent_recorded\`, katılım iptalse 409 \`paid_activity_participation_cancelled\`. \`If-Match\` ve \`Idempotency-Key\` zorunlu. ${READERS}`,
+        description: `Personelin aldığı izin: kanal (\`paper\`, \`phone\`, \`in_person\`) ve izni veren kişinin adı (2–120). İzin bekleyen asil asil olur ve taksiti açılır (vade son katılım günü, geçtiyse bugün); yedeğin izni kaydedilir (K-370). Etkinlik izin istemiyorsa 422 \`paid_activity_consent_not_required\`, etkinlik günü geçtiyse 422 \`paid_activity_consent_closed\`, izin zaten kayıtlıysa 409 \`paid_activity_consent_recorded\`, öğrenci etkin değilse (ayrılmış ya da mezun; taksit açılmaz) 422 \`paid_activity_student_inactive\` (K-418), katılım iptalse 409 \`paid_activity_participation_cancelled\`. \`If-Match\` ve \`Idempotency-Key\` zorunlu. ${READERS}`,
         headers: commandHeadersSchema('required', { ifMatch: 'required' }),
         params: participantParams,
         body: grantConsentSchema,
@@ -469,6 +475,53 @@ export function registerFinancePaidActivityRoutes(app: FastifyInstance) {
         { kind: 'consent', input: request.commandInput },
       )
       return participantResponse.parse(sendBody(reply, result))
+    },
+  )
+
+  typed.get(
+    `${PARTICIPANTS}/withdrawn-leftovers`,
+    {
+      preValidation: guarded(PAID_ACTIVITY_MANAGE_ROLES),
+      schema: {
+        operationId: 'listWithdrawnPaidActivityLeftovers',
+        tags,
+        summary: 'Ayrılıştan kalan yedek ve izin bekleyen katılımlar',
+        description: `Ayrılmış (bugün etkin olmayan) öğrencinin iptal edilmemiş etkinlikteki yedek ve izin bekleyen katılımları; etkinlik günü öğrencinin son ayrılış günü ya da sonra (K-419). Bu satırları bugünkü ayrılış kapatır (K-395, K-418); liste ON-346 öncesi ayrılışlardan kalanları gösterir. Etkinlik gününe, sonra öğrenci adına göre; yalnız kurumun kayıtları. ${MANAGER}`,
+        querystring: withdrawnLeftoverQuery,
+        response: { 200: withdrawnLeftoverListResponse, ...commandErrors },
+      },
+    },
+    async (request) => {
+      const { page, pageSize } = request.query
+      const { items, total } = await listWithdrawnLeftoversFor(contextOf(request), {
+        page,
+        pageSize,
+      })
+      return { data: items, meta: { page, pageSize, total } }
+    },
+  )
+
+  typed.post(
+    `${PARTICIPANTS}/withdrawn-leftovers/cancel`,
+    {
+      preValidation: [...guarded(PAID_ACTIVITY_MANAGE_ROLES), rejectIfMatch(), captureInput()],
+      schema: {
+        operationId: 'cancelWithdrawnPaidActivityLeftovers',
+        tags,
+        summary: 'Ayrılıştan kalan katılımları parasız iptal et',
+        description: `Yöneticinin seçtiği (1–100) kalan katılımlar tek işlemde parasız iptal edilir: iptal türü katılımcı, iptal günü bugün, para ve taksit etkisi yok; denetim \`paid_activity.participant_cancel\` gerekçe kodu \`student_withdrawal\` (K-419). İzin bekleyenin boşalttığı yere sıradaki etkin yedek aynı işlemde geçer (K-369, K-396). Kurumda olmayan katılım 404 (hiçbiri iptal edilmez), iptal edilmiş katılım 409 \`paid_activity_participation_cancelled\`, kalan katılım ölçütüne uymayan 422 \`paid_activity_leftover_not_eligible\`. \`Idempotency-Key\` zorunlu. ${MANAGER}`,
+        headers: commandHeadersSchema('required', { ifMatch: false }),
+        body: cancelWithdrawnLeftoversSchema,
+        response: { 200: withdrawnLeftoverCancelResponse, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const result = await cancelWithdrawnLeftoversCommand(
+        contextOf(request),
+        request.commandInput,
+        options(request, 'required').idempotency,
+      )
+      return withdrawnLeftoverCancelResponse.parse(sendBody(reply, result))
     },
   )
 }

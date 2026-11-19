@@ -523,6 +523,93 @@ test('K-348, K-349: ayrılış gerçekleşmemiş katılımı aynı işlemde ipta
   assert.equal(held?.openCents, 200_000)
 })
 
+test('K-395, K-418, DOM-FIN-112: yedek ve izin bekleyen katılım ayrılış günü ve sonraki etkinlikte parasız iptal edilir', () => {
+  const fx = fixture()
+  fx.state.invoices.push(fx.invoice('a-1', 7, 300_000, 'activity'))
+  const seatless = (
+    participantId: string,
+    status: 'waitlisted' | 'awaiting_consent',
+    activityDate: string,
+  ) =>
+    participation(
+      fx.studentId,
+      { participantId, activityId: `act-${participantId}`, status, invoiceId: null },
+      { activityDate, cancelDeadline: '2026-10-01' },
+    )
+  const participations = [
+    participation(fx.studentId),
+    seatless('pp-wait', 'waitlisted', '2026-10-20'),
+    seatless('pp-consent', 'awaiting_consent', '2026-10-06'),
+    // Sınır (K-418): etkinlik ayrılış günü (2026-10-05) olan taksitsiz katılım da kapanır; önceki
+    // günün etkinliği değişmez.
+    seatless('pp-same', 'waitlisted', '2026-10-05'),
+    seatless('pp-same-consent', 'awaiting_consent', '2026-10-05'),
+    seatless('pp-past', 'awaiting_consent', '2026-10-01'),
+  ]
+  const plain = withdrawStudentWithFollowups(
+    structuredClone(fx.state),
+    fx.studentId,
+    WITHDRAW,
+    makeId,
+    context({ participations: [participation(fx.studentId)] }),
+  )
+  const invoicesBefore = fx.state.invoices.length
+  const result = withdrawStudentWithFollowups(
+    fx.state,
+    fx.studentId,
+    WITHDRAW,
+    makeId,
+    context({ participations }),
+  )
+  // Para etkisi yok: döküm yalnız taksitli katılımın satırını taşır.
+  assert.deepEqual(result.breakdown, {
+    ...plain.breakdown,
+    debtInvoiceId: result.breakdown.debtInvoiceId,
+  })
+  assert.deepEqual(
+    result.breakdown.activities?.map((line) => line.participantId),
+    ['pp-1'],
+  )
+  assert.deepEqual(
+    result.activityCancels.map((item) => [item.participantId, item.activityId, item.freesSeat]),
+    [
+      ['pp-same', 'act-pp-same', false],
+      ['pp-same-consent', 'act-pp-same-consent', true],
+      ['pp-consent', 'act-pp-consent', true],
+      ['pp-1', 'act-1', true],
+      ['pp-wait', 'act-pp-wait', false],
+    ],
+  )
+  for (const cancel of result.activityCancels.filter((item) => item.participantId !== 'pp-1'))
+    assert.deepEqual(cancel.plan, {
+      cancelKind: 'participant',
+      cancelledDate: '2026-10-05',
+      paidCents: 0,
+      retainedCents: 0,
+      refundCents: 0,
+      closedInvoiceId: null,
+      debtInvoiceId: null,
+    })
+  // Taksitsiz iptal yeni taksit açmaz; yalnız asilin taksiti kapanır.
+  assert.equal(fx.state.invoices.filter((item) => item.feeKind === 'activity').length, 0)
+  assert.ok(fx.state.invoices.length <= invoicesBefore)
+  // Önizleme de aynı satırları verir, State değişmez.
+  const fresh = fixture()
+  fresh.state.invoices.push(fresh.invoice('a-1', 7, 300_000, 'activity'))
+  const before = structuredClone(fresh.state)
+  const quote = quoteWithdrawalWithFollowups(
+    fresh.state,
+    fresh.studentId,
+    QUOTE,
+    context({ participations }),
+  )
+  assert.deepEqual(
+    quote.breakdown.activities?.map((line) => line.participantId),
+    ['pp-1'],
+  )
+  assert.deepEqual(fresh.state, before)
+})
+
 test('K-348: taksiti bulunamayan katılım ayrılışı yazmadan reddeder; State değişmez', () => {
   const fx = fixture()
   const before = structuredClone(fx.state)

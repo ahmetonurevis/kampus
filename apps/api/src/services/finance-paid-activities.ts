@@ -55,6 +55,7 @@ import {
 } from '../db/finance-paid-activities.ts'
 import { listBankAccounts } from '../db/payments.ts'
 import { loadRecordsByIds } from '../db/records.ts'
+import { auditLog } from '../db/schema/audit-log.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { getInstitutionModules } from './modules.ts'
@@ -538,6 +539,38 @@ export function cancelFields(plan: ParticipationCancelPlan): string[] {
     ...(plan.closedInvoiceId === null ? [] : ['closedInvoiceId']),
     ...(plan.debtInvoiceId === null ? [] : ['debtInvoiceId']),
   ]
+}
+
+/**
+ * Gerekçe kodlu parasız iptali yazar (K-395, K-418, K-419): katılımcı iptaliyle aynı alanlar;
+ * denetim `paid_activity.participant_cancel`, `changes.reason` gerekçe kodu (ayrılış ya da etkin
+ * olmayan öğrenci). Kurum kilidi altında okunduğu için sürüm beklenmez.
+ */
+export async function writeReasonedCancel(
+  tx: Database,
+  ctx: ServiceContext,
+  participantId: string,
+  plan: ParticipationCancelPlan,
+  reason: string,
+) {
+  const saved = await markParticipantCancelled(tx, ctx.institutionId, {
+    id: participantId,
+    expectedVersion: null,
+    ...plan,
+    userId: ctx.actor.userId,
+    now: ctx.now,
+  })
+  if (!saved) throw new ConflictError()
+  await tx.insert(auditLog).values({
+    institutionId: ctx.institutionId,
+    actorUserId: ctx.actor.userId,
+    actorRole: ctx.actor.role,
+    action: 'paid_activity.participant_cancel',
+    entityType: PARTICIPANT,
+    entityId: participantId,
+    changes: { fields: cancelFields(plan), reason },
+    createdAt: ctx.now,
+  })
 }
 
 /**

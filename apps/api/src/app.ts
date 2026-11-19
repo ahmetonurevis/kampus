@@ -51,6 +51,7 @@ import { registerFinanceFixedAssetRoutes } from './routes/finance-fixed-assets.t
 import { registerFinanceForecastRoutes } from './routes/finance-forecasts.ts'
 import { registerFinanceFreeTuitionRoutes } from './routes/finance-free-tuition.ts'
 import { registerFinanceDonationRoutes } from './routes/finance-donations.ts'
+import { registerFinanceHrReportRoutes } from './routes/finance-hr-reports.ts'
 import { registerFinanceInstallmentImportRoutes } from './routes/finance-installment-imports.ts'
 import { registerFinanceChemicalRoutes } from './routes/finance-chemicals.ts'
 import { registerFinanceInventoryRoutes } from './routes/finance-inventory.ts'
@@ -62,6 +63,8 @@ import { registerFinanceStaffLeaveRoutes } from './routes/finance-staff-leave.ts
 import { registerFinanceLeaveCalendarRoutes } from './routes/finance-leave-calendar.ts'
 import { registerFinanceLeaveRequestRoutes } from './routes/finance-leave-requests.ts'
 import { registerFinanceStaffDocumentRoutes } from './routes/finance-staff-documents.ts'
+import { registerFinanceStaffRetentionRoutes } from './routes/finance-staff-retention.ts'
+import { registerFinanceStaffOnboardingRoutes } from './routes/finance-staff-onboarding.ts'
 import { registerFinanceSeveranceRoutes } from './routes/finance-severance.ts'
 import { registerFinancePayrollParameterRoutes } from './routes/finance-payroll-parameters.ts'
 import { registerFinanceStaffDeductionRoutes } from './routes/finance-staff-deductions.ts'
@@ -103,6 +106,10 @@ import { registerProspectDocumentRoutes } from './routes/prospect-documents.ts'
 import { registerProspectSeasonWatchRoutes } from './routes/prospect-season-watch.ts'
 import { registerFinanceSgkPreparationRoutes } from './routes/finance-sgk-preparation.ts'
 import { registerFinanceWorkPermitRoutes } from './routes/finance-work-permits.ts'
+import { registerFinancePayrollRunRoutes } from './routes/finance-payroll-runs.ts'
+import { registerFinancePayrollPayslipRoutes } from './routes/finance-payroll-payslips.ts'
+import { registerFinanceLessonHourApprovalRoutes } from './routes/finance-lesson-hour-approvals.ts'
+import { registerFinanceStaffSeparationRoutes } from './routes/finance-staff-separations.ts'
 // Onur: kayıt ve finans sonu
 import { createFfmpegTranscoder, type AudioTranscoder } from './services/audio-transcoder.ts'
 import { MAX_UPLOAD_BYTES } from './services/files.ts'
@@ -599,6 +606,13 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceWorkPermitRoutes(app)
   registerFinanceTripPlanRoutes(app)
   registerFinanceStaffDocumentRoutes(app, storage)
+  registerFinancePayrollRunRoutes(app)
+  registerFinancePayrollPayslipRoutes(app)
+  registerFinanceHrReportRoutes(app)
+  registerFinanceLessonHourApprovalRoutes(app)
+  registerFinanceStaffSeparationRoutes(app)
+  registerFinanceStaffRetentionRoutes(app)
+  registerFinanceStaffOnboardingRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

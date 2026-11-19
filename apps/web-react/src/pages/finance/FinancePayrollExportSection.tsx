@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useLessonHourSheet } from '@kampus/react-shared/use-finance-lesson-hour-sheets.ts'
 import { usePayRateStaff } from '@kampus/react-shared/use-finance-pay-rates.ts'
 import {
   useArchivePayrollLessonHours,
@@ -35,6 +36,7 @@ import { notify } from '@/lib/notify.ts'
 import { StatGrid } from '../academic/AcademicParts.tsx'
 import { RootError } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
+import { FinanceLessonHourSheetPanel } from './FinanceLessonHourSheetPanel.tsx'
 import { FinancePayrollExportProfileModal } from './FinancePayrollExportProfileModal.tsx'
 import {
   isPayrollMonth,
@@ -49,6 +51,7 @@ import {
   type LessonHoursFormValues,
   type PayrollRow,
 } from './finance-payroll-export-forms.ts'
+import { sheetActions } from './finance-lesson-sheet-forms.ts'
 
 const BOM = '\uFEFF'
 const MOBILE = ['staff', 'item', 'total']
@@ -61,16 +64,22 @@ type Dialog =
   | null
 
 /**
- * Bordro aktarımı (DOM-FIN-105; ON-202): Finans "Bordro aktarımı" sekmesi, yalnız yönetici
- * (K-338). Kampüs bordro hesaplamaz: ay seçilir, o ayın girdi satırları (ücret tanımları ve elle
- * girilen ek ders saatleri) önizlenir, CSV indirilir. Önizleme tutar içerir ve her açılışı denetime
- * düşer; dosya taze oturum ister ve her üretim özet satırı yazar. Dönem kilidi yoktur.
+ * Bordro aktarımı (DOM-FIN-105; ON-202, ON-343): Finans "Bordro aktarımı" sekmesi, yalnız yönetici
+ * (K-338). Bordroyu dış programda hesaplatan kurum içindir (ADR 0011): ay seçilir, o ayın girdi satırları (ücret tanımları, elle
+ * girilen ek ders saatleri, avans/icra/BES kesintileri ve aya aktarılan düzeltmeler) önizlenir, CSV
+ * indirilir. Önizleme tutar içerir ve her açılışı denetime düşer; dosya taze oturum ister ve her
+ * üretim özet satırı yazar. Dosya üretimi dönem kilidine bağlı değildir. Ek ders saatleri ayın
+ * çizelgesiyle onaylanır (DOM-FIN-120): müdür onaylı ya da bordro dönemi kilitli ayda saat
+ * eklenmez, düzeltilmez, silinmez.
  */
 export function FinancePayrollExportSection() {
   const today = dayKey()
   const [month, setMonth] = useState(today.slice(0, 7))
   const valid = isPayrollMonth(month)
   const preview = usePayrollPreview(month, valid)
+  const sheet = useLessonHourSheet(month, valid)
+  const sheetData = valid ? sheet.data?.data : undefined
+  const hoursLocked = sheetData === undefined || sheetActions(sheetData).hoursLocked
   const exporter = usePayrollExportFile()
   const [dialog, setDialog] = useState<Dialog>(null)
   const [reauth, setReauth] = useState(false)
@@ -83,8 +92,9 @@ export function FinancePayrollExportSection() {
     () => [
       { key: 'staff', label: 'Personel' },
       { key: 'item', label: 'Kalem' },
+      { key: 'direction', label: 'Yön' },
       { key: 'period', label: 'Ay içindeki dönem' },
-      { key: 'rate', label: 'Birim ücret' },
+      { key: 'rate', label: 'Birim ücret ya da oran' },
       { key: 'quantity', label: 'Saat' },
       { key: 'total', label: 'Tutar' },
       { key: 'warnings', label: 'Uyarı' },
@@ -93,7 +103,7 @@ export function FinancePayrollExportSection() {
         label: 'İşlemler',
         cell: (row: PayrollRow) => {
           const line = lines.get(row.id)
-          if (line === undefined || row.lessonHoursId === null) return null
+          if (line === undefined || row.lessonHoursId === null || hoursLocked) return null
           return (
             <span className="flex flex-wrap gap-2">
               <Button
@@ -117,7 +127,7 @@ export function FinancePayrollExportSection() {
         },
       },
     ],
-    [lines],
+    [lines, hoursLocked],
   )
 
   async function download() {
@@ -141,9 +151,11 @@ export function FinancePayrollExportSection() {
           Bordro aktarımı
         </h2>
         <p className="text-sm text-muted-foreground">
-          Kampüs bordro hesaplamaz; seçilen ayın ücret ve ek ders girdilerini bordro programınıza
-          aktarılacak dosya olarak verir. Ay içinde başlayan ya da biten ücretin tutarı bordroda gün
-          oranıyla hesaplanır. Önizleme ücret içerdiği için her görüntüleme denetim kaydına yazılır.
+          Bordroyu kendi programında ya da mali müşavirinde hesaplatan kurum için seçilen ayın
+          ücret, ek ders, kesinti ve düzeltme girdilerini aktarılacak dosya olarak verir; Kampüs'ün
+          hesabı "Bordro hesabı" sekmesindedir. Ay içinde başlayan ya da biten ücretin tutarı
+          bordroda gün oranıyla, icra ve BES kesintisi net ücret ya da matrah üzerinden oranla
+          hesaplanır. Önizleme ücret içerdiği için her görüntüleme denetim kaydına yazılır.
         </p>
       </header>
       <div className="grid gap-5 px-6 pb-6 max-[650px]:px-4">
@@ -175,7 +187,7 @@ export function FinancePayrollExportSection() {
           </Button>
           <Button
             variant="secondary"
-            disabled={!valid}
+            disabled={!valid || hoursLocked}
             onClick={() => setDialog({ kind: 'create' })}
           >
             <Icon name="Plus" size={17} aria-hidden="true" />
@@ -190,6 +202,10 @@ export function FinancePayrollExportSection() {
           <QueryError error={preview.error} onRetry={() => void preview.refetch()} />
         ) : null}
         {valid && !data && !preview.error ? <SummaryLoading /> : null}
+        {sheet.error ? (
+          <QueryError error={sheet.error} onRetry={() => void sheet.refetch()} />
+        ) : null}
+        {sheetData ? <FinanceLessonHourSheetPanel sheet={sheetData} /> : null}
         {data ? (
           <>
             <StatGrid
@@ -201,14 +217,19 @@ export function FinancePayrollExportSection() {
                   note: `${String(data.totals.lineCount)} kalem satırı`,
                 },
                 {
-                  label: 'Tutarı belli kalemler',
+                  label: 'Tutarı belli kazanç',
                   value: money(data.totals.earningCents),
-                  note: 'Tam ay ücret, yan hak ve ek ders',
+                  note: 'Tam ay ücret, yan hak, ek ders ve ek ödeme farkı',
+                },
+                {
+                  label: 'Tutarı belli kesinti',
+                  value: money(data.totals.deductionCents),
+                  note: 'Avans taksiti ve geri alınacak fark',
                 },
                 {
                   label: 'Bordroda hesaplanacak',
                   value: String(data.totals.missingTotalCount),
-                  note: 'Kısmi ay, saat ücreti ya da tanımsız ek ders',
+                  note: 'Kısmi ay, saat ücreti, tanımsız ek ders, icra ve BES',
                 },
               ]}
             />
@@ -219,7 +240,7 @@ export function FinancePayrollExportSection() {
               mobileColumns={MOBILE}
               pageSize={20}
               caption="Bordro girdi satırları"
-              empty="Bu ay yürürlükte ücret tanımı ya da ek ders saati yok."
+              empty="Bu ay ücret tanımı, ek ders saati, kesinti ya da düzeltme yok."
               emptyFiltered="Bu aramayla eşleşen satır yok."
             />
           </>
@@ -290,6 +311,7 @@ function ExportHistory({ month }: { month: string | undefined }) {
               <span>
                 {String(item.lineCount)} satır · {String(item.staffCount)} personel ·{' '}
                 {money(item.earningCents)} ·{' '}
+                {item.deductionCents > 0 ? `kesinti ${money(item.deductionCents)} · ` : ''}
                 {item.format === 'profile' ? 'kurum şablonu' : 'genel dosya'}
               </span>
               <span className="text-muted-foreground [overflow-wrap:anywhere]">

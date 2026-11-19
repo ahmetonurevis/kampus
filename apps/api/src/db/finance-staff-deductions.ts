@@ -1,4 +1,20 @@
-import { and, asc, count, eq, inArray, isNotNull, isNull, max, sql, type SQL } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  count,
+  eq,
+  gt,
+  gte,
+  inArray,
+  isNotNull,
+  isNull,
+  lte,
+  max,
+  ne,
+  or,
+  sql,
+  type SQL,
+} from 'drizzle-orm'
 
 import type {
   StaffAdvanceCloseFields,
@@ -578,4 +594,73 @@ export async function updateOpenPension(
     )
     .returning({ id: staffPensionEnrollments.id })
   return rows.length === 1
+}
+
+// --- Bordro aktarımı ------------------------------------------------------------------------------
+
+/** Ayın kesinti kaynakları (bordro aktarımı, DOM-FIN-105; K-392): her kayıt üyeliğini taşır. */
+export interface MonthDeductionRows {
+  advances: StoredAdvance[]
+  garnishments: StoredGarnishment[]
+  pensions: StoredPension[]
+}
+
+/**
+ * Kurumun ayla kesişebilecek kesinti kayıtları; kesin süzme core `monthlyDeductions`'tadır.
+ * Avans: iptal edilmemiş, ilk ayı aydan önce ya da ayda ve en çok 24 ay önce (taksit sınırı).
+ * İcra: tebliğ ayın son gününe kadar, kapanmamış ya da kapanışı ay sonundan sonra. BES: başlangıç
+ * ay sonuna kadar, ayrılmamış ya da ayrılma ay sonundan sonra.
+ */
+export async function loadMonthDeductionRows(
+  db: Database,
+  institutionId: string,
+  window: { month: string; earliestFirstMonth: string; monthEnd: string },
+): Promise<MonthDeductionRows> {
+  const [advances, garnishments, pensions] = await Promise.all([
+    db
+      .select(ADVANCE_COLUMNS)
+      .from(staffAdvances)
+      .where(
+        and(
+          advanceOf(institutionId),
+          ne(staffAdvances.status, 'cancelled'),
+          lte(staffAdvances.firstMonth, window.month),
+          gte(staffAdvances.firstMonth, window.earliestFirstMonth),
+        ),
+      )
+      .orderBy(asc(staffAdvances.givenDate), asc(staffAdvances.id)),
+    db
+      .select(GARNISHMENT_COLUMNS)
+      .from(staffGarnishments)
+      .where(
+        and(
+          garnishmentOf(institutionId),
+          lte(staffGarnishments.receivedDate, window.monthEnd),
+          or(
+            isNull(staffGarnishments.closedDate),
+            gt(staffGarnishments.closedDate, window.monthEnd),
+          ),
+        ),
+      )
+      .orderBy(asc(staffGarnishments.membershipId), asc(staffGarnishments.sequence)),
+    db
+      .select(PENSION_COLUMNS)
+      .from(staffPensionEnrollments)
+      .where(
+        and(
+          pensionOf(institutionId),
+          lte(staffPensionEnrollments.startDate, window.monthEnd),
+          or(
+            isNull(staffPensionEnrollments.optOutDate),
+            gt(staffPensionEnrollments.optOutDate, window.monthEnd),
+          ),
+        ),
+      )
+      .orderBy(asc(staffPensionEnrollments.membershipId), asc(staffPensionEnrollments.startDate)),
+  ])
+  return {
+    advances: advances.map(toAdvance),
+    garnishments: garnishments.map(toGarnishment),
+    pensions: pensions.map(toPension),
+  }
 }

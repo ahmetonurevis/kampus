@@ -103,7 +103,11 @@ describe('DOM-FIN-124: performans dönemi uçları', () => {
   const member = async (institutionId: string, role: Role) =>
     signInAs(app, await createMember(app, institutionId, role))
 
-  const createPeriod = (cookie: string | null, body: Json = {}, headers = key()) =>
+  const createPeriod = (
+    cookie: string | null,
+    body: Json = {},
+    headers: Record<string, string> = key(),
+  ) =>
     call(
       'POST',
       PERIODS,
@@ -125,7 +129,7 @@ describe('DOM-FIN-124: performans dönemi uçları', () => {
     p: Json,
     membershipId: string,
     goals: unknown = GOALS,
-    headers = key(),
+    headers: Record<string, string> = key(),
   ) => call('POST', `${PERIODS}/${String(p.id)}/reviews`, cookie, { membershipId, goals }, headers)
   const patch = (cookie: string | null, review: Json, body: Json) =>
     call('PATCH', `${REVIEWS}/${String(review.id)}`, cookie, body, ifMatch(review.version))

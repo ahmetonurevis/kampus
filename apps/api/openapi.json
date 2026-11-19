@@ -227737,6 +227737,157 @@
                                 ],
                                 "description": "Onaylanmamış, başlamış ayın güncel girdi özeti; onay isteği `current.inputsHash` taşır"
                               },
+                              "checks": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "lessonSheet": {
+                                        "type": "object",
+                                        "properties": {
+                                          "state": {
+                                            "type": "string",
+                                            "enum": [
+                                              "none",
+                                              "draft",
+                                              "teacher_review",
+                                              "approved"
+                                            ],
+                                            "description": "Ek ders çizelgesi: `none` saat yok, `draft` taslak, `teacher_review` öğretmen kontrolünde, `approved` onaylı"
+                                          },
+                                          "entryCount": {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Ayın ek ders saati kaydı sayısı"
+                                          },
+                                          "pendingCount": {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Müdür onayı bekleyen saat kaydı sayısı"
+                                          }
+                                        },
+                                        "required": [
+                                          "state",
+                                          "entryCount",
+                                          "pendingCount"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      "payrollRun": {
+                                        "type": "object",
+                                        "properties": {
+                                          "state": {
+                                            "type": "string",
+                                            "enum": [
+                                              "none",
+                                              "current",
+                                              "stale"
+                                            ],
+                                            "description": "Kayıtlı bordro hesabı: `none` yok, `current` güncel, `stale` girdiler değişmiş"
+                                          },
+                                          "revision": {
+                                            "anyOf": [
+                                              {
+                                                "type": "integer",
+                                                "minimum": -9007199254740991,
+                                                "maximum": 9007199254740991
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ],
+                                            "description": "Etkin hesabın revizyonu"
+                                          },
+                                          "calculatedAt": {
+                                            "description": "Etkin hesabın kayıt anı",
+                                            "type": [
+                                              "string",
+                                              "null"
+                                            ]
+                                          }
+                                        },
+                                        "required": [
+                                          "state",
+                                          "revision",
+                                          "calculatedAt"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      "deductions": {
+                                        "type": "object",
+                                        "properties": {
+                                          "advanceCount": {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Ayın avans taksiti sayısı"
+                                          },
+                                          "garnishmentCount": {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Ayda kesilecek icra sayısı"
+                                          },
+                                          "pensionCount": {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Ayda kesilecek BES katkısı sayısı"
+                                          },
+                                          "advanceTotalCents": {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Avans taksitlerinin toplamı, kuruş; icra ve BES oranlıdır, tutarı bordro hesabında"
+                                          }
+                                        },
+                                        "required": [
+                                          "advanceCount",
+                                          "garnishmentCount",
+                                          "pensionCount",
+                                          "advanceTotalCents"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      "blockers": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string",
+                                          "enum": [
+                                            "payroll_lesson_hours_pending"
+                                          ]
+                                        },
+                                        "description": "Onayı durduran engeller; boş değilse onay 409 döner"
+                                      },
+                                      "warnings": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string",
+                                          "enum": [
+                                            "payroll_run_missing",
+                                            "payroll_run_stale"
+                                          ]
+                                        },
+                                        "description": "Onayı durdurmayan uyarılar"
+                                      }
+                                    },
+                                    "required": [
+                                      "lessonSheet",
+                                      "payrollRun",
+                                      "deductions",
+                                      "blockers",
+                                      "warnings"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Onaylanmamış, başlamış ayın onay öncesi durumu (ek ders, kayıtlı hesap, kesinti; K-425)"
+                              },
                               "reopenedAt": {
                                 "type": [
                                   "string",
@@ -227772,6 +227923,7 @@
                               "approvalCount",
                               "approved",
                               "current",
+                              "checks",
                               "reopenedAt",
                               "reopenedByName",
                               "reopenReason",
@@ -228134,6 +228286,157 @@
                           ],
                           "description": "Onaylanmamış, başlamış ayın güncel girdi özeti; onay isteği `current.inputsHash` taşır"
                         },
+                        "checks": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "lessonSheet": {
+                                  "type": "object",
+                                  "properties": {
+                                    "state": {
+                                      "type": "string",
+                                      "enum": [
+                                        "none",
+                                        "draft",
+                                        "teacher_review",
+                                        "approved"
+                                      ],
+                                      "description": "Ek ders çizelgesi: `none` saat yok, `draft` taslak, `teacher_review` öğretmen kontrolünde, `approved` onaylı"
+                                    },
+                                    "entryCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Ayın ek ders saati kaydı sayısı"
+                                    },
+                                    "pendingCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Müdür onayı bekleyen saat kaydı sayısı"
+                                    }
+                                  },
+                                  "required": [
+                                    "state",
+                                    "entryCount",
+                                    "pendingCount"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "payrollRun": {
+                                  "type": "object",
+                                  "properties": {
+                                    "state": {
+                                      "type": "string",
+                                      "enum": [
+                                        "none",
+                                        "current",
+                                        "stale"
+                                      ],
+                                      "description": "Kayıtlı bordro hesabı: `none` yok, `current` güncel, `stale` girdiler değişmiş"
+                                    },
+                                    "revision": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Etkin hesabın revizyonu"
+                                    },
+                                    "calculatedAt": {
+                                      "description": "Etkin hesabın kayıt anı",
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "state",
+                                    "revision",
+                                    "calculatedAt"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "deductions": {
+                                  "type": "object",
+                                  "properties": {
+                                    "advanceCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Ayın avans taksiti sayısı"
+                                    },
+                                    "garnishmentCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Ayda kesilecek icra sayısı"
+                                    },
+                                    "pensionCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Ayda kesilecek BES katkısı sayısı"
+                                    },
+                                    "advanceTotalCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Avans taksitlerinin toplamı, kuruş; icra ve BES oranlıdır, tutarı bordro hesabında"
+                                    }
+                                  },
+                                  "required": [
+                                    "advanceCount",
+                                    "garnishmentCount",
+                                    "pensionCount",
+                                    "advanceTotalCents"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "blockers": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "enum": [
+                                      "payroll_lesson_hours_pending"
+                                    ]
+                                  },
+                                  "description": "Onayı durduran engeller; boş değilse onay 409 döner"
+                                },
+                                "warnings": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "enum": [
+                                      "payroll_run_missing",
+                                      "payroll_run_stale"
+                                    ]
+                                  },
+                                  "description": "Onayı durdurmayan uyarılar"
+                                }
+                              },
+                              "required": [
+                                "lessonSheet",
+                                "payrollRun",
+                                "deductions",
+                                "blockers",
+                                "warnings"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Onaylanmamış, başlamış ayın onay öncesi durumu (ek ders, kayıtlı hesap, kesinti; K-425)"
+                        },
                         "reopenedAt": {
                           "type": [
                             "string",
@@ -228169,6 +228472,7 @@
                         "approvalCount",
                         "approved",
                         "current",
+                        "checks",
                         "reopenedAt",
                         "reopenedByName",
                         "reopenReason",
@@ -228385,6 +228689,157 @@
                           ],
                           "description": "Onaylanmamış, başlamış ayın güncel girdi özeti; onay isteği `current.inputsHash` taşır"
                         },
+                        "checks": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "lessonSheet": {
+                                  "type": "object",
+                                  "properties": {
+                                    "state": {
+                                      "type": "string",
+                                      "enum": [
+                                        "none",
+                                        "draft",
+                                        "teacher_review",
+                                        "approved"
+                                      ],
+                                      "description": "Ek ders çizelgesi: `none` saat yok, `draft` taslak, `teacher_review` öğretmen kontrolünde, `approved` onaylı"
+                                    },
+                                    "entryCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Ayın ek ders saati kaydı sayısı"
+                                    },
+                                    "pendingCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Müdür onayı bekleyen saat kaydı sayısı"
+                                    }
+                                  },
+                                  "required": [
+                                    "state",
+                                    "entryCount",
+                                    "pendingCount"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "payrollRun": {
+                                  "type": "object",
+                                  "properties": {
+                                    "state": {
+                                      "type": "string",
+                                      "enum": [
+                                        "none",
+                                        "current",
+                                        "stale"
+                                      ],
+                                      "description": "Kayıtlı bordro hesabı: `none` yok, `current` güncel, `stale` girdiler değişmiş"
+                                    },
+                                    "revision": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Etkin hesabın revizyonu"
+                                    },
+                                    "calculatedAt": {
+                                      "description": "Etkin hesabın kayıt anı",
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "state",
+                                    "revision",
+                                    "calculatedAt"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "deductions": {
+                                  "type": "object",
+                                  "properties": {
+                                    "advanceCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Ayın avans taksiti sayısı"
+                                    },
+                                    "garnishmentCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Ayda kesilecek icra sayısı"
+                                    },
+                                    "pensionCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Ayda kesilecek BES katkısı sayısı"
+                                    },
+                                    "advanceTotalCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Avans taksitlerinin toplamı, kuruş; icra ve BES oranlıdır, tutarı bordro hesabında"
+                                    }
+                                  },
+                                  "required": [
+                                    "advanceCount",
+                                    "garnishmentCount",
+                                    "pensionCount",
+                                    "advanceTotalCents"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "blockers": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "enum": [
+                                      "payroll_lesson_hours_pending"
+                                    ]
+                                  },
+                                  "description": "Onayı durduran engeller; boş değilse onay 409 döner"
+                                },
+                                "warnings": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "enum": [
+                                      "payroll_run_missing",
+                                      "payroll_run_stale"
+                                    ]
+                                  },
+                                  "description": "Onayı durdurmayan uyarılar"
+                                }
+                              },
+                              "required": [
+                                "lessonSheet",
+                                "payrollRun",
+                                "deductions",
+                                "blockers",
+                                "warnings"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Onaylanmamış, başlamış ayın onay öncesi durumu (ek ders, kayıtlı hesap, kesinti; K-425)"
+                        },
                         "reopenedAt": {
                           "type": [
                             "string",
@@ -228420,6 +228875,7 @@
                         "approvalCount",
                         "approved",
                         "current",
+                        "checks",
                         "reopenedAt",
                         "reopenedByName",
                         "reopenReason",
@@ -228782,6 +229238,157 @@
                           ],
                           "description": "Onaylanmamış, başlamış ayın güncel girdi özeti; onay isteği `current.inputsHash` taşır"
                         },
+                        "checks": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "lessonSheet": {
+                                  "type": "object",
+                                  "properties": {
+                                    "state": {
+                                      "type": "string",
+                                      "enum": [
+                                        "none",
+                                        "draft",
+                                        "teacher_review",
+                                        "approved"
+                                      ],
+                                      "description": "Ek ders çizelgesi: `none` saat yok, `draft` taslak, `teacher_review` öğretmen kontrolünde, `approved` onaylı"
+                                    },
+                                    "entryCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Ayın ek ders saati kaydı sayısı"
+                                    },
+                                    "pendingCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Müdür onayı bekleyen saat kaydı sayısı"
+                                    }
+                                  },
+                                  "required": [
+                                    "state",
+                                    "entryCount",
+                                    "pendingCount"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "payrollRun": {
+                                  "type": "object",
+                                  "properties": {
+                                    "state": {
+                                      "type": "string",
+                                      "enum": [
+                                        "none",
+                                        "current",
+                                        "stale"
+                                      ],
+                                      "description": "Kayıtlı bordro hesabı: `none` yok, `current` güncel, `stale` girdiler değişmiş"
+                                    },
+                                    "revision": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Etkin hesabın revizyonu"
+                                    },
+                                    "calculatedAt": {
+                                      "description": "Etkin hesabın kayıt anı",
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "state",
+                                    "revision",
+                                    "calculatedAt"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "deductions": {
+                                  "type": "object",
+                                  "properties": {
+                                    "advanceCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Ayın avans taksiti sayısı"
+                                    },
+                                    "garnishmentCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Ayda kesilecek icra sayısı"
+                                    },
+                                    "pensionCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Ayda kesilecek BES katkısı sayısı"
+                                    },
+                                    "advanceTotalCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Avans taksitlerinin toplamı, kuruş; icra ve BES oranlıdır, tutarı bordro hesabında"
+                                    }
+                                  },
+                                  "required": [
+                                    "advanceCount",
+                                    "garnishmentCount",
+                                    "pensionCount",
+                                    "advanceTotalCents"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "blockers": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "enum": [
+                                      "payroll_lesson_hours_pending"
+                                    ]
+                                  },
+                                  "description": "Onayı durduran engeller; boş değilse onay 409 döner"
+                                },
+                                "warnings": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "enum": [
+                                      "payroll_run_missing",
+                                      "payroll_run_stale"
+                                    ]
+                                  },
+                                  "description": "Onayı durdurmayan uyarılar"
+                                }
+                              },
+                              "required": [
+                                "lessonSheet",
+                                "payrollRun",
+                                "deductions",
+                                "blockers",
+                                "warnings"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Onaylanmamış, başlamış ayın onay öncesi durumu (ek ders, kayıtlı hesap, kesinti; K-425)"
+                        },
                         "reopenedAt": {
                           "type": [
                             "string",
@@ -228817,6 +229424,7 @@
                         "approvalCount",
                         "approved",
                         "current",
+                        "checks",
                         "reopenedAt",
                         "reopenedByName",
                         "reopenReason",
@@ -262170,6 +262778,1721 @@
                         "createdAt",
                         "member",
                         "steps"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/performance-periods": {
+      "get": {
+        "operationId": "listPerformancePeriods",
+        "summary": "Performans dönemlerini listele",
+        "tags": [
+          "finance-performance"
+        ],
+        "description": "Dönemler, yeni başlangıç önce (DOM-FIN-124); ad, aşama, kayıt ve puanı tamamlanmış kayıt sayısı. Kişisel veri taşımaz, okuma denetime yazılmaz (K-429). Ad aranır, aşamayla süzülür. Rol: yalnız `yonetici` (K-429; performans verisi kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Dönem adında arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "planning",
+                "active",
+                "interim",
+                "evaluation",
+                "closed"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Aşama süzgeci"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string",
+                            "description": "Dönem adı"
+                          },
+                          "startDate": {
+                            "type": "string",
+                            "description": "Dönemin ilk günü (YYYY-MM-DD)"
+                          },
+                          "endDate": {
+                            "type": "string",
+                            "description": "Dönemin son günü (YYYY-MM-DD, dahil)"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "planning",
+                              "active",
+                              "interim",
+                              "evaluation",
+                              "closed"
+                            ],
+                            "description": "Aşama: `planning` planlama, `active` yürürlükte, `interim` ara görüşme, `evaluation` değerlendirme, `closed` kapandı (kilitli)"
+                          },
+                          "closedAt": {
+                            "description": "Kapanış anı (ISO 8601 UTC)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "reviewCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Dönemdeki personel kaydı sayısı"
+                          },
+                          "scoredCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Bütün hedefleri puanlanmış kayıt sayısı"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü (aşama geçişi)"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "startDate",
+                          "endDate",
+                          "status",
+                          "closedAt",
+                          "createdAt",
+                          "reviewCount",
+                          "scoredCount",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createPerformancePeriod",
+        "summary": "Performans dönemi aç",
+        "tags": [
+          "finance-performance"
+        ],
+        "description": "Ad (2–120), başlangıç ve bitiş günü; dönem planlama aşamasında açılır. Bitiş başlangıçtan önce olamaz (400). `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (K-429; performans verisi kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120,
+                    "description": "Dönem adı (ör. \"2026–2027 güz dönemi\")"
+                  },
+                  "startDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Dönemin ilk günü"
+                  },
+                  "endDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Dönemin son günü (dahil)"
+                  }
+                },
+                "required": [
+                  "name",
+                  "startDate",
+                  "endDate"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Dönem adı"
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "description": "Dönemin ilk günü (YYYY-MM-DD)"
+                        },
+                        "endDate": {
+                          "type": "string",
+                          "description": "Dönemin son günü (YYYY-MM-DD, dahil)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "planning",
+                            "active",
+                            "interim",
+                            "evaluation",
+                            "closed"
+                          ],
+                          "description": "Aşama: `planning` planlama, `active` yürürlükte, `interim` ara görüşme, `evaluation` değerlendirme, `closed` kapandı (kilitli)"
+                        },
+                        "closedAt": {
+                          "description": "Kapanış anı (ISO 8601 UTC)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "reviewCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Dönemdeki personel kaydı sayısı"
+                        },
+                        "scoredCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Bütün hedefleri puanlanmış kayıt sayısı"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü (aşama geçişi)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "startDate",
+                        "endDate",
+                        "status",
+                        "closedAt",
+                        "createdAt",
+                        "reviewCount",
+                        "scoredCount",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/performance-periods/{periodId}/status": {
+      "post": {
+        "operationId": "changePerformancePeriodStatus",
+        "summary": "Performans döneminin aşamasını ilerlet",
+        "tags": [
+          "finance-performance"
+        ],
+        "description": "Dönem yalnız sıradaki aşamaya geçer: planlama → yürürlükte → ara görüşme → değerlendirme → kapandı (K-427); atlama ya da geri dönüş 409 `performance_status_invalid`, kapanmış dönem 409 `performance_period_closed`. Kapanış için bütün kayıtların bütün hedefleri puanlanmış olmalı, değilse 422 `performance_period_unscored`; kapanınca kayıtlar kilitlenir (K-428). `If-Match` zorunlu. Başka kurumun dönemi 404. Rol: yalnız `yonetici` (K-429; performans verisi kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "planning",
+                      "active",
+                      "interim",
+                      "evaluation",
+                      "closed"
+                    ],
+                    "description": "Geçilecek aşama; yalnız bir sonraki aşama kabul edilir (K-427)"
+                  }
+                },
+                "required": [
+                  "status"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "periodId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Dönem adı"
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "description": "Dönemin ilk günü (YYYY-MM-DD)"
+                        },
+                        "endDate": {
+                          "type": "string",
+                          "description": "Dönemin son günü (YYYY-MM-DD, dahil)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "planning",
+                            "active",
+                            "interim",
+                            "evaluation",
+                            "closed"
+                          ],
+                          "description": "Aşama: `planning` planlama, `active` yürürlükte, `interim` ara görüşme, `evaluation` değerlendirme, `closed` kapandı (kilitli)"
+                        },
+                        "closedAt": {
+                          "description": "Kapanış anı (ISO 8601 UTC)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "reviewCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Dönemdeki personel kaydı sayısı"
+                        },
+                        "scoredCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Bütün hedefleri puanlanmış kayıt sayısı"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü (aşama geçişi)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "startDate",
+                        "endDate",
+                        "status",
+                        "closedAt",
+                        "createdAt",
+                        "reviewCount",
+                        "scoredCount",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/performance-periods/{periodId}/reviews": {
+      "get": {
+        "operationId": "listPerformanceReviews",
+        "summary": "Dönemin personel performans kayıtları",
+        "tags": [
+          "finance-performance"
+        ],
+        "description": "Personel adına göre: hedefler (başlık, ölçüt, ağırlık, puan), genel puan (ağırlıklı ortalama, iki ondalık; puanı eksikse boş), ara görüşme notu ve günü, değerlendiren ve personel görüşü. Okuma aynı transaction'da denetime yazılır (`finance.performance_review.read`; alan adları ve kayıt sayısı, K-429). Başka kurumun dönemi 404. Rol: yalnız `yonetici` (K-429; performans verisi kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Personel adında arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "periodId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "periodId": {
+                            "type": "string"
+                          },
+                          "membershipId": {
+                            "type": "string",
+                            "description": "Değerlendirilen personelin kurum üyeliği"
+                          },
+                          "staffName": {
+                            "type": "string",
+                            "description": "Personel adı"
+                          },
+                          "staffRole": {
+                            "type": "string",
+                            "description": "Personelin rolü"
+                          },
+                          "goals": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "title": {
+                                  "type": "string"
+                                },
+                                "criterion": {
+                                  "type": "string"
+                                },
+                                "weight": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Ağırlık, yüzde"
+                                },
+                                "score": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Dönem sonu puanı (1–5); girilmediyse boş"
+                                }
+                              },
+                              "required": [
+                                "title",
+                                "criterion",
+                                "weight",
+                                "score"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "description": "Hedefler (sırasıyla)"
+                          },
+                          "overallScore": {
+                            "description": "Genel puan: ağırlıklı ortalama, iki ondalık; puanı eksikse boş",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "scored": {
+                            "type": "boolean",
+                            "description": "Bütün hedefler puanlandı mı"
+                          },
+                          "interimNote": {
+                            "description": "Ara görüşme notu",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "interimDate": {
+                            "description": "Ara görüşme günü",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "evaluatorName": {
+                            "description": "Puanı son yazan yönetici",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "evaluatedAt": {
+                            "description": "Puanın son yazıldığı an",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "staffComment": {
+                            "description": "Personelin görüşü (yönetici personel adına girer)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "periodId",
+                          "membershipId",
+                          "staffName",
+                          "staffRole",
+                          "goals",
+                          "overallScore",
+                          "scored",
+                          "interimNote",
+                          "interimDate",
+                          "evaluatorName",
+                          "evaluatedAt",
+                          "staffComment",
+                          "createdAt",
+                          "updatedAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createPerformanceReview",
+        "summary": "Döneme personel ekle ve hedeflerini belirle",
+        "tags": [
+          "finance-performance"
+        ],
+        "description": "Personel üyeliği ve hedefler (1–10; başlık, ölçüt, ağırlık %, toplam 100). Yalnız planlama ve yürürlük aşamasında (409 `performance_enroll_closed`); dönemde personel başına tek kayıt (409 `performance_review_exists`). Olmayan üyelik 422 `performance_staff_not_found`, öğrenci ya da veli 422 `performance_not_staff`, ayrılan personel 422 `performance_staff_inactive`, yöneticinin kendisi 422 `performance_self_review`. `Idempotency-Key` zorunlu. Başka kurumun dönemi 404. Rol: yalnız `yonetici` (K-429; performans verisi kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "membershipId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Değerlendirilecek personelin kurum üyeliği"
+                  },
+                  "goals": {
+                    "minItems": 1,
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "title": {
+                          "type": "string",
+                          "minLength": 2,
+                          "maxLength": 200,
+                          "description": "Hedefin kısa adı"
+                        },
+                        "criterion": {
+                          "type": "string",
+                          "minLength": 2,
+                          "maxLength": 500,
+                          "description": "Başarının nasıl ölçüleceği"
+                        },
+                        "weight": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100,
+                          "description": "Hedefin ağırlığı, yüzde; hedeflerin toplamı 100"
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "criterion",
+                        "weight"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Hedefler (başlık, ölçüt, ağırlık %); toplam ağırlık 100"
+                  }
+                },
+                "required": [
+                  "membershipId",
+                  "goals"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "periodId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "periodId": {
+                          "type": "string"
+                        },
+                        "membershipId": {
+                          "type": "string",
+                          "description": "Değerlendirilen personelin kurum üyeliği"
+                        },
+                        "staffName": {
+                          "type": "string",
+                          "description": "Personel adı"
+                        },
+                        "staffRole": {
+                          "type": "string",
+                          "description": "Personelin rolü"
+                        },
+                        "goals": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "title": {
+                                "type": "string"
+                              },
+                              "criterion": {
+                                "type": "string"
+                              },
+                              "weight": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ağırlık, yüzde"
+                              },
+                              "score": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Dönem sonu puanı (1–5); girilmediyse boş"
+                              }
+                            },
+                            "required": [
+                              "title",
+                              "criterion",
+                              "weight",
+                              "score"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Hedefler (sırasıyla)"
+                        },
+                        "overallScore": {
+                          "description": "Genel puan: ağırlıklı ortalama, iki ondalık; puanı eksikse boş",
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "scored": {
+                          "type": "boolean",
+                          "description": "Bütün hedefler puanlandı mı"
+                        },
+                        "interimNote": {
+                          "description": "Ara görüşme notu",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "interimDate": {
+                          "description": "Ara görüşme günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "evaluatorName": {
+                          "description": "Puanı son yazan yönetici",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "evaluatedAt": {
+                          "description": "Puanın son yazıldığı an",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "staffComment": {
+                          "description": "Personelin görüşü (yönetici personel adına girer)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "periodId",
+                        "membershipId",
+                        "staffName",
+                        "staffRole",
+                        "goals",
+                        "overallScore",
+                        "scored",
+                        "interimNote",
+                        "interimDate",
+                        "evaluatorName",
+                        "evaluatedAt",
+                        "staffComment",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/performance-reviews/{reviewId}": {
+      "patch": {
+        "operationId": "updatePerformanceReview",
+        "summary": "Performans kaydını düzelt",
+        "tags": [
+          "finance-performance"
+        ],
+        "description": "Kısmi düzeltme (K-428): hedefler planlama, yürürlük ve ara görüşmede (değişince puanlar sıfırlanır; değerlendirmede 422 `performance_goals_locked`); ara görüşme notu ve günü ara görüşme ve değerlendirmede (422 `performance_interim_not_open`; gün dönem içinde ve bugünden sonra değil); puanlar (hedef sırasıyla 1–5, boş = girilmedi) ve personel görüşü yalnız değerlendirmede (422 `performance_evaluation_not_open`). Puan yazan yönetici değerlendiren olur. Personel görüşünü yönetici personel adına girer. Kapanmış dönem 409 `performance_period_closed`, sürüm tutmazsa 409. Not ve görüş metni denetime yazılmaz. `If-Match` zorunlu. Başka kurumun kaydı 404. Rol: yalnız `yonetici` (K-429; performans verisi kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "goals": {
+                    "minItems": 1,
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "title": {
+                          "type": "string",
+                          "minLength": 2,
+                          "maxLength": 200,
+                          "description": "Hedefin kısa adı"
+                        },
+                        "criterion": {
+                          "type": "string",
+                          "minLength": 2,
+                          "maxLength": 500,
+                          "description": "Başarının nasıl ölçüleceği"
+                        },
+                        "weight": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100,
+                          "description": "Hedefin ağırlığı, yüzde; hedeflerin toplamı 100"
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "criterion",
+                        "weight"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Hedefler (başlık, ölçüt, ağırlık %); toplam ağırlık 100"
+                  },
+                  "interimNote": {
+                    "description": "Ara görüşme notu; boş metin notu siler",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 2000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "interimDate": {
+                    "description": "Ara görüşmenin yapıldığı gün; dönem içinde, bugünden sonra olamaz",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "scores": {
+                    "description": "Hedef sırasıyla dönem sonu puanları (1–5; boş = girilmedi)",
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 5
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "staffComment": {
+                    "description": "Personelin değerlendirmeye görüşü; yönetici personel adına girer (K-428)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 2000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "reviewId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "periodId": {
+                          "type": "string"
+                        },
+                        "membershipId": {
+                          "type": "string",
+                          "description": "Değerlendirilen personelin kurum üyeliği"
+                        },
+                        "staffName": {
+                          "type": "string",
+                          "description": "Personel adı"
+                        },
+                        "staffRole": {
+                          "type": "string",
+                          "description": "Personelin rolü"
+                        },
+                        "goals": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "title": {
+                                "type": "string"
+                              },
+                              "criterion": {
+                                "type": "string"
+                              },
+                              "weight": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ağırlık, yüzde"
+                              },
+                              "score": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Dönem sonu puanı (1–5); girilmediyse boş"
+                              }
+                            },
+                            "required": [
+                              "title",
+                              "criterion",
+                              "weight",
+                              "score"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Hedefler (sırasıyla)"
+                        },
+                        "overallScore": {
+                          "description": "Genel puan: ağırlıklı ortalama, iki ondalık; puanı eksikse boş",
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "scored": {
+                          "type": "boolean",
+                          "description": "Bütün hedefler puanlandı mı"
+                        },
+                        "interimNote": {
+                          "description": "Ara görüşme notu",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "interimDate": {
+                          "description": "Ara görüşme günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "evaluatorName": {
+                          "description": "Puanı son yazan yönetici",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "evaluatedAt": {
+                          "description": "Puanın son yazıldığı an",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "staffComment": {
+                          "description": "Personelin görüşü (yönetici personel adına girer)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "periodId",
+                        "membershipId",
+                        "staffName",
+                        "staffRole",
+                        "goals",
+                        "overallScore",
+                        "scored",
+                        "interimNote",
+                        "interimDate",
+                        "evaluatorName",
+                        "evaluatedAt",
+                        "staffComment",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
                       ],
                       "additionalProperties": false
                     }

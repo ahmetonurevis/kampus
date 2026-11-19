@@ -1,5 +1,5 @@
 {
-  "id": "8568c5d4-f872-4033-9eb7-b5ce61cc9924",
+  "id": "aef23b4c-825a-4f4e-b878-fe839228930c",
   "prevId": "b867473d-a5ed-40eb-8f38-8bcabdb65df2",
   "version": "7",
   "dialect": "postgresql",
@@ -21503,8 +21503,8 @@
       },
       "isRLSEnabled": false
     },
-    "public.policy_acknowledgements": {
-      "name": "policy_acknowledgements",
+    "public.performance_periods": {
+      "name": "performance_periods",
       "schema": "",
       "columns": {
         "institution_id": {
@@ -21519,41 +21519,48 @@
           "primaryKey": false,
           "notNull": true
         },
-        "policy_document_id": {
-          "name": "policy_document_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "membership_id": {
-          "name": "membership_id",
+        "name": {
+          "name": "name",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "acknowledged_on": {
-          "name": "acknowledged_on",
+        "start_date": {
+          "name": "start_date",
           "type": "date",
           "primaryKey": false,
           "notNull": true
         },
-        "channel": {
-          "name": "channel",
+        "end_date": {
+          "name": "end_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'planning'"
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "scan_file_id": {
-          "name": "scan_file_id",
-          "type": "uuid",
+        "closed_at": {
+          "name": "closed_at",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
-        "recorded_by_user_id": {
-          "name": "recorded_by_user_id",
+        "closed_by_user_id": {
+          "name": "closed_by_user_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -21584,8 +21591,8 @@
         }
       },
       "indexes": {
-        "policy_acknowledgements_member_key": {
-          "name": "policy_acknowledgements_member_key",
+        "performance_periods_start_idx": {
+          "name": "performance_periods_start_idx",
           "columns": [
             {
               "expression": "institution_id",
@@ -21594,56 +21601,7 @@
               "nulls": "last"
             },
             {
-              "expression": "policy_document_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "membership_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "policy_acknowledgements_scan_file_key": {
-          "name": "policy_acknowledgements_scan_file_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "scan_file_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"policy_acknowledgements\".\"scan_file_id\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "policy_acknowledgements_membership_idx": {
-          "name": "policy_acknowledgements_membership_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "membership_id",
+              "expression": "start_date",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -21656,9 +21614,9 @@
         }
       },
       "foreignKeys": {
-        "policy_acknowledgements_institution_id_institutions_id_fk": {
-          "name": "policy_acknowledgements_institution_id_institutions_id_fk",
-          "tableFrom": "policy_acknowledgements",
+        "performance_periods_institution_id_institutions_id_fk": {
+          "name": "performance_periods_institution_id_institutions_id_fk",
+          "tableFrom": "performance_periods",
           "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
@@ -21668,56 +21626,11 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
-        },
-        "policy_acknowledgements_document_fkey": {
-          "name": "policy_acknowledgements_document_fkey",
-          "tableFrom": "policy_acknowledgements",
-          "tableTo": "policy_documents",
-          "columnsFrom": [
-            "institution_id",
-            "policy_document_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "policy_acknowledgements_membership_fkey": {
-          "name": "policy_acknowledgements_membership_fkey",
-          "tableFrom": "policy_acknowledgements",
-          "tableTo": "memberships",
-          "columnsFrom": [
-            "institution_id",
-            "membership_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "policy_acknowledgements_scan_file_fkey": {
-          "name": "policy_acknowledgements_scan_file_fkey",
-          "tableFrom": "policy_acknowledgements",
-          "tableTo": "files",
-          "columnsFrom": [
-            "institution_id",
-            "scan_file_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
-        "policy_acknowledgements_pkey": {
-          "name": "policy_acknowledgements_pkey",
+        "performance_periods_pkey": {
+          "name": "performance_periods_pkey",
           "columns": [
             "institution_id",
             "id"
@@ -21727,15 +21640,27 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "policy_acknowledgements_channel_check": {
-          "name": "policy_acknowledgements_channel_check",
-          "value": "\"policy_acknowledgements\".\"channel\" in ('self_service', 'wet_signature', 'email', 'in_person')"
+        "performance_periods_status_check": {
+          "name": "performance_periods_status_check",
+          "value": "\"performance_periods\".\"status\" in ('planning', 'active', 'interim', 'evaluation', 'closed')"
+        },
+        "performance_periods_name_check": {
+          "name": "performance_periods_name_check",
+          "value": "char_length(\"performance_periods\".\"name\") between 2 and 120"
+        },
+        "performance_periods_dates_check": {
+          "name": "performance_periods_dates_check",
+          "value": "\"performance_periods\".\"end_date\" >= \"performance_periods\".\"start_date\""
+        },
+        "performance_periods_closed_check": {
+          "name": "performance_periods_closed_check",
+          "value": "((\"performance_periods\".\"status\" = 'closed') = (\"performance_periods\".\"closed_at\" is not null))\n        and ((\"performance_periods\".\"closed_at\" is null) = (\"performance_periods\".\"closed_by_user_id\" is null))"
         }
       },
       "isRLSEnabled": false
     },
-    "public.policy_documents": {
-      "name": "policy_documents",
+    "public.performance_reviews": {
+      "name": "performance_reviews",
       "schema": "",
       "columns": {
         "institution_id": {
@@ -21750,57 +21675,57 @@
           "primaryKey": false,
           "notNull": true
         },
-        "series_id": {
-          "name": "series_id",
+        "period_id": {
+          "name": "period_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
-        "version_number": {
-          "name": "version_number",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "title": {
-          "name": "title",
+        "membership_id": {
+          "name": "membership_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "policy_type": {
-          "name": "policy_type",
+        "goals": {
+          "name": "goals",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "interim_note": {
+          "name": "interim_note",
           "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "audience": {
-          "name": "audience",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "published_on": {
-          "name": "published_on",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "file_id": {
-          "name": "file_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "replaces_id": {
-          "name": "replaces_id",
-          "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },
-        "superseded_at": {
-          "name": "superseded_at",
+        "interim_date": {
+          "name": "interim_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "evaluator_user_id": {
+          "name": "evaluator_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "evaluator_name": {
+          "name": "evaluator_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "evaluated_at": {
+          "name": "evaluated_at",
           "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "staff_comment": {
+          "name": "staff_comment",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
@@ -21839,8 +21764,8 @@
         }
       },
       "indexes": {
-        "policy_documents_series_version_key": {
-          "name": "policy_documents_series_version_key",
+        "performance_reviews_member_key": {
+          "name": "performance_reviews_member_key",
           "columns": [
             {
               "expression": "institution_id",
@@ -21849,13 +21774,13 @@
               "nulls": "last"
             },
             {
-              "expression": "series_id",
+              "expression": "period_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             },
             {
-              "expression": "version_number",
+              "expression": "membership_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -21866,8 +21791,8 @@
           "method": "btree",
           "with": {}
         },
-        "policy_documents_current_key": {
-          "name": "policy_documents_current_key",
+        "performance_reviews_membership_idx": {
+          "name": "performance_reviews_membership_idx",
           "columns": [
             {
               "expression": "institution_id",
@@ -21876,66 +21801,22 @@
               "nulls": "last"
             },
             {
-              "expression": "series_id",
+              "expression": "membership_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             }
           ],
-          "isUnique": true,
-          "where": "\"policy_documents\".\"superseded_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "policy_documents_file_key": {
-          "name": "policy_documents_file_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "file_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "policy_documents_replaces_key": {
-          "name": "policy_documents_replaces_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "replaces_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"policy_documents\".\"replaces_id\" is not null",
+          "isUnique": false,
           "concurrently": false,
           "method": "btree",
           "with": {}
         }
       },
       "foreignKeys": {
-        "policy_documents_institution_id_institutions_id_fk": {
-          "name": "policy_documents_institution_id_institutions_id_fk",
-          "tableFrom": "policy_documents",
+        "performance_reviews_institution_id_institutions_id_fk": {
+          "name": "performance_reviews_institution_id_institutions_id_fk",
+          "tableFrom": "performance_reviews",
           "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
@@ -21946,13 +21827,13 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "policy_documents_file_fkey": {
-          "name": "policy_documents_file_fkey",
-          "tableFrom": "policy_documents",
-          "tableTo": "files",
+        "performance_reviews_period_fkey": {
+          "name": "performance_reviews_period_fkey",
+          "tableFrom": "performance_reviews",
+          "tableTo": "performance_periods",
           "columnsFrom": [
             "institution_id",
-            "file_id"
+            "period_id"
           ],
           "columnsTo": [
             "institution_id",
@@ -21961,13 +21842,13 @@
           "onDelete": "restrict",
           "onUpdate": "no action"
         },
-        "policy_documents_replaces_fkey": {
-          "name": "policy_documents_replaces_fkey",
-          "tableFrom": "policy_documents",
-          "tableTo": "policy_documents",
+        "performance_reviews_membership_fkey": {
+          "name": "performance_reviews_membership_fkey",
+          "tableFrom": "performance_reviews",
+          "tableTo": "memberships",
           "columnsFrom": [
             "institution_id",
-            "replaces_id"
+            "membership_id"
           ],
           "columnsTo": [
             "institution_id",
@@ -21978,8 +21859,8 @@
         }
       },
       "compositePrimaryKeys": {
-        "policy_documents_pkey": {
-          "name": "policy_documents_pkey",
+        "performance_reviews_pkey": {
+          "name": "performance_reviews_pkey",
           "columns": [
             "institution_id",
             "id"
@@ -21989,25 +21870,17 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "policy_documents_type_check": {
-          "name": "policy_documents_type_check",
-          "value": "\"policy_documents\".\"policy_type\" in ('staff_regulation', 'kvkk_commitment', 'occupational_safety', 'discipline', 'other')"
+        "performance_reviews_goals_check": {
+          "name": "performance_reviews_goals_check",
+          "value": "jsonb_typeof(\"performance_reviews\".\"goals\") = 'array' and jsonb_array_length(\"performance_reviews\".\"goals\") between 1 and 10"
         },
-        "policy_documents_audience_check": {
-          "name": "policy_documents_audience_check",
-          "value": "\"policy_documents\".\"audience\" in ('all_staff', 'teachers', 'administrative')"
+        "performance_reviews_notes_check": {
+          "name": "performance_reviews_notes_check",
+          "value": "(\"performance_reviews\".\"interim_note\" is null or char_length(\"performance_reviews\".\"interim_note\") between 1 and 2000)\n        and (\"performance_reviews\".\"staff_comment\" is null or char_length(\"performance_reviews\".\"staff_comment\") between 1 and 2000)"
         },
-        "policy_documents_version_check": {
-          "name": "policy_documents_version_check",
-          "value": "\"policy_documents\".\"version_number\" >= 1"
-        },
-        "policy_documents_title_check": {
-          "name": "policy_documents_title_check",
-          "value": "char_length(\"policy_documents\".\"title\") between 2 and 160"
-        },
-        "policy_documents_first_version_check": {
-          "name": "policy_documents_first_version_check",
-          "value": "(\"policy_documents\".\"version_number\" = 1) = (\"policy_documents\".\"replaces_id\" is null)"
+        "performance_reviews_evaluator_check": {
+          "name": "performance_reviews_evaluator_check",
+          "value": "((\"performance_reviews\".\"evaluator_user_id\" is null) = (\"performance_reviews\".\"evaluated_at\" is null))\n        and ((\"performance_reviews\".\"evaluator_user_id\" is null) = (\"performance_reviews\".\"evaluator_name\" is null))"
         }
       },
       "isRLSEnabled": false

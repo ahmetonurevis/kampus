@@ -192,6 +192,10 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // Özlük verisi imhası geri alınamaz; çift tıklama ikinci imha kaydı yazmaz
   // (routes/finance-staff-retention.ts; DOM-FIN-122, ON-176).
   'POST /api/v1/finance/staff-data-destructions',
+  // Performans dönemi ve döneme personel ekleme; çift tıklama ikinci dönemi ya da kaydı açmaz
+  // (routes/finance-performance.ts; DOM-FIN-124, ON-211).
+  'POST /api/v1/finance/performance-periods',
+  'POST /api/v1/finance/performance-periods/{periodId}/reviews',
   // Politika belgesi yayımı önceki sürümü geçersiz kılar; onay kaydı personel × sürüm başına
   // tekildir; çift tıklama ikinci sürümü ya da 409'u üretmez
   // (routes/finance-policy-acknowledgements.ts; DOM-FIN-127, ON-190).

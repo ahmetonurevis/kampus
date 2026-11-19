@@ -3161,6 +3161,62 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: performans dönemi (ON-211; DOM-FIN-124, K-429).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/performance-periods', "call('GET', PERIODS, a.admin)"],
+        ['gövde', 'POST /api/v1/finance/performance-periods', 'institutionId: b.id'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/performance-periods/:periodId/status',
+          'advance(a.admin, pb',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/performance-periods/:periodId/reviews',
+          'reviewsOf(a.admin, pb)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/performance-periods/:periodId/reviews',
+          'addReview(a.admin, pb',
+        ],
+        ['kayıt', 'PATCH /api/v1/finance/performance-reviews/:reviewId', 'patch(a.admin, review'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-performance.test.ts',
+        'DOM-FIN-124: başka kurumun dönemi ve kaydı 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: politika belgesi okundu onayı (ON-190; DOM-FIN-127).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/policy-documents', 'list(DOCS, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/policy-documents', 'institutionId: b.id'],
+        ['kayıt', 'GET /api/v1/finance/policy-documents/:documentId', 'get(bUrl, a.admin)'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/policy-documents/:documentId/staff',
+          'get(`${bUrl}/staff`, a.admin)',
+        ],
+        ['liste', 'GET /api/v1/finance/policy-acknowledgement-staff', 'list(STAFF, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/policy-acknowledgements', 'institutionId: b.id'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-policy-acknowledgements.test.ts',
+        'DOM-FIN-127: başka kurumun belgesi ve personeli 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

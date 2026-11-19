@@ -257,6 +257,31 @@ describe('DOM-FIN-130: ders gözlem formu uçları', () => {
       await call('POST', TEMPLATES, a.admin, { ...TEMPLATE, institutionId: b.id }, key()),
       400,
     )
+    const formUrl = `${TEMPLATES}/${String(formB.id)}`
+    assertError(
+      await call('PATCH', formUrl, a.admin, { name: 'Yeni ad' }, ifMatch(formB.version)),
+      404,
+    )
+    assertError(
+      await call('POST', `${formUrl}/versions`, a.admin, TEMPLATE, ifMatch(formB.version)),
+      404,
+    )
+    assertError(await call('POST', `${formUrl}/archive`, a.admin, {}, ifMatch(formB.version)), 404)
+    const formA = await template(a)
+    const selinA = await person(a, 'ogretmen', 'Deniz Kaya')
+    assertError(
+      await observe(a.admin, {
+        templateId: formA.id,
+        teacherMembershipId: selinA.membershipId,
+        institutionId: b.id,
+      }),
+      400,
+    )
+    const forms = (await call('GET', TEMPLATES, a.admin)).json() as { data: Json[] }
+    assert.deepEqual(
+      forms.data.map((item) => item.id),
+      [formA.id],
+    )
     const list = (await call('GET', OBSERVATIONS, a.admin)).json() as { meta: { total: number } }
     assert.equal(list.meta.total, 0)
     const [row] = await rowsOf(b.id)

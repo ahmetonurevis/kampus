@@ -270143,6 +270143,3844 @@
         }
       }
     },
+    "/api/v1/finance/lesson-observation-templates": {
+      "get": {
+        "operationId": "listLessonObservationTemplates",
+        "summary": "Ders gözlem formlarını listele",
+        "tags": [
+          "finance-lesson-observations"
+        ],
+        "description": "Formlar son sürümleriyle, ada göre (DOM-FIN-130): ad, ölçütler (seviye tanımları ve ağırlık), son sürümle açılmış gözlem sayısı ve kullanıldı mı. Arşivli formlar `includeArchived=true` ile gelir. Rol: yalnız `yonetici`. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Form adında arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "in": "query",
+            "name": "includeArchived",
+            "required": false,
+            "description": "Arşivli formları da listele"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "versionId": {
+                            "type": "string",
+                            "description": "Son sürümün kimliği; yeni gözlem bunu kullanır"
+                          },
+                          "versionNumber": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Son sürüm numarası"
+                          },
+                          "name": {
+                            "type": "string",
+                            "description": "Form adı (son sürüm)"
+                          },
+                          "criteria": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "description": "Ölçüt kimliği (sürüm içinde k1, k2, …)"
+                                },
+                                "title": {
+                                  "type": "string",
+                                  "description": "Ölçüt"
+                                },
+                                "description": {
+                                  "description": "Ölçüt açıklaması",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "weight": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Göreli ağırlık (1–10)"
+                                },
+                                "levels": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "level": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "description": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "level",
+                                      "description"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "description": "0–5 seviye tanımları, sırasıyla"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "title",
+                                "description",
+                                "weight",
+                                "levels"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "description": "Son sürümün ölçütleri"
+                          },
+                          "observationCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Son sürümle açılmış gözlem sayısı"
+                          },
+                          "used": {
+                            "type": "boolean",
+                            "description": "Son sürüm gözlemde kullanıldı mı; kullanıldıysa düzeltilmez (K-445)"
+                          },
+                          "archivedAt": {
+                            "description": "Arşiv anı; arşivli form yeni gözlemde seçilmez",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için şablon sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "versionId",
+                          "versionNumber",
+                          "name",
+                          "criteria",
+                          "observationCount",
+                          "used",
+                          "archivedAt",
+                          "createdAt",
+                          "updatedAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createLessonObservationTemplate",
+        "summary": "Ders gözlem formu oluştur",
+        "tags": [
+          "finance-lesson-observations"
+        ],
+        "description": "Ad (2–120) ve 1–10 ölçüt: ad (2–120, formda tekil), isteğe bağlı açıklama, ağırlık (1–10, varsayılan 1) ve 0–5 seviyelerinin altı tanımı (rubrik bantları). Ölçüt kimliğini sunucu verir (k1, k2, …). Sürüm 1 olarak açılır (K-445). `Idempotency-Key` zorunlu. Rol: yalnız `yonetici`. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120,
+                    "description": "Gözlem formunun adı (ör. \"Ders gözlem formu\")"
+                  },
+                  "criteria": {
+                    "minItems": 1,
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "title": {
+                          "type": "string",
+                          "minLength": 2,
+                          "maxLength": 120,
+                          "description": "Ölçüt (ör. \"Sınıf yönetimi\")"
+                        },
+                        "description": {
+                          "description": "Ölçütün kısa açıklaması; boş olabilir",
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 500
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "weight": {
+                          "default": 1,
+                          "description": "Göreli ağırlık (1–10; rubrik ağırlığı)",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 10
+                        },
+                        "levels": {
+                          "description": "0–5 seviyelerinin tanımı (rubrik bantları)",
+                          "minItems": 6,
+                          "maxItems": 6,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "level": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 5
+                              },
+                              "description": {
+                                "type": "string",
+                                "minLength": 2,
+                                "maxLength": 300
+                              }
+                            },
+                            "required": [
+                              "level",
+                              "description"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "levels"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Ölçütler, sırasıyla (1–10)"
+                  }
+                },
+                "required": [
+                  "name",
+                  "criteria"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "versionId": {
+                          "type": "string",
+                          "description": "Son sürümün kimliği; yeni gözlem bunu kullanır"
+                        },
+                        "versionNumber": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Son sürüm numarası"
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Form adı (son sürüm)"
+                        },
+                        "criteria": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "description": "Ölçüt kimliği (sürüm içinde k1, k2, …)"
+                              },
+                              "title": {
+                                "type": "string",
+                                "description": "Ölçüt"
+                              },
+                              "description": {
+                                "description": "Ölçüt açıklaması",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "weight": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Göreli ağırlık (1–10)"
+                              },
+                              "levels": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "level": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "description": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "level",
+                                    "description"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "0–5 seviye tanımları, sırasıyla"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "title",
+                              "description",
+                              "weight",
+                              "levels"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Son sürümün ölçütleri"
+                        },
+                        "observationCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Son sürümle açılmış gözlem sayısı"
+                        },
+                        "used": {
+                          "type": "boolean",
+                          "description": "Son sürüm gözlemde kullanıldı mı; kullanıldıysa düzeltilmez (K-445)"
+                        },
+                        "archivedAt": {
+                          "description": "Arşiv anı; arşivli form yeni gözlemde seçilmez",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için şablon sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "versionId",
+                        "versionNumber",
+                        "name",
+                        "criteria",
+                        "observationCount",
+                        "used",
+                        "archivedAt",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/lesson-observation-templates/{templateId}": {
+      "patch": {
+        "operationId": "updateLessonObservationTemplate",
+        "summary": "Kullanılmamış gözlem formunu düzelt",
+        "tags": [
+          "finance-lesson-observations"
+        ],
+        "description": "Son sürümün adı ve ölçütleri yerinde düzeltilir; yalnız sürüm henüz gözlemde kullanılmadıysa. Kullanılmış sürüm 409 `observation_template_used` (yeni sürüm açın), arşivli form 409 `observation_template_archived` (K-445). `If-Match` şablon sürümü. Başka kurumun formu 404. Rol: yalnız `yonetici`. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120,
+                    "description": "Gözlem formunun adı (ör. \"Ders gözlem formu\")"
+                  },
+                  "criteria": {
+                    "minItems": 1,
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "title": {
+                          "type": "string",
+                          "minLength": 2,
+                          "maxLength": 120,
+                          "description": "Ölçüt (ör. \"Sınıf yönetimi\")"
+                        },
+                        "description": {
+                          "description": "Ölçütün kısa açıklaması; boş olabilir",
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 500
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "weight": {
+                          "default": 1,
+                          "description": "Göreli ağırlık (1–10; rubrik ağırlığı)",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 10
+                        },
+                        "levels": {
+                          "description": "0–5 seviyelerinin tanımı (rubrik bantları)",
+                          "minItems": 6,
+                          "maxItems": 6,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "level": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 5
+                              },
+                              "description": {
+                                "type": "string",
+                                "minLength": 2,
+                                "maxLength": 300
+                              }
+                            },
+                            "required": [
+                              "level",
+                              "description"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "levels"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Ölçütler, sırasıyla (1–10)"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "templateId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "versionId": {
+                          "type": "string",
+                          "description": "Son sürümün kimliği; yeni gözlem bunu kullanır"
+                        },
+                        "versionNumber": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Son sürüm numarası"
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Form adı (son sürüm)"
+                        },
+                        "criteria": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "description": "Ölçüt kimliği (sürüm içinde k1, k2, …)"
+                              },
+                              "title": {
+                                "type": "string",
+                                "description": "Ölçüt"
+                              },
+                              "description": {
+                                "description": "Ölçüt açıklaması",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "weight": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Göreli ağırlık (1–10)"
+                              },
+                              "levels": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "level": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "description": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "level",
+                                    "description"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "0–5 seviye tanımları, sırasıyla"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "title",
+                              "description",
+                              "weight",
+                              "levels"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Son sürümün ölçütleri"
+                        },
+                        "observationCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Son sürümle açılmış gözlem sayısı"
+                        },
+                        "used": {
+                          "type": "boolean",
+                          "description": "Son sürüm gözlemde kullanıldı mı; kullanıldıysa düzeltilmez (K-445)"
+                        },
+                        "archivedAt": {
+                          "description": "Arşiv anı; arşivli form yeni gözlemde seçilmez",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için şablon sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "versionId",
+                        "versionNumber",
+                        "name",
+                        "criteria",
+                        "observationCount",
+                        "used",
+                        "archivedAt",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/lesson-observation-templates/{templateId}/versions": {
+      "post": {
+        "operationId": "createLessonObservationTemplateVersion",
+        "summary": "Gözlem formunun yeni sürümünü aç",
+        "tags": [
+          "finance-lesson-observations"
+        ],
+        "description": "Ad ve ölçütlerin tamamıyla yeni sürüm açılır; önceki sürümler ve onlarla yapılmış gözlemler değişmez, yeni gözlem yeni sürümü kullanır (K-445). Arşivli form 409 `observation_template_archived`. `If-Match` şablon sürümü. Başka kurumun formu 404. Rol: yalnız `yonetici`. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120,
+                    "description": "Gözlem formunun adı (ör. \"Ders gözlem formu\")"
+                  },
+                  "criteria": {
+                    "minItems": 1,
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "title": {
+                          "type": "string",
+                          "minLength": 2,
+                          "maxLength": 120,
+                          "description": "Ölçüt (ör. \"Sınıf yönetimi\")"
+                        },
+                        "description": {
+                          "description": "Ölçütün kısa açıklaması; boş olabilir",
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 500
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "weight": {
+                          "default": 1,
+                          "description": "Göreli ağırlık (1–10; rubrik ağırlığı)",
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 10
+                        },
+                        "levels": {
+                          "description": "0–5 seviyelerinin tanımı (rubrik bantları)",
+                          "minItems": 6,
+                          "maxItems": 6,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "level": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 5
+                              },
+                              "description": {
+                                "type": "string",
+                                "minLength": 2,
+                                "maxLength": 300
+                              }
+                            },
+                            "required": [
+                              "level",
+                              "description"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "levels"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Ölçütler, sırasıyla (1–10)"
+                  }
+                },
+                "required": [
+                  "name",
+                  "criteria"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "templateId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "versionId": {
+                          "type": "string",
+                          "description": "Son sürümün kimliği; yeni gözlem bunu kullanır"
+                        },
+                        "versionNumber": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Son sürüm numarası"
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Form adı (son sürüm)"
+                        },
+                        "criteria": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "description": "Ölçüt kimliği (sürüm içinde k1, k2, …)"
+                              },
+                              "title": {
+                                "type": "string",
+                                "description": "Ölçüt"
+                              },
+                              "description": {
+                                "description": "Ölçüt açıklaması",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "weight": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Göreli ağırlık (1–10)"
+                              },
+                              "levels": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "level": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "description": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "level",
+                                    "description"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "0–5 seviye tanımları, sırasıyla"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "title",
+                              "description",
+                              "weight",
+                              "levels"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Son sürümün ölçütleri"
+                        },
+                        "observationCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Son sürümle açılmış gözlem sayısı"
+                        },
+                        "used": {
+                          "type": "boolean",
+                          "description": "Son sürüm gözlemde kullanıldı mı; kullanıldıysa düzeltilmez (K-445)"
+                        },
+                        "archivedAt": {
+                          "description": "Arşiv anı; arşivli form yeni gözlemde seçilmez",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için şablon sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "versionId",
+                        "versionNumber",
+                        "name",
+                        "criteria",
+                        "observationCount",
+                        "used",
+                        "archivedAt",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/lesson-observation-templates/{templateId}/archive": {
+      "post": {
+        "operationId": "archiveLessonObservationTemplate",
+        "summary": "Gözlem formunu arşivle",
+        "tags": [
+          "finance-lesson-observations"
+        ],
+        "description": "Arşivli form yeni gözlemde seçilmez ve değiştirilmez; eski gözlemler kendi sürümüyle okunur (K-445). Zaten arşivliyse 409 `observation_template_archived`. Gövde boş nesne. `If-Match` şablon sürümü. Başka kurumun formu 404. Rol: yalnız `yonetici`. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "templateId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "versionId": {
+                          "type": "string",
+                          "description": "Son sürümün kimliği; yeni gözlem bunu kullanır"
+                        },
+                        "versionNumber": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Son sürüm numarası"
+                        },
+                        "name": {
+                          "type": "string",
+                          "description": "Form adı (son sürüm)"
+                        },
+                        "criteria": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "description": "Ölçüt kimliği (sürüm içinde k1, k2, …)"
+                              },
+                              "title": {
+                                "type": "string",
+                                "description": "Ölçüt"
+                              },
+                              "description": {
+                                "description": "Ölçüt açıklaması",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "weight": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Göreli ağırlık (1–10)"
+                              },
+                              "levels": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "level": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "description": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "level",
+                                    "description"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "0–5 seviye tanımları, sırasıyla"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "title",
+                              "description",
+                              "weight",
+                              "levels"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Son sürümün ölçütleri"
+                        },
+                        "observationCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Son sürümle açılmış gözlem sayısı"
+                        },
+                        "used": {
+                          "type": "boolean",
+                          "description": "Son sürüm gözlemde kullanıldı mı; kullanıldıysa düzeltilmez (K-445)"
+                        },
+                        "archivedAt": {
+                          "description": "Arşiv anı; arşivli form yeni gözlemde seçilmez",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için şablon sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "versionId",
+                        "versionNumber",
+                        "name",
+                        "criteria",
+                        "observationCount",
+                        "used",
+                        "archivedAt",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/lesson-observations": {
+      "get": {
+        "operationId": "listLessonObservations",
+        "summary": "Ders gözlemlerini listele",
+        "tags": [
+          "finance-lesson-observations"
+        ],
+        "description": "Gözlemler, yeni gün önce: öğretmen, gözlemci, gün, sınıf/ders, form ve sürümü, durum, ölçüt seviyeleri ve sunucunun rubrik kuralıyla hesapladığı puan (ağırlıklı toplam, azami, 100'lük; seviyesi eksikse boş). Öğretmen adında aranır, durum ve performans dönemiyle süzülür. Okuma aynı transaction'da denetime yazılır (`finance.lesson_observation.read`; alan adları ve kayıt sayısı). Rol: `yonetici` hepsini; `ogretmen` yalnız gözlemcisi olduğu ve gözlendiği tamamlanmış gözlemleri görür (K-447). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Öğretmen adında arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "completed"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Durum süzgeci"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "performancePeriodId",
+            "required": false,
+            "description": "Performans dönemi süzgeci"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "templateId": {
+                            "type": "string"
+                          },
+                          "templateVersionId": {
+                            "type": "string"
+                          },
+                          "templateName": {
+                            "type": "string",
+                            "description": "Kullanılan formun adı (gözlemin sürümü)"
+                          },
+                          "templateVersionNumber": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "teacherMembershipId": {
+                            "type": "string",
+                            "description": "Gözlenen öğretmenin kurum üyeliği"
+                          },
+                          "teacherName": {
+                            "type": "string"
+                          },
+                          "observerMembershipId": {
+                            "type": "string",
+                            "description": "Gözlemcinin kurum üyeliği"
+                          },
+                          "observerName": {
+                            "type": "string"
+                          },
+                          "observedDate": {
+                            "type": "string",
+                            "description": "Gözlem günü (YYYY-MM-DD)"
+                          },
+                          "classId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "className": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "subjectId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "subjectName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "performancePeriodId": {
+                            "description": "Bağlı performans dönemi (DOM-FIN-124)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "ratings": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "criterionId": {
+                                  "type": "string"
+                                },
+                                "level": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Verilen seviye (0–5); boş = verilmedi"
+                                },
+                                "note": {
+                                  "description": "Ölçüt notu",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "criterionId",
+                                "level",
+                                "note"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "description": "Ölçüt seviyeleri, formun ölçüt sırasıyla"
+                          },
+                          "generalNote": {
+                            "description": "Genel değerlendirme",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "draft",
+                              "completed"
+                            ],
+                            "description": "`draft` taslak (düzeltilebilir), `completed` tamamlandı (değişmez)"
+                          },
+                          "completedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "criterionCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "ratedCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Seviyesi verilmiş ölçüt sayısı"
+                          },
+                          "score": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "total": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Ağırlıklı seviye toplamı"
+                                  },
+                                  "max": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Azami ağırlıklı toplam (5 × Σ ağırlık)"
+                                  },
+                                  "percent": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "100 üzerinden puan (rubrik yuvarlaması)"
+                                  }
+                                },
+                                "required": [
+                                  "total",
+                                  "max",
+                                  "percent"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Sunucunun hesapladığı puan (rubrik kuralı, DOM-BEC-021); seviyesi eksikse boş"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "templateId",
+                          "templateVersionId",
+                          "templateName",
+                          "templateVersionNumber",
+                          "teacherMembershipId",
+                          "teacherName",
+                          "observerMembershipId",
+                          "observerName",
+                          "observedDate",
+                          "classId",
+                          "className",
+                          "subjectId",
+                          "subjectName",
+                          "performancePeriodId",
+                          "ratings",
+                          "generalNote",
+                          "status",
+                          "completedAt",
+                          "criterionCount",
+                          "ratedCount",
+                          "score",
+                          "createdAt",
+                          "updatedAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createLessonObservation",
+        "summary": "Ders gözlemi aç",
+        "tags": [
+          "finance-lesson-observations"
+        ],
+        "description": "Taslak açılır (K-446): form (son sürümü kullanılır), gözlenen öğretmen (etkin öğretmen üyeliği), gözlemci (etkin yönetici ya da öğretmen; boşsa isteği yapan), gün (bugünden sonra değil) ve isteğe bağlı sınıf, ders ve performans dönemi. Ölçüt seviyeleri boş başlar. Ret: form yok 422 `observation_template_not_found`, arşivli 409 `observation_template_archived`; öğretmen yok/öğretmen değil/ayrılmış 422 `observation_teacher_not_found`/`observation_not_teacher`/`observation_teacher_inactive`; gözlemci yok/uygun değil 422 `observation_observer_not_found`/`observation_observer_invalid`, kendisi 422 `observation_self`; sınıf/ders yok 422 `observation_class_not_found`/`observation_subject_not_found`; gün 422 `observation_date_future`; dönem yok/kapalı/gün dışında 422 `observation_period_not_found`/`observation_period_closed`/`observation_date_outside_period`. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici`. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "templateId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "description": "Gözlem formu şablonu; son sürümü kullanılır"
+                  },
+                  "teacherMembershipId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Gözlenen öğretmenin kurum üyeliği"
+                  },
+                  "observerMembershipId": {
+                    "description": "Gözlemcinin kurum üyeliği (yönetici ya da öğretmen); boşsa isteği yapan",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "observedDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Gözlem günü; bugünden sonra olamaz"
+                  },
+                  "classId": {
+                    "description": "İsteğe bağlı sınıf (`classes` kaydı)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "subjectId": {
+                    "description": "İsteğe bağlı ders (`subjects` kaydı)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "performancePeriodId": {
+                    "description": "İsteğe bağlı performans dönemi (DOM-FIN-124)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "templateId",
+                  "teacherMembershipId",
+                  "observedDate"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "templateId": {
+                          "type": "string"
+                        },
+                        "templateVersionId": {
+                          "type": "string"
+                        },
+                        "templateName": {
+                          "type": "string",
+                          "description": "Kullanılan formun adı (gözlemin sürümü)"
+                        },
+                        "templateVersionNumber": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "teacherMembershipId": {
+                          "type": "string",
+                          "description": "Gözlenen öğretmenin kurum üyeliği"
+                        },
+                        "teacherName": {
+                          "type": "string"
+                        },
+                        "observerMembershipId": {
+                          "type": "string",
+                          "description": "Gözlemcinin kurum üyeliği"
+                        },
+                        "observerName": {
+                          "type": "string"
+                        },
+                        "observedDate": {
+                          "type": "string",
+                          "description": "Gözlem günü (YYYY-MM-DD)"
+                        },
+                        "classId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "className": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "subjectId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "subjectName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "performancePeriodId": {
+                          "description": "Bağlı performans dönemi (DOM-FIN-124)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "ratings": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "criterionId": {
+                                "type": "string"
+                              },
+                              "level": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Verilen seviye (0–5); boş = verilmedi"
+                              },
+                              "note": {
+                                "description": "Ölçüt notu",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "criterionId",
+                              "level",
+                              "note"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Ölçüt seviyeleri, formun ölçüt sırasıyla"
+                        },
+                        "generalNote": {
+                          "description": "Genel değerlendirme",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "completed"
+                          ],
+                          "description": "`draft` taslak (düzeltilebilir), `completed` tamamlandı (değişmez)"
+                        },
+                        "completedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "criterionCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "ratedCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Seviyesi verilmiş ölçüt sayısı"
+                        },
+                        "score": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "total": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Ağırlıklı seviye toplamı"
+                                },
+                                "max": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Azami ağırlıklı toplam (5 × Σ ağırlık)"
+                                },
+                                "percent": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "100 üzerinden puan (rubrik yuvarlaması)"
+                                }
+                              },
+                              "required": [
+                                "total",
+                                "max",
+                                "percent"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Sunucunun hesapladığı puan (rubrik kuralı, DOM-BEC-021); seviyesi eksikse boş"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "criteria": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "description": "Ölçüt kimliği (sürüm içinde k1, k2, …)"
+                              },
+                              "title": {
+                                "type": "string",
+                                "description": "Ölçüt"
+                              },
+                              "description": {
+                                "description": "Ölçüt açıklaması",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "weight": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Göreli ağırlık (1–10)"
+                              },
+                              "levels": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "level": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "description": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "level",
+                                    "description"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "0–5 seviye tanımları, sırasıyla"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "title",
+                              "description",
+                              "weight",
+                              "levels"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Gözlemin form sürümündeki ölçütler"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "templateId",
+                        "templateVersionId",
+                        "templateName",
+                        "templateVersionNumber",
+                        "teacherMembershipId",
+                        "teacherName",
+                        "observerMembershipId",
+                        "observerName",
+                        "observedDate",
+                        "classId",
+                        "className",
+                        "subjectId",
+                        "subjectName",
+                        "performancePeriodId",
+                        "ratings",
+                        "generalNote",
+                        "status",
+                        "completedAt",
+                        "criterionCount",
+                        "ratedCount",
+                        "score",
+                        "createdAt",
+                        "updatedAt",
+                        "version",
+                        "criteria"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/lesson-observations/{observationId}": {
+      "get": {
+        "operationId": "getLessonObservation",
+        "summary": "Ders gözlemini getir",
+        "tags": [
+          "finance-lesson-observations"
+        ],
+        "description": "Gözlem ve kullanılan form sürümünün ölçütleri (seviye tanımları, ağırlık). Okuma denetime yazılır. Görülemeyen (öğretmende başkasının gözlemi ya da taslak hâlindeki kendi gözlemi) ve başka kurumun gözlemi 404. Rol: `yonetici` hepsini; `ogretmen` yalnız gözlemcisi olduğu ve gözlendiği tamamlanmış gözlemleri görür (K-447). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "observationId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "templateId": {
+                          "type": "string"
+                        },
+                        "templateVersionId": {
+                          "type": "string"
+                        },
+                        "templateName": {
+                          "type": "string",
+                          "description": "Kullanılan formun adı (gözlemin sürümü)"
+                        },
+                        "templateVersionNumber": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "teacherMembershipId": {
+                          "type": "string",
+                          "description": "Gözlenen öğretmenin kurum üyeliği"
+                        },
+                        "teacherName": {
+                          "type": "string"
+                        },
+                        "observerMembershipId": {
+                          "type": "string",
+                          "description": "Gözlemcinin kurum üyeliği"
+                        },
+                        "observerName": {
+                          "type": "string"
+                        },
+                        "observedDate": {
+                          "type": "string",
+                          "description": "Gözlem günü (YYYY-MM-DD)"
+                        },
+                        "classId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "className": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "subjectId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "subjectName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "performancePeriodId": {
+                          "description": "Bağlı performans dönemi (DOM-FIN-124)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "ratings": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "criterionId": {
+                                "type": "string"
+                              },
+                              "level": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Verilen seviye (0–5); boş = verilmedi"
+                              },
+                              "note": {
+                                "description": "Ölçüt notu",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "criterionId",
+                              "level",
+                              "note"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Ölçüt seviyeleri, formun ölçüt sırasıyla"
+                        },
+                        "generalNote": {
+                          "description": "Genel değerlendirme",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "completed"
+                          ],
+                          "description": "`draft` taslak (düzeltilebilir), `completed` tamamlandı (değişmez)"
+                        },
+                        "completedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "criterionCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "ratedCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Seviyesi verilmiş ölçüt sayısı"
+                        },
+                        "score": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "total": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Ağırlıklı seviye toplamı"
+                                },
+                                "max": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Azami ağırlıklı toplam (5 × Σ ağırlık)"
+                                },
+                                "percent": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "100 üzerinden puan (rubrik yuvarlaması)"
+                                }
+                              },
+                              "required": [
+                                "total",
+                                "max",
+                                "percent"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Sunucunun hesapladığı puan (rubrik kuralı, DOM-BEC-021); seviyesi eksikse boş"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "criteria": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "description": "Ölçüt kimliği (sürüm içinde k1, k2, …)"
+                              },
+                              "title": {
+                                "type": "string",
+                                "description": "Ölçüt"
+                              },
+                              "description": {
+                                "description": "Ölçüt açıklaması",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "weight": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Göreli ağırlık (1–10)"
+                              },
+                              "levels": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "level": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "description": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "level",
+                                    "description"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "0–5 seviye tanımları, sırasıyla"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "title",
+                              "description",
+                              "weight",
+                              "levels"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Gözlemin form sürümündeki ölçütler"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "templateId",
+                        "templateVersionId",
+                        "templateName",
+                        "templateVersionNumber",
+                        "teacherMembershipId",
+                        "teacherName",
+                        "observerMembershipId",
+                        "observerName",
+                        "observedDate",
+                        "classId",
+                        "className",
+                        "subjectId",
+                        "subjectName",
+                        "performancePeriodId",
+                        "ratings",
+                        "generalNote",
+                        "status",
+                        "completedAt",
+                        "criterionCount",
+                        "ratedCount",
+                        "score",
+                        "createdAt",
+                        "updatedAt",
+                        "version",
+                        "criteria"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateLessonObservation",
+        "summary": "Gözlem taslağını düzelt",
+        "tags": [
+          "finance-lesson-observations"
+        ],
+        "description": "Kısmi düzeltme (K-446): gün, sınıf, ders, performans dönemi, ölçüt seviyeleri (0–5, boş = verilmedi) ve notları, genel değerlendirme. Gönderilen ölçütler yazılır, diğerleri korunur; bilinmeyen ya da yinelenen ölçüt 422 `observation_criterion_invalid`. Puan gövdede alınmaz, sunucu hesaplar. Tamamlanan gözlem 409 `observation_completed`, sürüm tutmazsa 409. Not metinleri denetime yazılmaz. `If-Match` zorunlu. Başka kurumun gözlemi 404. Rol: yalnız `yonetici`. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "observedDate": {
+                    "description": "Gözlem günü; bugünden sonra olamaz",
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "classId": {
+                    "description": "Sınıf; boş metin bağı kaldırır",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "subjectId": {
+                    "description": "Ders; boş metin bağı kaldırır",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "performancePeriodId": {
+                    "description": "Performans dönemi; `null` bağı kaldırır",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "ratings": {
+                    "description": "Ölçüt başına seviye ve not; gönderilen ölçütler yazılır, diğerleri korunur",
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "criterionId": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                        },
+                        "level": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 5
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Verilen seviye (0–5); boş = henüz verilmedi"
+                        },
+                        "note": {
+                          "description": "Ölçüt notu; hedefin altındaki (0–2) seviyede tamamlamak için zorunlu",
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 1000
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "criterionId",
+                        "level"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "generalNote": {
+                    "description": "Genel değerlendirme; tamamlamak için zorunlu, boş metin siler",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 4000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "observationId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "templateId": {
+                          "type": "string"
+                        },
+                        "templateVersionId": {
+                          "type": "string"
+                        },
+                        "templateName": {
+                          "type": "string",
+                          "description": "Kullanılan formun adı (gözlemin sürümü)"
+                        },
+                        "templateVersionNumber": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "teacherMembershipId": {
+                          "type": "string",
+                          "description": "Gözlenen öğretmenin kurum üyeliği"
+                        },
+                        "teacherName": {
+                          "type": "string"
+                        },
+                        "observerMembershipId": {
+                          "type": "string",
+                          "description": "Gözlemcinin kurum üyeliği"
+                        },
+                        "observerName": {
+                          "type": "string"
+                        },
+                        "observedDate": {
+                          "type": "string",
+                          "description": "Gözlem günü (YYYY-MM-DD)"
+                        },
+                        "classId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "className": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "subjectId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "subjectName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "performancePeriodId": {
+                          "description": "Bağlı performans dönemi (DOM-FIN-124)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "ratings": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "criterionId": {
+                                "type": "string"
+                              },
+                              "level": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Verilen seviye (0–5); boş = verilmedi"
+                              },
+                              "note": {
+                                "description": "Ölçüt notu",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "criterionId",
+                              "level",
+                              "note"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Ölçüt seviyeleri, formun ölçüt sırasıyla"
+                        },
+                        "generalNote": {
+                          "description": "Genel değerlendirme",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "completed"
+                          ],
+                          "description": "`draft` taslak (düzeltilebilir), `completed` tamamlandı (değişmez)"
+                        },
+                        "completedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "criterionCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "ratedCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Seviyesi verilmiş ölçüt sayısı"
+                        },
+                        "score": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "total": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Ağırlıklı seviye toplamı"
+                                },
+                                "max": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Azami ağırlıklı toplam (5 × Σ ağırlık)"
+                                },
+                                "percent": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "100 üzerinden puan (rubrik yuvarlaması)"
+                                }
+                              },
+                              "required": [
+                                "total",
+                                "max",
+                                "percent"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Sunucunun hesapladığı puan (rubrik kuralı, DOM-BEC-021); seviyesi eksikse boş"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "criteria": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "description": "Ölçüt kimliği (sürüm içinde k1, k2, …)"
+                              },
+                              "title": {
+                                "type": "string",
+                                "description": "Ölçüt"
+                              },
+                              "description": {
+                                "description": "Ölçüt açıklaması",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "weight": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Göreli ağırlık (1–10)"
+                              },
+                              "levels": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "level": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "description": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "level",
+                                    "description"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "0–5 seviye tanımları, sırasıyla"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "title",
+                              "description",
+                              "weight",
+                              "levels"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Gözlemin form sürümündeki ölçütler"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "templateId",
+                        "templateVersionId",
+                        "templateName",
+                        "templateVersionNumber",
+                        "teacherMembershipId",
+                        "teacherName",
+                        "observerMembershipId",
+                        "observerName",
+                        "observedDate",
+                        "classId",
+                        "className",
+                        "subjectId",
+                        "subjectName",
+                        "performancePeriodId",
+                        "ratings",
+                        "generalNote",
+                        "status",
+                        "completedAt",
+                        "criterionCount",
+                        "ratedCount",
+                        "score",
+                        "createdAt",
+                        "updatedAt",
+                        "version",
+                        "criteria"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/lesson-observations/{observationId}/complete": {
+      "post": {
+        "operationId": "completeLessonObservation",
+        "summary": "Ders gözlemini tamamla",
+        "tags": [
+          "finance-lesson-observations"
+        ],
+        "description": "Tamamlama (K-446): her ölçüte seviye verilmiş (422 `observation_unrated`), hedefin altındaki (0–2) seviyeye not yazılmış (422 `observation_note_required`, rubrik kriter yorumu kuralı) ve genel değerlendirme yazılmış (422 `observation_general_note_required`) olmalı. Tamamlanan gözlem değişmez; yeniden tamamlama 409 `observation_completed`. Gövde boş nesne. `If-Match` zorunlu. Başka kurumun gözlemi 404. Rol: yalnız `yonetici`. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "observationId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "templateId": {
+                          "type": "string"
+                        },
+                        "templateVersionId": {
+                          "type": "string"
+                        },
+                        "templateName": {
+                          "type": "string",
+                          "description": "Kullanılan formun adı (gözlemin sürümü)"
+                        },
+                        "templateVersionNumber": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "teacherMembershipId": {
+                          "type": "string",
+                          "description": "Gözlenen öğretmenin kurum üyeliği"
+                        },
+                        "teacherName": {
+                          "type": "string"
+                        },
+                        "observerMembershipId": {
+                          "type": "string",
+                          "description": "Gözlemcinin kurum üyeliği"
+                        },
+                        "observerName": {
+                          "type": "string"
+                        },
+                        "observedDate": {
+                          "type": "string",
+                          "description": "Gözlem günü (YYYY-MM-DD)"
+                        },
+                        "classId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "className": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "subjectId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "subjectName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "performancePeriodId": {
+                          "description": "Bağlı performans dönemi (DOM-FIN-124)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "ratings": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "criterionId": {
+                                "type": "string"
+                              },
+                              "level": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Verilen seviye (0–5); boş = verilmedi"
+                              },
+                              "note": {
+                                "description": "Ölçüt notu",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "criterionId",
+                              "level",
+                              "note"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Ölçüt seviyeleri, formun ölçüt sırasıyla"
+                        },
+                        "generalNote": {
+                          "description": "Genel değerlendirme",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "completed"
+                          ],
+                          "description": "`draft` taslak (düzeltilebilir), `completed` tamamlandı (değişmez)"
+                        },
+                        "completedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "criterionCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "ratedCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Seviyesi verilmiş ölçüt sayısı"
+                        },
+                        "score": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "total": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Ağırlıklı seviye toplamı"
+                                },
+                                "max": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Azami ağırlıklı toplam (5 × Σ ağırlık)"
+                                },
+                                "percent": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "100 üzerinden puan (rubrik yuvarlaması)"
+                                }
+                              },
+                              "required": [
+                                "total",
+                                "max",
+                                "percent"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Sunucunun hesapladığı puan (rubrik kuralı, DOM-BEC-021); seviyesi eksikse boş"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "criteria": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "description": "Ölçüt kimliği (sürüm içinde k1, k2, …)"
+                              },
+                              "title": {
+                                "type": "string",
+                                "description": "Ölçüt"
+                              },
+                              "description": {
+                                "description": "Ölçüt açıklaması",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "weight": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Göreli ağırlık (1–10)"
+                              },
+                              "levels": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "level": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "description": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "level",
+                                    "description"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "0–5 seviye tanımları, sırasıyla"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "title",
+                              "description",
+                              "weight",
+                              "levels"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Gözlemin form sürümündeki ölçütler"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "templateId",
+                        "templateVersionId",
+                        "templateName",
+                        "templateVersionNumber",
+                        "teacherMembershipId",
+                        "teacherName",
+                        "observerMembershipId",
+                        "observerName",
+                        "observedDate",
+                        "classId",
+                        "className",
+                        "subjectId",
+                        "subjectName",
+                        "performancePeriodId",
+                        "ratings",
+                        "generalNote",
+                        "status",
+                        "completedAt",
+                        "criterionCount",
+                        "ratedCount",
+                        "score",
+                        "createdAt",
+                        "updatedAt",
+                        "version",
+                        "criteria"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

@@ -7,7 +7,6 @@ import {
   DEFAULT_OBSERVATION_LEVEL_DESCRIPTIONS,
   LESSON_OBSERVATION_MANAGE_ROLES,
   LESSON_OBSERVATION_READ_ROLES,
-  assertLessonObservationDay,
   lessonObservationCreateSchema,
   lessonObservationScore,
   lessonObservationTemplateInputSchema,
@@ -62,6 +61,7 @@ const checks = (patch: Partial<LessonObservationChecks> = {}): LessonObservation
   today: TODAY,
   ...patch,
 })
+const DAY = { observedDate: '2026-11-10' }
 const DRAFT = { status: 'draft' as const, observedDate: '2026-11-10', ratings: rated() }
 const recordChecks = { classFound: null, subjectFound: null, period: undefined, today: TODAY }
 
@@ -139,7 +139,7 @@ test('DOM-FIN-130 K-445: kullanılmış ya da arşivli sürüm yerinde değişme
 })
 
 test('DOM-FIN-130 K-446: gözlem taslağı boş seviyelerle açılır; öğretmen, gözlemci ve kayıt denetimleri', () => {
-  assert.deepEqual(planLessonObservation(checks()), rated())
+  assert.deepEqual(planLessonObservation(DAY, checks()), rated())
   const cases: [Partial<LessonObservationChecks>, string, string?][] = [
     [{ template: null }, 'observation_template_not_found'],
     [
@@ -170,31 +170,31 @@ test('DOM-FIN-130 K-446: gözlem taslağı boş seviyelerle açılır; öğretme
     [{ subjectFound: false }, 'observation_subject_not_found'],
   ]
   for (const [patch, code, kind] of cases)
-    assert.throws(() => planLessonObservation(checks(patch)), isDomainError(code, kind))
+    assert.throws(() => planLessonObservation(DAY, checks(patch)), isDomainError(code, kind))
   // Öğretmen gözlemci olabilir (zümre başkanı, mentor).
   planLessonObservation(
+    DAY,
     checks({ observer: { membershipId: 'm-zumre', role: 'ogretmen', active: true } }),
   )
 })
 
 test('DOM-FIN-130 K-446: gözlem günü bugünden sonra olamaz; dönem kapalıysa ya da gün dışındaysa ret', () => {
   const period = { status: 'active' as const, startDate: '2026-09-01', endDate: '2027-01-31' }
-  assertLessonObservationDay('2026-11-19', undefined, TODAY)
-  assertLessonObservationDay('2026-11-10', period, TODAY)
+  const plan = (observedDate: string, patch: Partial<LessonObservationChecks> = {}) =>
+    planLessonObservation({ observedDate }, checks(patch))
+  plan('2026-11-19')
+  plan('2026-11-10', { period })
+  assert.throws(() => plan('2026-11-20'), isDomainError('observation_date_future'))
   assert.throws(
-    () => assertLessonObservationDay('2026-11-20', undefined, TODAY),
-    isDomainError('observation_date_future'),
-  )
-  assert.throws(
-    () => assertLessonObservationDay('2026-11-10', null, TODAY),
+    () => plan('2026-11-10', { period: null }),
     isDomainError('observation_period_not_found'),
   )
   assert.throws(
-    () => assertLessonObservationDay('2026-11-10', { ...period, status: 'closed' }, TODAY),
+    () => plan('2026-11-10', { period: { ...period, status: 'closed' } }),
     isDomainError('observation_period_closed'),
   )
   assert.throws(
-    () => assertLessonObservationDay('2026-08-31', period, TODAY),
+    () => plan('2026-08-31', { period }),
     isDomainError('observation_date_outside_period'),
   )
 })

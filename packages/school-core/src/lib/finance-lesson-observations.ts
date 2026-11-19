@@ -426,7 +426,10 @@ export interface LessonObservationChecks {
  * başka kişidir. Gün bugünden sonra değildir; dönem bağlanırsa dönem kapanmamıştır ve gün dönem
  * içindedir. Ölçüt seviyeleri boş başlar.
  */
-export function planLessonObservation(checks: LessonObservationChecks): ObservationRating[] {
+export function planLessonObservation(
+  input: { observedDate: string },
+  checks: LessonObservationChecks,
+): ObservationRating[] {
   const { template, teacher, observer } = checks
   if (template === null)
     throw ruleError('observation_template_not_found', 'Gözlem formu bulunamadı.', ['templateId'])
@@ -460,6 +463,8 @@ export function planLessonObservation(checks: LessonObservationChecks): Observat
       'observerMembershipId',
     ])
   assertRecords(checks)
+  assertDay(input.observedDate, checks.today)
+  assertPeriod(checks.period, input.observedDate)
   return template.criteria.map((criterion) => ({
     criterionId: criterion.id,
     level: null,
@@ -469,16 +474,6 @@ export function planLessonObservation(checks: LessonObservationChecks): Observat
 
 const completedError = () =>
   conflict('observation_completed', 'Gözlem tamamlandı; artık değiştirilemez.')
-
-/** Gözlem günü ve dönem denetimi (oluşturma). Dönem bağı yoksa `period` `undefined`. */
-export function assertLessonObservationDay(
-  observedDate: string,
-  period: ObservationPeriodCheck,
-  today: string,
-): void {
-  assertDay(observedDate, today)
-  assertPeriod(period, observedDate)
-}
 
 export interface LessonObservationPatch {
   observedDate?: string

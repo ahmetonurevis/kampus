@@ -192,6 +192,10 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // Özlük verisi imhası geri alınamaz; çift tıklama ikinci imha kaydı yazmaz
   // (routes/finance-staff-retention.ts; DOM-FIN-122, ON-176).
   'POST /api/v1/finance/staff-data-destructions',
+  // Mesleki gelişim kataloğuna eğitim ekleme ve personel atama; çift tıklama ikinci eğitimi ya da
+  // ikinci atamayı açmaz (routes/finance-professional-development.ts; DOM-FIN-125, ON-214).
+  'POST /api/v1/finance/professional-development',
+  'POST /api/v1/finance/professional-development/{programId}/enrollments',
 ]
 // Onur: kayıt ve finans sonu
 

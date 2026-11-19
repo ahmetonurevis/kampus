@@ -11240,6 +11240,118 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/professional-development": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Mesleki gelişim kataloğunu listele
+         * @description Kurs, seminer, konferans, kurum içi ve çevrim içi eğitimler (DOM-FIN-125); yayında önce, sonra başlangıç günü. Ad ya da sağlayıcıda aranır; tür ve durumla süzülür. Her satırda atanan ve katılan sayısı. Rol: `yonetici`, `onburo` (ön büro taslak eğitimi görmez; K-430). Modül `finance`.
+         */
+        get: operations["listProfessionalDevelopmentPrograms"];
+        put?: never;
+        /**
+         * Kataloğa eğitim ekle
+         * @description Yeni eğitim taslak açılır (K-431). Süre yarım saat adımlı; sürekli eğitimde tarih girilmez, değilse başlangıç ve bitiş zorunlu. Yer ya da https bağlantıdan biri zorunlu, çevrim içi türde bağlantı zorunlu. Ücret kuruş ve isteğe bağlı; maliyet merkezi yalnız ücretle ve kurumun etkin merkezi (yoksa 422 `professional_development_cost_center_not_found`, pasifse 422 `professional_development_cost_center_inactive`). Denetim kaydına alan adları yazılır. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (K-430). Modül `finance`.
+         */
+        post: operations["createProfessionalDevelopmentProgram"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/professional-development/{programId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Eğitim ayrıntısı
+         * @description Olmayan, başka kurumun ya da (ön büro için) taslak eğitim 404. Rol: `yonetici`, `onburo` (ön büro taslak eğitimi görmez; K-430). Modül `finance`.
+         */
+        get: operations["getProfessionalDevelopmentProgram"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Eğitimi düzelt
+         * @description Tam gövde yazılır (oluşturma kurallarıyla). Taslak ve yayındaki eğitim düzeltilir; arşivdeki 409 `professional_development_archived`. Kontenjan atanmış personel sayısının altına (422 `professional_development_capacity_below_enrolled`), süre girilmiş katılım saatinin altına inemez (422 `professional_development_duration_below_attended`). `If-Match` zorunlu. Başka kurumun eğitimi 404. Rol: yalnız `yonetici` (K-430). Modül `finance`.
+         */
+        patch: operations["updateProfessionalDevelopmentProgram"];
+        trace?: never;
+    };
+    "/api/v1/finance/professional-development/{programId}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Eğitimin durumunu değiştir
+         * @description Taslak → yayında, taslak ya da yayında → arşiv (K-431). Arşiv son durumdur; izinsiz geçiş 409 `professional_development_status_transition`. `If-Match` zorunlu. Başka kurumun eğitimi 404. Rol: yalnız `yonetici` (K-430). Modül `finance`.
+         */
+        post: operations["changeProfessionalDevelopmentProgramStatus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/professional-development/{programId}/enrollments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Eğitimin katılımcıları
+         * @description Atanan ya da katılım isteği kaydedilen personel, ada göre; durumla süzülür. Ön büro taslak eğitimin listesini göremez (404). Başka kurumun eğitimi 404. Rol: `yonetici`, `onburo` (ön büro taslak eğitimi görmez; K-430). Modül `finance`.
+         */
+        get: operations["listProfessionalDevelopmentEnrollments"];
+        put?: never;
+        /**
+         * Personeli eğitime ata
+         * @description Atama ya da personelin katılım isteği kaydı; durum "atandı" (K-432). Yalnız yayındaki eğitime (422 `professional_development_not_published`); personel kurumun etkin yönetici, öğretmen ya da ön büro üyeliği (yoksa 422 `professional_development_staff_not_found`, öğrenci ya da veli 422 `professional_development_not_staff`, ayrılmış 422 `professional_development_staff_inactive`). Aynı personel ikinci kez 409 `professional_development_already_enrolled`; kontenjan doluysa 422 `professional_development_capacity_full`. `Idempotency-Key` zorunlu. Başka kurumun eğitimi 404. Rol: yalnız `yonetici` (K-430). Modül `finance`.
+         */
+        post: operations["createProfessionalDevelopmentEnrollment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/professional-development/{programId}/enrollments/{enrollmentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Katılım durumunu işaretle
+         * @description Atandı, katıldı ya da tamamlamadı (K-432). "Katıldı" katılım saati ister (yarım saat adımlı, eğitim süresini aşamaz: 422 `professional_development_hours_exceed`); diğer durumlarda saat girilmez. Arşivdeki eğitimin katılımı değişmez (409 `professional_development_archived`). Sertifika ayrı iştir (ON-215). `If-Match` zorunlu. Başka kurumun kaydı 404. Rol: yalnız `yonetici` (K-430). Modül `finance`.
+         */
+        patch: operations["updateProfessionalDevelopmentEnrollment"];
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -118572,6 +118684,1204 @@ export interface operations {
                                     warning: string | null;
                                 };
                             }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listProfessionalDevelopmentPrograms: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Eğitim adında ya da sağlayıcıda arama */
+                q?: string;
+                /** @description Eğitim türü */
+                kind?: "course" | "seminar" | "conference" | "in_house" | "online";
+                /** @description Durum; ön büroya taslak hiç dönmez */
+                status?: "draft" | "published" | "archived";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "course" | "seminar" | "conference" | "in_house" | "online";
+                            provider: string;
+                            /** @description Toplam süre, saat (yarım saat adımlı) */
+                            durationHours: number;
+                            /** @description Sürekli açık eğitim; tarih aralığı yok */
+                            ongoing: boolean;
+                            /** @description Başlangıç günü (YYYY-MM-DD) */
+                            startDate: string | null;
+                            /** @description Bitiş günü (YYYY-MM-DD) */
+                            endDate: string | null;
+                            location: string | null;
+                            onlineUrl: string | null;
+                            /** @description Hedef rol etiketleri; boşsa tüm personel */
+                            audienceRoles: ("yonetici" | "ogretmen" | "onburo")[];
+                            /** @description Hedef branş etiketleri */
+                            audienceBranches: string[];
+                            /** @description Kişi başı ücret, kuruş */
+                            feeCents: number | null;
+                            /** @description Maliyet merkezi (ON-204) */
+                            costCenterId: string | null;
+                            /** @description Kontenjan; boşsa sınırsız */
+                            capacity: number | null;
+                            /** @enum {string} */
+                            status: "draft" | "published" | "archived";
+                            /** @description Atanan personel sayısı (her durum) */
+                            enrolledCount: number;
+                            /** @description Katıldı işaretli personel sayısı */
+                            attendedCount: number;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createProfessionalDevelopmentProgram: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Eğitimin adı */
+                    name: string;
+                    /**
+                     * @description `course` kurs, `seminar` seminer, `conference` konferans, `in_house` kurum içi, `online` çevrim içi
+                     * @enum {string}
+                     */
+                    kind: "course" | "seminar" | "conference" | "in_house" | "online";
+                    /** @description Eğitimi veren kurum ya da kişi; kurum içi eğitimde kurumun kendisi */
+                    provider: string;
+                    /** @description Toplam süre, saat (yarım saat adımlı) */
+                    durationHours: number;
+                    /**
+                     * @description Sürekli açık eğitim (tarih aralığı yok); örneğin kendi hızında çevrim içi kurs
+                     * @default false
+                     */
+                    ongoing?: boolean;
+                    /**
+                     * @description Başlangıç günü (YYYY-MM-DD)
+                     * @default null
+                     */
+                    startDate?: string | null;
+                    /**
+                     * @description Bitiş günü (YYYY-MM-DD)
+                     * @default null
+                     */
+                    endDate?: string | null;
+                    /** @description Yüz yüze eğitimin yeri */
+                    location?: string | null;
+                    /** @description Çevrim içi bağlantı (https://) */
+                    onlineUrl?: string | null;
+                    /**
+                     * @description Hedef kitle rol etiketleri; boşsa tüm personel
+                     * @default []
+                     */
+                    audienceRoles?: ("yonetici" | "ogretmen" | "onburo")[];
+                    /**
+                     * @description Hedef kitle branş etiketleri (serbest metin)
+                     * @default []
+                     */
+                    audienceBranches?: string[];
+                    /**
+                     * @description Kişi başı ücret, kuruş; boşsa ücretsiz ya da bilinmiyor
+                     * @default null
+                     */
+                    feeCents?: number | null;
+                    /**
+                     * @description Ücretin yazılacağı maliyet merkezi (isteğe bağlı; ON-204)
+                     * @default null
+                     */
+                    costCenterId?: string | null;
+                    /**
+                     * @description Kontenjan; boşsa sınırsız
+                     * @default null
+                     */
+                    capacity?: number | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "course" | "seminar" | "conference" | "in_house" | "online";
+                            provider: string;
+                            /** @description Toplam süre, saat (yarım saat adımlı) */
+                            durationHours: number;
+                            /** @description Sürekli açık eğitim; tarih aralığı yok */
+                            ongoing: boolean;
+                            /** @description Başlangıç günü (YYYY-MM-DD) */
+                            startDate: string | null;
+                            /** @description Bitiş günü (YYYY-MM-DD) */
+                            endDate: string | null;
+                            location: string | null;
+                            onlineUrl: string | null;
+                            /** @description Hedef rol etiketleri; boşsa tüm personel */
+                            audienceRoles: ("yonetici" | "ogretmen" | "onburo")[];
+                            /** @description Hedef branş etiketleri */
+                            audienceBranches: string[];
+                            /** @description Kişi başı ücret, kuruş */
+                            feeCents: number | null;
+                            /** @description Maliyet merkezi (ON-204) */
+                            costCenterId: string | null;
+                            /** @description Kontenjan; boşsa sınırsız */
+                            capacity: number | null;
+                            /** @enum {string} */
+                            status: "draft" | "published" | "archived";
+                            /** @description Atanan personel sayısı (her durum) */
+                            enrolledCount: number;
+                            /** @description Katıldı işaretli personel sayısı */
+                            attendedCount: number;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getProfessionalDevelopmentProgram: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                programId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "course" | "seminar" | "conference" | "in_house" | "online";
+                            provider: string;
+                            /** @description Toplam süre, saat (yarım saat adımlı) */
+                            durationHours: number;
+                            /** @description Sürekli açık eğitim; tarih aralığı yok */
+                            ongoing: boolean;
+                            /** @description Başlangıç günü (YYYY-MM-DD) */
+                            startDate: string | null;
+                            /** @description Bitiş günü (YYYY-MM-DD) */
+                            endDate: string | null;
+                            location: string | null;
+                            onlineUrl: string | null;
+                            /** @description Hedef rol etiketleri; boşsa tüm personel */
+                            audienceRoles: ("yonetici" | "ogretmen" | "onburo")[];
+                            /** @description Hedef branş etiketleri */
+                            audienceBranches: string[];
+                            /** @description Kişi başı ücret, kuruş */
+                            feeCents: number | null;
+                            /** @description Maliyet merkezi (ON-204) */
+                            costCenterId: string | null;
+                            /** @description Kontenjan; boşsa sınırsız */
+                            capacity: number | null;
+                            /** @enum {string} */
+                            status: "draft" | "published" | "archived";
+                            /** @description Atanan personel sayısı (her durum) */
+                            enrolledCount: number;
+                            /** @description Katıldı işaretli personel sayısı */
+                            attendedCount: number;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateProfessionalDevelopmentProgram: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                programId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Eğitimin adı */
+                    name: string;
+                    /**
+                     * @description `course` kurs, `seminar` seminer, `conference` konferans, `in_house` kurum içi, `online` çevrim içi
+                     * @enum {string}
+                     */
+                    kind: "course" | "seminar" | "conference" | "in_house" | "online";
+                    /** @description Eğitimi veren kurum ya da kişi; kurum içi eğitimde kurumun kendisi */
+                    provider: string;
+                    /** @description Toplam süre, saat (yarım saat adımlı) */
+                    durationHours: number;
+                    /**
+                     * @description Sürekli açık eğitim (tarih aralığı yok); örneğin kendi hızında çevrim içi kurs
+                     * @default false
+                     */
+                    ongoing?: boolean;
+                    /**
+                     * @description Başlangıç günü (YYYY-MM-DD)
+                     * @default null
+                     */
+                    startDate?: string | null;
+                    /**
+                     * @description Bitiş günü (YYYY-MM-DD)
+                     * @default null
+                     */
+                    endDate?: string | null;
+                    /** @description Yüz yüze eğitimin yeri */
+                    location?: string | null;
+                    /** @description Çevrim içi bağlantı (https://) */
+                    onlineUrl?: string | null;
+                    /**
+                     * @description Hedef kitle rol etiketleri; boşsa tüm personel
+                     * @default []
+                     */
+                    audienceRoles?: ("yonetici" | "ogretmen" | "onburo")[];
+                    /**
+                     * @description Hedef kitle branş etiketleri (serbest metin)
+                     * @default []
+                     */
+                    audienceBranches?: string[];
+                    /**
+                     * @description Kişi başı ücret, kuruş; boşsa ücretsiz ya da bilinmiyor
+                     * @default null
+                     */
+                    feeCents?: number | null;
+                    /**
+                     * @description Ücretin yazılacağı maliyet merkezi (isteğe bağlı; ON-204)
+                     * @default null
+                     */
+                    costCenterId?: string | null;
+                    /**
+                     * @description Kontenjan; boşsa sınırsız
+                     * @default null
+                     */
+                    capacity?: number | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "course" | "seminar" | "conference" | "in_house" | "online";
+                            provider: string;
+                            /** @description Toplam süre, saat (yarım saat adımlı) */
+                            durationHours: number;
+                            /** @description Sürekli açık eğitim; tarih aralığı yok */
+                            ongoing: boolean;
+                            /** @description Başlangıç günü (YYYY-MM-DD) */
+                            startDate: string | null;
+                            /** @description Bitiş günü (YYYY-MM-DD) */
+                            endDate: string | null;
+                            location: string | null;
+                            onlineUrl: string | null;
+                            /** @description Hedef rol etiketleri; boşsa tüm personel */
+                            audienceRoles: ("yonetici" | "ogretmen" | "onburo")[];
+                            /** @description Hedef branş etiketleri */
+                            audienceBranches: string[];
+                            /** @description Kişi başı ücret, kuruş */
+                            feeCents: number | null;
+                            /** @description Maliyet merkezi (ON-204) */
+                            costCenterId: string | null;
+                            /** @description Kontenjan; boşsa sınırsız */
+                            capacity: number | null;
+                            /** @enum {string} */
+                            status: "draft" | "published" | "archived";
+                            /** @description Atanan personel sayısı (her durum) */
+                            enrolledCount: number;
+                            /** @description Katıldı işaretli personel sayısı */
+                            attendedCount: number;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    changeProfessionalDevelopmentProgramStatus: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                programId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description Yeni durum: `published` yayına al, `archived` arşivle
+                     * @enum {string}
+                     */
+                    status: "draft" | "published" | "archived";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @enum {string} */
+                            kind: "course" | "seminar" | "conference" | "in_house" | "online";
+                            provider: string;
+                            /** @description Toplam süre, saat (yarım saat adımlı) */
+                            durationHours: number;
+                            /** @description Sürekli açık eğitim; tarih aralığı yok */
+                            ongoing: boolean;
+                            /** @description Başlangıç günü (YYYY-MM-DD) */
+                            startDate: string | null;
+                            /** @description Bitiş günü (YYYY-MM-DD) */
+                            endDate: string | null;
+                            location: string | null;
+                            onlineUrl: string | null;
+                            /** @description Hedef rol etiketleri; boşsa tüm personel */
+                            audienceRoles: ("yonetici" | "ogretmen" | "onburo")[];
+                            /** @description Hedef branş etiketleri */
+                            audienceBranches: string[];
+                            /** @description Kişi başı ücret, kuruş */
+                            feeCents: number | null;
+                            /** @description Maliyet merkezi (ON-204) */
+                            costCenterId: string | null;
+                            /** @description Kontenjan; boşsa sınırsız */
+                            capacity: number | null;
+                            /** @enum {string} */
+                            status: "draft" | "published" | "archived";
+                            /** @description Atanan personel sayısı (her durum) */
+                            enrolledCount: number;
+                            /** @description Katıldı işaretli personel sayısı */
+                            attendedCount: number;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listProfessionalDevelopmentEnrollments: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Katılım durumu */
+                status?: "assigned" | "attended" | "not_completed";
+            };
+            header?: never;
+            path: {
+                programId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            programId: string;
+                            /** @description Personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı (üyelikten) */
+                            staffName: string;
+                            /** @description Personelin rolü */
+                            staffRole: string;
+                            /** @enum {string} */
+                            origin: "request" | "assignment";
+                            /** @enum {string} */
+                            status: "assigned" | "attended" | "not_completed";
+                            /** @description Katılım saati; yalnız `attended` */
+                            attendedHours: number | null;
+                            statusChangedAt: string;
+                            createdAt: string;
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createProfessionalDevelopmentEnrollment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                programId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Atanan personelin kurum üyeliği */
+                    membershipId: string;
+                    /**
+                     * @description `request` personelin katılım isteği, `assignment` yönetici ataması
+                     * @default assignment
+                     * @enum {string}
+                     */
+                    origin?: "request" | "assignment";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            programId: string;
+                            /** @description Personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı (üyelikten) */
+                            staffName: string;
+                            /** @description Personelin rolü */
+                            staffRole: string;
+                            /** @enum {string} */
+                            origin: "request" | "assignment";
+                            /** @enum {string} */
+                            status: "assigned" | "attended" | "not_completed";
+                            /** @description Katılım saati; yalnız `attended` */
+                            attendedHours: number | null;
+                            statusChangedAt: string;
+                            createdAt: string;
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateProfessionalDevelopmentEnrollment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                programId: string;
+                enrollmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description `assigned` atandı, `attended` katıldı, `not_completed` tamamlamadı
+                     * @enum {string}
+                     */
+                    status: "assigned" | "attended" | "not_completed";
+                    /**
+                     * @description Katılım saati; yalnız `attended` durumunda ve zorunlu
+                     * @default null
+                     */
+                    attendedHours?: number | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            programId: string;
+                            /** @description Personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı (üyelikten) */
+                            staffName: string;
+                            /** @description Personelin rolü */
+                            staffRole: string;
+                            /** @enum {string} */
+                            origin: "request" | "assignment";
+                            /** @enum {string} */
+                            status: "assigned" | "attended" | "not_completed";
+                            /** @description Katılım saati; yalnız `attended` */
+                            attendedHours: number | null;
+                            statusChangedAt: string;
+                            createdAt: string;
+                            version: number;
                         };
                     };
                 };

@@ -262265,6 +262265,2625 @@
         }
       }
     },
+    "/api/v1/finance/professional-development": {
+      "get": {
+        "operationId": "listProfessionalDevelopmentPrograms",
+        "summary": "Mesleki gelişim kataloğunu listele",
+        "tags": [
+          "finance-professional-development"
+        ],
+        "description": "Kurs, seminer, konferans, kurum içi ve çevrim içi eğitimler (DOM-FIN-125); yayında önce, sonra başlangıç günü. Ad ya da sağlayıcıda aranır; tür ve durumla süzülür. Her satırda atanan ve katılan sayısı. Rol: `yonetici`, `onburo` (ön büro taslak eğitimi görmez; K-430). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Eğitim adında ya da sağlayıcıda arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "course",
+                "seminar",
+                "conference",
+                "in_house",
+                "online"
+              ]
+            },
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "description": "Eğitim türü"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "published",
+                "archived"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Durum; ön büroya taslak hiç dönmez"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "course",
+                              "seminar",
+                              "conference",
+                              "in_house",
+                              "online"
+                            ]
+                          },
+                          "provider": {
+                            "type": "string"
+                          },
+                          "durationHours": {
+                            "type": "number",
+                            "description": "Toplam süre, saat (yarım saat adımlı)"
+                          },
+                          "ongoing": {
+                            "type": "boolean",
+                            "description": "Sürekli açık eğitim; tarih aralığı yok"
+                          },
+                          "startDate": {
+                            "description": "Başlangıç günü (YYYY-MM-DD)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "endDate": {
+                            "description": "Bitiş günü (YYYY-MM-DD)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "location": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "onlineUrl": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "audienceRoles": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "yonetici",
+                                "ogretmen",
+                                "onburo"
+                              ]
+                            },
+                            "description": "Hedef rol etiketleri; boşsa tüm personel"
+                          },
+                          "audienceBranches": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "description": "Hedef branş etiketleri"
+                          },
+                          "feeCents": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Kişi başı ücret, kuruş"
+                          },
+                          "costCenterId": {
+                            "description": "Maliyet merkezi (ON-204)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "capacity": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Kontenjan; boşsa sınırsız"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "draft",
+                              "published",
+                              "archived"
+                            ]
+                          },
+                          "enrolledCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Atanan personel sayısı (her durum)"
+                          },
+                          "attendedCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Katıldı işaretli personel sayısı"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "kind",
+                          "provider",
+                          "durationHours",
+                          "ongoing",
+                          "startDate",
+                          "endDate",
+                          "location",
+                          "onlineUrl",
+                          "audienceRoles",
+                          "audienceBranches",
+                          "feeCents",
+                          "costCenterId",
+                          "capacity",
+                          "status",
+                          "enrolledCount",
+                          "attendedCount",
+                          "createdAt",
+                          "updatedAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createProfessionalDevelopmentProgram",
+        "summary": "Kataloğa eğitim ekle",
+        "tags": [
+          "finance-professional-development"
+        ],
+        "description": "Yeni eğitim taslak açılır (K-431). Süre yarım saat adımlı; sürekli eğitimde tarih girilmez, değilse başlangıç ve bitiş zorunlu. Yer ya da https bağlantıdan biri zorunlu, çevrim içi türde bağlantı zorunlu. Ücret kuruş ve isteğe bağlı; maliyet merkezi yalnız ücretle ve kurumun etkin merkezi (yoksa 422 `professional_development_cost_center_not_found`, pasifse 422 `professional_development_cost_center_inactive`). Denetim kaydına alan adları yazılır. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (K-430). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 160,
+                    "description": "Eğitimin adı"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "course",
+                      "seminar",
+                      "conference",
+                      "in_house",
+                      "online"
+                    ],
+                    "description": "`course` kurs, `seminar` seminer, `conference` konferans, `in_house` kurum içi, `online` çevrim içi"
+                  },
+                  "provider": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 160,
+                    "description": "Eğitimi veren kurum ya da kişi; kurum içi eğitimde kurumun kendisi"
+                  },
+                  "durationHours": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "maximum": 2000,
+                    "multipleOf": 0.5,
+                    "description": "Toplam süre, saat (yarım saat adımlı)"
+                  },
+                  "ongoing": {
+                    "default": false,
+                    "description": "Sürekli açık eğitim (tarih aralığı yok); örneğin kendi hızında çevrim içi kurs",
+                    "type": "boolean"
+                  },
+                  "startDate": {
+                    "default": null,
+                    "description": "Başlangıç günü (YYYY-MM-DD)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "endDate": {
+                    "default": null,
+                    "description": "Bitiş günü (YYYY-MM-DD)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "location": {
+                    "description": "Yüz yüze eğitimin yeri",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "onlineUrl": {
+                    "description": "Çevrim içi bağlantı (https://)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "audienceRoles": {
+                    "description": "Hedef kitle rol etiketleri; boşsa tüm personel",
+                    "default": [],
+                    "maxItems": 3,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "yonetici",
+                        "ogretmen",
+                        "onburo"
+                      ]
+                    }
+                  },
+                  "audienceBranches": {
+                    "description": "Hedef kitle branş etiketleri (serbest metin)",
+                    "default": [],
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 2,
+                      "maxLength": 60
+                    }
+                  },
+                  "feeCents": {
+                    "default": null,
+                    "description": "Kişi başı ücret, kuruş; boşsa ücretsiz ya da bilinmiyor",
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 100000000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "costCenterId": {
+                    "default": null,
+                    "description": "Ücretin yazılacağı maliyet merkezi (isteğe bağlı; ON-204)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "capacity": {
+                    "default": null,
+                    "description": "Kontenjan; boşsa sınırsız",
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 10000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "name",
+                  "kind",
+                  "provider",
+                  "durationHours"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "course",
+                            "seminar",
+                            "conference",
+                            "in_house",
+                            "online"
+                          ]
+                        },
+                        "provider": {
+                          "type": "string"
+                        },
+                        "durationHours": {
+                          "type": "number",
+                          "description": "Toplam süre, saat (yarım saat adımlı)"
+                        },
+                        "ongoing": {
+                          "type": "boolean",
+                          "description": "Sürekli açık eğitim; tarih aralığı yok"
+                        },
+                        "startDate": {
+                          "description": "Başlangıç günü (YYYY-MM-DD)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "endDate": {
+                          "description": "Bitiş günü (YYYY-MM-DD)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "location": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "onlineUrl": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "audienceRoles": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "yonetici",
+                              "ogretmen",
+                              "onburo"
+                            ]
+                          },
+                          "description": "Hedef rol etiketleri; boşsa tüm personel"
+                        },
+                        "audienceBranches": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Hedef branş etiketleri"
+                        },
+                        "feeCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Kişi başı ücret, kuruş"
+                        },
+                        "costCenterId": {
+                          "description": "Maliyet merkezi (ON-204)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "capacity": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Kontenjan; boşsa sınırsız"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "archived"
+                          ]
+                        },
+                        "enrolledCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Atanan personel sayısı (her durum)"
+                        },
+                        "attendedCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Katıldı işaretli personel sayısı"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "kind",
+                        "provider",
+                        "durationHours",
+                        "ongoing",
+                        "startDate",
+                        "endDate",
+                        "location",
+                        "onlineUrl",
+                        "audienceRoles",
+                        "audienceBranches",
+                        "feeCents",
+                        "costCenterId",
+                        "capacity",
+                        "status",
+                        "enrolledCount",
+                        "attendedCount",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/professional-development/{programId}": {
+      "get": {
+        "operationId": "getProfessionalDevelopmentProgram",
+        "summary": "Eğitim ayrıntısı",
+        "tags": [
+          "finance-professional-development"
+        ],
+        "description": "Olmayan, başka kurumun ya da (ön büro için) taslak eğitim 404. Rol: `yonetici`, `onburo` (ön büro taslak eğitimi görmez; K-430). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "programId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "course",
+                            "seminar",
+                            "conference",
+                            "in_house",
+                            "online"
+                          ]
+                        },
+                        "provider": {
+                          "type": "string"
+                        },
+                        "durationHours": {
+                          "type": "number",
+                          "description": "Toplam süre, saat (yarım saat adımlı)"
+                        },
+                        "ongoing": {
+                          "type": "boolean",
+                          "description": "Sürekli açık eğitim; tarih aralığı yok"
+                        },
+                        "startDate": {
+                          "description": "Başlangıç günü (YYYY-MM-DD)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "endDate": {
+                          "description": "Bitiş günü (YYYY-MM-DD)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "location": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "onlineUrl": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "audienceRoles": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "yonetici",
+                              "ogretmen",
+                              "onburo"
+                            ]
+                          },
+                          "description": "Hedef rol etiketleri; boşsa tüm personel"
+                        },
+                        "audienceBranches": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Hedef branş etiketleri"
+                        },
+                        "feeCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Kişi başı ücret, kuruş"
+                        },
+                        "costCenterId": {
+                          "description": "Maliyet merkezi (ON-204)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "capacity": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Kontenjan; boşsa sınırsız"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "archived"
+                          ]
+                        },
+                        "enrolledCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Atanan personel sayısı (her durum)"
+                        },
+                        "attendedCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Katıldı işaretli personel sayısı"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "kind",
+                        "provider",
+                        "durationHours",
+                        "ongoing",
+                        "startDate",
+                        "endDate",
+                        "location",
+                        "onlineUrl",
+                        "audienceRoles",
+                        "audienceBranches",
+                        "feeCents",
+                        "costCenterId",
+                        "capacity",
+                        "status",
+                        "enrolledCount",
+                        "attendedCount",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateProfessionalDevelopmentProgram",
+        "summary": "Eğitimi düzelt",
+        "tags": [
+          "finance-professional-development"
+        ],
+        "description": "Tam gövde yazılır (oluşturma kurallarıyla). Taslak ve yayındaki eğitim düzeltilir; arşivdeki 409 `professional_development_archived`. Kontenjan atanmış personel sayısının altına (422 `professional_development_capacity_below_enrolled`), süre girilmiş katılım saatinin altına inemez (422 `professional_development_duration_below_attended`). `If-Match` zorunlu. Başka kurumun eğitimi 404. Rol: yalnız `yonetici` (K-430). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 160,
+                    "description": "Eğitimin adı"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "course",
+                      "seminar",
+                      "conference",
+                      "in_house",
+                      "online"
+                    ],
+                    "description": "`course` kurs, `seminar` seminer, `conference` konferans, `in_house` kurum içi, `online` çevrim içi"
+                  },
+                  "provider": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 160,
+                    "description": "Eğitimi veren kurum ya da kişi; kurum içi eğitimde kurumun kendisi"
+                  },
+                  "durationHours": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "maximum": 2000,
+                    "multipleOf": 0.5,
+                    "description": "Toplam süre, saat (yarım saat adımlı)"
+                  },
+                  "ongoing": {
+                    "default": false,
+                    "description": "Sürekli açık eğitim (tarih aralığı yok); örneğin kendi hızında çevrim içi kurs",
+                    "type": "boolean"
+                  },
+                  "startDate": {
+                    "default": null,
+                    "description": "Başlangıç günü (YYYY-MM-DD)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "endDate": {
+                    "default": null,
+                    "description": "Bitiş günü (YYYY-MM-DD)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "location": {
+                    "description": "Yüz yüze eğitimin yeri",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "onlineUrl": {
+                    "description": "Çevrim içi bağlantı (https://)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "audienceRoles": {
+                    "description": "Hedef kitle rol etiketleri; boşsa tüm personel",
+                    "default": [],
+                    "maxItems": 3,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "yonetici",
+                        "ogretmen",
+                        "onburo"
+                      ]
+                    }
+                  },
+                  "audienceBranches": {
+                    "description": "Hedef kitle branş etiketleri (serbest metin)",
+                    "default": [],
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 2,
+                      "maxLength": 60
+                    }
+                  },
+                  "feeCents": {
+                    "default": null,
+                    "description": "Kişi başı ücret, kuruş; boşsa ücretsiz ya da bilinmiyor",
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 100000000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "costCenterId": {
+                    "default": null,
+                    "description": "Ücretin yazılacağı maliyet merkezi (isteğe bağlı; ON-204)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "capacity": {
+                    "default": null,
+                    "description": "Kontenjan; boşsa sınırsız",
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 10000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "name",
+                  "kind",
+                  "provider",
+                  "durationHours"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "programId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "course",
+                            "seminar",
+                            "conference",
+                            "in_house",
+                            "online"
+                          ]
+                        },
+                        "provider": {
+                          "type": "string"
+                        },
+                        "durationHours": {
+                          "type": "number",
+                          "description": "Toplam süre, saat (yarım saat adımlı)"
+                        },
+                        "ongoing": {
+                          "type": "boolean",
+                          "description": "Sürekli açık eğitim; tarih aralığı yok"
+                        },
+                        "startDate": {
+                          "description": "Başlangıç günü (YYYY-MM-DD)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "endDate": {
+                          "description": "Bitiş günü (YYYY-MM-DD)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "location": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "onlineUrl": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "audienceRoles": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "yonetici",
+                              "ogretmen",
+                              "onburo"
+                            ]
+                          },
+                          "description": "Hedef rol etiketleri; boşsa tüm personel"
+                        },
+                        "audienceBranches": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Hedef branş etiketleri"
+                        },
+                        "feeCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Kişi başı ücret, kuruş"
+                        },
+                        "costCenterId": {
+                          "description": "Maliyet merkezi (ON-204)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "capacity": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Kontenjan; boşsa sınırsız"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "archived"
+                          ]
+                        },
+                        "enrolledCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Atanan personel sayısı (her durum)"
+                        },
+                        "attendedCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Katıldı işaretli personel sayısı"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "kind",
+                        "provider",
+                        "durationHours",
+                        "ongoing",
+                        "startDate",
+                        "endDate",
+                        "location",
+                        "onlineUrl",
+                        "audienceRoles",
+                        "audienceBranches",
+                        "feeCents",
+                        "costCenterId",
+                        "capacity",
+                        "status",
+                        "enrolledCount",
+                        "attendedCount",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/professional-development/{programId}/status": {
+      "post": {
+        "operationId": "changeProfessionalDevelopmentProgramStatus",
+        "summary": "Eğitimin durumunu değiştir",
+        "tags": [
+          "finance-professional-development"
+        ],
+        "description": "Taslak → yayında, taslak ya da yayında → arşiv (K-431). Arşiv son durumdur; izinsiz geçiş 409 `professional_development_status_transition`. `If-Match` zorunlu. Başka kurumun eğitimi 404. Rol: yalnız `yonetici` (K-430). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "draft",
+                      "published",
+                      "archived"
+                    ],
+                    "description": "Yeni durum: `published` yayına al, `archived` arşivle"
+                  }
+                },
+                "required": [
+                  "status"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "programId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "course",
+                            "seminar",
+                            "conference",
+                            "in_house",
+                            "online"
+                          ]
+                        },
+                        "provider": {
+                          "type": "string"
+                        },
+                        "durationHours": {
+                          "type": "number",
+                          "description": "Toplam süre, saat (yarım saat adımlı)"
+                        },
+                        "ongoing": {
+                          "type": "boolean",
+                          "description": "Sürekli açık eğitim; tarih aralığı yok"
+                        },
+                        "startDate": {
+                          "description": "Başlangıç günü (YYYY-MM-DD)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "endDate": {
+                          "description": "Bitiş günü (YYYY-MM-DD)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "location": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "onlineUrl": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "audienceRoles": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "yonetici",
+                              "ogretmen",
+                              "onburo"
+                            ]
+                          },
+                          "description": "Hedef rol etiketleri; boşsa tüm personel"
+                        },
+                        "audienceBranches": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Hedef branş etiketleri"
+                        },
+                        "feeCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Kişi başı ücret, kuruş"
+                        },
+                        "costCenterId": {
+                          "description": "Maliyet merkezi (ON-204)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "capacity": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Kontenjan; boşsa sınırsız"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "archived"
+                          ]
+                        },
+                        "enrolledCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Atanan personel sayısı (her durum)"
+                        },
+                        "attendedCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Katıldı işaretli personel sayısı"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "kind",
+                        "provider",
+                        "durationHours",
+                        "ongoing",
+                        "startDate",
+                        "endDate",
+                        "location",
+                        "onlineUrl",
+                        "audienceRoles",
+                        "audienceBranches",
+                        "feeCents",
+                        "costCenterId",
+                        "capacity",
+                        "status",
+                        "enrolledCount",
+                        "attendedCount",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/professional-development/{programId}/enrollments": {
+      "get": {
+        "operationId": "listProfessionalDevelopmentEnrollments",
+        "summary": "Eğitimin katılımcıları",
+        "tags": [
+          "finance-professional-development"
+        ],
+        "description": "Atanan ya da katılım isteği kaydedilen personel, ada göre; durumla süzülür. Ön büro taslak eğitimin listesini göremez (404). Başka kurumun eğitimi 404. Rol: `yonetici`, `onburo` (ön büro taslak eğitimi görmez; K-430). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "assigned",
+                "attended",
+                "not_completed"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Katılım durumu"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "programId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "programId": {
+                            "type": "string"
+                          },
+                          "membershipId": {
+                            "type": "string",
+                            "description": "Personelin kurum üyeliği"
+                          },
+                          "staffName": {
+                            "type": "string",
+                            "description": "Personel adı (üyelikten)"
+                          },
+                          "staffRole": {
+                            "type": "string",
+                            "description": "Personelin rolü"
+                          },
+                          "origin": {
+                            "type": "string",
+                            "enum": [
+                              "request",
+                              "assignment"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "assigned",
+                              "attended",
+                              "not_completed"
+                            ]
+                          },
+                          "attendedHours": {
+                            "description": "Katılım saati; yalnız `attended`",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "statusChangedAt": {
+                            "type": "string"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "programId",
+                          "membershipId",
+                          "staffName",
+                          "staffRole",
+                          "origin",
+                          "status",
+                          "attendedHours",
+                          "statusChangedAt",
+                          "createdAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createProfessionalDevelopmentEnrollment",
+        "summary": "Personeli eğitime ata",
+        "tags": [
+          "finance-professional-development"
+        ],
+        "description": "Atama ya da personelin katılım isteği kaydı; durum \"atandı\" (K-432). Yalnız yayındaki eğitime (422 `professional_development_not_published`); personel kurumun etkin yönetici, öğretmen ya da ön büro üyeliği (yoksa 422 `professional_development_staff_not_found`, öğrenci ya da veli 422 `professional_development_not_staff`, ayrılmış 422 `professional_development_staff_inactive`). Aynı personel ikinci kez 409 `professional_development_already_enrolled`; kontenjan doluysa 422 `professional_development_capacity_full`. `Idempotency-Key` zorunlu. Başka kurumun eğitimi 404. Rol: yalnız `yonetici` (K-430). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "membershipId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Atanan personelin kurum üyeliği"
+                  },
+                  "origin": {
+                    "default": "assignment",
+                    "description": "`request` personelin katılım isteği, `assignment` yönetici ataması",
+                    "type": "string",
+                    "enum": [
+                      "request",
+                      "assignment"
+                    ]
+                  }
+                },
+                "required": [
+                  "membershipId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "programId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "programId": {
+                          "type": "string"
+                        },
+                        "membershipId": {
+                          "type": "string",
+                          "description": "Personelin kurum üyeliği"
+                        },
+                        "staffName": {
+                          "type": "string",
+                          "description": "Personel adı (üyelikten)"
+                        },
+                        "staffRole": {
+                          "type": "string",
+                          "description": "Personelin rolü"
+                        },
+                        "origin": {
+                          "type": "string",
+                          "enum": [
+                            "request",
+                            "assignment"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "assigned",
+                            "attended",
+                            "not_completed"
+                          ]
+                        },
+                        "attendedHours": {
+                          "description": "Katılım saati; yalnız `attended`",
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "statusChangedAt": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "programId",
+                        "membershipId",
+                        "staffName",
+                        "staffRole",
+                        "origin",
+                        "status",
+                        "attendedHours",
+                        "statusChangedAt",
+                        "createdAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/professional-development/{programId}/enrollments/{enrollmentId}": {
+      "patch": {
+        "operationId": "updateProfessionalDevelopmentEnrollment",
+        "summary": "Katılım durumunu işaretle",
+        "tags": [
+          "finance-professional-development"
+        ],
+        "description": "Atandı, katıldı ya da tamamlamadı (K-432). \"Katıldı\" katılım saati ister (yarım saat adımlı, eğitim süresini aşamaz: 422 `professional_development_hours_exceed`); diğer durumlarda saat girilmez. Arşivdeki eğitimin katılımı değişmez (409 `professional_development_archived`). Sertifika ayrı iştir (ON-215). `If-Match` zorunlu. Başka kurumun kaydı 404. Rol: yalnız `yonetici` (K-430). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "assigned",
+                      "attended",
+                      "not_completed"
+                    ],
+                    "description": "`assigned` atandı, `attended` katıldı, `not_completed` tamamlamadı"
+                  },
+                  "attendedHours": {
+                    "default": null,
+                    "description": "Katılım saati; yalnız `attended` durumunda ve zorunlu",
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "maximum": 2000,
+                        "multipleOf": 0.5
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "status"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "programId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "enrollmentId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "programId": {
+                          "type": "string"
+                        },
+                        "membershipId": {
+                          "type": "string",
+                          "description": "Personelin kurum üyeliği"
+                        },
+                        "staffName": {
+                          "type": "string",
+                          "description": "Personel adı (üyelikten)"
+                        },
+                        "staffRole": {
+                          "type": "string",
+                          "description": "Personelin rolü"
+                        },
+                        "origin": {
+                          "type": "string",
+                          "enum": [
+                            "request",
+                            "assignment"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "assigned",
+                            "attended",
+                            "not_completed"
+                          ]
+                        },
+                        "attendedHours": {
+                          "description": "Katılım saati; yalnız `attended`",
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "statusChangedAt": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "programId",
+                        "membershipId",
+                        "staffName",
+                        "staffRole",
+                        "origin",
+                        "status",
+                        "attendedHours",
+                        "statusChangedAt",
+                        "createdAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

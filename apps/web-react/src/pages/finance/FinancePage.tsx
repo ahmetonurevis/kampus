@@ -195,6 +195,10 @@ const FinanceStaffRetentionSection = lazy(async () => ({
 const FinanceStaffOnboardingSection = lazy(async () => ({
   default: (await import('./FinanceStaffOnboardingSection.tsx')).FinanceStaffOnboardingSection,
 }))
+const FinanceProfessionalDevelopmentSection = lazy(async () => ({
+  default: (await import('./FinanceProfessionalDevelopmentSection.tsx'))
+    .FinanceProfessionalDevelopmentSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -259,6 +263,7 @@ const VIEWS = {
   staffSeparations: { label: 'İşten ayrılış', param: 'isten-ayrilis' },
   staffRetention: { label: 'Özlük saklama ve imha', param: 'ozluk-imha' },
   staffOnboarding: { label: 'İşe başlama', param: 'ise-baslama' },
+  professionalDevelopment: { label: 'Mesleki gelişim', param: 'mesleki-gelisim' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -549,6 +554,9 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'staffSeparations' ? <FinanceStaffSeparationsSection /> : null}
         {tab === 'staffRetention' ? <FinanceStaffRetentionSection /> : null}
         {tab === 'staffOnboarding' ? <FinanceStaffOnboardingSection /> : null}
+        {tab === 'professionalDevelopment' ? (
+          <FinanceProfessionalDevelopmentSection canManage={isManager} />
+        ) : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

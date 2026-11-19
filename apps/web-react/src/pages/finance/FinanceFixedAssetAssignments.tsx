@@ -297,8 +297,20 @@ function AssignForm({ asset }: { asset: FixedAssetDetail }) {
   )
 }
 
-/** İade (K-212): gün, sağlam/hasarlı ve not; hasarlıda not zorunlu. Demirbaş durumu değişmez. */
-function ReturnForm({ assignment }: { assignment: FixedAssetAssignment }) {
+/**
+ * İade (K-212): gün, sağlam/hasarlı ve not; hasarlıda not zorunlu. Demirbaş durumu değişmez. İşten
+ * ayrılış dosyasının zimmet adımı da bu formu kullanır (DOM-FIN-118); `idPrefix` ve `label` alan
+ * kimliklerini ve form adını aynı ekranda birden çok form için ayırır.
+ */
+export function ReturnForm({
+  assignment,
+  idPrefix = 'iade',
+  label = 'Zimmet iadesi',
+}: {
+  assignment: Pick<FixedAssetAssignment, 'id' | 'version' | 'assetTagNumber'>
+  idPrefix?: string
+  label?: string
+}) {
   const giveBack = useReturnFixedAsset()
   const form = useForm<ReturnFormValues>({
     resolver: zodResolver(returnFormSchema),
@@ -322,16 +334,16 @@ function ReturnForm({ assignment }: { assignment: FixedAssetAssignment }) {
   return (
     <form
       noValidate
-      aria-label="Zimmet iadesi"
+      aria-label={label}
       className="grid gap-3"
       onSubmit={(event) => void onSubmit(event)}
     >
-      <FormField id="iade-gun" label="İade günü" error={errors.returnDate}>
+      <FormField id={`${idPrefix}-gun`} label="İade günü" error={errors.returnDate}>
         {(control) => (
           <Input {...control} type="date" {...form.register('returnDate')} disabled={busy} />
         )}
       </FormField>
-      <FormField id="iade-durum" label="İade durumu" error={errors.condition}>
+      <FormField id={`${idPrefix}-durum`} label="İade durumu" error={errors.condition}>
         {(control) => (
           <NativeSelect
             {...control}
@@ -348,7 +360,7 @@ function ReturnForm({ assignment }: { assignment: FixedAssetAssignment }) {
         )}
       </FormField>
       <FormField
-        id="iade-not"
+        id={`${idPrefix}-not`}
         label="Durum notu"
         error={errors.note}
         description="Hasarlı iadede zorunlu."

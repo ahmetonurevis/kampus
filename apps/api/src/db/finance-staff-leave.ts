@@ -224,6 +224,8 @@ export interface StoredLeaveRecord {
   endDate: string
   days: number
   note: string | null
+  /** Kaydı üreten izin talebi (DOM-FIN-116); elle yazılmış kayıtta `null`. */
+  requestId: string | null
   createdAt: string
   version: number
 }
@@ -240,6 +242,7 @@ const RECORD_COLUMNS = {
   endDate: staffLeaveRecords.endDate,
   days: staffLeaveRecords.days,
   note: staffLeaveRecords.note,
+  requestId: staffLeaveRecords.requestId,
   createdAt: staffLeaveRecords.createdAt,
   version: staffLeaveRecords.version,
 }
@@ -314,6 +317,8 @@ export interface LeaveRecordInsert {
   endDate: string
   days: number
   note: string | null
+  /** Onaylanan izin talebi (DOM-FIN-116); elle kayıtta verilmez. */
+  requestId?: string | null
   createdByUserId: string
   now: Date
 }

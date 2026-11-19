@@ -11,7 +11,14 @@ import {
   setPayrollExportProfileSchema,
   type PayrollExport,
 } from '@kampus/school-core/lib/finance-payroll-exports.ts'
-import { monthEnd } from '@kampus/school-core/lib/finance-payroll-periods.ts'
+import {
+  assertLessonHoursWritable,
+  isLessonSheetApproved,
+} from '@kampus/school-core/lib/finance-lesson-hour-approvals.ts'
+import {
+  assertPayrollDaysUnlocked,
+  monthEnd,
+} from '@kampus/school-core/lib/finance-payroll-periods.ts'
 import {
   addMonths,
   STAFF_ADVANCE_MAX_INSTALLMENTS,
@@ -19,6 +26,7 @@ import {
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 
 import type { Database } from '../db/client.ts'
+import { findLessonSheet } from '../db/finance-lesson-hour-approvals.ts'
 import { findStaffMember } from '../db/finance-pay-rates.ts'
 import {
   archiveLessonHours,
@@ -36,7 +44,7 @@ import {
   type StoredLessonHours,
   type StoredPayrollExportProfile,
 } from '../db/finance-payroll-exports.ts'
-import { loadAdjustmentsTargeting } from '../db/finance-payroll-periods.ts'
+import { loadAdjustmentsTargeting, lockedPayrollMonths } from '../db/finance-payroll-periods.ts'
 import { loadMonthDeductionRows } from '../db/finance-staff-deductions.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
@@ -48,7 +56,9 @@ import { auditWork } from './task-work.ts'
  * Bordro programına aktarım (DOM-FIN-105; ON-202, ON-343). Bordroyu dış programda hesaplatan kurum için
  * (ADR 0011 karar 9; Kampüs'ün hesabı DOM-FIN-115) ayın girdi satırları ücret tanımlarından, elle girilen ek ders saatinden, ayın avans, icra ve
  * BES kayıtlarından (DOM-FIN-101, K-392) ve aya aktarılan bordro düzeltmelerinden (DOM-FIN-108,
- * K-393) core'da üretilir. Ücret kişisel veridir (K-306): tutar içeren önizleme okumayla aynı
+ * K-393) core'da üretilir. Ek ders satırı ayın çizelgesi müdür onaylı değilse "onay bekliyor"
+ * uyarısıyla tutarsızdır (DOM-FIN-120, K-411); saat yazmaları müdür onaylı ayda 409
+ * `lesson_hours_locked`, bordro dönemi kilitli ayda 409 `payroll_period_locked` olur (K-410). Ücret kişisel veridir (K-306): tutar içeren önizleme okumayla aynı
  * transaction'da denetime düşer (`finance.payroll_export.read`, K-338); icra satırı dönerse
  * denetime icra alanlarının adı da yazılır (K-315). Dosya üretimi özet satırı (`payroll_exports`)
  * ve denetim kaydıyla tek transaction'dadır. Denetime alan adları yazılır; tutar, saat, not ve
@@ -74,6 +84,7 @@ async function monthExport(tx: Database, institutionId: string, month: string) {
     monthEnd: monthEnd(month),
   })
   const adjustments = await loadAdjustmentsTargeting(tx, institutionId, month, month)
+  const sheet = await findLessonSheet(tx, institutionId, month)
   const staff = await loadPayrollStaff(tx, institutionId, [
     ...rates.map((rate) => rate.membershipId),
     ...lessonHours.map((entry) => entry.membershipId),
@@ -82,7 +93,15 @@ async function monthExport(tx: Database, institutionId: string, month: string) {
     ...deductions.pensions.map((item) => item.membershipId),
     ...adjustments.map((item) => item.membershipId),
   ])
-  return payrollExportLines({ month, staff, rates, lessonHours, deductions, adjustments })
+  return payrollExportLines({
+    month,
+    staff,
+    rates,
+    lessonHours,
+    deductions,
+    adjustments,
+    lessonHoursApproved: isLessonSheetApproved(sheet),
+  })
 }
 
 /** Önizleme denetimine yazılan alan adları; icra satırı dönerse icra alanları da (K-315). */
@@ -196,6 +215,16 @@ export async function payrollExportHistoryFor(
 
 // --- Ek ders saati -------------------------------------------------------------------------------
 
+/** Ayın kilit kaynakları (K-410): çizelge durumu ve bordro dönemi kilitli aylar. */
+async function hoursLocks(tx: Database, institutionId: string, month: string) {
+  const sheet = await findLessonSheet(tx, institutionId, month)
+  const locked = await lockedPayrollMonths(tx, institutionId)
+  return () => {
+    assertLessonHoursWritable(sheet)
+    assertPayrollDaysUnlocked(locked, [{ from: monthStartOf(month), to: monthEnd(month) }], 'month')
+  }
+}
+
 function hoursView(entry: StoredLessonHours) {
   return {
     id: entry.id,
@@ -238,9 +267,11 @@ export function createLessonHoursCommand(
           monthStart,
           lessonType: parsed.lessonType,
         })
+        const assertUnlocked = await hoursLocks(tx, ctx.institutionId, parsed.month)
         return {
           run: () => {
             planPayrollLessonHours(parsed, { staff, exists, today: dayKey(ctx.now) })
+            assertUnlocked()
             return { parsed, monthStart }
           },
         }
@@ -271,11 +302,13 @@ export function createLessonHoursCommand(
   )
 }
 
+/** Düzeltilecek ya da silinecek kayıt ve ayının kilit denetimi (K-410). */
 async function currentHours(tx: Database, ctx: ServiceContext, id: string, version: number) {
   const entry = await findLessonHours(tx, ctx.institutionId, id)
   if (entry === null) throw new NotFoundError()
   if (entry.version !== version) throw new ConflictError()
-  return entry
+  const assertUnlocked = await hoursLocks(tx, ctx.institutionId, entry.monthStart.slice(0, 7))
+  return { entry, assertUnlocked }
 }
 
 /** Saat ya da not düzeltmesi (`If-Match`). */
@@ -296,9 +329,13 @@ export function updateLessonHoursCommand(
       entity,
       load: async (tx) => {
         const parsed = payrollLessonHoursUpdateSchema.parse(input)
-        const entry = await currentHours(tx, ctx, id, expectedVersion)
+        const { entry, assertUnlocked } = await currentHours(tx, ctx, id, expectedVersion)
         return {
-          run: () => ({ parsed, next: planPayrollLessonHoursUpdate(entry, parsed) }),
+          run: () => {
+            const next = planPayrollLessonHoursUpdate(entry, parsed)
+            assertUnlocked()
+            return { parsed, next }
+          },
         }
       },
       after: async (tx, { parsed, next }) => {
@@ -333,8 +370,8 @@ export function archiveLessonHoursCommand(
       collections: [],
       entity,
       load: async (tx) => {
-        await currentHours(tx, ctx, id, expectedVersion)
-        return { run: () => null }
+        const { assertUnlocked } = await currentHours(tx, ctx, id, expectedVersion)
+        return { run: assertUnlocked }
       },
       after: async (tx) => {
         const saved = await archiveLessonHours(tx, ctx.institutionId, {

@@ -93,7 +93,8 @@ type Row = {
  * Personel izinleri (DOM-FIN-109; ON-181): Finans "Personel izinleri" sekmesi, yalnız yönetici.
  * Personel listesi kıdem başlangıcını ve bugünkü yıllık izin bakiyesini gösterir; panelde izin
  * bilgisi (kıdem başlangıcı, doğum günü, açılış devri), hak ediş dökümü, kullanılmış izin kayıtları
- * ve iptali bulunur. "İzin türleri" kurum ayarını açar. Talep ve onay akışı ON-182'dedir.
+ * ve iptali bulunur. "İzin türleri" kurum ayarını açar. Talep ve onay akışı "İzin talepleri"
+ * sekmesindedir (DOM-FIN-116; ON-182); talepten doğan kayıt burada iptal edilmez.
  */
 export function FinanceStaffLeaveSection() {
   const list = useListState('personel-izin', { urlPrefix: 'izin_' })
@@ -368,15 +369,21 @@ function StaffLeave({ membershipId }: { membershipId: string }) {
                     {record.note}
                   </span>
                 ) : null}
-                <span>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => setDialog({ kind: 'cancel', record })}
-                  >
-                    İptal et
-                  </Button>
-                </span>
+                {record.requestId === null ? (
+                  <span>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => setDialog({ kind: 'cancel', record })}
+                    >
+                      İptal et
+                    </Button>
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">
+                    Onaylanan izin talebinden; "İzin talepleri" sekmesinde talebi iptal edin.
+                  </span>
+                )}
               </li>
             ))}
           </ul>

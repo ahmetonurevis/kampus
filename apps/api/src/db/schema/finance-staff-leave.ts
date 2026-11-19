@@ -9,6 +9,7 @@ import {
   pgTable,
   primaryKey,
   text,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
 
@@ -27,6 +28,7 @@ import {
 
 import { institutions, memberships } from './auth.ts'
 import { oneOf, requiredColumns } from './columns.ts'
+import { staffLeaveRequests } from './finance-leave-requests.ts'
 
 const n = (value: number) => sql.raw(String(value))
 
@@ -123,8 +125,8 @@ export const staffLeaveProfiles = pgTable(
 )
 
 /**
- * Kullanılmış izin kaydı (DOM-FIN-109; K-362). Talep ve onay akışı (ON-182) gelene kadar yönetici
- * elle yazar. Tür ayarının anlık kopyasını (biçim, ad, ücretli, yıllıktan düşer) taşır; ayar
+ * Kullanılmış izin kaydı (DOM-FIN-109; K-362). Yönetici elle yazar ya da onaylanan izin talebi
+ * üretir (`request_id`; DOM-FIN-116, ON-182, K-398). Tür ayarının anlık kopyasını (biçim, ad, ücretli, yıllıktan düşer) taşır; ayar
  * sonradan değişse de bakiye geçmişi değişmez. Düzeltilmez; gerekçeyle iptal (arşiv) edilir. Rapor
  * (sağlık) bu tabloya yazılmaz.
  */
@@ -146,6 +148,8 @@ export const staffLeaveRecords = pgTable(
     endDate: date('end_date', { mode: 'string' }).notNull(),
     days: integer('days').notNull(),
     note: text('note'),
+    /** Kaydı üreten izin talebi; elle yazılmış kayıtta boş. */
+    requestId: uuid('request_id'),
     // kvkk: K
     createdByUserId: text('created_by_user_id').notNull(),
     cancelReason: text('cancel_reason'),
@@ -186,6 +190,15 @@ export const staffLeaveRecords = pgTable(
         and (${table.cancelReason} is null or char_length(${table.cancelReason})
           between ${n(LEAVE_CANCEL_REASON_MIN)} and ${n(LEAVE_CANCEL_REASON_MAX)})`,
     ),
+    foreignKey({
+      name: 'staff_leave_records_request_fkey',
+      columns: [table.institutionId, table.requestId],
+      foreignColumns: [staffLeaveRequests.institutionId, staffLeaveRequests.id],
+    }).onDelete('restrict'),
+    // Bir talep en çok bir kayıt üretir (iptal edilen kayıt da sayılır; talep yeniden onaylanmaz).
+    uniqueIndex('staff_leave_records_request_key')
+      .on(table.institutionId, table.requestId)
+      .where(sql`${table.requestId} is not null`),
     index('staff_leave_records_membership_idx').on(
       table.institutionId,
       table.membershipId,

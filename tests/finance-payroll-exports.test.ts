@@ -15,6 +15,7 @@ import {
   planPayrollLessonHours,
   planPayrollLessonHoursUpdate,
   setPayrollExportProfileSchema,
+  type PayrollDeductionSources,
   type PayrollExportProfile,
   type PayrollLessonHours,
   type PayrollRate,
@@ -23,7 +24,7 @@ import {
 
 import { isDomainError } from './support/domain-error.ts'
 
-// Bordro programına aktarım (DOM-FIN-105; ON-202). Kararlar K-336…K-339.
+// Bordro programına aktarım (DOM-FIN-105; ON-202, ON-343). Kararlar K-336…K-339, K-392, K-393.
 
 const SELIN: PayrollStaff = {
   membershipId: 'm-selin',
@@ -373,11 +374,11 @@ test('DOM-FIN-105: genel CSV: ; ayırıcı, ondalık virgül, boş tutar boş h�
   )
   assert.equal(
     rows[1],
-    `"2026-10";"m-selin";"'=HYPERLINK(""x"")";"Öğretmen";"wage.monthly_gross";"Ana ücret · Aylık brüt";"Kazanç";"Aylık";45000,00;;45000,00;"";"";"2026-10-01";"2026-10-31";31;31;""`,
+    `"2026-10";"m-selin";"'=HYPERLINK(""x"")";"Öğretmen";"wage.monthly_gross";"Ana ücret · Aylık brüt";"Kazanç";"Aylık";45000,00;;45000,00;"";"";"2026-10-01";"2026-10-31";31;31;"";"";;;"";;""`,
   )
   assert.equal(
     rows[2],
-    `"2026-10";"m-selin";"'=HYPERLINK(""x"")";"Öğretmen";"lesson.extra";"Ek ders ücreti · Ek ders";"Kazanç";"Saat";;3;;"";"";;;;31;"Ek ders ücreti tanımı yok; tutar boş"`,
+    `"2026-10";"m-selin";"'=HYPERLINK(""x"")";"Öğretmen";"lesson.extra";"Ek ders ücreti · Ek ders";"Kazanç";"Saat";;3;;"";"";;;;31;"Ek ders ücreti tanımı yok; tutar boş";"";;;"";;""`,
   )
   assert.ok(rows[3]?.includes(';3000,50;;;"Evet";"Nakdi";"2026-10-10";"2026-10-31";22;31;'))
 })
@@ -442,4 +443,382 @@ test('DOM-FIN-105: şablon doğrulaması: bilinmeyen sütun, boş sabit, yinelen
     setPayrollExportProfileSchema.safeParse({ profile: defaultPayrollExportProfile() }).success,
     true,
   )
+})
+
+// --- Kesinti ve düzeltme satırları (ON-343) ------------------------------------------------------
+
+const deductionSources = (
+  overrides: Partial<PayrollDeductionSources> = {},
+): PayrollDeductionSources => ({
+  advances: [
+    {
+      id: 'adv-1',
+      membershipId: 'm-selin',
+      amountCents: 1_000_000,
+      installmentCount: 3,
+      firstMonth: '2026-09',
+      givenDate: '2026-09-01',
+      status: 'active',
+      closedFromMonth: null,
+    },
+  ],
+  garnishments: [
+    {
+      id: 'g-1',
+      membershipId: 'm-selin',
+      status: 'active',
+      isAlimony: false,
+      rateBasisPoints: 2500,
+      remainingCents: 5_000_000,
+      receivedDate: '2026-08-01',
+      sequence: 1,
+      closedDate: null,
+    },
+    {
+      id: 'g-2',
+      membershipId: 'm-selin',
+      status: 'active',
+      isAlimony: false,
+      rateBasisPoints: 2500,
+      remainingCents: 900_000,
+      receivedDate: '2026-09-01',
+      sequence: 2,
+      closedDate: null,
+    },
+    {
+      id: 'g-nafaka',
+      membershipId: 'm-selin',
+      status: 'active',
+      isAlimony: true,
+      rateBasisPoints: 1000,
+      remainingCents: 300_000,
+      receivedDate: '2026-09-20',
+      sequence: 3,
+      closedDate: null,
+    },
+  ],
+  pensions: [
+    {
+      id: 'p-1',
+      membershipId: 'm-selin',
+      rateBasisPoints: 300,
+      startDate: '2026-01-01',
+      optOutDate: null,
+      pauses: [],
+    },
+    {
+      id: 'p-ahmet',
+      membershipId: 'm-ahmet',
+      rateBasisPoints: 300,
+      startDate: '2026-01-01',
+      optOutDate: null,
+      pauses: [{ fromMonth: '2026-10', toMonth: '2026-12' }],
+    },
+  ],
+  ...overrides,
+})
+
+test('DOM-FIN-105: DOM-FIN-101 kesintileri Kesinti yönünde satır olur; avans tutarlı, icra ve BES oranlı (K-392)', () => {
+  const result = payrollExportLines({
+    month: '2026-10',
+    staff: [SELIN, AHMET],
+    rates: [rate({})],
+    lessonHours: [],
+    deductions: deductionSources(),
+  })
+  // Ahmet'in BES'ine ara verildi: satır yok. Sırada bekleyen icra (g-2) satır vermez.
+  assert.equal(
+    result.lines.every((line) => line.membershipId === 'm-selin'),
+    true,
+  )
+  assert.deepEqual(
+    result.lines.map((line) => [
+      line.key,
+      line.kind,
+      line.itemCode,
+      line.direction,
+      line.deductionOrder,
+      line.totalCents,
+      line.rateBasisPoints,
+      line.deductionBase,
+      line.capCents,
+      line.warnings,
+    ]),
+    [
+      ['rate:r-1', 'rate', 'wage.monthly_gross', 'earning', null, 4_500_000, null, null, null, []],
+      [
+        'deduction:advance:adv-1',
+        'deduction',
+        'deduction.advance',
+        'deduction',
+        1,
+        333_333,
+        null,
+        null,
+        null,
+        [],
+      ],
+      [
+        'deduction:garnishment:g-nafaka',
+        'deduction',
+        'deduction.garnishment',
+        'deduction',
+        2,
+        null,
+        1000,
+        'net_wage',
+        300_000,
+        ['deduction_on_net'],
+      ],
+      [
+        'deduction:garnishment:g-1',
+        'deduction',
+        'deduction.garnishment',
+        'deduction',
+        3,
+        null,
+        2500,
+        'net_wage',
+        5_000_000,
+        ['deduction_on_net'],
+      ],
+      [
+        'deduction:pension:p-1',
+        'deduction',
+        'deduction.pension',
+        'deduction',
+        4,
+        null,
+        300,
+        'pension_base',
+        null,
+        ['deduction_on_pension_base'],
+      ],
+    ],
+  )
+  const [, advance] = result.lines
+  assert.equal(advance?.installmentNo, 2)
+  assert.equal(advance?.installmentCount, 3)
+  assert.equal(advance?.deductionKind, 'advance')
+  assert.equal(advance?.unit, 'month')
+  assert.equal(advance?.component, null)
+  assert.equal(payrollItemLabel(advance!), 'Kesinti · Avans taksiti (2/3)')
+  assert.equal(payrollItemLabel(result.lines[2]!), 'Kesinti · İcra kesintisi')
+  assert.equal(payrollItemLabel(result.lines[4]!), 'Kesinti · BES katkısı')
+  assert.deepEqual(result.totals, {
+    lineCount: 5,
+    staffCount: 1,
+    earningCents: 4_500_000,
+    deductionCents: 333_333,
+    missingTotalCount: 3,
+  })
+  // Son taksit yuvarlama farkını taşır; ilk icra kapandıysa sıradaki başlar.
+  const december = payrollExportLines({
+    month: '2026-11',
+    staff: [SELIN, AHMET],
+    rates: [],
+    lessonHours: [],
+    deductions: deductionSources({
+      garnishments: deductionSources().garnishments.map((item) =>
+        item.id === 'g-1' ? { ...item, status: 'closed' as const, closedDate: '2026-10-20' } : item,
+      ),
+    }),
+  })
+  assert.deepEqual(
+    december.lines.map((line) => [line.key, line.totalCents, line.deductionOrder]),
+    [
+      ['deduction:advance:adv-1', 333_334, 1],
+      ['deduction:garnishment:g-nafaka', null, 2],
+      ['deduction:garnishment:g-2', null, 3],
+      ['deduction:pension:p-1', null, 4],
+    ],
+  )
+})
+
+test('DOM-FIN-105: iptal edilen ve erken kapanan avans, alacağı biten icra, pasif personel (K-392)', () => {
+  const base = deductionSources()
+  const result = payrollExportLines({
+    month: '2026-10',
+    staff: [{ ...SELIN, active: false }],
+    rates: [],
+    lessonHours: [],
+    deductions: {
+      advances: [
+        { ...base.advances[0]!, status: 'cancelled' },
+        {
+          ...base.advances[0]!,
+          id: 'adv-2',
+          status: 'closed',
+          closedFromMonth: '2026-10',
+        },
+      ],
+      garnishments: [{ ...base.garnishments[0]!, remainingCents: 0 }],
+      pensions: [],
+    },
+  })
+  assert.deepEqual(result.lines, [])
+  const inactive = payrollExportLines({
+    month: '2026-10',
+    staff: [{ ...SELIN, active: false }],
+    rates: [],
+    lessonHours: [],
+    deductions: { advances: base.advances, garnishments: [], pensions: [] },
+  })
+  assert.deepEqual(inactive.lines[0]?.warnings, ['staff_inactive'])
+  // Kesinti kaydı olup personeli yüklenmemişse programlama hatası.
+  assert.throws(() =>
+    payrollExportLines({
+      month: '2026-10',
+      staff: [],
+      rates: [],
+      lessonHours: [],
+      deductions: base,
+    }),
+  )
+})
+
+test('DOM-FIN-105: DOM-FIN-108 düzeltmeleri hedef ayın satırıdır; artı kazanç, eksi kesinti, tutar mutlak (K-393)', () => {
+  const result = payrollExportLines({
+    month: '2026-10',
+    staff: [SELIN, AHMET],
+    rates: [],
+    lessonHours: [],
+    adjustments: [
+      {
+        id: 'adj-2',
+        membershipId: 'm-selin',
+        item: 'benefit',
+        amountCents: -45_000,
+        sourceMonth: '2026-09',
+      },
+      {
+        id: 'adj-1',
+        membershipId: 'm-selin',
+        item: 'lesson',
+        amountCents: 125_000,
+        sourceMonth: '2026-08',
+      },
+      {
+        id: 'adj-3',
+        membershipId: 'm-ahmet',
+        item: 'wage',
+        amountCents: 10_000,
+        sourceMonth: '2026-09',
+      },
+    ],
+  })
+  assert.deepEqual(
+    result.lines.map((line) => [
+      line.key,
+      line.kind,
+      line.itemCode,
+      line.direction,
+      line.unit,
+      line.totalCents,
+      line.sourceMonth,
+      line.warnings,
+    ]),
+    [
+      [
+        'adjustment:adj-3',
+        'adjustment',
+        'adjustment.wage',
+        'earning',
+        'once',
+        10_000,
+        '2026-09',
+        ['prior_month_adjustment', 'staff_inactive'],
+      ],
+      [
+        'adjustment:adj-1',
+        'adjustment',
+        'adjustment.lesson',
+        'earning',
+        'once',
+        125_000,
+        '2026-08',
+        ['prior_month_adjustment'],
+      ],
+      [
+        'adjustment:adj-2',
+        'adjustment',
+        'adjustment.benefit',
+        'deduction',
+        'once',
+        45_000,
+        '2026-09',
+        ['prior_month_adjustment'],
+      ],
+    ],
+  )
+  assert.equal(payrollItemLabel(result.lines[1]!), 'Düzeltme · Ek ders (Ağustos 2026)')
+  assert.deepEqual(result.totals, {
+    lineCount: 3,
+    staffCount: 2,
+    earningCents: 135_000,
+    deductionCents: 45_000,
+    missingTotalCount: 0,
+  })
+})
+
+test('DOM-FIN-105: kesinti ve düzeltme sütunları genel dosyanın sonunda; şablonla seçilir (K-392, K-393)', () => {
+  const base = deductionSources()
+  const result = payrollExportLines({
+    month: '2026-10',
+    staff: [SELIN],
+    rates: [],
+    lessonHours: [],
+    deductions: { advances: base.advances, garnishments: [base.garnishments[0]!], pensions: [] },
+    adjustments: [
+      {
+        id: 'adj-1',
+        membershipId: 'm-selin',
+        item: 'deduction',
+        amountCents: -2_550,
+        sourceMonth: '2026-09',
+      },
+    ],
+  })
+  const labels = PAYROLL_EXPORT_COLUMN_OPTIONS.map((column) => column.label)
+  assert.deepEqual(labels.slice(-6), [
+    'Kesinti türü kodu',
+    'Kesinti sırası',
+    'Oran (%)',
+    'Matrah',
+    'Üst sınır (₺)',
+    'Ait olduğu ay',
+  ])
+  const rows = payrollExportCsv(result.lines, null).split('\r\n')
+  assert.equal(rows.length, 4)
+  assert.equal(
+    rows[1],
+    `"2026-10";"m-selin";"Selin Kaya";"Öğretmen";"adjustment.deduction";"Düzeltme · Kesinti (Eylül 2026)";"Kesinti";"Tek sefer";;;25,50;"";"";;;;31;"Kilitli ayın düzeltme farkı; ait olduğu ay ayrı sütunda";"";;;"";;"2026-09"`,
+  )
+  assert.equal(
+    rows[2],
+    `"2026-10";"m-selin";"Selin Kaya";"Öğretmen";"deduction.advance";"Kesinti · Avans taksiti (2/3)";"Kesinti";"Aylık";;;3333,33;"";"";;;;31;"";"advance";1;;"";;""`,
+  )
+  assert.equal(
+    rows[3],
+    `"2026-10";"m-selin";"Selin Kaya";"Öğretmen";"deduction.garnishment";"Kesinti · İcra kesintisi";"Kesinti";"Aylık";;;;"";"";;;;31;"Net ücretten oranla bordroda hesaplanır; kalan alacak üst sınırdır";"garnishment";2;25,00;"Net ücret";50000,00;""`,
+  )
+  const profile: PayrollExportProfile = {
+    separator: ',',
+    dateFormat: 'iso',
+    decimal: '.',
+    columns: [
+      { source: 'itemCode', header: 'Kod' },
+      { source: 'deductionKind', header: 'Kesinti' },
+      { source: 'ratePercent', header: 'Oran' },
+      { source: 'cap', header: 'Tavan' },
+      { source: 'sourceMonth', header: 'Ay' },
+    ],
+  }
+  assert.equal(payrollExportProfileSchema.safeParse(profile).success, true)
+  assert.deepEqual(payrollExportCsv(result.lines, profile).split('\r\n'), [
+    '"Kod","Kesinti","Oran","Tavan","Ay"',
+    '"adjustment.deduction","",,,"2026-09"',
+    '"deduction.advance","advance",,,""',
+    '"deduction.garnishment","garnishment",25.00,50000.00,""',
+  ])
 })

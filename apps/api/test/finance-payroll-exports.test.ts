@@ -27,9 +27,10 @@ import {
 } from './support/app.ts'
 
 /**
- * Bordro programına aktarım uçları (DOM-FIN-105; ON-202; K-336…K-339). Her test kendi kurumunu
- * kurar; ücret tanımı ücret ucuyla (DOM-FIN-099) yazılır. FIXED_NOW 2026-10-06: Ekim cari ay,
- * Kasım gelecek ay.
+ * Bordro programına aktarım uçları (DOM-FIN-105; ON-202, ON-343; K-336…K-339, K-392, K-393). Her
+ * test kendi kurumunu kurar; ücret tanımı ücret ucuyla (DOM-FIN-099), avans/icra/BES kendi
+ * uçlarıyla (DOM-FIN-101), düzeltme bordro dönemi uçlarıyla (DOM-FIN-108) yazılır. FIXED_NOW
+ * 2026-10-06: Ekim cari ay, Kasım gelecek ay.
  */
 
 const FINANCE = '/api/v1/finance'
@@ -38,6 +39,8 @@ const PREVIEW = `${EXPORTS}/preview`
 const HOURS = `${FINANCE}/payroll-lesson-hours`
 const PROFILE = `${FINANCE}/payroll-export-profile`
 const RATES = `${FINANCE}/pay-rates`
+const PERIODS = `${FINANCE}/payroll-periods`
+const ADJUSTMENTS = `${FINANCE}/payroll-adjustments`
 const BOM = '\uFEFF'
 
 type Json = Record<string, unknown>
@@ -168,6 +171,64 @@ describe('DOM-FIN-105: bordro programına aktarım uçları', () => {
       startDate: '2026-09-01',
     })
     return { ...t, selin }
+  }
+
+  const key = () => ({ 'idempotency-key': randomUUID() })
+  /** Selin'e Eylül'de verilen 3 taksitli avans, Eylül tebliğli icra ve Eylül başlangıçlı BES. */
+  async function withDeductions(t: Tenant & { selin: string }) {
+    const advance = ok(
+      await call(
+        'POST',
+        `${FINANCE}/staff-advances`,
+        t.admin,
+        {
+          membershipId: t.selin,
+          amountCents: 1_000_000,
+          givenDate: '2026-09-01',
+          paymentMethod: 'bank_transfer',
+          installmentCount: 3,
+          firstMonth: '2026-09',
+        },
+        key(),
+      ),
+      201,
+    )
+    const garnishment = ok(
+      await call('POST', `${FINANCE}/staff-garnishments`, t.admin, {
+        membershipId: t.selin,
+        office: 'İstanbul 12. İcra Dairesi',
+        fileNumber: '2026/1234',
+        claimCents: 5_000_000,
+        receivedDate: '2026-09-15',
+      }),
+      201,
+    )
+    const pension = ok(
+      await call('POST', `${FINANCE}/staff-pension-enrollments`, t.admin, {
+        membershipId: t.selin,
+        startDate: '2026-09-01',
+      }),
+      201,
+    )
+    return { advance, garnishment, pension }
+  }
+  /** Ayı güncel özet damgasıyla onaylar (DOM-FIN-108). */
+  async function approveMonth(t: Tenant, month: string) {
+    const year = ok(await get(`${PERIODS}?year=${month.slice(0, 4)}`, t.admin)) as {
+      months: { month: string; current: { inputsHash: string } | null }[]
+    }
+    const view = year.months.find((item) => item.month === month)
+    assert.ok(view?.current)
+    ok(
+      await call(
+        'POST',
+        `${PERIODS}/${month}/approve`,
+        t.admin,
+        { inputsHash: view.current.inputsHash },
+        key(),
+      ),
+      201,
+    )
   }
 
   test('kimliksiz istek 401', async () => {
@@ -517,5 +578,189 @@ describe('DOM-FIN-105: bordro programına aktarım uçları', () => {
     assert.equal(aFile.body.includes(b.selin), false)
     assert.equal((await exportRows(a.id)).length, 1)
     assert.equal((await exportRows(b.id)).length, 1)
+  })
+
+  test('DOM-FIN-105: DOM-FIN-101 avans, icra ve BES Kesinti satırıdır; icra okuması denetime düşer, B görünmez (K-392)', async () => {
+    const t = await staffed()
+    const other = await staffed()
+    await withDeductions(t)
+    await withDeductions(other)
+    const data = ok(await preview(t.admin))
+    const lines = data.lines as Json[]
+    const deductions = lines.filter((line) => line.kind === 'deduction')
+    assert.deepEqual(
+      deductions.map((line) => [
+        line.itemCode,
+        line.direction,
+        line.deductionOrder,
+        line.totalCents,
+        line.rateBasisPoints,
+        line.deductionBase,
+        line.capCents,
+        line.installmentNo,
+        line.component,
+      ]),
+      [
+        ['deduction.advance', 'deduction', 1, 333_333, null, null, null, 2, null],
+        ['deduction.garnishment', 'deduction', 2, null, 2500, 'net_wage', 5_000_000, null, null],
+        ['deduction.pension', 'deduction', 3, null, 300, 'pension_base', null, null, null],
+      ],
+    )
+    // Kesintiler personelin kazanç satırlarından sonra gelir; B'nin kaydı A'da yok.
+    assert.deepEqual(
+      lines.slice(-3).map((line) => line.kind),
+      ['deduction', 'deduction', 'deduction'],
+    )
+    assert.equal(
+      lines.every((line) => line.membershipId === t.selin),
+      true,
+    )
+    assert.deepEqual(data.totals, {
+      lineCount: 6,
+      staffCount: 1,
+      earningCents: 300_000,
+      deductionCents: 333_333,
+      missingTotalCount: 4,
+    })
+    const [audit] = await auditOf(t.id, 'finance.payroll_export.read')
+    assert.deepEqual(audit?.changes, {
+      fields: [
+        'rateCents',
+        'totalCents',
+        'quantity',
+        'garnishment.rateBasisPoints',
+        'garnishment.capCents',
+      ],
+    })
+    // Dosya: kesinti satırları ve sondaki sütunlar; özet kesinti toplamını taşır.
+    const file = await exportFile(t.admin)
+    assert.equal(file.statusCode, 200, file.body)
+    const rows = file.body.slice(1).split('\r\n')
+    assert.ok(
+      rows[0]?.endsWith(
+        '"Kesinti türü kodu";"Kesinti sırası";"Oran (%)";"Matrah";"Üst sınır (₺)";"Ait olduğu ay"',
+      ),
+    )
+    assert.ok(
+      rows.some(
+        (row) =>
+          row.includes(
+            '"deduction.garnishment";"Kesinti · İcra kesintisi";"Kesinti";"Aylık";;;;',
+          ) && row.endsWith(';"garnishment";2;25,00;"Net ücret";50000,00;""'),
+      ),
+    )
+    assert.equal(file.body.includes('İcra Dairesi'), false)
+    assert.equal(file.body.includes('2026/1234'), false)
+    const [summary] = await exportRows(t.id)
+    assert.deepEqual(
+      [
+        summary?.lineCount,
+        summary?.earningCents,
+        summary?.deductionCents,
+        summary?.missingTotalCount,
+      ],
+      [6, 300_000, 333_333, 4],
+    )
+    const [created] = await auditOf(t.id, 'finance.payroll_export.create')
+    assert.deepEqual(created?.changes, {
+      fields: ['month:2026-10', 'garnishment.rateBasisPoints', 'garnishment.capCents'],
+    })
+    // Avansın son taksiti Kasım'da; Aralık'ta avans satırı yok.
+    const december = ok(await preview(t.admin, '2026-12')).lines as Json[]
+    assert.deepEqual(
+      december.filter((line) => line.kind === 'deduction').map((line) => line.itemCode),
+      ['deduction.garnishment', 'deduction.pension'],
+    )
+  })
+
+  test('DOM-FIN-105: DOM-FIN-108 düzeltmesi hedef ayın satırıdır; iptal edilen düzeltme dosyaya girmez (K-393)', async () => {
+    const t = await staffed()
+    const other = await staffed()
+    await approveMonth(t, '2026-09')
+    await approveMonth(other, '2026-09')
+    const adjust = async (tenant: Tenant & { selin: string }, item: string, amountCents: number) =>
+      ok(
+        await call(
+          'POST',
+          `${PERIODS}/2026-09/adjustments`,
+          tenant.admin,
+          { membershipId: tenant.selin, item, amountCents, reason: 'Eylül farkı eksik girildi' },
+          key(),
+        ),
+        201,
+      )
+    const extra = await adjust(t, 'lesson', 125_000)
+    const refund = await adjust(t, 'benefit', -45_000)
+    const cancelled = await adjust(t, 'wage', 99_900)
+    await adjust(other, 'wage', 77_700)
+    assert.equal(extra.targetMonth, '2026-10')
+    ok(
+      await call(
+        'POST',
+        `${ADJUSTMENTS}/${String(cancelled.id)}/cancel`,
+        t.admin,
+        { reason: 'Yanlış kalem seçildi' },
+        { 'if-match': `"${String(cancelled.version)}"`, ...key() },
+      ),
+    )
+    const data = ok(await preview(t.admin))
+    const adjustments = (data.lines as Json[]).filter((line) => line.kind === 'adjustment')
+    assert.deepEqual(
+      adjustments.map((line) => [
+        line.key,
+        line.itemCode,
+        line.direction,
+        line.unit,
+        line.totalCents,
+        line.sourceMonth,
+        line.membershipId,
+      ]),
+      [
+        [
+          `adjustment:${String(extra.id)}`,
+          'adjustment.lesson',
+          'earning',
+          'once',
+          125_000,
+          '2026-09',
+          t.selin,
+        ],
+        [
+          `adjustment:${String(refund.id)}`,
+          'adjustment.benefit',
+          'deduction',
+          'once',
+          45_000,
+          '2026-09',
+          t.selin,
+        ],
+      ].sort((a, b) => String(a[0]).localeCompare(String(b[0]))),
+    )
+    const totals = data.totals as Json
+    assert.equal(totals.earningCents, 300_000 + 125_000)
+    assert.equal(totals.deductionCents, 45_000)
+    const [audit] = await auditOf(t.id, 'finance.payroll_export.read')
+    assert.deepEqual(audit?.changes, {
+      fields: ['rateCents', 'totalCents', 'quantity', 'adjustment.totalCents'],
+    })
+    const file = await exportFile(t.admin)
+    assert.equal(file.statusCode, 200, file.body)
+    assert.ok(
+      file.body.includes(
+        '"adjustment.benefit";"Düzeltme · Yan hak (Eylül 2026)";"Kesinti";"Tek sefer";;;450,00;',
+      ),
+    )
+    assert.ok(file.body.includes(';"2026-09"\r\n') || file.body.endsWith(';"2026-09"'))
+    assert.equal(file.body.includes('999,00'), false)
+    assert.equal(file.body.includes('777,00'), false)
+    // Eylül'ün kendisi düzeltmeyi taşımaz; Kasım da.
+    for (const month of ['2026-09', '2026-11']) {
+      const lines = ok(await preview(t.admin, month)).lines as Json[]
+      assert.equal(
+        lines.some((line) => line.kind === 'adjustment'),
+        false,
+        month,
+      )
+    }
   })
 })

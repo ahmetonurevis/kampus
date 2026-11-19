@@ -62,8 +62,8 @@ const approvalText = (month: PayrollPeriodMonth) =>
 
 /**
  * Bordro dönemleri (ON-200; DOM-FIN-108): Finans "Bordro dönemleri" sekmesi, yalnız yönetici
- * (K-359). Bordro Kampüs'te hesaplanmaz; ay onayı bordro programına giden girdileri (ücret tanımı,
- * bordro parametresi, aya aktarılan düzeltmeler) kilitler. Kilitli ayın farkı düzeltme kaydıyla
+ * (K-359). Ay onayı bordro girdilerini (ücret tanımı, bordro parametresi, aya aktarılan
+ * düzeltmeler) ve kayıtlı bordro hesabını (DOM-FIN-115, ADR 0011) kilitler. Kilitli ayın farkı düzeltme kaydıyla
  * sonraki ilk açık aya aktarılır (K-358).
  */
 export function FinancePayrollPeriodsSection() {

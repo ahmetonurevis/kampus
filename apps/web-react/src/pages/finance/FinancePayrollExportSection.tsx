@@ -61,10 +61,11 @@ type Dialog =
   | null
 
 /**
- * Bordro aktarımı (DOM-FIN-105; ON-202): Finans "Bordro aktarımı" sekmesi, yalnız yönetici
- * (K-338). Kampüs bordro hesaplamaz: ay seçilir, o ayın girdi satırları (ücret tanımları ve elle
- * girilen ek ders saatleri) önizlenir, CSV indirilir. Önizleme tutar içerir ve her açılışı denetime
- * düşer; dosya taze oturum ister ve her üretim özet satırı yazar. Dönem kilidi yoktur.
+ * Bordro aktarımı (DOM-FIN-105; ON-202, ON-343): Finans "Bordro aktarımı" sekmesi, yalnız yönetici
+ * (K-338). Bordroyu dış programda hesaplatan kurum içindir (ADR 0011): ay seçilir, o ayın girdi satırları (ücret tanımları, elle
+ * girilen ek ders saatleri, avans/icra/BES kesintileri ve aya aktarılan düzeltmeler) önizlenir, CSV
+ * indirilir. Önizleme tutar içerir ve her açılışı denetime düşer; dosya taze oturum ister ve her
+ * üretim özet satırı yazar. Dosya üretimi dönem kilidine bağlı değildir.
  */
 export function FinancePayrollExportSection() {
   const today = dayKey()
@@ -83,8 +84,9 @@ export function FinancePayrollExportSection() {
     () => [
       { key: 'staff', label: 'Personel' },
       { key: 'item', label: 'Kalem' },
+      { key: 'direction', label: 'Yön' },
       { key: 'period', label: 'Ay içindeki dönem' },
-      { key: 'rate', label: 'Birim ücret' },
+      { key: 'rate', label: 'Birim ücret ya da oran' },
       { key: 'quantity', label: 'Saat' },
       { key: 'total', label: 'Tutar' },
       { key: 'warnings', label: 'Uyarı' },
@@ -141,9 +143,11 @@ export function FinancePayrollExportSection() {
           Bordro aktarımı
         </h2>
         <p className="text-sm text-muted-foreground">
-          Kampüs bordro hesaplamaz; seçilen ayın ücret ve ek ders girdilerini bordro programınıza
-          aktarılacak dosya olarak verir. Ay içinde başlayan ya da biten ücretin tutarı bordroda gün
-          oranıyla hesaplanır. Önizleme ücret içerdiği için her görüntüleme denetim kaydına yazılır.
+          Bordroyu kendi programında ya da mali müşavirinde hesaplatan kurum için seçilen ayın
+          ücret, ek ders, kesinti ve düzeltme girdilerini aktarılacak dosya olarak verir; Kampüs'ün
+          hesabı "Bordro hesabı" sekmesindedir. Ay içinde başlayan ya da biten ücretin tutarı
+          bordroda gün oranıyla, icra ve BES kesintisi net ücret ya da matrah üzerinden oranla
+          hesaplanır. Önizleme ücret içerdiği için her görüntüleme denetim kaydına yazılır.
         </p>
       </header>
       <div className="grid gap-5 px-6 pb-6 max-[650px]:px-4">
@@ -201,14 +205,19 @@ export function FinancePayrollExportSection() {
                   note: `${String(data.totals.lineCount)} kalem satırı`,
                 },
                 {
-                  label: 'Tutarı belli kalemler',
+                  label: 'Tutarı belli kazanç',
                   value: money(data.totals.earningCents),
-                  note: 'Tam ay ücret, yan hak ve ek ders',
+                  note: 'Tam ay ücret, yan hak, ek ders ve ek ödeme farkı',
+                },
+                {
+                  label: 'Tutarı belli kesinti',
+                  value: money(data.totals.deductionCents),
+                  note: 'Avans taksiti ve geri alınacak fark',
                 },
                 {
                   label: 'Bordroda hesaplanacak',
                   value: String(data.totals.missingTotalCount),
-                  note: 'Kısmi ay, saat ücreti ya da tanımsız ek ders',
+                  note: 'Kısmi ay, saat ücreti, tanımsız ek ders, icra ve BES',
                 },
               ]}
             />
@@ -219,7 +228,7 @@ export function FinancePayrollExportSection() {
               mobileColumns={MOBILE}
               pageSize={20}
               caption="Bordro girdi satırları"
-              empty="Bu ay yürürlükte ücret tanımı ya da ek ders saati yok."
+              empty="Bu ay ücret tanımı, ek ders saati, kesinti ya da düzeltme yok."
               emptyFiltered="Bu aramayla eşleşen satır yok."
             />
           </>
@@ -290,6 +299,7 @@ function ExportHistory({ month }: { month: string | undefined }) {
               <span>
                 {String(item.lineCount)} satır · {String(item.staffCount)} personel ·{' '}
                 {money(item.earningCents)} ·{' '}
+                {item.deductionCents > 0 ? `kesinti ${money(item.deductionCents)} · ` : ''}
                 {item.format === 'profile' ? 'kurum şablonu' : 'genel dosya'}
               </span>
               <span className="text-muted-foreground [overflow-wrap:anywhere]">

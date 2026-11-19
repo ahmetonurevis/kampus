@@ -2860,6 +2860,74 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: bordro hesabı (ON-198; DOM-FIN-115).
+  ...Object.fromEntries(
+    (
+      [
+        ['kayıt', 'GET /api/v1/finance/payroll-calculations/:month', 'rowsOf(aPreview).length, 0'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/payroll-runs/:month',
+          'get(`${RUNS}/2026-01`, a.admin), 404',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/payroll-runs/:month/calculate',
+          "save(a.admin, '2026-01', null), 422",
+        ],
+        [
+          'liste',
+          'GET /api/v1/finance/payroll-tax-carryovers',
+          '(await get(`${CARRYOVERS}?year=2026`, a.admin)',
+        ],
+        ['gövde', 'POST /api/v1/finance/payroll-tax-carryovers', 'institutionId: b.id'],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/payroll-tax-carryovers/:carryoverId',
+          '`${CARRYOVERS}/${String(bCarryover.id)}`',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-payroll-runs.test.ts',
+        'DOM-FIN-115: başka kurumun personeli, hesabı ve devri 404 ve B değişmez; listede yok; gövdedeki institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: ücret hesap pusulası (ON-201; DOM-FIN-119).
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'kayıt',
+          'GET /api/v1/finance/payroll-runs/:month/payslips',
+          "get(slipsUrl('2026-01', bStaff), a.admin), 404",
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-payroll-payslips.test.ts',
+        'DOM-FIN-119: başka kurumun hesabı ve personeli 404, B değişmez; gövde/sorgudaki institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: İK raporları (ON-192; DOM-FIN-117).
+  ...Object.fromEntries(
+    ([['liste', 'GET /api/v1/finance/hr-reports', 'get(PERIOD, a.admin)']] as const).map(
+      ([kind, key, marker]) => [
+        key,
+        proof(kind)(
+          'finance-hr-reports.test.ts',
+          'başka kurumun personeli ve kaydı raporda yok',
+          marker,
+        ),
+      ],
+    ),
+  ),
 }
 
 /**

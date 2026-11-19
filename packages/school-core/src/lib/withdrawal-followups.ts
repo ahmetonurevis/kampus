@@ -2,6 +2,7 @@ import type { State } from '../data/seed.ts'
 import type { MakeId } from './domain.ts'
 import {
   applyParticipationCancel,
+  holdsSeat,
   type PaidActivityTerms,
   type ParticipationCancelPlan,
   type ParticipationStatus,
@@ -28,19 +29,25 @@ import {
  *   Etkinlik günü ayrılış günü ya da önceyse etkinlik gerçekleşmiştir; ödenmemiş kısım borç kalır.
  * - Etkinlik iadesi ve borcu ayrılışın iade ve borç bakiyesine girmez (K-349): iade katılım
  *   kaydından ödenir (K-303), borç sözleşmesiz etkinlik taksitidir.
+ * - Taksiti olmayan yedek ve izin bekleyen katılım (K-369, K-370), etkinlik günü ayrılış gününden
+ *   sonraysa aynı işlemde parasız iptal edilir (K-395); dökümde satır açmaz. Asil ya da izin
+ *   bekleyenin boşalttığı yere sıradaki yedek geçer (`freesSeat`; geçişi servis yazar).
  *
  * `withdrawals.ts` bu dosyayı içe aktarmaz: `finance-paid-activities.ts` iade ödemesi için
  * `withdrawals.ts`'i kullanır, ters yön döngü kurardı.
  */
 
-/** Öğrencinin hesaba giren katılımı: iptal edilmemiş ya da kesinti taksiti açık iptal edilmiş. */
+/**
+ * Öğrencinin hesaba giren katılımı: iptal edilmemiş (asil, izin bekleyen, yedek) ya da kesinti
+ * taksiti açık iptal edilmiş. Yedek ve izin bekleyenin taksiti yoktur (K-369, K-370).
+ */
 export interface WithdrawalActivityParticipation {
   participantId: string
   activityId: string
   studentId: string
   name: string
   status: ParticipationStatus
-  invoiceId: string
+  invoiceId: string | null
   feeCents: number
   /** Önceki iptalin kesinti taksiti; yalnız iptal edilmiş katılımda. */
   debtInvoiceId: string | null
@@ -62,7 +69,10 @@ export interface WithdrawalFollowupContext extends WithdrawalContext {
 /** Ayrılışla iptal edilen katılımın kaydı; servis katılım satırına yazar. */
 export interface WithdrawalActivityCancel {
   participantId: string
+  activityId: string
   plan: ParticipationCancelPlan
+  /** Katılım kontenjandan yer tutuyordu (asil, izin bekleyen); yere sıradaki yedek geçer (K-369). */
+  freesSeat: boolean
 }
 
 /** Önizlemede açılmayacak taksitin yer tutucu kimliği; satıra yazılmaz. */
@@ -93,7 +103,29 @@ function activityOutcomes(
       name: item.name,
       activityDate: item.activity.activityDate,
     }
-    if (item.status === 'active' && item.activity.activityDate > withdrawalDate) {
+    const upcoming = item.activity.activityDate > withdrawalDate
+    if (item.status === 'waitlisted' || item.status === 'awaiting_consent') {
+      // Taksitsiz katılım parasız kapanır, dökümde satır açmaz (K-395).
+      if (upcoming)
+        cancels.push({
+          participantId: item.participantId,
+          activityId: item.activityId,
+          freesSeat: holdsSeat(item.status),
+          plan: applyParticipationCancel(
+            state,
+            item.activity,
+            {
+              studentId: item.studentId,
+              status: item.status,
+              invoiceId: null,
+              feeCents: item.feeCents,
+            },
+            { today: withdrawalDate, kind: 'participant', allocated, makeId: makeId ?? previewId },
+          ),
+        })
+      continue
+    }
+    if (item.status === 'active' && item.invoiceId !== null && upcoming) {
       const plan = applyParticipationCancel(
         state,
         item.activity,
@@ -105,7 +137,12 @@ function activityOutcomes(
         },
         { today: withdrawalDate, kind: 'participant', allocated, makeId: makeId ?? previewId },
       )
-      cancels.push({ participantId: item.participantId, plan })
+      cancels.push({
+        participantId: item.participantId,
+        activityId: item.activityId,
+        freesSeat: true,
+        plan,
+      })
       lines.push({
         ...head,
         outcome: 'cancelled',
@@ -173,7 +210,7 @@ export function quoteWithdrawalWithFollowups(
 
 /**
  * Ayrılışı uygular (DOM-FIN-041) ve gerçekleşmemiş etkinlik katılımlarını aynı işlemde iptal eder
- * (K-348). Katılım denetimi (taksiti bulunamayan katılım 409) ayrılış yazılmadan önce kopyada
+ * (K-348; yedek ve izin bekleyen parasız, K-395). Katılım denetimi (taksiti bulunamayan katılım 409) ayrılış yazılmadan önce kopyada
  * yapılır; hata olursa State değişmez.
  */
 export function withdrawStudentWithFollowups(

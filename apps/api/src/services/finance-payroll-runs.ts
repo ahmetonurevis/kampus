@@ -14,7 +14,10 @@ import {
   type PayrollCalcRow,
   type PayrollCalcTotals,
 } from '@kampus/school-core/lib/finance-payroll-calc.ts'
-import { assertPayrollDaysUnlocked } from '@kampus/school-core/lib/finance-payroll-periods.ts'
+import {
+  assertPayrollDaysUnlocked,
+  payrollRunRowsMatch,
+} from '@kampus/school-core/lib/finance-payroll-periods.ts'
 import { sgkMonthRange } from '@kampus/school-core/lib/finance-sgk-preparation.ts'
 import type { MonthlyDeductionSources } from '@kampus/school-core/lib/finance-staff-deductions.ts'
 
@@ -22,6 +25,7 @@ import type { Database } from '../db/client.ts'
 import { approvedLessonHoursFor } from '../db/finance-lesson-hour-approvals.ts'
 import { findStaffMember, loadStaffPayRates } from '../db/finance-pay-rates.ts'
 import { listPayrollParameterSets } from '../db/finance-payroll-parameters.ts'
+import { lockedPayrollMonths } from '../db/finance-payroll-periods.ts'
 import {
   archivePayrollRun,
   archiveTaxCarryover,
@@ -43,10 +47,9 @@ import {
 } from '../db/finance-payroll-runs.ts'
 import { listAdvances, listGarnishments, listPensions } from '../db/finance-staff-deductions.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
-import { ConflictError, NotFoundError } from '../errors.ts'
+import { ConflictError, NotFoundError, RuleViolationError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { medicalReportDaysFor } from './finance-medical-reports.ts'
-import { lockedPayrollMonths } from './finance-payroll-periods.ts'
 import {
   mapOperationError,
   runCommand,
@@ -131,6 +134,28 @@ async function calculate(tx: Database, ctx: ServiceContext, month: string) {
     medicalReportDays: new Map(medical.map((item) => [item.membershipId, item.totalDays])),
     deductionSources,
   })
+}
+
+/**
+ * Kayıtlı hesap güncel mi (DOM-FIN-108, K-425): ay kurum verisiyle yeniden hesaplanır, tamamlanan
+ * satırlar kayıtlı satırlarla karşılaştırılır. Hesaplanamayan ay (parametre seti yok) güncel
+ * sayılmaz. Tutar dönmez, yalnız evet/hayır; okuma denetimi gerekmez.
+ */
+export async function payrollRunIsCurrent(
+  tx: Database,
+  ctx: ServiceContext,
+  month: string,
+  runId: string,
+): Promise<boolean> {
+  let live: PayrollCalcRow[]
+  try {
+    live = (await calculate(tx, ctx, month)).rows.filter((row) => row.complete)
+  } catch (error) {
+    // Yalnız kural hatası (ayın parametre seti yok) güncel değil sayılır; veritabanı hatası yükselir.
+    if (error instanceof RuleViolationError) return false
+    throw error
+  }
+  return payrollRunRowsMatch(await loadPayrollRunLines(tx, ctx.institutionId, runId), live)
 }
 
 async function auditRead(

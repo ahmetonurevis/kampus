@@ -9,6 +9,7 @@ import {
   payrollAdjustmentInputSchema,
   payrollApproveSchema,
   payrollInputSummary,
+  payrollPeriodChecks,
   payrollPeriodState,
   payrollReopenSchema,
   payrollYearMonths,
@@ -17,15 +18,24 @@ import {
   planPayrollApproval,
   planPayrollReopen,
   type DayRange,
+  type PayrollDigestExtras,
   type PayrollInputSummary,
+  type PayrollPeriodChecks,
 } from '@kampus/school-core/lib/finance-payroll-periods.ts'
 import { assertPayrollLessonHoursApproved } from '@kampus/school-core/lib/finance-lesson-hour-approvals.ts'
+import {
+  STAFF_ADVANCE_MAX_INSTALLMENTS,
+  addMonths,
+  payrollMonthDeductionSummary,
+} from '@kampus/school-core/lib/finance-staff-deductions.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 
 import type { Database } from '../db/client.ts'
 import { approvedLessonHoursFor } from '../db/finance-lesson-hour-approvals.ts'
 import { findStaffMember } from '../db/finance-pay-rates.ts'
 import { listPayrollParameterSets } from '../db/finance-payroll-parameters.ts'
+import { findActivePayrollRun } from '../db/finance-payroll-runs.ts'
+import { loadMonthDeductionRows } from '../db/finance-staff-deductions.ts'
 import {
   cancelPayrollAdjustment,
   countAdjustmentsBySource,
@@ -48,6 +58,7 @@ import {
 import { auditLog } from '../db/schema/audit-log.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
+import { payrollRunIsCurrent } from './finance-payroll-runs.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
 import { auditWork } from './task-work.ts'
 
@@ -82,15 +93,61 @@ export { lockedPayrollMonths }
 
 const digest = (source: string) => createHash('sha256').update(source).digest('hex')
 
+/**
+ * Ayın onay öncesi durumu ve damga ekleri (K-425, K-426): ek ders çizelgesi, ayın kesinti
+ * satırları ve etkin kayıtlı bordro hesabı (güncel mi). Okumada ve onayda aynı yoldan hesaplanır.
+ */
+async function monthChecks(
+  db: Database,
+  ctx: ServiceContext,
+  month: string,
+): Promise<{ checks: PayrollPeriodChecks; extras: PayrollDigestExtras; pendingLessons: number }> {
+  const lessons = await approvedLessonHoursFor(db, ctx.institutionId, month)
+  const rows = await loadMonthDeductionRows(db, ctx.institutionId, {
+    month,
+    earliestFirstMonth: addMonths(month, 1 - STAFF_ADVANCE_MAX_INSTALLMENTS),
+    monthEnd: monthEnd(month),
+  })
+  const deductions = payrollMonthDeductionSummary(month, rows)
+  const run = await findActivePayrollRun(db, ctx.institutionId, month)
+  const current = run === null ? false : await payrollRunIsCurrent(db, ctx, month, run.id)
+  const checks = payrollPeriodChecks({
+    lessonSheet: {
+      status: lessons.status,
+      entryCount: lessons.entries.length + lessons.pending.length,
+      pendingCount: lessons.pending.length,
+    },
+    payrollRun:
+      run === null ? null : { revision: run.revision, calculatedAt: run.calculatedAt, current },
+    deductions: deductions.summary,
+  })
+  return {
+    checks,
+    extras: {
+      deductions: deductions.digest,
+      payrollRun: run === null ? null : { id: run.id, revision: run.revision },
+    },
+    pendingLessons: lessons.pending.length,
+  }
+}
+
 /** Ayın güncel girdi özeti ve damgası (kurum kilidi altında ya da okumada). */
-async function currentSummary(db: Database, institutionId: string, month: string) {
+async function currentSummary(db: Database, ctx: ServiceContext, month: string) {
   const [rates, adjustments, sets] = await Promise.all([
-    loadRatesBetween(db, institutionId, monthStart(month), monthEnd(month)),
-    loadAdjustmentsTargeting(db, institutionId, month, month),
-    listPayrollParameterSets(db, institutionId),
+    loadRatesBetween(db, ctx.institutionId, monthStart(month), monthEnd(month)),
+    loadAdjustmentsTargeting(db, ctx.institutionId, month, month),
+    listPayrollParameterSets(db, ctx.institutionId),
   ])
-  const { summary, digestSource } = payrollInputSummary(month, rates, adjustments, sets)
-  return { ...summary, inputsHash: digest(digestSource) }
+  const inputs = await monthChecks(db, ctx, month)
+  const { summary, digestSource } = payrollInputSummary(
+    month,
+    rates,
+    adjustments,
+    sets,
+    undefined,
+    inputs.extras,
+  )
+  return { summary: { ...summary, inputsHash: digest(digestSource) }, inputs }
 }
 
 const summaryOf = (period: StoredPayrollPeriod): PayrollInputSummary & { inputsHash: string } => ({
@@ -110,6 +167,7 @@ function periodView(
   names: Map<string, string>,
   extra: {
     current: (PayrollInputSummary & { inputsHash: string }) | null
+    checks: PayrollPeriodChecks | null
     adjustmentCount: number
   },
 ) {
@@ -122,6 +180,7 @@ function periodView(
     approvalCount: stored?.approvalCount ?? 0,
     approved: stored === null ? null : summaryOf(stored),
     current: extra.current,
+    checks: extra.checks,
     reopenedAt: stored?.reopenedAt ?? null,
     reopenedByName:
       stored?.reopenedByUserId == null ? null : (names.get(stored.reopenedByUserId) ?? null),
@@ -159,23 +218,31 @@ export async function payrollPeriodYearFor(ctx: ServiceContext, year: number) {
     year,
     currentMonth: thisMonth,
     lockedMonths: locked,
-    months: months.map((month) => {
-      const period = byMonth.get(month) ?? null
-      let current: (PayrollInputSummary & { inputsHash: string }) | null = null
-      if (period?.status !== 'approved' && month <= thisMonth) {
-        const { summary, digestSource } = payrollInputSummary(
-          month,
-          rates,
-          adjustments.filter((item) => item.targetMonth === month),
-          sets,
-        )
-        current = { ...summary, inputsHash: digest(digestSource) }
-      }
-      return periodView(month, period, names, {
-        current,
-        adjustmentCount: adjustmentCounts.get(month) ?? 0,
-      })
-    }),
+    months: await Promise.all(
+      months.map(async (month) => {
+        const period = byMonth.get(month) ?? null
+        let current: (PayrollInputSummary & { inputsHash: string }) | null = null
+        let checks: PayrollPeriodChecks | null = null
+        if (period?.status !== 'approved' && month <= thisMonth) {
+          const inputs = await monthChecks(ctx.db, ctx, month)
+          const { summary, digestSource } = payrollInputSummary(
+            month,
+            rates,
+            adjustments.filter((item) => item.targetMonth === month),
+            sets,
+            undefined,
+            inputs.extras,
+          )
+          current = { ...summary, inputsHash: digest(digestSource) }
+          checks = inputs.checks
+        }
+        return periodView(month, period, names, {
+          current,
+          checks,
+          adjustmentCount: adjustmentCounts.get(month) ?? 0,
+        })
+      }),
+    ),
   }
 }
 
@@ -187,7 +254,9 @@ async function periodBody(tx: Database, ctx: ServiceContext, month: string) {
     ...(period.reopenedByUserId === null ? [] : [period.reopenedByUserId]),
   ])
   const adjustmentCount = await countPeriodAdjustments(tx, ctx.institutionId, period.id)
-  return { data: periodView(month, period, names, { current: null, adjustmentCount }) }
+  return {
+    data: periodView(month, period, names, { current: null, checks: null, adjustmentCount }),
+  }
 }
 
 /**
@@ -214,15 +283,14 @@ export function approvePayrollPeriodCommand(
       load: async (tx) => {
         const parsed = payrollApproveSchema.parse(input)
         const stored = await findPayrollPeriod(tx, ctx.institutionId, month)
-        const current = await currentSummary(tx, ctx.institutionId, month)
-        const lessons = await approvedLessonHoursFor(tx, ctx.institutionId, month)
+        const { summary: current, inputs } = await currentSummary(tx, ctx, month)
         return {
           run: () => {
             planPayrollApproval(month, dayKey(ctx.now), stored, {
               expected: parsed.inputsHash,
               current: current.inputsHash,
             })
-            assertPayrollLessonHoursApproved(lessons.pending.length)
+            assertPayrollLessonHoursApproved(inputs.pendingLessons)
             return { stored, current }
           },
         }

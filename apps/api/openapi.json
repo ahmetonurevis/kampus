@@ -227737,6 +227737,157 @@
                                 ],
                                 "description": "Onaylanmamış, başlamış ayın güncel girdi özeti; onay isteği `current.inputsHash` taşır"
                               },
+                              "checks": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "lessonSheet": {
+                                        "type": "object",
+                                        "properties": {
+                                          "state": {
+                                            "type": "string",
+                                            "enum": [
+                                              "none",
+                                              "draft",
+                                              "teacher_review",
+                                              "approved"
+                                            ],
+                                            "description": "Ek ders çizelgesi: `none` saat yok, `draft` taslak, `teacher_review` öğretmen kontrolünde, `approved` onaylı"
+                                          },
+                                          "entryCount": {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Ayın ek ders saati kaydı sayısı"
+                                          },
+                                          "pendingCount": {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Müdür onayı bekleyen saat kaydı sayısı"
+                                          }
+                                        },
+                                        "required": [
+                                          "state",
+                                          "entryCount",
+                                          "pendingCount"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      "payrollRun": {
+                                        "type": "object",
+                                        "properties": {
+                                          "state": {
+                                            "type": "string",
+                                            "enum": [
+                                              "none",
+                                              "current",
+                                              "stale"
+                                            ],
+                                            "description": "Kayıtlı bordro hesabı: `none` yok, `current` güncel, `stale` girdiler değişmiş"
+                                          },
+                                          "revision": {
+                                            "anyOf": [
+                                              {
+                                                "type": "integer",
+                                                "minimum": -9007199254740991,
+                                                "maximum": 9007199254740991
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ],
+                                            "description": "Etkin hesabın revizyonu"
+                                          },
+                                          "calculatedAt": {
+                                            "description": "Etkin hesabın kayıt anı",
+                                            "type": [
+                                              "string",
+                                              "null"
+                                            ]
+                                          }
+                                        },
+                                        "required": [
+                                          "state",
+                                          "revision",
+                                          "calculatedAt"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      "deductions": {
+                                        "type": "object",
+                                        "properties": {
+                                          "advanceCount": {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Ayın avans taksiti sayısı"
+                                          },
+                                          "garnishmentCount": {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Ayda kesilecek icra sayısı"
+                                          },
+                                          "pensionCount": {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Ayda kesilecek BES katkısı sayısı"
+                                          },
+                                          "advanceTotalCents": {
+                                            "type": "integer",
+                                            "minimum": -9007199254740991,
+                                            "maximum": 9007199254740991,
+                                            "description": "Avans taksitlerinin toplamı, kuruş; icra ve BES oranlıdır, tutarı bordro hesabında"
+                                          }
+                                        },
+                                        "required": [
+                                          "advanceCount",
+                                          "garnishmentCount",
+                                          "pensionCount",
+                                          "advanceTotalCents"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      "blockers": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string",
+                                          "enum": [
+                                            "payroll_lesson_hours_pending"
+                                          ]
+                                        },
+                                        "description": "Onayı durduran engeller; boş değilse onay 409 döner"
+                                      },
+                                      "warnings": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string",
+                                          "enum": [
+                                            "payroll_run_missing",
+                                            "payroll_run_stale"
+                                          ]
+                                        },
+                                        "description": "Onayı durdurmayan uyarılar"
+                                      }
+                                    },
+                                    "required": [
+                                      "lessonSheet",
+                                      "payrollRun",
+                                      "deductions",
+                                      "blockers",
+                                      "warnings"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Onaylanmamış, başlamış ayın onay öncesi durumu (ek ders, kayıtlı hesap, kesinti; K-425)"
+                              },
                               "reopenedAt": {
                                 "type": [
                                   "string",
@@ -227772,6 +227923,7 @@
                               "approvalCount",
                               "approved",
                               "current",
+                              "checks",
                               "reopenedAt",
                               "reopenedByName",
                               "reopenReason",
@@ -228134,6 +228286,157 @@
                           ],
                           "description": "Onaylanmamış, başlamış ayın güncel girdi özeti; onay isteği `current.inputsHash` taşır"
                         },
+                        "checks": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "lessonSheet": {
+                                  "type": "object",
+                                  "properties": {
+                                    "state": {
+                                      "type": "string",
+                                      "enum": [
+                                        "none",
+                                        "draft",
+                                        "teacher_review",
+                                        "approved"
+                                      ],
+                                      "description": "Ek ders çizelgesi: `none` saat yok, `draft` taslak, `teacher_review` öğretmen kontrolünde, `approved` onaylı"
+                                    },
+                                    "entryCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Ayın ek ders saati kaydı sayısı"
+                                    },
+                                    "pendingCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Müdür onayı bekleyen saat kaydı sayısı"
+                                    }
+                                  },
+                                  "required": [
+                                    "state",
+                                    "entryCount",
+                                    "pendingCount"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "payrollRun": {
+                                  "type": "object",
+                                  "properties": {
+                                    "state": {
+                                      "type": "string",
+                                      "enum": [
+                                        "none",
+                                        "current",
+                                        "stale"
+                                      ],
+                                      "description": "Kayıtlı bordro hesabı: `none` yok, `current` güncel, `stale` girdiler değişmiş"
+                                    },
+                                    "revision": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Etkin hesabın revizyonu"
+                                    },
+                                    "calculatedAt": {
+                                      "description": "Etkin hesabın kayıt anı",
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "state",
+                                    "revision",
+                                    "calculatedAt"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "deductions": {
+                                  "type": "object",
+                                  "properties": {
+                                    "advanceCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Ayın avans taksiti sayısı"
+                                    },
+                                    "garnishmentCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Ayda kesilecek icra sayısı"
+                                    },
+                                    "pensionCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Ayda kesilecek BES katkısı sayısı"
+                                    },
+                                    "advanceTotalCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Avans taksitlerinin toplamı, kuruş; icra ve BES oranlıdır, tutarı bordro hesabında"
+                                    }
+                                  },
+                                  "required": [
+                                    "advanceCount",
+                                    "garnishmentCount",
+                                    "pensionCount",
+                                    "advanceTotalCents"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "blockers": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "enum": [
+                                      "payroll_lesson_hours_pending"
+                                    ]
+                                  },
+                                  "description": "Onayı durduran engeller; boş değilse onay 409 döner"
+                                },
+                                "warnings": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "enum": [
+                                      "payroll_run_missing",
+                                      "payroll_run_stale"
+                                    ]
+                                  },
+                                  "description": "Onayı durdurmayan uyarılar"
+                                }
+                              },
+                              "required": [
+                                "lessonSheet",
+                                "payrollRun",
+                                "deductions",
+                                "blockers",
+                                "warnings"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Onaylanmamış, başlamış ayın onay öncesi durumu (ek ders, kayıtlı hesap, kesinti; K-425)"
+                        },
                         "reopenedAt": {
                           "type": [
                             "string",
@@ -228169,6 +228472,7 @@
                         "approvalCount",
                         "approved",
                         "current",
+                        "checks",
                         "reopenedAt",
                         "reopenedByName",
                         "reopenReason",
@@ -228385,6 +228689,157 @@
                           ],
                           "description": "Onaylanmamış, başlamış ayın güncel girdi özeti; onay isteği `current.inputsHash` taşır"
                         },
+                        "checks": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "lessonSheet": {
+                                  "type": "object",
+                                  "properties": {
+                                    "state": {
+                                      "type": "string",
+                                      "enum": [
+                                        "none",
+                                        "draft",
+                                        "teacher_review",
+                                        "approved"
+                                      ],
+                                      "description": "Ek ders çizelgesi: `none` saat yok, `draft` taslak, `teacher_review` öğretmen kontrolünde, `approved` onaylı"
+                                    },
+                                    "entryCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Ayın ek ders saati kaydı sayısı"
+                                    },
+                                    "pendingCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Müdür onayı bekleyen saat kaydı sayısı"
+                                    }
+                                  },
+                                  "required": [
+                                    "state",
+                                    "entryCount",
+                                    "pendingCount"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "payrollRun": {
+                                  "type": "object",
+                                  "properties": {
+                                    "state": {
+                                      "type": "string",
+                                      "enum": [
+                                        "none",
+                                        "current",
+                                        "stale"
+                                      ],
+                                      "description": "Kayıtlı bordro hesabı: `none` yok, `current` güncel, `stale` girdiler değişmiş"
+                                    },
+                                    "revision": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Etkin hesabın revizyonu"
+                                    },
+                                    "calculatedAt": {
+                                      "description": "Etkin hesabın kayıt anı",
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "state",
+                                    "revision",
+                                    "calculatedAt"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "deductions": {
+                                  "type": "object",
+                                  "properties": {
+                                    "advanceCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Ayın avans taksiti sayısı"
+                                    },
+                                    "garnishmentCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Ayda kesilecek icra sayısı"
+                                    },
+                                    "pensionCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Ayda kesilecek BES katkısı sayısı"
+                                    },
+                                    "advanceTotalCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Avans taksitlerinin toplamı, kuruş; icra ve BES oranlıdır, tutarı bordro hesabında"
+                                    }
+                                  },
+                                  "required": [
+                                    "advanceCount",
+                                    "garnishmentCount",
+                                    "pensionCount",
+                                    "advanceTotalCents"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "blockers": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "enum": [
+                                      "payroll_lesson_hours_pending"
+                                    ]
+                                  },
+                                  "description": "Onayı durduran engeller; boş değilse onay 409 döner"
+                                },
+                                "warnings": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "enum": [
+                                      "payroll_run_missing",
+                                      "payroll_run_stale"
+                                    ]
+                                  },
+                                  "description": "Onayı durdurmayan uyarılar"
+                                }
+                              },
+                              "required": [
+                                "lessonSheet",
+                                "payrollRun",
+                                "deductions",
+                                "blockers",
+                                "warnings"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Onaylanmamış, başlamış ayın onay öncesi durumu (ek ders, kayıtlı hesap, kesinti; K-425)"
+                        },
                         "reopenedAt": {
                           "type": [
                             "string",
@@ -228420,6 +228875,7 @@
                         "approvalCount",
                         "approved",
                         "current",
+                        "checks",
                         "reopenedAt",
                         "reopenedByName",
                         "reopenReason",
@@ -228782,6 +229238,157 @@
                           ],
                           "description": "Onaylanmamış, başlamış ayın güncel girdi özeti; onay isteği `current.inputsHash` taşır"
                         },
+                        "checks": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "lessonSheet": {
+                                  "type": "object",
+                                  "properties": {
+                                    "state": {
+                                      "type": "string",
+                                      "enum": [
+                                        "none",
+                                        "draft",
+                                        "teacher_review",
+                                        "approved"
+                                      ],
+                                      "description": "Ek ders çizelgesi: `none` saat yok, `draft` taslak, `teacher_review` öğretmen kontrolünde, `approved` onaylı"
+                                    },
+                                    "entryCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Ayın ek ders saati kaydı sayısı"
+                                    },
+                                    "pendingCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Müdür onayı bekleyen saat kaydı sayısı"
+                                    }
+                                  },
+                                  "required": [
+                                    "state",
+                                    "entryCount",
+                                    "pendingCount"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "payrollRun": {
+                                  "type": "object",
+                                  "properties": {
+                                    "state": {
+                                      "type": "string",
+                                      "enum": [
+                                        "none",
+                                        "current",
+                                        "stale"
+                                      ],
+                                      "description": "Kayıtlı bordro hesabı: `none` yok, `current` güncel, `stale` girdiler değişmiş"
+                                    },
+                                    "revision": {
+                                      "anyOf": [
+                                        {
+                                          "type": "integer",
+                                          "minimum": -9007199254740991,
+                                          "maximum": 9007199254740991
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Etkin hesabın revizyonu"
+                                    },
+                                    "calculatedAt": {
+                                      "description": "Etkin hesabın kayıt anı",
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "state",
+                                    "revision",
+                                    "calculatedAt"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "deductions": {
+                                  "type": "object",
+                                  "properties": {
+                                    "advanceCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Ayın avans taksiti sayısı"
+                                    },
+                                    "garnishmentCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Ayda kesilecek icra sayısı"
+                                    },
+                                    "pensionCount": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Ayda kesilecek BES katkısı sayısı"
+                                    },
+                                    "advanceTotalCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Avans taksitlerinin toplamı, kuruş; icra ve BES oranlıdır, tutarı bordro hesabında"
+                                    }
+                                  },
+                                  "required": [
+                                    "advanceCount",
+                                    "garnishmentCount",
+                                    "pensionCount",
+                                    "advanceTotalCents"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "blockers": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "enum": [
+                                      "payroll_lesson_hours_pending"
+                                    ]
+                                  },
+                                  "description": "Onayı durduran engeller; boş değilse onay 409 döner"
+                                },
+                                "warnings": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "enum": [
+                                      "payroll_run_missing",
+                                      "payroll_run_stale"
+                                    ]
+                                  },
+                                  "description": "Onayı durdurmayan uyarılar"
+                                }
+                              },
+                              "required": [
+                                "lessonSheet",
+                                "payrollRun",
+                                "deductions",
+                                "blockers",
+                                "warnings"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Onaylanmamış, başlamış ayın onay öncesi durumu (ek ders, kayıtlı hesap, kesinti; K-425)"
+                        },
                         "reopenedAt": {
                           "type": [
                             "string",
@@ -228817,6 +229424,7 @@
                         "approvalCount",
                         "approved",
                         "current",
+                        "checks",
                         "reopenedAt",
                         "reopenedByName",
                         "reopenReason",

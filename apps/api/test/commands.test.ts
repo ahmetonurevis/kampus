@@ -204,6 +204,10 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // Açık pozisyon açılışı; çift tıklama ikinci pozisyonu açmaz
   // (routes/finance-staffing-plans.ts; DOM-FIN-126, ON-188).
   'POST /api/v1/finance/staffing-positions',
+  // Mesleki gelişim kataloğuna eğitim ekleme ve personel atama; çift tıklama ikinci eğitimi ya da
+  // ikinci atamayı açmaz (routes/finance-professional-development.ts; DOM-FIN-125, ON-214).
+  'POST /api/v1/finance/professional-development',
+  'POST /api/v1/finance/professional-development/{programId}/enrollments',
 ]
 // Onur: kayıt ve finans sonu
 

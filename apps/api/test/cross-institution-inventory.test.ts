@@ -3243,6 +3243,48 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: mesleki gelişim kataloğu (ON-214; DOM-FIN-125).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/professional-development', 'listOf(a.admin)'],
+        ['gövde', 'POST /api/v1/finance/professional-development', 'institutionId: b.id'],
+        ['kayıt', 'GET /api/v1/finance/professional-development/:programId', 'get(bUrl, a.admin)'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/professional-development/:programId',
+          "call('PATCH', bUrl, a.admin",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/professional-development/:programId/status',
+          'setStatus(a.admin, bProgram',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/professional-development/:programId/enrollments',
+          '/enrollments`, a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/professional-development/:programId/enrollments',
+          'enroll(a.admin, bProgram',
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/professional-development/:programId/enrollments/:enrollmentId',
+          'mark(a.admin, bProgram, bEnrollment',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-professional-development.test.ts',
+        'DOM-FIN-125: başka kurumun eğitimi ve personeli 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

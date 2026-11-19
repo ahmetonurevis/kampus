@@ -433,11 +433,17 @@ function SyncButton({ activity }: { activity: PaidActivityRow }) {
   async function start() {
     const outcome = await sync.submit({ activityId: activity.id })
     if (outcome.status !== 'success') return
-    const { grantedCount, withdrawnCount, promotedCount } = outcome.data.data
+    const { grantedCount, withdrawnCount, inactiveCancelledCount, promotedCount } =
+      outcome.data.data
+    // Etkin olmayan öğrencinin taksitsiz katılımı eşitlemede parasız kapanır (K-418).
+    const inactive =
+      inactiveCancelledCount > 0
+        ? `, ${String(inactiveCancelledCount)} etkin olmayan öğrencinin katılımı kapatıldı`
+        : ''
     notify.success(
-      grantedCount + withdrawnCount === 0
+      grantedCount + withdrawnCount + inactiveCancelledCount === 0
         ? 'İzin formunda yeni karar yok.'
-        : `${String(grantedCount)} izin alındı, ${String(withdrawnCount)} katılım iptal edildi${promotedCount > 0 ? `, ${String(promotedCount)} yedek asile geçti` : ''}.`,
+        : `${String(grantedCount)} izin alındı, ${String(withdrawnCount)} katılım iptal edildi${inactive}${promotedCount > 0 ? `, ${String(promotedCount)} yedek asile geçti` : ''}.`,
     )
   }
   return (

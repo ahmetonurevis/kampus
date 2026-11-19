@@ -167,7 +167,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 
 ### DOM-KAY-024 · Kayıt dondurma ve ayrılış
 
-- **Kural:** Öğrenci ayrılırken ayrılış tarihi, nedeni (nakil, taşınma, sağlık, ekonomik, memnuniyetsizlik, diğer) ve hedef okul tutulur; öğrenci pasifleşir, ileri tarihli etüt/servis/kulüp kayıtları sonlanır, etkinlik günü ayrılış gününden sonra olan gezi ve etkinlik katılımı etkinliğin kuralıyla, yedek ve izin bekleyen katılımı parasız iptal edilir (`DOM-FIN-098`, `DOM-FIN-112`, K-348, K-395), iade hesabı `DOM-FIN-040` ile açılır. Dil okulunda kayıt dondurma (`DOM-DIL-052`) ayrılıştan ayrı bir durumdur.
+- **Kural:** Öğrenci ayrılırken ayrılış tarihi, nedeni (nakil, taşınma, sağlık, ekonomik, memnuniyetsizlik, diğer) ve hedef okul tutulur; öğrenci pasifleşir, ileri tarihli etüt/servis/kulüp kayıtları sonlanır, etkinlik günü ayrılış gününden sonra olan gezi ve etkinlik katılımı etkinliğin kuralıyla, etkinlik günü ayrılış günü ya da sonra olan yedek ve izin bekleyen katılımı parasız iptal edilir (`DOM-FIN-098`, `DOM-FIN-112`, K-348, K-395, K-418), iade hesabı `DOM-FIN-040` ile açılır. Dil okulunda kayıt dondurma (`DOM-DIL-052`) ayrılıştan ayrı bir durumdur.
 - **Gerekçe:** Ücret iadesi ayrılış tarihine göre hesaplanır; neden verisi kayıp analizi için gerekir.
 - **Kaynak:** ÖÖKY md. 56/3.
 - **Kurum türü:** ikisi

@@ -8755,7 +8755,7 @@ export interface paths {
         put?: never;
         /**
          * Veli izinlerini izin formundan eşitle
-         * @description Bağlı dijital izin formunda (IST-067) onaylananların izni alınır, izin bekleyen asilin taksiti açılır; formda reddedilenlerin (izin bekleyen ya da izni formdan gelmiş) katılımı K-302 kuralıyla iptal edilir, boşalan yere yedek geçer (K-370, K-369). Elle girilen izin formdaki retle düşmez. Form bağlı değilse 422 `paid_activity_permission_form_missing`, kullanılamıyorsa 422 `paid_activity_permission_form_not_found`. `Idempotency-Key` zorunlu. Roller: `yonetici`, `onburo` (K-300). Modül `finance`.
+         * @description Bağlı dijital izin formunda (IST-067) onaylananların izni alınır, izin bekleyen asilin taksiti açılır; formda reddedilenlerin (izin bekleyen ya da izni formdan gelmiş) katılımı K-302 kuralıyla iptal edilir, boşalan yere yedek geçer (K-370, K-369). Elle girilen izin formdaki retle düşmez. Etkin olmayan (ayrılmış ya da mezun) öğrencinin yedek ve izin bekleyen katılımı formdan bağımsız parasız iptal edilir, izni alınmaz, taksit açılmaz (`inactiveCancelledCount`; günü geçmiş etkinlikte yapılmaz; K-418). Form bağlı değilse 422 `paid_activity_permission_form_missing`, kullanılamıyorsa 422 `paid_activity_permission_form_not_found`. `Idempotency-Key` zorunlu. Roller: `yonetici`, `onburo` (K-300). Modül `finance`.
          */
         post: operations["syncPaidActivityConsents"];
         delete?: never;
@@ -8795,7 +8795,7 @@ export interface paths {
         put?: never;
         /**
          * Veli iznini kaydet
-         * @description Personelin aldığı izin: kanal (`paper`, `phone`, `in_person`) ve izni veren kişinin adı (2–120). İzin bekleyen asil asil olur ve taksiti açılır (vade son katılım günü, geçtiyse bugün); yedeğin izni kaydedilir (K-370). Etkinlik izin istemiyorsa 422 `paid_activity_consent_not_required`, etkinlik günü geçtiyse 422 `paid_activity_consent_closed`, izin zaten kayıtlıysa 409 `paid_activity_consent_recorded`, katılım iptalse 409 `paid_activity_participation_cancelled`. `If-Match` ve `Idempotency-Key` zorunlu. Roller: `yonetici`, `onburo` (K-300). Modül `finance`.
+         * @description Personelin aldığı izin: kanal (`paper`, `phone`, `in_person`) ve izni veren kişinin adı (2–120). İzin bekleyen asil asil olur ve taksiti açılır (vade son katılım günü, geçtiyse bugün); yedeğin izni kaydedilir (K-370). Etkinlik izin istemiyorsa 422 `paid_activity_consent_not_required`, etkinlik günü geçtiyse 422 `paid_activity_consent_closed`, izin zaten kayıtlıysa 409 `paid_activity_consent_recorded`, öğrenci etkin değilse (ayrılmış ya da mezun; taksit açılmaz) 422 `paid_activity_student_inactive` (K-418), katılım iptalse 409 `paid_activity_participation_cancelled`. `If-Match` ve `Idempotency-Key` zorunlu. Roller: `yonetici`, `onburo` (K-300). Modül `finance`.
          */
         post: operations["grantPaidActivityConsent"];
         delete?: never;
@@ -8818,6 +8818,46 @@ export interface paths {
          * @description Kanal (`paper`, `phone`, `in_person`) ile. Katılım "izin geri çekildi" gerekçesiyle (`cancelKind: consent`) iptal edilir; iade katılımcı iptali gibi K-302 kuralıyladır, yer boşalırsa sıradaki yedek asile geçer (K-370, K-369). Etkinlik izin istemiyorsa 422 `paid_activity_consent_not_required`, iptal edilmiş katılım 409. `If-Match` ve `Idempotency-Key` zorunlu. Roller: `yonetici`, `onburo` (K-300). Modül `finance`.
          */
         post: operations["withdrawPaidActivityConsent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/paid-activity-participants/withdrawn-leftovers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ayrılıştan kalan yedek ve izin bekleyen katılımlar
+         * @description Ayrılmış (bugün etkin olmayan) öğrencinin iptal edilmemiş etkinlikteki yedek ve izin bekleyen katılımları; etkinlik günü öğrencinin son ayrılış günü ya da sonra (K-419). Bu satırları bugünkü ayrılış kapatır (K-395, K-418); liste ON-346 öncesi ayrılışlardan kalanları gösterir. Etkinlik gününe, sonra öğrenci adına göre; yalnız kurumun kayıtları. Rol: `yonetici` (K-300). Modül `finance`.
+         */
+        get: operations["listWithdrawnPaidActivityLeftovers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/paid-activity-participants/withdrawn-leftovers/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ayrılıştan kalan katılımları parasız iptal et
+         * @description Yöneticinin seçtiği (1–100) kalan katılımlar tek işlemde parasız iptal edilir: iptal türü katılımcı, iptal günü bugün, para ve taksit etkisi yok; denetim `paid_activity.participant_cancel` gerekçe kodu `student_withdrawal` (K-419). İzin bekleyenin boşalttığı yere sıradaki etkin yedek aynı işlemde geçer (K-369, K-396). Kurumda olmayan katılım 404 (hiçbiri iptal edilmez), iptal edilmiş katılım 409 `paid_activity_participation_cancelled`, kalan katılım ölçütüne uymayan 422 `paid_activity_leftover_not_eligible`. `Idempotency-Key` zorunlu. Rol: `yonetici` (K-300). Modül `finance`.
+         */
+        post: operations["cancelWithdrawnPaidActivityLeftovers"];
         delete?: never;
         options?: never;
         head?: never;
@@ -94611,6 +94651,8 @@ export interface operations {
                             };
                             grantedCount: number;
                             withdrawnCount: number;
+                            /** @description Etkin olmayan (ayrılmış ya da mezun) öğrencinin parasız iptal edilen yedek ve izin bekleyen katılımı (K-418) */
+                            inactiveCancelledCount: number;
                             promotedCount: number;
                         };
                     };
@@ -95117,6 +95159,231 @@ export interface operations {
                             refundBankAccountLabel: string | null;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listWithdrawnPaidActivityLeftovers: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Katılım kimliği */
+                            id: string;
+                            activityId: string;
+                            activityName: string;
+                            /** @description Etkinlik günü (YYYY-MM-DD) */
+                            activityDate: string;
+                            studentId: string;
+                            studentName: string | null;
+                            /**
+                             * @description Yedek ya da izin bekleyen
+                             * @enum {string}
+                             */
+                            status: "waitlisted" | "awaiting_consent";
+                            /** @description Öğrencinin son ayrılış günü (YYYY-MM-DD) */
+                            withdrawalDate: string;
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelWithdrawnPaidActivityLeftovers: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    participantIds: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Parasız iptal edilen katılımlar */
+                            cancelledIds: string[];
+                            /** @description Boşalan yere asile geçen yedek */
+                            promotedCount: number;
                         };
                     };
                 };

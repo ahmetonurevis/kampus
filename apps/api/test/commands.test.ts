@@ -127,6 +127,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/paid-activities/{activityId}/consents/sync',
   'POST /api/v1/finance/paid-activity-participants/{participantId}/consent',
   'POST /api/v1/finance/paid-activity-participants/{participantId}/consent-withdraw',
+  // Ayrılıştan kalan katılımların toplu iptali yedek geçirip taksit açar; çift gönderim ikinci
+  // denetim izi yazmaz (routes/finance-paid-activities.ts; DOM-FIN-112, ON-347).
+  'POST /api/v1/finance/paid-activity-participants/withdrawn-leftovers/cancel',
   // Mezun belge talebi ücreti dondurur ve dosya bağlar; çift tıklama ikinci talep açmaz
   // (routes/enrollment-alumni-documents.ts; DOM-KAY-044, ON-260).
   'POST /api/v1/prospects/alumni-document-requests',

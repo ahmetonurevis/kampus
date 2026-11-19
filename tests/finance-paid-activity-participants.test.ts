@@ -12,10 +12,13 @@ import {
   planConsentSync,
   planConsentWithdrawal,
   planManualConsent,
+  planWithdrawnLeftoverCancel,
+  isWithdrawnLeftover,
   promotionCandidates,
   rosterConsentText,
   rosterStatusText,
   type RosterRow,
+  type WithdrawnLeftoverCandidate,
 } from '../packages/school-core/src/lib/finance-paid-activity-participants.ts'
 import {
   applyParticipationCancel,
@@ -430,6 +433,7 @@ test('DOM-FIN-112, K-370: formdan eşitleme onaylananın iznini alır, reddedeni
       // Karar düşmüş (DOM-ILT-032): alınmış izin kendiliğinden geri alınmaz.
       ['s-f', 'pending'],
     ] as const),
+    { today: TODAY, activityDate: '2026-10-20' },
   )
   assert.deepEqual(
     plan.grant.map((item) => item.id),
@@ -438,6 +442,213 @@ test('DOM-FIN-112, K-370: formdan eşitleme onaylananın iznini alır, reddedeni
   assert.deepEqual(
     plan.withdraw.map((item) => item.id),
     ['b', 'c'],
+  )
+  assert.deepEqual(plan.inactive, [])
+})
+
+test('K-418, DOM-FIN-112: etkin olmayan öğrenciye izin kaydedilmez, taksit açılmaz', () => {
+  const grant = { channel: 'paper', grantorName: 'Ayşe Yılmaz' } as const
+  for (const status of ['awaiting_consent', 'waitlisted'] as const) {
+    const state = freshState()
+    const before = structuredClone(state.invoices)
+    assert.throws(
+      () =>
+        applyConsentGrant(
+          state,
+          terms({ requiresConsent: true }),
+          { studentId: FIRST_ID, status, consentStatus: 'pending', studentActive: false },
+          grant,
+          { today: TODAY, makeId },
+        ),
+      (error: unknown) =>
+        isDomainError('paid_activity_student_inactive')(error) &&
+        error instanceof Error &&
+        error.message.startsWith('Öğrenci etkin değil'),
+    )
+    assert.deepEqual(state.invoices, before)
+  }
+  // Dil okulunda kullanıcı metni kursiyerdir.
+  assert.throws(
+    () =>
+      applyConsentGrant(
+        freshState(),
+        terms({ requiresConsent: true }),
+        {
+          studentId: FIRST_ID,
+          status: 'awaiting_consent',
+          consentStatus: 'pending',
+          studentActive: false,
+        },
+        grant,
+        { today: TODAY, makeId, institutionType: 'language_school' },
+      ),
+    (error: unknown) => error instanceof Error && error.message.startsWith('Kursiyer etkin değil'),
+  )
+  // Ayrılış günündeki etkinlik: gün geçmemiş olsa da ayrılan öğrenciye taksit açılmaz.
+  assert.throws(
+    () =>
+      applyConsentGrant(
+        freshState(),
+        terms({ requiresConsent: true, activityDate: TODAY }),
+        {
+          studentId: FIRST_ID,
+          status: 'awaiting_consent',
+          consentStatus: 'pending',
+          studentActive: false,
+        },
+        grant,
+        { today: TODAY, makeId },
+      ),
+    isDomainError('paid_activity_student_inactive'),
+  )
+  // Etkin öğrenci (alan verilmezse de) izinle asil olur.
+  const state = freshState()
+  const plan = applyConsentGrant(
+    state,
+    terms({ requiresConsent: true, activityDate: TODAY }),
+    {
+      studentId: FIRST_ID,
+      status: 'awaiting_consent',
+      consentStatus: 'pending',
+      studentActive: true,
+    },
+    grant,
+    { today: TODAY, makeId },
+  )
+  assert.equal(plan.status, 'active')
+  assert.ok(state.invoices.some((item) => item.id === plan.invoiceId))
+})
+
+test('K-418, DOM-FIN-112: eşitleme etkin olmayanın taksitsiz katılımını formdan bağımsız iptale çıkarır', () => {
+  const row = (
+    id: string,
+    status: 'active' | 'awaiting_consent' | 'waitlisted' | 'cancelled',
+    studentActive: boolean,
+    consentStatus: 'pending' | 'granted' = status === 'active' ? 'granted' : 'pending',
+  ) => ({
+    id,
+    studentId: `s-${id}`,
+    status,
+    consentStatus,
+    consentChannel: consentStatus === 'granted' ? ('permission_form' as const) : null,
+    studentActive,
+  })
+  const participants = [
+    row('a', 'awaiting_consent', false),
+    row('b', 'waitlisted', false),
+    row('c', 'awaiting_consent', true),
+    // Taksitli asil öteki kurallarla: formda retse iptale çıkar (K-302).
+    row('d', 'active', false),
+    row('e', 'cancelled', false),
+    row('f', 'waitlisted', false, 'granted'),
+  ]
+  const statuses = new Map([
+    ['s-a', 'approved'],
+    ['s-b', 'rejected'],
+    ['s-c', 'approved'],
+    ['s-d', 'rejected'],
+    ['s-e', 'approved'],
+  ] as const)
+  const plan = planConsentSync(participants, statuses, { today: TODAY, activityDate: TODAY })
+  assert.deepEqual(
+    plan.inactive.map((item) => item.id),
+    ['a', 'b', 'f'],
+  )
+  assert.deepEqual(
+    plan.grant.map((item) => item.id),
+    ['c'],
+  )
+  assert.deepEqual(
+    plan.withdraw.map((item) => item.id),
+    ['d'],
+  )
+  // Günü geçmiş etkinlikte geçmiş kayıt değişmez; etkin olmayanın satırı öteki kurallara kalır.
+  const past = planConsentSync(participants, statuses, {
+    today: '2026-10-21',
+    activityDate: '2026-10-20',
+  })
+  assert.deepEqual(past.inactive, [])
+  assert.deepEqual(
+    past.grant.map((item) => item.id),
+    ['a', 'c'],
+  )
+})
+
+test('K-419, DOM-FIN-112: ayrılıştan kalan taksitsiz katılım yönetici onayıyla parasız iptal edilir', () => {
+  const ID = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`
+  const candidate = (n: number, overrides: Partial<WithdrawnLeftoverCandidate> = {}) => ({
+    id: ID(n),
+    activityId: `act-${String(n)}`,
+    studentId: FIRST_ID,
+    status: 'awaiting_consent' as const,
+    activityDate: '2026-10-20',
+    activityStatus: 'open' as const,
+    studentActive: false,
+    withdrawalDate: '2026-10-01',
+    ...overrides,
+  })
+  const leftover = candidate(1)
+  const waiting = candidate(2, { status: 'waitlisted' })
+  const sameDay = candidate(3, { activityDate: '2026-10-01' })
+  assert.ok(isWithdrawnLeftover(leftover))
+  assert.ok(isWithdrawnLeftover(waiting))
+  assert.ok(isWithdrawnLeftover(sameDay))
+  // Ölçüt dışı: etkin öğrenci (yeniden kayıt), ayrılış kaydı yok, ayrılıştan önceki etkinlik,
+  // iptal edilmiş etkinlik, taksitli asil.
+  for (const outside of [
+    candidate(4, { studentActive: true }),
+    candidate(5, { withdrawalDate: null }),
+    candidate(6, { activityDate: '2026-09-30' }),
+    candidate(7, { activityStatus: 'cancelled' }),
+    candidate(8, { status: 'active' }),
+  ])
+    assert.equal(isWithdrawnLeftover(outside), false, outside.id)
+
+  const rows = new Map(
+    [
+      leftover,
+      waiting,
+      sameDay,
+      candidate(4, { studentActive: true }),
+      candidate(9, { status: 'cancelled' }),
+    ].map((item) => [item.id, item]),
+  )
+  const plans = planWithdrawnLeftoverCancel({ participantIds: [ID(1), ID(2), ID(3)] }, rows, {
+    today: TODAY,
+  })
+  assert.deepEqual(
+    plans.map((item) => [item.participant.id, item.freesSeat]),
+    [
+      [ID(1), true],
+      [ID(2), false],
+      [ID(3), true],
+    ],
+  )
+  for (const { plan } of plans)
+    assert.deepEqual(plan, {
+      cancelKind: 'participant',
+      cancelledDate: TODAY,
+      paidCents: 0,
+      retainedCents: 0,
+      refundCents: 0,
+      closedInvoiceId: null,
+      debtInvoiceId: null,
+    })
+  const reject = (participantIds: unknown, code: string | null, kind = 'rule') =>
+    assert.throws(
+      () => planWithdrawnLeftoverCancel({ participantIds }, rows, { today: TODAY }),
+      code === null ? /./ : isDomainError(code, kind),
+    )
+  // Başka kurumun (yüklenmemiş) katılımı 404; hiçbiri iptal edilmez.
+  reject([ID(1), ID(10)], 'paid_activity_participant_not_found', 'not_found')
+  reject([ID(9)], 'paid_activity_participation_cancelled', 'conflict')
+  reject([ID(4)], 'paid_activity_leftover_not_eligible')
+  reject([], null)
+  reject([ID(1), ID(1)], null)
+  reject(['x'], null)
+  reject(
+    Array.from({ length: 101 }, (_, index) => ID(index + 100)),
+    null,
   )
 })
 

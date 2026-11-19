@@ -2860,6 +2860,216 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: bordro hesabı (ON-198; DOM-FIN-115).
+  ...Object.fromEntries(
+    (
+      [
+        ['kayıt', 'GET /api/v1/finance/payroll-calculations/:month', 'rowsOf(aPreview).length, 0'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/payroll-runs/:month',
+          'get(`${RUNS}/2026-01`, a.admin), 404',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/payroll-runs/:month/calculate',
+          "save(a.admin, '2026-01', null), 422",
+        ],
+        [
+          'liste',
+          'GET /api/v1/finance/payroll-tax-carryovers',
+          '(await get(`${CARRYOVERS}?year=2026`, a.admin)',
+        ],
+        ['gövde', 'POST /api/v1/finance/payroll-tax-carryovers', 'institutionId: b.id'],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/payroll-tax-carryovers/:carryoverId',
+          '`${CARRYOVERS}/${String(bCarryover.id)}`',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-payroll-runs.test.ts',
+        'DOM-FIN-115: başka kurumun personeli, hesabı ve devri 404 ve B değişmez; listede yok; gövdedeki institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: ücret hesap pusulası (ON-201; DOM-FIN-119).
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'kayıt',
+          'GET /api/v1/finance/payroll-runs/:month/payslips',
+          "get(slipsUrl('2026-01', bStaff), a.admin), 404",
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-payroll-payslips.test.ts',
+        'DOM-FIN-119: başka kurumun hesabı ve personeli 404, B değişmez; gövde/sorgudaki institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: İK raporları (ON-192; DOM-FIN-117).
+  ...Object.fromEntries(
+    ([['liste', 'GET /api/v1/finance/hr-reports', 'get(PERIOD, a.admin)']] as const).map(
+      ([kind, key, marker]) => [
+        key,
+        proof(kind)(
+          'finance-hr-reports.test.ts',
+          'başka kurumun personeli ve kaydı raporda yok',
+          marker,
+        ),
+      ],
+    ),
+  ),
+  // Onur: ek ders çizelgesi onayı (ON-196; DOM-FIN-120).
+  ...Object.fromEntries(
+    (
+      [
+        ['kayıt', 'GET /api/v1/finance/lesson-hour-sheets/:month', 'ok(await sheetOf(a.admin))'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/lesson-hour-sheets/:month/submit',
+          'ok(await submit(a.admin))',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/lesson-hour-sheets/:month/confirmations',
+          'confirm(a.admin, b.selin)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/lesson-hour-sheets/:month/approve',
+          'approve(a.admin, ready.entriesHash)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/lesson-hour-sheets/:month/reopen',
+          "reopen(a.admin, 'Kurum A yeniden açtı')",
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-lesson-hour-approvals.test.ts',
+        'başka kurumun çizelgesi ve personeli görünmez, işlenmez ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: izin talebi ve onayı (ON-182; DOM-FIN-116).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/leave-requests', 'listOf(a.admin)'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/leave-requests/preview',
+          '`${REQUESTS}/preview?membershipId=${bStaff}',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/leave-requests/:requestId',
+          '`${REQUESTS}/${String(bRequest.id)}`',
+        ],
+        ['gövde', 'POST /api/v1/finance/leave-requests', 'institutionId: b.id'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/leave-requests/:requestId/approve',
+          'approveReq(a.admin, bRequest)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/leave-requests/:requestId/reject',
+          'rejectReq(a.admin, bRequest)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/leave-requests/:requestId/cancel',
+          'cancelReq(a.admin, bRequest)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/leave-requests/:requestId/assign-substitutes',
+          'substitutes(a.admin, bRequest',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-leave-requests.test.ts',
+        'DOM-FIN-116: başka kurumun talebi 404 ve B değişmez; listede yok; gövdedeki institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: işten ayrılış süreci (ON-180; DOM-FIN-118).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/staff-separations', 'listOf(a.admin)'],
+        ['gövde', 'POST /api/v1/finance/staff-separations', 'institutionId: b.id'],
+        ['kayıt', 'GET /api/v1/finance/staff-separations/:separationId', 'get(bUrl, a.admin)'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/staff-separations/:separationId',
+          "call('PATCH', bUrl, a.admin",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-separations/:separationId/mark-step',
+          '`${bUrl}/mark-step`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-separations/:separationId/complete',
+          '`${bUrl}/complete`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-separations/:separationId/cancel',
+          '`${bUrl}/cancel`',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/staff-separations/:separationId/document',
+          '`${bUrl}/document`',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-staff-separations.test.ts',
+        'başka kurumun personeli ve dosyası 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: özlük verisi saklama ve imha (ON-176; DOM-FIN-122).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/staff-retention-policies', 'get(POLICY, a.admin)'],
+        [
+          'gövde',
+          'PATCH /api/v1/finance/staff-retention-policies',
+          "call('PATCH', POLICY, a.admin",
+        ],
+        ['liste', 'GET /api/v1/finance/staff-retention-candidates', 'listOf(a.admin, CANDIDATES)'],
+        ['liste', 'GET /api/v1/finance/staff-data-destructions', 'listOf(a.admin, DESTRUCTIONS)'],
+        ['gövde', 'POST /api/v1/finance/staff-data-destructions', 'institutionId: b.id'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)('finance-staff-retention.test.ts', 'başka kurum 404 ve B değişmez', marker),
+    ]),
+  ),
 }
 
 /**

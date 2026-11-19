@@ -726,6 +726,19 @@ export function planLeaveRecord(
   }
 }
 
+/**
+ * Elle iptal yalnız elle yazılmış kayıtta (DOM-FIN-116, K-398): onaylanan izin talebinden doğan
+ * kayıt talebin iptaliyle iptal edilir, böylece talep ile kayıt ayrışmaz.
+ */
+export function assertManualLeaveRecord(record: { requestId: string | null }): void {
+  if (record.requestId !== null)
+    throw ruleError(
+      'staff_leave_record_from_request',
+      'Bu kayıt onaylanmış bir izin talebinden geldi; talebi iptal edin.',
+      'requestId',
+    )
+}
+
 // --- Hak ediş ------------------------------------------------------------------------------------
 
 export interface LeaveAccrual {

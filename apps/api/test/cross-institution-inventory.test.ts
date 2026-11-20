@@ -3377,6 +3377,70 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: iş ilanı ve başvuru havuzu (ON-177; DOM-FIN-128).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/job-postings', 'get(POSTINGS, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/job-postings', '...postingBody, institutionId: b.id'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/job-postings/:postingId',
+          'get(`${POSTINGS}/${String(bPosting.id)}`, a.admin)',
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/job-postings/:postingId',
+          "versioned('PATCH', bPostingUrl, a.admin",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/job-postings/:postingId/status',
+          '`${bPostingUrl}/status`, a.admin',
+        ],
+        ['liste', 'GET /api/v1/finance/job-applications', 'get(APPLICATIONS, a.admin)'],
+        [
+          'gövde',
+          'POST /api/v1/finance/job-applications',
+          'post(APPLICATIONS, a.admin, applicationBody(bPosting.id))',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/job-applications/:applicationId',
+          'get(`${APPLICATIONS}/${String(bApplication.id)}`, a.admin)',
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/job-applications/:applicationId',
+          "versioned('PATCH', bApplicationUrl, a.admin",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/job-applications/:applicationId/stage',
+          '`${bApplicationUrl}/stage`',
+        ],
+        ['liste', 'GET /api/v1/finance/job-application-retention', 'get(RETENTION, a.admin)'],
+        [
+          'gövde',
+          'POST /api/v1/finance/job-application-anonymizations',
+          'applicationIds: [bApplication.id]',
+        ],
+        ['liste', 'GET /api/v1/finance/job-application-settings', 'get(SETTINGS, a.admin)'],
+        [
+          'gövde',
+          'PATCH /api/v1/finance/job-application-settings',
+          'retentionMonths: 6, institutionId: b.id',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-job-postings.test.ts',
+        'DOM-FIN-128: başka kurumun ilanı ve başvurusu 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

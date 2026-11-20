@@ -12516,6 +12516,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/teacher-mentorship-onboarding-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bağlanabilecek işe başlama listeleri
+         * @description Eşleşmeye bağlanabilecek işe başlama listeleri (DOM-FIN-121): kabul edilmiş, geri çekilmemiş ve personel hesabı bağlanmış teklifler; yeni başlangıç önce, en çok 200. Eşleşmede teklifin hesabı yeni öğretmen olmalı (K-463). Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        get: operations["listTeacherMentorshipOnboardingOptions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/teacher-mentorships": {
         parameters: {
             query?: never;
@@ -132140,6 +132160,108 @@ export interface operations {
                             /** @description Süren eşleşmelerin bütün maddelerinde tamamlanma oranı, yüzde */
                             activeChecklistPercent: number | null;
                         };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listTeacherMentorshipOnboardingOptions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description İşe başlama listesi (iş teklifi) */
+                            offerId: string;
+                            /** @description Teklife bağlı personel hesabı */
+                            membershipId: string;
+                            position: string;
+                            /** @description İşe başlama günü (YYYY-MM-DD) */
+                            startDate: string;
+                        }[];
                     };
                 };
             };

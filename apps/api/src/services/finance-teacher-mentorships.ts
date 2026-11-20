@@ -33,6 +33,7 @@ import {
   findMentorshipOnboardingOffer,
   insertMentorship,
   insertMentorshipMeeting,
+  listLinkableOnboardingOffers,
   listMentorships,
   listMentorshipStates,
   loadMentorshipChecklist,
@@ -128,6 +129,10 @@ export function updateMentorshipSettingsCommand(
     idempotency,
   )
 }
+
+/** İşe başlama listesi seçimi (K-463): kabul edilmiş, hesabı bağlı teklifler. */
+export const listMentorshipOnboardingOptionsFor = (ctx: ServiceContext) =>
+  listLinkableOnboardingOffers(ctx.db, ctx.institutionId)
 
 // --- Okuma ---------------------------------------------------------------------------------------
 

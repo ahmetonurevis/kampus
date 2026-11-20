@@ -405,18 +405,19 @@ export function planMentorshipComplete(
 ): void {
   assertActive(mentorship)
   assertCloseDay(mentorship, closedOn, today)
+  // Gün alanının değil eşleşmenin eksiği: yolsuz hata (formda alan altında değil, bildirimde).
   if (facts.meetingCount === 0)
-    throw ruleError(
+    throw new DomainError(
       'mentorship_no_meetings',
       'Görüşme kaydı olmayan eşleşme tamamlanmaz; önce görüşmeyi kaydedin.',
-      'closedOn',
+      { kind: 'rule' },
     )
   const missing = facts.items.filter((item) => item.required && item.completedAt === null).length
   if (missing > 0)
-    throw ruleError(
+    throw new DomainError(
       'mentorship_checklist_incomplete',
       `Tamamlanmamış ${String(missing)} zorunlu madde var; önce maddeleri tamamlayın.`,
-      'closedOn',
+      { kind: 'rule' },
     )
 }
 

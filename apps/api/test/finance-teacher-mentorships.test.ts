@@ -33,6 +33,7 @@ import {
 const MENTORSHIPS = '/api/v1/finance/teacher-mentorships'
 const SETTINGS = '/api/v1/finance/teacher-mentorship-settings'
 const SUMMARY = '/api/v1/finance/teacher-mentorship-summary'
+const ONBOARDING = '/api/v1/finance/teacher-mentorship-onboarding-options'
 const MEETING = { meetingDate: '2026-10-02', durationMinutes: 40, topic: 'İlk hafta' }
 
 type Json = Record<string, unknown>
@@ -142,6 +143,7 @@ describe('DOM-FIN-136: yeni öğretmen mentorluğu uçları', () => {
     assertError(await call('GET', MENTORSHIPS, null), 401)
     assertError(await call('GET', SETTINGS, null), 401)
     assertError(await call('GET', SUMMARY, null), 401)
+    assertError(await call('GET', ONBOARDING, null), 401)
     assertError(await open(null, {}), 401)
     assertError(await meet(null, row), 401)
     assertError(await finish(null, row), 401)
@@ -464,6 +466,15 @@ describe('DOM-FIN-136: yeni öğretmen mentorluğu uçları', () => {
       acceptedOn: '2026-08-12',
       createdByUserId: 'test',
     })
+    const options = ok(await call('GET', ONBOARDING, t.admin)) as unknown as Json[]
+    assert.deepEqual(options, [
+      {
+        offerId,
+        membershipId: mentee.membershipId,
+        position: 'İngilizce öğretmeni',
+        startDate: '2026-09-01',
+      },
+    ])
     assertError(
       await open(t.admin, {
         mentorMembershipId: mentee.membershipId,
@@ -559,6 +570,21 @@ describe('DOM-FIN-136: yeni öğretmen mentorluğu uçları', () => {
     )
     const summary = ok(await call('GET', SUMMARY, a.admin))
     assert.equal(summary.active, 1)
+    await db.insert(staffJobOffers).values({
+      institutionId: b.id,
+      id: randomUUID(),
+      membershipId: pairB.mentee.membershipId,
+      position: 'Matematik öğretmeni',
+      staffRole: 'ogretmen',
+      startDate: '2026-09-01',
+      wageType: 'monthly_gross',
+      offeredAmountCents: 5_000_000,
+      status: 'accepted',
+      sentOn: '2026-08-10',
+      acceptedOn: '2026-08-12',
+      createdByUserId: 'test',
+    })
+    assert.deepEqual(ok(await call('GET', ONBOARDING, a.admin)), [])
     const settingsA = ok(await call('GET', SETTINGS, a.admin))
     assert.equal(settingsA.isDefault, true)
     const [stored] = await rowsOf(b.id)

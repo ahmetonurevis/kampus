@@ -21,6 +21,7 @@ import {
   getMentorshipFor,
   getMentorshipSettingsFor,
   getMentorshipSummaryFor,
+  listMentorshipOnboardingOptionsFor,
   listMentorshipsFor,
   setMentorshipChecklistItemCommand,
   updateMentorshipSettingsCommand,
@@ -35,6 +36,7 @@ import {
   mentorshipListResponse,
   mentorshipParams,
   mentorshipResponse,
+  onboardingOptionsResponse,
   settingsResponse,
   summaryResponse,
 } from './finance-teacher-mentorships.schemas.ts'
@@ -51,6 +53,7 @@ const URL = '/api/v1/finance/teacher-mentorships'
 const ITEM = `${URL}/:mentorshipId`
 const SETTINGS_URL = '/api/v1/finance/teacher-mentorship-settings'
 const SUMMARY_URL = '/api/v1/finance/teacher-mentorship-summary'
+const ONBOARDING_URL = '/api/v1/finance/teacher-mentorship-onboarding-options'
 
 function sendBody(reply: FastifyReply, result: CommandResponse): unknown {
   if (result.replayed) reply.header('idempotent-replayed', 'true')
@@ -127,6 +130,21 @@ export function registerFinanceTeacherMentorshipRoutes(app: FastifyInstance) {
       },
     },
     async (request) => ({ data: await getMentorshipSummaryFor(contextOf(request)) }),
+  )
+
+  typed.get(
+    ONBOARDING_URL,
+    {
+      preValidation: guarded,
+      schema: {
+        operationId: 'listTeacherMentorshipOnboardingOptions',
+        tags,
+        summary: 'Bağlanabilecek işe başlama listeleri',
+        description: `Eşleşmeye bağlanabilecek işe başlama listeleri (DOM-FIN-121): kabul edilmiş, geri çekilmemiş ve personel hesabı bağlanmış teklifler; yeni başlangıç önce, en çok 200. Eşleşmede teklifin hesabı yeni öğretmen olmalı (K-463). ${MANAGER}`,
+        response: { 200: onboardingOptionsResponse, ...commandErrors },
+      },
+    },
+    async (request) => ({ data: await listMentorshipOnboardingOptionsFor(contextOf(request)) }),
   )
 
   typed.get(

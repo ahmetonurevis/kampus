@@ -287810,6 +287810,144 @@
         }
       }
     },
+    "/api/v1/finance/teacher-mentorship-onboarding-options": {
+      "get": {
+        "operationId": "listTeacherMentorshipOnboardingOptions",
+        "summary": "Bağlanabilecek işe başlama listeleri",
+        "tags": [
+          "finance-teacher-mentorships"
+        ],
+        "description": "Eşleşmeye bağlanabilecek işe başlama listeleri (DOM-FIN-121): kabul edilmiş, geri çekilmemiş ve personel hesabı bağlanmış teklifler; yeni başlangıç önce, en çok 200. Eşleşmede teklifin hesabı yeni öğretmen olmalı (K-463). Rol: yalnız `yonetici`. Modül `finance`.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "offerId": {
+                            "type": "string",
+                            "description": "İşe başlama listesi (iş teklifi)"
+                          },
+                          "membershipId": {
+                            "type": "string",
+                            "description": "Teklife bağlı personel hesabı"
+                          },
+                          "position": {
+                            "type": "string"
+                          },
+                          "startDate": {
+                            "type": "string",
+                            "description": "İşe başlama günü (YYYY-MM-DD)"
+                          }
+                        },
+                        "required": [
+                          "offerId",
+                          "membershipId",
+                          "position",
+                          "startDate"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/finance/teacher-mentorships": {
       "get": {
         "operationId": "listTeacherMentorships",

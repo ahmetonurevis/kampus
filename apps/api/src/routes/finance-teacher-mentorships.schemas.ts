@@ -128,6 +128,18 @@ export const summaryResponse = dataResponse(
   }),
 )
 
+export const onboardingOptionsResponse = dataResponse(
+  z.array(
+    z.object({
+      offerId: z.string().describe('İşe başlama listesi (iş teklifi)'),
+      // kvkk: K
+      membershipId: z.string().describe('Teklife bağlı personel hesabı'),
+      position: z.string(),
+      startDate: z.string().describe('İşe başlama günü (YYYY-MM-DD)'),
+    }),
+  ),
+)
+
 export const mentorshipParams = z.object({ mentorshipId: z.uuid('Eşleşme geçersiz.') })
 export const meetingParams = mentorshipParams.extend({
   meetingId: z.uuid('Görüşme geçersiz.'),

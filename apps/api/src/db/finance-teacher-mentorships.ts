@@ -1,4 +1,18 @@
-import { and, asc, count, desc, eq, inArray, isNull, lt, max, or, sql, type SQL } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
+  max,
+  or,
+  sql,
+  type SQL,
+} from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 
 import type {
@@ -164,6 +178,36 @@ export async function findMentorshipOnboardingOffer(
     .where(and(eq(staffJobOffers.institutionId, institutionId), eq(staffJobOffers.id, offerId)))
     .limit(1)
   return row ?? null
+}
+
+/**
+ * Bağlanabilecek işe başlama listeleri: kabul edilmiş (geri çekilmemiş) ve hesabı bağlı teklifler,
+ * yeni başlangıç önce; seçim listesi olduğu için en çok 200.
+ */
+export async function listLinkableOnboardingOffers(
+  db: Database,
+  institutionId: string,
+): Promise<{ offerId: string; membershipId: string; position: string; startDate: string }[]> {
+  const rows = await db
+    .select({
+      offerId: staffJobOffers.id,
+      membershipId: staffJobOffers.membershipId,
+      position: staffJobOffers.position,
+      startDate: staffJobOffers.startDate,
+    })
+    .from(staffJobOffers)
+    .where(
+      and(
+        eq(staffJobOffers.institutionId, institutionId),
+        eq(staffJobOffers.status, 'accepted'),
+        isNotNull(staffJobOffers.membershipId),
+      ),
+    )
+    .orderBy(desc(staffJobOffers.startDate), asc(staffJobOffers.id))
+    .limit(200)
+  return rows.flatMap((row) =>
+    row.membershipId === null ? [] : [{ ...row, membershipId: row.membershipId }],
+  )
 }
 
 // --- Eşleşme -------------------------------------------------------------------------------------

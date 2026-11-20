@@ -287246,6 +287246,4451 @@
         }
       }
     },
+    "/api/v1/finance/teacher-mentorship-settings": {
+      "get": {
+        "operationId": "getTeacherMentorshipSettings",
+        "summary": "Mentorluk ayarı",
+        "tags": [
+          "finance-teacher-mentorships"
+        ],
+        "description": "Mentor başına süren en çok eşleşme ve yeni eşleşmelere kopyalanan kontrol listesi (K-463, K-465). Ayar yazılmadıysa varsayılanlar (3 eşleşme, beş madde) ve `isDefault: true`. Rol: yalnız `yonetici`. Modül `finance`.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "maxActivePerMentor": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Mentor başına süren en çok eşleşme (1–10)"
+                        },
+                        "checklistItems": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "label": {
+                                "type": "string"
+                              },
+                              "required": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "label",
+                              "required"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Yeni eşleşmelere kopyalanan kontrol listesi maddeleri"
+                        },
+                        "isDefault": {
+                          "type": "boolean",
+                          "description": "Ayar yazılmadı; varsayılan değerler"
+                        },
+                        "updatedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "`If-Match` için ayar sürümü; ayar yoksa boş (ilk yazma `If-Match` almaz)"
+                        }
+                      },
+                      "required": [
+                        "maxActivePerMentor",
+                        "checklistItems",
+                        "isDefault",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateTeacherMentorshipSettings",
+        "summary": "Mentorluk ayarını değiştir",
+        "tags": [
+          "finance-teacher-mentorships"
+        ],
+        "description": "Sınır (1–10) ve madde listesi bütünüyle yazılır (en çok 20; madde 2–120, aynı madde iki kez olmaz). İlk yazma `If-Match` almaz (ayar varsa 409), sonrakiler ayarın sürümünü ister. Açılmış eşleşmelerin listesi değişmez. Rol: yalnız `yonetici`. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "maxActivePerMentor": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10,
+                    "description": "Bir mentorun aynı anda süren en çok eşleşme sayısı (1–10)"
+                  },
+                  "checklistItems": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "label": {
+                          "type": "string",
+                          "minLength": 2,
+                          "maxLength": 120,
+                          "description": "Madde (2–120)"
+                        },
+                        "required": {
+                          "type": "boolean",
+                          "description": "Eşleşmenin tamamlanması için şart mı"
+                        }
+                      },
+                      "required": [
+                        "label",
+                        "required"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Yeni eşleşmelere kopyalanan kontrol listesi maddeleri, sırasıyla (en çok 20)"
+                  }
+                },
+                "required": [
+                  "maxActivePerMentor",
+                  "checklistItems"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": false,
+            "description": "İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`). Tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "maxActivePerMentor": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Mentor başına süren en çok eşleşme (1–10)"
+                        },
+                        "checklistItems": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "label": {
+                                "type": "string"
+                              },
+                              "required": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "label",
+                              "required"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Yeni eşleşmelere kopyalanan kontrol listesi maddeleri"
+                        },
+                        "isDefault": {
+                          "type": "boolean",
+                          "description": "Ayar yazılmadı; varsayılan değerler"
+                        },
+                        "updatedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "`If-Match` için ayar sürümü; ayar yoksa boş (ilk yazma `If-Match` almaz)"
+                        }
+                      },
+                      "required": [
+                        "maxActivePerMentor",
+                        "checklistItems",
+                        "isDefault",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/teacher-mentorship-summary": {
+      "get": {
+        "operationId": "getTeacherMentorshipSummary",
+        "summary": "Mentorluk takip özeti",
+        "tags": [
+          "finance-teacher-mentorships"
+        ],
+        "description": "Süren, görüşmesi 30 günü aşan, tamamlanan ve erken sonlanan eşleşme sayıları; süren eşleşmelerin kontrol listesi tamamlanma oranı (K-465). Kişisel alan taşımaz. Rol: yalnız `yonetici`. Modül `finance`.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "active": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Süren eşleşme"
+                        },
+                        "overdue": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Görüşmesi 30 günü aşan süren eşleşme"
+                        },
+                        "completed": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "endedEarly": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "activeChecklistPercent": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Süren eşleşmelerin bütün maddelerinde tamamlanma oranı, yüzde"
+                        }
+                      },
+                      "required": [
+                        "active",
+                        "overdue",
+                        "completed",
+                        "endedEarly",
+                        "activeChecklistPercent"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/teacher-mentorships": {
+      "get": {
+        "operationId": "listTeacherMentorships",
+        "summary": "Mentorluk eşleşmelerini listele",
+        "tags": [
+          "finance-teacher-mentorships"
+        ],
+        "description": "Eşleşmeler (süren önce, yeni başlangıç önce): mentor, yeni öğretmen, günler, durum, görüşme sayısı, son görüşme, son temastan bu yana gün, 30 günü aşma (K-465) ve kontrol listesi ilerlemesi. Mentor ya da yeni öğretmen adında aranır; durum ve `overdue=true` ile süzülür. Okuma aynı transaction'da denetime yazılır (`finance.teacher_mentorship.read`; alan adları ve kayıt sayısı). Rol: yalnız `yonetici`. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Mentor ya da yeni öğretmen adında"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "completed",
+                "ended_early"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Durum süzgeci"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "in": "query",
+            "name": "overdue",
+            "required": false,
+            "description": "`true`: yalnız görüşmesi 30 günü aşan süren eşleşmeler"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "mentorMembershipId": {
+                            "type": "string",
+                            "description": "Mentorun kurum üyeliği"
+                          },
+                          "mentorName": {
+                            "type": "string"
+                          },
+                          "menteeMembershipId": {
+                            "type": "string",
+                            "description": "Yeni öğretmenin kurum üyeliği"
+                          },
+                          "menteeName": {
+                            "type": "string"
+                          },
+                          "onboardingOfferId": {
+                            "description": "Bağlı işe başlama listesi (iş teklifi)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "onboardingPosition": {
+                            "description": "Bağlı teklifin pozisyonu",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "startDate": {
+                            "type": "string",
+                            "description": "Başlangıç günü (YYYY-MM-DD)"
+                          },
+                          "endDate": {
+                            "type": "string",
+                            "description": "Planlanan bitiş günü (YYYY-MM-DD)"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "active",
+                              "completed",
+                              "ended_early"
+                            ],
+                            "description": "`active` sürüyor, `completed` tamamlandı, `ended_early` erken sonlandı"
+                          },
+                          "closedOn": {
+                            "description": "Tamamlanma ya da sonlanma günü",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "endReason": {
+                            "description": "Erken sonlanma gerekçesi",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "meetingCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Görüşme sayısı (arşivliler hariç)"
+                          },
+                          "lastMeetingDate": {
+                            "description": "Son görüşme günü",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "daysSinceContact": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Süren eşleşmede son görüşmeden (yoksa başlangıçtan) bu yana gün"
+                          },
+                          "overdue": {
+                            "type": "boolean",
+                            "description": "Süren eşleşmede görüşmesizlik 30 günü aştı (K-465)"
+                          },
+                          "checklist": {
+                            "type": "object",
+                            "properties": {
+                              "total": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "done": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "requiredTotal": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "requiredDone": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "percent": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Tamamlanan madde / toplam madde, yüzde; madde yoksa boş"
+                              }
+                            },
+                            "required": [
+                              "total",
+                              "done",
+                              "requiredTotal",
+                              "requiredDone",
+                              "percent"
+                            ],
+                            "additionalProperties": false,
+                            "description": "Kontrol listesi ilerlemesi (hesaplanır, saklanmaz)"
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için eşleşme sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "mentorMembershipId",
+                          "mentorName",
+                          "menteeMembershipId",
+                          "menteeName",
+                          "onboardingOfferId",
+                          "onboardingPosition",
+                          "startDate",
+                          "endDate",
+                          "status",
+                          "closedOn",
+                          "endReason",
+                          "meetingCount",
+                          "lastMeetingDate",
+                          "daysSinceContact",
+                          "overdue",
+                          "checklist",
+                          "createdAt",
+                          "updatedAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createTeacherMentorship",
+        "summary": "Mentorluk eşleşmesi aç",
+        "tags": [
+          "finance-teacher-mentorships"
+        ],
+        "description": "Mentor (etkin öğretmen ya da yönetici), yeni öğretmen (etkin öğretmen), başlangıç ve planlanan bitiş (en çok 366 gün) ve isteğe bağlı işe başlama listesi (kabul edilmiş, hesabı yeni öğretmene bağlı iş teklifi). Kurum ayarındaki maddeler eşleşmeye kopyalanır (K-465). Ret: mentor yok/uygun değil 422 `mentorship_mentor_not_found`/`mentorship_mentor_invalid`; yeni öğretmen yok/öğretmen değil/ayrılmış 422 `mentorship_mentee_not_found`/`mentorship_mentee_not_teacher`/`mentorship_mentee_inactive`; aynı kişi 422 `mentorship_self`; günler 422 `mentorship_dates_invalid`/`mentorship_too_long`; işe başlama listesi 422 `mentorship_onboarding_not_found`/`mentorship_onboarding_mismatch`; yeni öğretmenin süren eşleşmesi 409 `mentorship_mentee_has_active`; mentor sınırı 422 `mentorship_mentor_limit` (K-463). `Idempotency-Key` zorunlu. Rol: yalnız `yonetici`. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mentorMembershipId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Mentorun kurum üyeliği (etkin öğretmen ya da yönetici)"
+                  },
+                  "menteeMembershipId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Yeni öğretmenin kurum üyeliği (etkin öğretmen)"
+                  },
+                  "startDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Eşleşmenin başlangıç günü"
+                  },
+                  "endDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Planlanan bitiş günü; başlangıçtan sonra, en çok 366 gün"
+                  },
+                  "onboardingOfferId": {
+                    "default": null,
+                    "description": "İsteğe bağlı işe başlama listesi (kabul edilmiş iş teklifi, DOM-FIN-121); hesabı yeni öğretmen olmalı",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "mentorMembershipId",
+                  "menteeMembershipId",
+                  "startDate",
+                  "endDate"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "mentorMembershipId": {
+                          "type": "string",
+                          "description": "Mentorun kurum üyeliği"
+                        },
+                        "mentorName": {
+                          "type": "string"
+                        },
+                        "menteeMembershipId": {
+                          "type": "string",
+                          "description": "Yeni öğretmenin kurum üyeliği"
+                        },
+                        "menteeName": {
+                          "type": "string"
+                        },
+                        "onboardingOfferId": {
+                          "description": "Bağlı işe başlama listesi (iş teklifi)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "onboardingPosition": {
+                          "description": "Bağlı teklifin pozisyonu",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "description": "Başlangıç günü (YYYY-MM-DD)"
+                        },
+                        "endDate": {
+                          "type": "string",
+                          "description": "Planlanan bitiş günü (YYYY-MM-DD)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "completed",
+                            "ended_early"
+                          ],
+                          "description": "`active` sürüyor, `completed` tamamlandı, `ended_early` erken sonlandı"
+                        },
+                        "closedOn": {
+                          "description": "Tamamlanma ya da sonlanma günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "endReason": {
+                          "description": "Erken sonlanma gerekçesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "meetingCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Görüşme sayısı (arşivliler hariç)"
+                        },
+                        "lastMeetingDate": {
+                          "description": "Son görüşme günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "daysSinceContact": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Süren eşleşmede son görüşmeden (yoksa başlangıçtan) bu yana gün"
+                        },
+                        "overdue": {
+                          "type": "boolean",
+                          "description": "Süren eşleşmede görüşmesizlik 30 günü aştı (K-465)"
+                        },
+                        "checklist": {
+                          "type": "object",
+                          "properties": {
+                            "total": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "done": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "requiredTotal": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "requiredDone": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "percent": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Tamamlanan madde / toplam madde, yüzde; madde yoksa boş"
+                            }
+                          },
+                          "required": [
+                            "total",
+                            "done",
+                            "requiredTotal",
+                            "requiredDone",
+                            "percent"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Kontrol listesi ilerlemesi (hesaplanır, saklanmaz)"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için eşleşme sürümü"
+                        },
+                        "meetings": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "meetingDate": {
+                                "type": "string",
+                                "description": "Görüşme günü (YYYY-MM-DD)"
+                              },
+                              "durationMinutes": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Süre, dakika"
+                              },
+                              "topic": {
+                                "type": "string"
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "nextStep": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "meetingDate",
+                              "durationMinutes",
+                              "topic",
+                              "note",
+                              "nextStep",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Görüşmeler, yeni gün önce"
+                        },
+                        "checklistItems": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "completedAt": {
+                                "description": "Tamamlanma anı (ISO 8601 UTC)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "completedByName": {
+                                "description": "Maddeyi işaretleyen",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "position",
+                              "label",
+                              "required",
+                              "completedAt",
+                              "completedByName"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Kontrol listesi, sırasıyla"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "mentorMembershipId",
+                        "mentorName",
+                        "menteeMembershipId",
+                        "menteeName",
+                        "onboardingOfferId",
+                        "onboardingPosition",
+                        "startDate",
+                        "endDate",
+                        "status",
+                        "closedOn",
+                        "endReason",
+                        "meetingCount",
+                        "lastMeetingDate",
+                        "daysSinceContact",
+                        "overdue",
+                        "checklist",
+                        "createdAt",
+                        "updatedAt",
+                        "version",
+                        "meetings",
+                        "checklistItems"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/teacher-mentorships/{mentorshipId}": {
+      "get": {
+        "operationId": "getTeacherMentorship",
+        "summary": "Mentorluk eşleşmesini getir",
+        "tags": [
+          "finance-teacher-mentorships"
+        ],
+        "description": "Eşleşme, görüşmeleri (yeni gün önce) ve kontrol listesi (kim ve ne zaman işaretledi). Okuma denetime yazılır. Başka kurumun eşleşmesi 404. Rol: yalnız `yonetici`. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "mentorshipId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "mentorMembershipId": {
+                          "type": "string",
+                          "description": "Mentorun kurum üyeliği"
+                        },
+                        "mentorName": {
+                          "type": "string"
+                        },
+                        "menteeMembershipId": {
+                          "type": "string",
+                          "description": "Yeni öğretmenin kurum üyeliği"
+                        },
+                        "menteeName": {
+                          "type": "string"
+                        },
+                        "onboardingOfferId": {
+                          "description": "Bağlı işe başlama listesi (iş teklifi)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "onboardingPosition": {
+                          "description": "Bağlı teklifin pozisyonu",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "description": "Başlangıç günü (YYYY-MM-DD)"
+                        },
+                        "endDate": {
+                          "type": "string",
+                          "description": "Planlanan bitiş günü (YYYY-MM-DD)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "completed",
+                            "ended_early"
+                          ],
+                          "description": "`active` sürüyor, `completed` tamamlandı, `ended_early` erken sonlandı"
+                        },
+                        "closedOn": {
+                          "description": "Tamamlanma ya da sonlanma günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "endReason": {
+                          "description": "Erken sonlanma gerekçesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "meetingCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Görüşme sayısı (arşivliler hariç)"
+                        },
+                        "lastMeetingDate": {
+                          "description": "Son görüşme günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "daysSinceContact": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Süren eşleşmede son görüşmeden (yoksa başlangıçtan) bu yana gün"
+                        },
+                        "overdue": {
+                          "type": "boolean",
+                          "description": "Süren eşleşmede görüşmesizlik 30 günü aştı (K-465)"
+                        },
+                        "checklist": {
+                          "type": "object",
+                          "properties": {
+                            "total": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "done": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "requiredTotal": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "requiredDone": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "percent": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Tamamlanan madde / toplam madde, yüzde; madde yoksa boş"
+                            }
+                          },
+                          "required": [
+                            "total",
+                            "done",
+                            "requiredTotal",
+                            "requiredDone",
+                            "percent"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Kontrol listesi ilerlemesi (hesaplanır, saklanmaz)"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için eşleşme sürümü"
+                        },
+                        "meetings": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "meetingDate": {
+                                "type": "string",
+                                "description": "Görüşme günü (YYYY-MM-DD)"
+                              },
+                              "durationMinutes": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Süre, dakika"
+                              },
+                              "topic": {
+                                "type": "string"
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "nextStep": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "meetingDate",
+                              "durationMinutes",
+                              "topic",
+                              "note",
+                              "nextStep",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Görüşmeler, yeni gün önce"
+                        },
+                        "checklistItems": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "completedAt": {
+                                "description": "Tamamlanma anı (ISO 8601 UTC)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "completedByName": {
+                                "description": "Maddeyi işaretleyen",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "position",
+                              "label",
+                              "required",
+                              "completedAt",
+                              "completedByName"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Kontrol listesi, sırasıyla"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "mentorMembershipId",
+                        "mentorName",
+                        "menteeMembershipId",
+                        "menteeName",
+                        "onboardingOfferId",
+                        "onboardingPosition",
+                        "startDate",
+                        "endDate",
+                        "status",
+                        "closedOn",
+                        "endReason",
+                        "meetingCount",
+                        "lastMeetingDate",
+                        "daysSinceContact",
+                        "overdue",
+                        "checklist",
+                        "createdAt",
+                        "updatedAt",
+                        "version",
+                        "meetings",
+                        "checklistItems"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/teacher-mentorships/{mentorshipId}/meetings": {
+      "post": {
+        "operationId": "addTeacherMentorshipMeeting",
+        "summary": "Mentorluk görüşmesi kaydet",
+        "tags": [
+          "finance-teacher-mentorships"
+        ],
+        "description": "Gün, süre (5–480 dk), konu (2–200), isteğe bağlı not (≤ 4000) ve sonraki adım (≤ 500) (K-464). Kapanmış eşleşmeye eklenmez: 409 `mentorship_closed`. Gün bugünden sonra 422 `mentorship_meeting_date_future`, başlangıçtan önce 422 `mentorship_meeting_before_start`. Not ve sonraki adım denetime yazılmaz. `Idempotency-Key` ve eşleşmenin `If-Match` sürümü zorunlu. Başka kurumun eşleşmesi 404. Rol: yalnız `yonetici`. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "meetingDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Görüşme günü; başlangıçtan önce ve bugünden sonra olamaz"
+                  },
+                  "durationMinutes": {
+                    "type": "integer",
+                    "minimum": 5,
+                    "maximum": 480,
+                    "description": "Süre, dakika (5–480)"
+                  },
+                  "topic": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 200,
+                    "description": "Konu (2–200)"
+                  },
+                  "note": {
+                    "description": "İsteğe bağlı görüşme notu (en çok 4000)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 4000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "nextStep": {
+                    "description": "İsteğe bağlı sonraki adım (en çok 500)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "meetingDate",
+                  "durationMinutes",
+                  "topic"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "mentorshipId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "mentorMembershipId": {
+                          "type": "string",
+                          "description": "Mentorun kurum üyeliği"
+                        },
+                        "mentorName": {
+                          "type": "string"
+                        },
+                        "menteeMembershipId": {
+                          "type": "string",
+                          "description": "Yeni öğretmenin kurum üyeliği"
+                        },
+                        "menteeName": {
+                          "type": "string"
+                        },
+                        "onboardingOfferId": {
+                          "description": "Bağlı işe başlama listesi (iş teklifi)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "onboardingPosition": {
+                          "description": "Bağlı teklifin pozisyonu",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "description": "Başlangıç günü (YYYY-MM-DD)"
+                        },
+                        "endDate": {
+                          "type": "string",
+                          "description": "Planlanan bitiş günü (YYYY-MM-DD)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "completed",
+                            "ended_early"
+                          ],
+                          "description": "`active` sürüyor, `completed` tamamlandı, `ended_early` erken sonlandı"
+                        },
+                        "closedOn": {
+                          "description": "Tamamlanma ya da sonlanma günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "endReason": {
+                          "description": "Erken sonlanma gerekçesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "meetingCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Görüşme sayısı (arşivliler hariç)"
+                        },
+                        "lastMeetingDate": {
+                          "description": "Son görüşme günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "daysSinceContact": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Süren eşleşmede son görüşmeden (yoksa başlangıçtan) bu yana gün"
+                        },
+                        "overdue": {
+                          "type": "boolean",
+                          "description": "Süren eşleşmede görüşmesizlik 30 günü aştı (K-465)"
+                        },
+                        "checklist": {
+                          "type": "object",
+                          "properties": {
+                            "total": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "done": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "requiredTotal": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "requiredDone": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "percent": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Tamamlanan madde / toplam madde, yüzde; madde yoksa boş"
+                            }
+                          },
+                          "required": [
+                            "total",
+                            "done",
+                            "requiredTotal",
+                            "requiredDone",
+                            "percent"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Kontrol listesi ilerlemesi (hesaplanır, saklanmaz)"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için eşleşme sürümü"
+                        },
+                        "meetings": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "meetingDate": {
+                                "type": "string",
+                                "description": "Görüşme günü (YYYY-MM-DD)"
+                              },
+                              "durationMinutes": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Süre, dakika"
+                              },
+                              "topic": {
+                                "type": "string"
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "nextStep": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "meetingDate",
+                              "durationMinutes",
+                              "topic",
+                              "note",
+                              "nextStep",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Görüşmeler, yeni gün önce"
+                        },
+                        "checklistItems": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "completedAt": {
+                                "description": "Tamamlanma anı (ISO 8601 UTC)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "completedByName": {
+                                "description": "Maddeyi işaretleyen",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "position",
+                              "label",
+                              "required",
+                              "completedAt",
+                              "completedByName"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Kontrol listesi, sırasıyla"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "mentorMembershipId",
+                        "mentorName",
+                        "menteeMembershipId",
+                        "menteeName",
+                        "onboardingOfferId",
+                        "onboardingPosition",
+                        "startDate",
+                        "endDate",
+                        "status",
+                        "closedOn",
+                        "endReason",
+                        "meetingCount",
+                        "lastMeetingDate",
+                        "daysSinceContact",
+                        "overdue",
+                        "checklist",
+                        "createdAt",
+                        "updatedAt",
+                        "version",
+                        "meetings",
+                        "checklistItems"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/teacher-mentorships/{mentorshipId}/meetings/{meetingId}/archive": {
+      "post": {
+        "operationId": "archiveTeacherMentorshipMeeting",
+        "summary": "Görüşme kaydını arşivle",
+        "tags": [
+          "finance-teacher-mentorships"
+        ],
+        "description": "Yanlış girilmiş görüşme listeden ve takipten kalkar (K-464). Kapanmış eşleşmede 409 `mentorship_closed`. Gövde boş nesne. `If-Match` eşleşmenin sürümüdür. Başka kurumun eşleşmesi, başka eşleşmenin ya da arşivli görüşme 404. Rol: yalnız `yonetici`. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "mentorshipId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "meetingId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "mentorMembershipId": {
+                          "type": "string",
+                          "description": "Mentorun kurum üyeliği"
+                        },
+                        "mentorName": {
+                          "type": "string"
+                        },
+                        "menteeMembershipId": {
+                          "type": "string",
+                          "description": "Yeni öğretmenin kurum üyeliği"
+                        },
+                        "menteeName": {
+                          "type": "string"
+                        },
+                        "onboardingOfferId": {
+                          "description": "Bağlı işe başlama listesi (iş teklifi)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "onboardingPosition": {
+                          "description": "Bağlı teklifin pozisyonu",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "description": "Başlangıç günü (YYYY-MM-DD)"
+                        },
+                        "endDate": {
+                          "type": "string",
+                          "description": "Planlanan bitiş günü (YYYY-MM-DD)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "completed",
+                            "ended_early"
+                          ],
+                          "description": "`active` sürüyor, `completed` tamamlandı, `ended_early` erken sonlandı"
+                        },
+                        "closedOn": {
+                          "description": "Tamamlanma ya da sonlanma günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "endReason": {
+                          "description": "Erken sonlanma gerekçesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "meetingCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Görüşme sayısı (arşivliler hariç)"
+                        },
+                        "lastMeetingDate": {
+                          "description": "Son görüşme günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "daysSinceContact": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Süren eşleşmede son görüşmeden (yoksa başlangıçtan) bu yana gün"
+                        },
+                        "overdue": {
+                          "type": "boolean",
+                          "description": "Süren eşleşmede görüşmesizlik 30 günü aştı (K-465)"
+                        },
+                        "checklist": {
+                          "type": "object",
+                          "properties": {
+                            "total": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "done": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "requiredTotal": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "requiredDone": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "percent": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Tamamlanan madde / toplam madde, yüzde; madde yoksa boş"
+                            }
+                          },
+                          "required": [
+                            "total",
+                            "done",
+                            "requiredTotal",
+                            "requiredDone",
+                            "percent"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Kontrol listesi ilerlemesi (hesaplanır, saklanmaz)"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için eşleşme sürümü"
+                        },
+                        "meetings": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "meetingDate": {
+                                "type": "string",
+                                "description": "Görüşme günü (YYYY-MM-DD)"
+                              },
+                              "durationMinutes": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Süre, dakika"
+                              },
+                              "topic": {
+                                "type": "string"
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "nextStep": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "meetingDate",
+                              "durationMinutes",
+                              "topic",
+                              "note",
+                              "nextStep",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Görüşmeler, yeni gün önce"
+                        },
+                        "checklistItems": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "completedAt": {
+                                "description": "Tamamlanma anı (ISO 8601 UTC)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "completedByName": {
+                                "description": "Maddeyi işaretleyen",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "position",
+                              "label",
+                              "required",
+                              "completedAt",
+                              "completedByName"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Kontrol listesi, sırasıyla"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "mentorMembershipId",
+                        "mentorName",
+                        "menteeMembershipId",
+                        "menteeName",
+                        "onboardingOfferId",
+                        "onboardingPosition",
+                        "startDate",
+                        "endDate",
+                        "status",
+                        "closedOn",
+                        "endReason",
+                        "meetingCount",
+                        "lastMeetingDate",
+                        "daysSinceContact",
+                        "overdue",
+                        "checklist",
+                        "createdAt",
+                        "updatedAt",
+                        "version",
+                        "meetings",
+                        "checklistItems"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/teacher-mentorships/{mentorshipId}/checklist/{itemId}/complete": {
+      "post": {
+        "operationId": "completeTeacherMentorshipChecklistItem",
+        "summary": "Maddeyi tamamlandı işaretle",
+        "tags": [
+          "finance-teacher-mentorships"
+        ],
+        "description": "İşaretleyen ve an yazılır (K-465). İşaretli madde 422 `mentorship_item_completed`. Kapanmış eşleşmede 409 `mentorship_closed`. Gövde boş nesne. `If-Match` eşleşmenin sürümüdür. Başka kurumun eşleşmesi ve başka eşleşmenin maddesi 404. Rol: yalnız `yonetici`. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "mentorshipId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "itemId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "mentorMembershipId": {
+                          "type": "string",
+                          "description": "Mentorun kurum üyeliği"
+                        },
+                        "mentorName": {
+                          "type": "string"
+                        },
+                        "menteeMembershipId": {
+                          "type": "string",
+                          "description": "Yeni öğretmenin kurum üyeliği"
+                        },
+                        "menteeName": {
+                          "type": "string"
+                        },
+                        "onboardingOfferId": {
+                          "description": "Bağlı işe başlama listesi (iş teklifi)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "onboardingPosition": {
+                          "description": "Bağlı teklifin pozisyonu",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "description": "Başlangıç günü (YYYY-MM-DD)"
+                        },
+                        "endDate": {
+                          "type": "string",
+                          "description": "Planlanan bitiş günü (YYYY-MM-DD)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "completed",
+                            "ended_early"
+                          ],
+                          "description": "`active` sürüyor, `completed` tamamlandı, `ended_early` erken sonlandı"
+                        },
+                        "closedOn": {
+                          "description": "Tamamlanma ya da sonlanma günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "endReason": {
+                          "description": "Erken sonlanma gerekçesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "meetingCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Görüşme sayısı (arşivliler hariç)"
+                        },
+                        "lastMeetingDate": {
+                          "description": "Son görüşme günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "daysSinceContact": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Süren eşleşmede son görüşmeden (yoksa başlangıçtan) bu yana gün"
+                        },
+                        "overdue": {
+                          "type": "boolean",
+                          "description": "Süren eşleşmede görüşmesizlik 30 günü aştı (K-465)"
+                        },
+                        "checklist": {
+                          "type": "object",
+                          "properties": {
+                            "total": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "done": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "requiredTotal": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "requiredDone": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "percent": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Tamamlanan madde / toplam madde, yüzde; madde yoksa boş"
+                            }
+                          },
+                          "required": [
+                            "total",
+                            "done",
+                            "requiredTotal",
+                            "requiredDone",
+                            "percent"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Kontrol listesi ilerlemesi (hesaplanır, saklanmaz)"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için eşleşme sürümü"
+                        },
+                        "meetings": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "meetingDate": {
+                                "type": "string",
+                                "description": "Görüşme günü (YYYY-MM-DD)"
+                              },
+                              "durationMinutes": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Süre, dakika"
+                              },
+                              "topic": {
+                                "type": "string"
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "nextStep": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "meetingDate",
+                              "durationMinutes",
+                              "topic",
+                              "note",
+                              "nextStep",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Görüşmeler, yeni gün önce"
+                        },
+                        "checklistItems": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "completedAt": {
+                                "description": "Tamamlanma anı (ISO 8601 UTC)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "completedByName": {
+                                "description": "Maddeyi işaretleyen",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "position",
+                              "label",
+                              "required",
+                              "completedAt",
+                              "completedByName"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Kontrol listesi, sırasıyla"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "mentorMembershipId",
+                        "mentorName",
+                        "menteeMembershipId",
+                        "menteeName",
+                        "onboardingOfferId",
+                        "onboardingPosition",
+                        "startDate",
+                        "endDate",
+                        "status",
+                        "closedOn",
+                        "endReason",
+                        "meetingCount",
+                        "lastMeetingDate",
+                        "daysSinceContact",
+                        "overdue",
+                        "checklist",
+                        "createdAt",
+                        "updatedAt",
+                        "version",
+                        "meetings",
+                        "checklistItems"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/teacher-mentorships/{mentorshipId}/checklist/{itemId}/reopen": {
+      "post": {
+        "operationId": "reopenTeacherMentorshipChecklistItem",
+        "summary": "Maddenin işaretini geri al",
+        "tags": [
+          "finance-teacher-mentorships"
+        ],
+        "description": "İşaretleyen ve an silinir (K-465). İşaretsiz madde 422 `mentorship_item_not_completed`. Kapanmış eşleşmede 409 `mentorship_closed`. Gövde boş nesne. `If-Match` eşleşmenin sürümüdür. Başka kurumun eşleşmesi ve başka eşleşmenin maddesi 404. Rol: yalnız `yonetici`. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "mentorshipId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "itemId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "mentorMembershipId": {
+                          "type": "string",
+                          "description": "Mentorun kurum üyeliği"
+                        },
+                        "mentorName": {
+                          "type": "string"
+                        },
+                        "menteeMembershipId": {
+                          "type": "string",
+                          "description": "Yeni öğretmenin kurum üyeliği"
+                        },
+                        "menteeName": {
+                          "type": "string"
+                        },
+                        "onboardingOfferId": {
+                          "description": "Bağlı işe başlama listesi (iş teklifi)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "onboardingPosition": {
+                          "description": "Bağlı teklifin pozisyonu",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "description": "Başlangıç günü (YYYY-MM-DD)"
+                        },
+                        "endDate": {
+                          "type": "string",
+                          "description": "Planlanan bitiş günü (YYYY-MM-DD)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "completed",
+                            "ended_early"
+                          ],
+                          "description": "`active` sürüyor, `completed` tamamlandı, `ended_early` erken sonlandı"
+                        },
+                        "closedOn": {
+                          "description": "Tamamlanma ya da sonlanma günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "endReason": {
+                          "description": "Erken sonlanma gerekçesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "meetingCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Görüşme sayısı (arşivliler hariç)"
+                        },
+                        "lastMeetingDate": {
+                          "description": "Son görüşme günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "daysSinceContact": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Süren eşleşmede son görüşmeden (yoksa başlangıçtan) bu yana gün"
+                        },
+                        "overdue": {
+                          "type": "boolean",
+                          "description": "Süren eşleşmede görüşmesizlik 30 günü aştı (K-465)"
+                        },
+                        "checklist": {
+                          "type": "object",
+                          "properties": {
+                            "total": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "done": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "requiredTotal": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "requiredDone": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "percent": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Tamamlanan madde / toplam madde, yüzde; madde yoksa boş"
+                            }
+                          },
+                          "required": [
+                            "total",
+                            "done",
+                            "requiredTotal",
+                            "requiredDone",
+                            "percent"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Kontrol listesi ilerlemesi (hesaplanır, saklanmaz)"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için eşleşme sürümü"
+                        },
+                        "meetings": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "meetingDate": {
+                                "type": "string",
+                                "description": "Görüşme günü (YYYY-MM-DD)"
+                              },
+                              "durationMinutes": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Süre, dakika"
+                              },
+                              "topic": {
+                                "type": "string"
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "nextStep": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "meetingDate",
+                              "durationMinutes",
+                              "topic",
+                              "note",
+                              "nextStep",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Görüşmeler, yeni gün önce"
+                        },
+                        "checklistItems": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "completedAt": {
+                                "description": "Tamamlanma anı (ISO 8601 UTC)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "completedByName": {
+                                "description": "Maddeyi işaretleyen",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "position",
+                              "label",
+                              "required",
+                              "completedAt",
+                              "completedByName"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Kontrol listesi, sırasıyla"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "mentorMembershipId",
+                        "mentorName",
+                        "menteeMembershipId",
+                        "menteeName",
+                        "onboardingOfferId",
+                        "onboardingPosition",
+                        "startDate",
+                        "endDate",
+                        "status",
+                        "closedOn",
+                        "endReason",
+                        "meetingCount",
+                        "lastMeetingDate",
+                        "daysSinceContact",
+                        "overdue",
+                        "checklist",
+                        "createdAt",
+                        "updatedAt",
+                        "version",
+                        "meetings",
+                        "checklistItems"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/teacher-mentorships/{mentorshipId}/complete": {
+      "post": {
+        "operationId": "completeTeacherMentorship",
+        "summary": "Mentorluğu tamamla",
+        "tags": [
+          "finance-teacher-mentorships"
+        ],
+        "description": "Tamamlanma günü başlangıçla bugün arasında (422 `mentorship_close_before_start`, `mentorship_close_date_future`); en az bir görüşme (422 `mentorship_no_meetings`) ve zorunlu maddelerin hepsi tamamlanmış (422 `mentorship_checklist_incomplete`) olmalı (K-463, K-465). Kapanmış eşleşme 409 `mentorship_closed`. `If-Match` zorunlu. Başka kurumun eşleşmesi 404. Rol: yalnız `yonetici`. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "closedOn": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Tamamlanma günü; başlangıçtan önce ve bugünden sonra olamaz"
+                  }
+                },
+                "required": [
+                  "closedOn"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "mentorshipId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "mentorMembershipId": {
+                          "type": "string",
+                          "description": "Mentorun kurum üyeliği"
+                        },
+                        "mentorName": {
+                          "type": "string"
+                        },
+                        "menteeMembershipId": {
+                          "type": "string",
+                          "description": "Yeni öğretmenin kurum üyeliği"
+                        },
+                        "menteeName": {
+                          "type": "string"
+                        },
+                        "onboardingOfferId": {
+                          "description": "Bağlı işe başlama listesi (iş teklifi)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "onboardingPosition": {
+                          "description": "Bağlı teklifin pozisyonu",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "description": "Başlangıç günü (YYYY-MM-DD)"
+                        },
+                        "endDate": {
+                          "type": "string",
+                          "description": "Planlanan bitiş günü (YYYY-MM-DD)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "completed",
+                            "ended_early"
+                          ],
+                          "description": "`active` sürüyor, `completed` tamamlandı, `ended_early` erken sonlandı"
+                        },
+                        "closedOn": {
+                          "description": "Tamamlanma ya da sonlanma günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "endReason": {
+                          "description": "Erken sonlanma gerekçesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "meetingCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Görüşme sayısı (arşivliler hariç)"
+                        },
+                        "lastMeetingDate": {
+                          "description": "Son görüşme günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "daysSinceContact": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Süren eşleşmede son görüşmeden (yoksa başlangıçtan) bu yana gün"
+                        },
+                        "overdue": {
+                          "type": "boolean",
+                          "description": "Süren eşleşmede görüşmesizlik 30 günü aştı (K-465)"
+                        },
+                        "checklist": {
+                          "type": "object",
+                          "properties": {
+                            "total": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "done": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "requiredTotal": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "requiredDone": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "percent": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Tamamlanan madde / toplam madde, yüzde; madde yoksa boş"
+                            }
+                          },
+                          "required": [
+                            "total",
+                            "done",
+                            "requiredTotal",
+                            "requiredDone",
+                            "percent"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Kontrol listesi ilerlemesi (hesaplanır, saklanmaz)"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için eşleşme sürümü"
+                        },
+                        "meetings": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "meetingDate": {
+                                "type": "string",
+                                "description": "Görüşme günü (YYYY-MM-DD)"
+                              },
+                              "durationMinutes": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Süre, dakika"
+                              },
+                              "topic": {
+                                "type": "string"
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "nextStep": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "meetingDate",
+                              "durationMinutes",
+                              "topic",
+                              "note",
+                              "nextStep",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Görüşmeler, yeni gün önce"
+                        },
+                        "checklistItems": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "completedAt": {
+                                "description": "Tamamlanma anı (ISO 8601 UTC)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "completedByName": {
+                                "description": "Maddeyi işaretleyen",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "position",
+                              "label",
+                              "required",
+                              "completedAt",
+                              "completedByName"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Kontrol listesi, sırasıyla"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "mentorMembershipId",
+                        "mentorName",
+                        "menteeMembershipId",
+                        "menteeName",
+                        "onboardingOfferId",
+                        "onboardingPosition",
+                        "startDate",
+                        "endDate",
+                        "status",
+                        "closedOn",
+                        "endReason",
+                        "meetingCount",
+                        "lastMeetingDate",
+                        "daysSinceContact",
+                        "overdue",
+                        "checklist",
+                        "createdAt",
+                        "updatedAt",
+                        "version",
+                        "meetings",
+                        "checklistItems"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/teacher-mentorships/{mentorshipId}/end": {
+      "post": {
+        "operationId": "endTeacherMentorship",
+        "summary": "Mentorluğu erken sonlandır",
+        "tags": [
+          "finance-teacher-mentorships"
+        ],
+        "description": "Sonlanma günü başlangıçla bugün arasında (422 `mentorship_close_before_start`, `mentorship_close_date_future`) ve gerekçe (5–500, denetime yazılmaz) (K-463). Kapanmış eşleşme 409 `mentorship_closed`. `If-Match` zorunlu. Başka kurumun eşleşmesi 404. Rol: yalnız `yonetici`. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "closedOn": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Sonlanma günü; başlangıçtan önce ve bugünden sonra olamaz"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500,
+                    "description": "Erken sonlanma gerekçesi (5–500); denetime yazılmaz"
+                  }
+                },
+                "required": [
+                  "closedOn",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "mentorshipId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "mentorMembershipId": {
+                          "type": "string",
+                          "description": "Mentorun kurum üyeliği"
+                        },
+                        "mentorName": {
+                          "type": "string"
+                        },
+                        "menteeMembershipId": {
+                          "type": "string",
+                          "description": "Yeni öğretmenin kurum üyeliği"
+                        },
+                        "menteeName": {
+                          "type": "string"
+                        },
+                        "onboardingOfferId": {
+                          "description": "Bağlı işe başlama listesi (iş teklifi)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "onboardingPosition": {
+                          "description": "Bağlı teklifin pozisyonu",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "description": "Başlangıç günü (YYYY-MM-DD)"
+                        },
+                        "endDate": {
+                          "type": "string",
+                          "description": "Planlanan bitiş günü (YYYY-MM-DD)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "completed",
+                            "ended_early"
+                          ],
+                          "description": "`active` sürüyor, `completed` tamamlandı, `ended_early` erken sonlandı"
+                        },
+                        "closedOn": {
+                          "description": "Tamamlanma ya da sonlanma günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "endReason": {
+                          "description": "Erken sonlanma gerekçesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "meetingCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Görüşme sayısı (arşivliler hariç)"
+                        },
+                        "lastMeetingDate": {
+                          "description": "Son görüşme günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "daysSinceContact": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Süren eşleşmede son görüşmeden (yoksa başlangıçtan) bu yana gün"
+                        },
+                        "overdue": {
+                          "type": "boolean",
+                          "description": "Süren eşleşmede görüşmesizlik 30 günü aştı (K-465)"
+                        },
+                        "checklist": {
+                          "type": "object",
+                          "properties": {
+                            "total": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "done": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "requiredTotal": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "requiredDone": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "percent": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "Tamamlanan madde / toplam madde, yüzde; madde yoksa boş"
+                            }
+                          },
+                          "required": [
+                            "total",
+                            "done",
+                            "requiredTotal",
+                            "requiredDone",
+                            "percent"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Kontrol listesi ilerlemesi (hesaplanır, saklanmaz)"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için eşleşme sürümü"
+                        },
+                        "meetings": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "meetingDate": {
+                                "type": "string",
+                                "description": "Görüşme günü (YYYY-MM-DD)"
+                              },
+                              "durationMinutes": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Süre, dakika"
+                              },
+                              "topic": {
+                                "type": "string"
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "nextStep": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "meetingDate",
+                              "durationMinutes",
+                              "topic",
+                              "note",
+                              "nextStep",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Görüşmeler, yeni gün önce"
+                        },
+                        "checklistItems": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "completedAt": {
+                                "description": "Tamamlanma anı (ISO 8601 UTC)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "completedByName": {
+                                "description": "Maddeyi işaretleyen",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "position",
+                              "label",
+                              "required",
+                              "completedAt",
+                              "completedByName"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Kontrol listesi, sırasıyla"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "mentorMembershipId",
+                        "mentorName",
+                        "menteeMembershipId",
+                        "menteeName",
+                        "onboardingOfferId",
+                        "onboardingPosition",
+                        "startDate",
+                        "endDate",
+                        "status",
+                        "closedOn",
+                        "endReason",
+                        "meetingCount",
+                        "lastMeetingDate",
+                        "daysSinceContact",
+                        "overdue",
+                        "checklist",
+                        "createdAt",
+                        "updatedAt",
+                        "version",
+                        "meetings",
+                        "checklistItems"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

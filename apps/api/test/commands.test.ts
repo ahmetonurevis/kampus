@@ -231,6 +231,10 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // (routes/finance-lesson-observations.ts; DOM-FIN-130, ON-206).
   'POST /api/v1/finance/lesson-observation-templates',
   'POST /api/v1/finance/lesson-observations',
+  // Mentorluk eşleşmesi ve görüşme kaydı; çift tıklama ikinci eşleşmeyi ya da görüşmeyi yazmaz
+  // (routes/finance-teacher-mentorships.ts; DOM-FIN-136, ON-219).
+  'POST /api/v1/finance/teacher-mentorships',
+  'POST /api/v1/finance/teacher-mentorships/{mentorshipId}/meetings',
 ]
 // Onur: kayıt ve finans sonu
 

@@ -12472,6 +12472,214 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/teacher-mentorship-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Mentorluk ayarı
+         * @description Mentor başına süren en çok eşleşme ve yeni eşleşmelere kopyalanan kontrol listesi (K-463, K-465). Ayar yazılmadıysa varsayılanlar (3 eşleşme, beş madde) ve `isDefault: true`. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        get: operations["getTeacherMentorshipSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Mentorluk ayarını değiştir
+         * @description Sınır (1–10) ve madde listesi bütünüyle yazılır (en çok 20; madde 2–120, aynı madde iki kez olmaz). İlk yazma `If-Match` almaz (ayar varsa 409), sonrakiler ayarın sürümünü ister. Açılmış eşleşmelerin listesi değişmez. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        patch: operations["updateTeacherMentorshipSettings"];
+        trace?: never;
+    };
+    "/api/v1/finance/teacher-mentorship-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Mentorluk takip özeti
+         * @description Süren, görüşmesi 30 günü aşan, tamamlanan ve erken sonlanan eşleşme sayıları; süren eşleşmelerin kontrol listesi tamamlanma oranı (K-465). Kişisel alan taşımaz. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        get: operations["getTeacherMentorshipSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/teacher-mentorships": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Mentorluk eşleşmelerini listele
+         * @description Eşleşmeler (süren önce, yeni başlangıç önce): mentor, yeni öğretmen, günler, durum, görüşme sayısı, son görüşme, son temastan bu yana gün, 30 günü aşma (K-465) ve kontrol listesi ilerlemesi. Mentor ya da yeni öğretmen adında aranır; durum ve `overdue=true` ile süzülür. Okuma aynı transaction'da denetime yazılır (`finance.teacher_mentorship.read`; alan adları ve kayıt sayısı). Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        get: operations["listTeacherMentorships"];
+        put?: never;
+        /**
+         * Mentorluk eşleşmesi aç
+         * @description Mentor (etkin öğretmen ya da yönetici), yeni öğretmen (etkin öğretmen), başlangıç ve planlanan bitiş (en çok 366 gün) ve isteğe bağlı işe başlama listesi (kabul edilmiş, hesabı yeni öğretmene bağlı iş teklifi). Kurum ayarındaki maddeler eşleşmeye kopyalanır (K-465). Ret: mentor yok/uygun değil 422 `mentorship_mentor_not_found`/`mentorship_mentor_invalid`; yeni öğretmen yok/öğretmen değil/ayrılmış 422 `mentorship_mentee_not_found`/`mentorship_mentee_not_teacher`/`mentorship_mentee_inactive`; aynı kişi 422 `mentorship_self`; günler 422 `mentorship_dates_invalid`/`mentorship_too_long`; işe başlama listesi 422 `mentorship_onboarding_not_found`/`mentorship_onboarding_mismatch`; yeni öğretmenin süren eşleşmesi 409 `mentorship_mentee_has_active`; mentor sınırı 422 `mentorship_mentor_limit` (K-463). `Idempotency-Key` zorunlu. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        post: operations["createTeacherMentorship"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/teacher-mentorships/{mentorshipId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Mentorluk eşleşmesini getir
+         * @description Eşleşme, görüşmeleri (yeni gün önce) ve kontrol listesi (kim ve ne zaman işaretledi). Okuma denetime yazılır. Başka kurumun eşleşmesi 404. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        get: operations["getTeacherMentorship"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/teacher-mentorships/{mentorshipId}/meetings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mentorluk görüşmesi kaydet
+         * @description Gün, süre (5–480 dk), konu (2–200), isteğe bağlı not (≤ 4000) ve sonraki adım (≤ 500) (K-464). Kapanmış eşleşmeye eklenmez: 409 `mentorship_closed`. Gün bugünden sonra 422 `mentorship_meeting_date_future`, başlangıçtan önce 422 `mentorship_meeting_before_start`. Not ve sonraki adım denetime yazılmaz. `Idempotency-Key` ve eşleşmenin `If-Match` sürümü zorunlu. Başka kurumun eşleşmesi 404. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        post: operations["addTeacherMentorshipMeeting"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/teacher-mentorships/{mentorshipId}/meetings/{meetingId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Görüşme kaydını arşivle
+         * @description Yanlış girilmiş görüşme listeden ve takipten kalkar (K-464). Kapanmış eşleşmede 409 `mentorship_closed`. Gövde boş nesne. `If-Match` eşleşmenin sürümüdür. Başka kurumun eşleşmesi, başka eşleşmenin ya da arşivli görüşme 404. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        post: operations["archiveTeacherMentorshipMeeting"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/teacher-mentorships/{mentorshipId}/checklist/{itemId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Maddeyi tamamlandı işaretle
+         * @description İşaretleyen ve an yazılır (K-465). İşaretli madde 422 `mentorship_item_completed`. Kapanmış eşleşmede 409 `mentorship_closed`. Gövde boş nesne. `If-Match` eşleşmenin sürümüdür. Başka kurumun eşleşmesi ve başka eşleşmenin maddesi 404. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        post: operations["completeTeacherMentorshipChecklistItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/teacher-mentorships/{mentorshipId}/checklist/{itemId}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Maddenin işaretini geri al
+         * @description İşaretleyen ve an silinir (K-465). İşaretsiz madde 422 `mentorship_item_not_completed`. Kapanmış eşleşmede 409 `mentorship_closed`. Gövde boş nesne. `If-Match` eşleşmenin sürümüdür. Başka kurumun eşleşmesi ve başka eşleşmenin maddesi 404. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        post: operations["reopenTeacherMentorshipChecklistItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/teacher-mentorships/{mentorshipId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mentorluğu tamamla
+         * @description Tamamlanma günü başlangıçla bugün arasında (422 `mentorship_close_before_start`, `mentorship_close_date_future`); en az bir görüşme (422 `mentorship_no_meetings`) ve zorunlu maddelerin hepsi tamamlanmış (422 `mentorship_checklist_incomplete`) olmalı (K-463, K-465). Kapanmış eşleşme 409 `mentorship_closed`. `If-Match` zorunlu. Başka kurumun eşleşmesi 404. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        post: operations["completeTeacherMentorship"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/teacher-mentorships/{mentorshipId}/end": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mentorluğu erken sonlandır
+         * @description Sonlanma günü başlangıçla bugün arasında (422 `mentorship_close_before_start`, `mentorship_close_date_future`) ve gerekçe (5–500, denetime yazılmaz) (K-463). Kapanmış eşleşme 409 `mentorship_closed`. `If-Match` zorunlu. Başka kurumun eşleşmesi 404. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        post: operations["endTeacherMentorship"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -131595,6 +131803,1909 @@ export interface operations {
                             id: string;
                             /** @description Arşiv anı (ISO 8601 UTC) */
                             archivedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getTeacherMentorshipSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Mentor başına süren en çok eşleşme (1–10) */
+                            maxActivePerMentor: number;
+                            /** @description Yeni eşleşmelere kopyalanan kontrol listesi maddeleri */
+                            checklistItems: {
+                                label: string;
+                                required: boolean;
+                            }[];
+                            /** @description Ayar yazılmadı; varsayılan değerler */
+                            isDefault: boolean;
+                            updatedAt: string | null;
+                            /** @description `If-Match` için ayar sürümü; ayar yoksa boş (ilk yazma `If-Match` almaz) */
+                            version: number | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateTeacherMentorshipSettings: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description İsteğe bağlı iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`). Tutmazsa 409 `version_conflict`. */
+                "if-match"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Bir mentorun aynı anda süren en çok eşleşme sayısı (1–10) */
+                    maxActivePerMentor: number;
+                    /** @description Yeni eşleşmelere kopyalanan kontrol listesi maddeleri, sırasıyla (en çok 20) */
+                    checklistItems: {
+                        /** @description Madde (2–120) */
+                        label: string;
+                        /** @description Eşleşmenin tamamlanması için şart mı */
+                        required: boolean;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Mentor başına süren en çok eşleşme (1–10) */
+                            maxActivePerMentor: number;
+                            /** @description Yeni eşleşmelere kopyalanan kontrol listesi maddeleri */
+                            checklistItems: {
+                                label: string;
+                                required: boolean;
+                            }[];
+                            /** @description Ayar yazılmadı; varsayılan değerler */
+                            isDefault: boolean;
+                            updatedAt: string | null;
+                            /** @description `If-Match` için ayar sürümü; ayar yoksa boş (ilk yazma `If-Match` almaz) */
+                            version: number | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getTeacherMentorshipSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Süren eşleşme */
+                            active: number;
+                            /** @description Görüşmesi 30 günü aşan süren eşleşme */
+                            overdue: number;
+                            completed: number;
+                            endedEarly: number;
+                            /** @description Süren eşleşmelerin bütün maddelerinde tamamlanma oranı, yüzde */
+                            activeChecklistPercent: number | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listTeacherMentorships: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Mentor ya da yeni öğretmen adında */
+                q?: string;
+                /** @description Durum süzgeci */
+                status?: "active" | "completed" | "ended_early";
+                /** @description `true`: yalnız görüşmesi 30 günü aşan süren eşleşmeler */
+                overdue?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Mentorun kurum üyeliği */
+                            mentorMembershipId: string;
+                            mentorName: string;
+                            /** @description Yeni öğretmenin kurum üyeliği */
+                            menteeMembershipId: string;
+                            menteeName: string;
+                            /** @description Bağlı işe başlama listesi (iş teklifi) */
+                            onboardingOfferId: string | null;
+                            /** @description Bağlı teklifin pozisyonu */
+                            onboardingPosition: string | null;
+                            /** @description Başlangıç günü (YYYY-MM-DD) */
+                            startDate: string;
+                            /** @description Planlanan bitiş günü (YYYY-MM-DD) */
+                            endDate: string;
+                            /**
+                             * @description `active` sürüyor, `completed` tamamlandı, `ended_early` erken sonlandı
+                             * @enum {string}
+                             */
+                            status: "active" | "completed" | "ended_early";
+                            /** @description Tamamlanma ya da sonlanma günü */
+                            closedOn: string | null;
+                            /** @description Erken sonlanma gerekçesi */
+                            endReason: string | null;
+                            /** @description Görüşme sayısı (arşivliler hariç) */
+                            meetingCount: number;
+                            /** @description Son görüşme günü */
+                            lastMeetingDate: string | null;
+                            /** @description Süren eşleşmede son görüşmeden (yoksa başlangıçtan) bu yana gün */
+                            daysSinceContact: number | null;
+                            /** @description Süren eşleşmede görüşmesizlik 30 günü aştı (K-465) */
+                            overdue: boolean;
+                            /** @description Kontrol listesi ilerlemesi (hesaplanır, saklanmaz) */
+                            checklist: {
+                                total: number;
+                                done: number;
+                                requiredTotal: number;
+                                requiredDone: number;
+                                /** @description Tamamlanan madde / toplam madde, yüzde; madde yoksa boş */
+                                percent: number | null;
+                            };
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için eşleşme sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createTeacherMentorship: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Mentorun kurum üyeliği (etkin öğretmen ya da yönetici) */
+                    mentorMembershipId: string;
+                    /** @description Yeni öğretmenin kurum üyeliği (etkin öğretmen) */
+                    menteeMembershipId: string;
+                    /** @description Eşleşmenin başlangıç günü */
+                    startDate: string;
+                    /** @description Planlanan bitiş günü; başlangıçtan sonra, en çok 366 gün */
+                    endDate: string;
+                    /**
+                     * @description İsteğe bağlı işe başlama listesi (kabul edilmiş iş teklifi, DOM-FIN-121); hesabı yeni öğretmen olmalı
+                     * @default null
+                     */
+                    onboardingOfferId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Mentorun kurum üyeliği */
+                            mentorMembershipId: string;
+                            mentorName: string;
+                            /** @description Yeni öğretmenin kurum üyeliği */
+                            menteeMembershipId: string;
+                            menteeName: string;
+                            /** @description Bağlı işe başlama listesi (iş teklifi) */
+                            onboardingOfferId: string | null;
+                            /** @description Bağlı teklifin pozisyonu */
+                            onboardingPosition: string | null;
+                            /** @description Başlangıç günü (YYYY-MM-DD) */
+                            startDate: string;
+                            /** @description Planlanan bitiş günü (YYYY-MM-DD) */
+                            endDate: string;
+                            /**
+                             * @description `active` sürüyor, `completed` tamamlandı, `ended_early` erken sonlandı
+                             * @enum {string}
+                             */
+                            status: "active" | "completed" | "ended_early";
+                            /** @description Tamamlanma ya da sonlanma günü */
+                            closedOn: string | null;
+                            /** @description Erken sonlanma gerekçesi */
+                            endReason: string | null;
+                            /** @description Görüşme sayısı (arşivliler hariç) */
+                            meetingCount: number;
+                            /** @description Son görüşme günü */
+                            lastMeetingDate: string | null;
+                            /** @description Süren eşleşmede son görüşmeden (yoksa başlangıçtan) bu yana gün */
+                            daysSinceContact: number | null;
+                            /** @description Süren eşleşmede görüşmesizlik 30 günü aştı (K-465) */
+                            overdue: boolean;
+                            /** @description Kontrol listesi ilerlemesi (hesaplanır, saklanmaz) */
+                            checklist: {
+                                total: number;
+                                done: number;
+                                requiredTotal: number;
+                                requiredDone: number;
+                                /** @description Tamamlanan madde / toplam madde, yüzde; madde yoksa boş */
+                                percent: number | null;
+                            };
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için eşleşme sürümü */
+                            version: number;
+                            /** @description Görüşmeler, yeni gün önce */
+                            meetings: {
+                                id: string;
+                                /** @description Görüşme günü (YYYY-MM-DD) */
+                                meetingDate: string;
+                                /** @description Süre, dakika */
+                                durationMinutes: number;
+                                topic: string;
+                                note: string | null;
+                                nextStep: string | null;
+                                createdAt: string;
+                            }[];
+                            /** @description Kontrol listesi, sırasıyla */
+                            checklistItems: {
+                                id: string;
+                                position: number;
+                                label: string;
+                                required: boolean;
+                                /** @description Tamamlanma anı (ISO 8601 UTC) */
+                                completedAt: string | null;
+                                /** @description Maddeyi işaretleyen */
+                                completedByName: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getTeacherMentorship: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mentorshipId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Mentorun kurum üyeliği */
+                            mentorMembershipId: string;
+                            mentorName: string;
+                            /** @description Yeni öğretmenin kurum üyeliği */
+                            menteeMembershipId: string;
+                            menteeName: string;
+                            /** @description Bağlı işe başlama listesi (iş teklifi) */
+                            onboardingOfferId: string | null;
+                            /** @description Bağlı teklifin pozisyonu */
+                            onboardingPosition: string | null;
+                            /** @description Başlangıç günü (YYYY-MM-DD) */
+                            startDate: string;
+                            /** @description Planlanan bitiş günü (YYYY-MM-DD) */
+                            endDate: string;
+                            /**
+                             * @description `active` sürüyor, `completed` tamamlandı, `ended_early` erken sonlandı
+                             * @enum {string}
+                             */
+                            status: "active" | "completed" | "ended_early";
+                            /** @description Tamamlanma ya da sonlanma günü */
+                            closedOn: string | null;
+                            /** @description Erken sonlanma gerekçesi */
+                            endReason: string | null;
+                            /** @description Görüşme sayısı (arşivliler hariç) */
+                            meetingCount: number;
+                            /** @description Son görüşme günü */
+                            lastMeetingDate: string | null;
+                            /** @description Süren eşleşmede son görüşmeden (yoksa başlangıçtan) bu yana gün */
+                            daysSinceContact: number | null;
+                            /** @description Süren eşleşmede görüşmesizlik 30 günü aştı (K-465) */
+                            overdue: boolean;
+                            /** @description Kontrol listesi ilerlemesi (hesaplanır, saklanmaz) */
+                            checklist: {
+                                total: number;
+                                done: number;
+                                requiredTotal: number;
+                                requiredDone: number;
+                                /** @description Tamamlanan madde / toplam madde, yüzde; madde yoksa boş */
+                                percent: number | null;
+                            };
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için eşleşme sürümü */
+                            version: number;
+                            /** @description Görüşmeler, yeni gün önce */
+                            meetings: {
+                                id: string;
+                                /** @description Görüşme günü (YYYY-MM-DD) */
+                                meetingDate: string;
+                                /** @description Süre, dakika */
+                                durationMinutes: number;
+                                topic: string;
+                                note: string | null;
+                                nextStep: string | null;
+                                createdAt: string;
+                            }[];
+                            /** @description Kontrol listesi, sırasıyla */
+                            checklistItems: {
+                                id: string;
+                                position: number;
+                                label: string;
+                                required: boolean;
+                                /** @description Tamamlanma anı (ISO 8601 UTC) */
+                                completedAt: string | null;
+                                /** @description Maddeyi işaretleyen */
+                                completedByName: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    addTeacherMentorshipMeeting: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                mentorshipId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Görüşme günü; başlangıçtan önce ve bugünden sonra olamaz */
+                    meetingDate: string;
+                    /** @description Süre, dakika (5–480) */
+                    durationMinutes: number;
+                    /** @description Konu (2–200) */
+                    topic: string;
+                    /** @description İsteğe bağlı görüşme notu (en çok 4000) */
+                    note?: string | null;
+                    /** @description İsteğe bağlı sonraki adım (en çok 500) */
+                    nextStep?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Mentorun kurum üyeliği */
+                            mentorMembershipId: string;
+                            mentorName: string;
+                            /** @description Yeni öğretmenin kurum üyeliği */
+                            menteeMembershipId: string;
+                            menteeName: string;
+                            /** @description Bağlı işe başlama listesi (iş teklifi) */
+                            onboardingOfferId: string | null;
+                            /** @description Bağlı teklifin pozisyonu */
+                            onboardingPosition: string | null;
+                            /** @description Başlangıç günü (YYYY-MM-DD) */
+                            startDate: string;
+                            /** @description Planlanan bitiş günü (YYYY-MM-DD) */
+                            endDate: string;
+                            /**
+                             * @description `active` sürüyor, `completed` tamamlandı, `ended_early` erken sonlandı
+                             * @enum {string}
+                             */
+                            status: "active" | "completed" | "ended_early";
+                            /** @description Tamamlanma ya da sonlanma günü */
+                            closedOn: string | null;
+                            /** @description Erken sonlanma gerekçesi */
+                            endReason: string | null;
+                            /** @description Görüşme sayısı (arşivliler hariç) */
+                            meetingCount: number;
+                            /** @description Son görüşme günü */
+                            lastMeetingDate: string | null;
+                            /** @description Süren eşleşmede son görüşmeden (yoksa başlangıçtan) bu yana gün */
+                            daysSinceContact: number | null;
+                            /** @description Süren eşleşmede görüşmesizlik 30 günü aştı (K-465) */
+                            overdue: boolean;
+                            /** @description Kontrol listesi ilerlemesi (hesaplanır, saklanmaz) */
+                            checklist: {
+                                total: number;
+                                done: number;
+                                requiredTotal: number;
+                                requiredDone: number;
+                                /** @description Tamamlanan madde / toplam madde, yüzde; madde yoksa boş */
+                                percent: number | null;
+                            };
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için eşleşme sürümü */
+                            version: number;
+                            /** @description Görüşmeler, yeni gün önce */
+                            meetings: {
+                                id: string;
+                                /** @description Görüşme günü (YYYY-MM-DD) */
+                                meetingDate: string;
+                                /** @description Süre, dakika */
+                                durationMinutes: number;
+                                topic: string;
+                                note: string | null;
+                                nextStep: string | null;
+                                createdAt: string;
+                            }[];
+                            /** @description Kontrol listesi, sırasıyla */
+                            checklistItems: {
+                                id: string;
+                                position: number;
+                                label: string;
+                                required: boolean;
+                                /** @description Tamamlanma anı (ISO 8601 UTC) */
+                                completedAt: string | null;
+                                /** @description Maddeyi işaretleyen */
+                                completedByName: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveTeacherMentorshipMeeting: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                mentorshipId: string;
+                meetingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Mentorun kurum üyeliği */
+                            mentorMembershipId: string;
+                            mentorName: string;
+                            /** @description Yeni öğretmenin kurum üyeliği */
+                            menteeMembershipId: string;
+                            menteeName: string;
+                            /** @description Bağlı işe başlama listesi (iş teklifi) */
+                            onboardingOfferId: string | null;
+                            /** @description Bağlı teklifin pozisyonu */
+                            onboardingPosition: string | null;
+                            /** @description Başlangıç günü (YYYY-MM-DD) */
+                            startDate: string;
+                            /** @description Planlanan bitiş günü (YYYY-MM-DD) */
+                            endDate: string;
+                            /**
+                             * @description `active` sürüyor, `completed` tamamlandı, `ended_early` erken sonlandı
+                             * @enum {string}
+                             */
+                            status: "active" | "completed" | "ended_early";
+                            /** @description Tamamlanma ya da sonlanma günü */
+                            closedOn: string | null;
+                            /** @description Erken sonlanma gerekçesi */
+                            endReason: string | null;
+                            /** @description Görüşme sayısı (arşivliler hariç) */
+                            meetingCount: number;
+                            /** @description Son görüşme günü */
+                            lastMeetingDate: string | null;
+                            /** @description Süren eşleşmede son görüşmeden (yoksa başlangıçtan) bu yana gün */
+                            daysSinceContact: number | null;
+                            /** @description Süren eşleşmede görüşmesizlik 30 günü aştı (K-465) */
+                            overdue: boolean;
+                            /** @description Kontrol listesi ilerlemesi (hesaplanır, saklanmaz) */
+                            checklist: {
+                                total: number;
+                                done: number;
+                                requiredTotal: number;
+                                requiredDone: number;
+                                /** @description Tamamlanan madde / toplam madde, yüzde; madde yoksa boş */
+                                percent: number | null;
+                            };
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için eşleşme sürümü */
+                            version: number;
+                            /** @description Görüşmeler, yeni gün önce */
+                            meetings: {
+                                id: string;
+                                /** @description Görüşme günü (YYYY-MM-DD) */
+                                meetingDate: string;
+                                /** @description Süre, dakika */
+                                durationMinutes: number;
+                                topic: string;
+                                note: string | null;
+                                nextStep: string | null;
+                                createdAt: string;
+                            }[];
+                            /** @description Kontrol listesi, sırasıyla */
+                            checklistItems: {
+                                id: string;
+                                position: number;
+                                label: string;
+                                required: boolean;
+                                /** @description Tamamlanma anı (ISO 8601 UTC) */
+                                completedAt: string | null;
+                                /** @description Maddeyi işaretleyen */
+                                completedByName: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    completeTeacherMentorshipChecklistItem: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                mentorshipId: string;
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Mentorun kurum üyeliği */
+                            mentorMembershipId: string;
+                            mentorName: string;
+                            /** @description Yeni öğretmenin kurum üyeliği */
+                            menteeMembershipId: string;
+                            menteeName: string;
+                            /** @description Bağlı işe başlama listesi (iş teklifi) */
+                            onboardingOfferId: string | null;
+                            /** @description Bağlı teklifin pozisyonu */
+                            onboardingPosition: string | null;
+                            /** @description Başlangıç günü (YYYY-MM-DD) */
+                            startDate: string;
+                            /** @description Planlanan bitiş günü (YYYY-MM-DD) */
+                            endDate: string;
+                            /**
+                             * @description `active` sürüyor, `completed` tamamlandı, `ended_early` erken sonlandı
+                             * @enum {string}
+                             */
+                            status: "active" | "completed" | "ended_early";
+                            /** @description Tamamlanma ya da sonlanma günü */
+                            closedOn: string | null;
+                            /** @description Erken sonlanma gerekçesi */
+                            endReason: string | null;
+                            /** @description Görüşme sayısı (arşivliler hariç) */
+                            meetingCount: number;
+                            /** @description Son görüşme günü */
+                            lastMeetingDate: string | null;
+                            /** @description Süren eşleşmede son görüşmeden (yoksa başlangıçtan) bu yana gün */
+                            daysSinceContact: number | null;
+                            /** @description Süren eşleşmede görüşmesizlik 30 günü aştı (K-465) */
+                            overdue: boolean;
+                            /** @description Kontrol listesi ilerlemesi (hesaplanır, saklanmaz) */
+                            checklist: {
+                                total: number;
+                                done: number;
+                                requiredTotal: number;
+                                requiredDone: number;
+                                /** @description Tamamlanan madde / toplam madde, yüzde; madde yoksa boş */
+                                percent: number | null;
+                            };
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için eşleşme sürümü */
+                            version: number;
+                            /** @description Görüşmeler, yeni gün önce */
+                            meetings: {
+                                id: string;
+                                /** @description Görüşme günü (YYYY-MM-DD) */
+                                meetingDate: string;
+                                /** @description Süre, dakika */
+                                durationMinutes: number;
+                                topic: string;
+                                note: string | null;
+                                nextStep: string | null;
+                                createdAt: string;
+                            }[];
+                            /** @description Kontrol listesi, sırasıyla */
+                            checklistItems: {
+                                id: string;
+                                position: number;
+                                label: string;
+                                required: boolean;
+                                /** @description Tamamlanma anı (ISO 8601 UTC) */
+                                completedAt: string | null;
+                                /** @description Maddeyi işaretleyen */
+                                completedByName: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reopenTeacherMentorshipChecklistItem: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                mentorshipId: string;
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Mentorun kurum üyeliği */
+                            mentorMembershipId: string;
+                            mentorName: string;
+                            /** @description Yeni öğretmenin kurum üyeliği */
+                            menteeMembershipId: string;
+                            menteeName: string;
+                            /** @description Bağlı işe başlama listesi (iş teklifi) */
+                            onboardingOfferId: string | null;
+                            /** @description Bağlı teklifin pozisyonu */
+                            onboardingPosition: string | null;
+                            /** @description Başlangıç günü (YYYY-MM-DD) */
+                            startDate: string;
+                            /** @description Planlanan bitiş günü (YYYY-MM-DD) */
+                            endDate: string;
+                            /**
+                             * @description `active` sürüyor, `completed` tamamlandı, `ended_early` erken sonlandı
+                             * @enum {string}
+                             */
+                            status: "active" | "completed" | "ended_early";
+                            /** @description Tamamlanma ya da sonlanma günü */
+                            closedOn: string | null;
+                            /** @description Erken sonlanma gerekçesi */
+                            endReason: string | null;
+                            /** @description Görüşme sayısı (arşivliler hariç) */
+                            meetingCount: number;
+                            /** @description Son görüşme günü */
+                            lastMeetingDate: string | null;
+                            /** @description Süren eşleşmede son görüşmeden (yoksa başlangıçtan) bu yana gün */
+                            daysSinceContact: number | null;
+                            /** @description Süren eşleşmede görüşmesizlik 30 günü aştı (K-465) */
+                            overdue: boolean;
+                            /** @description Kontrol listesi ilerlemesi (hesaplanır, saklanmaz) */
+                            checklist: {
+                                total: number;
+                                done: number;
+                                requiredTotal: number;
+                                requiredDone: number;
+                                /** @description Tamamlanan madde / toplam madde, yüzde; madde yoksa boş */
+                                percent: number | null;
+                            };
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için eşleşme sürümü */
+                            version: number;
+                            /** @description Görüşmeler, yeni gün önce */
+                            meetings: {
+                                id: string;
+                                /** @description Görüşme günü (YYYY-MM-DD) */
+                                meetingDate: string;
+                                /** @description Süre, dakika */
+                                durationMinutes: number;
+                                topic: string;
+                                note: string | null;
+                                nextStep: string | null;
+                                createdAt: string;
+                            }[];
+                            /** @description Kontrol listesi, sırasıyla */
+                            checklistItems: {
+                                id: string;
+                                position: number;
+                                label: string;
+                                required: boolean;
+                                /** @description Tamamlanma anı (ISO 8601 UTC) */
+                                completedAt: string | null;
+                                /** @description Maddeyi işaretleyen */
+                                completedByName: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    completeTeacherMentorship: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                mentorshipId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Tamamlanma günü; başlangıçtan önce ve bugünden sonra olamaz */
+                    closedOn: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Mentorun kurum üyeliği */
+                            mentorMembershipId: string;
+                            mentorName: string;
+                            /** @description Yeni öğretmenin kurum üyeliği */
+                            menteeMembershipId: string;
+                            menteeName: string;
+                            /** @description Bağlı işe başlama listesi (iş teklifi) */
+                            onboardingOfferId: string | null;
+                            /** @description Bağlı teklifin pozisyonu */
+                            onboardingPosition: string | null;
+                            /** @description Başlangıç günü (YYYY-MM-DD) */
+                            startDate: string;
+                            /** @description Planlanan bitiş günü (YYYY-MM-DD) */
+                            endDate: string;
+                            /**
+                             * @description `active` sürüyor, `completed` tamamlandı, `ended_early` erken sonlandı
+                             * @enum {string}
+                             */
+                            status: "active" | "completed" | "ended_early";
+                            /** @description Tamamlanma ya da sonlanma günü */
+                            closedOn: string | null;
+                            /** @description Erken sonlanma gerekçesi */
+                            endReason: string | null;
+                            /** @description Görüşme sayısı (arşivliler hariç) */
+                            meetingCount: number;
+                            /** @description Son görüşme günü */
+                            lastMeetingDate: string | null;
+                            /** @description Süren eşleşmede son görüşmeden (yoksa başlangıçtan) bu yana gün */
+                            daysSinceContact: number | null;
+                            /** @description Süren eşleşmede görüşmesizlik 30 günü aştı (K-465) */
+                            overdue: boolean;
+                            /** @description Kontrol listesi ilerlemesi (hesaplanır, saklanmaz) */
+                            checklist: {
+                                total: number;
+                                done: number;
+                                requiredTotal: number;
+                                requiredDone: number;
+                                /** @description Tamamlanan madde / toplam madde, yüzde; madde yoksa boş */
+                                percent: number | null;
+                            };
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için eşleşme sürümü */
+                            version: number;
+                            /** @description Görüşmeler, yeni gün önce */
+                            meetings: {
+                                id: string;
+                                /** @description Görüşme günü (YYYY-MM-DD) */
+                                meetingDate: string;
+                                /** @description Süre, dakika */
+                                durationMinutes: number;
+                                topic: string;
+                                note: string | null;
+                                nextStep: string | null;
+                                createdAt: string;
+                            }[];
+                            /** @description Kontrol listesi, sırasıyla */
+                            checklistItems: {
+                                id: string;
+                                position: number;
+                                label: string;
+                                required: boolean;
+                                /** @description Tamamlanma anı (ISO 8601 UTC) */
+                                completedAt: string | null;
+                                /** @description Maddeyi işaretleyen */
+                                completedByName: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    endTeacherMentorship: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                mentorshipId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Sonlanma günü; başlangıçtan önce ve bugünden sonra olamaz */
+                    closedOn: string;
+                    /** @description Erken sonlanma gerekçesi (5–500); denetime yazılmaz */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Mentorun kurum üyeliği */
+                            mentorMembershipId: string;
+                            mentorName: string;
+                            /** @description Yeni öğretmenin kurum üyeliği */
+                            menteeMembershipId: string;
+                            menteeName: string;
+                            /** @description Bağlı işe başlama listesi (iş teklifi) */
+                            onboardingOfferId: string | null;
+                            /** @description Bağlı teklifin pozisyonu */
+                            onboardingPosition: string | null;
+                            /** @description Başlangıç günü (YYYY-MM-DD) */
+                            startDate: string;
+                            /** @description Planlanan bitiş günü (YYYY-MM-DD) */
+                            endDate: string;
+                            /**
+                             * @description `active` sürüyor, `completed` tamamlandı, `ended_early` erken sonlandı
+                             * @enum {string}
+                             */
+                            status: "active" | "completed" | "ended_early";
+                            /** @description Tamamlanma ya da sonlanma günü */
+                            closedOn: string | null;
+                            /** @description Erken sonlanma gerekçesi */
+                            endReason: string | null;
+                            /** @description Görüşme sayısı (arşivliler hariç) */
+                            meetingCount: number;
+                            /** @description Son görüşme günü */
+                            lastMeetingDate: string | null;
+                            /** @description Süren eşleşmede son görüşmeden (yoksa başlangıçtan) bu yana gün */
+                            daysSinceContact: number | null;
+                            /** @description Süren eşleşmede görüşmesizlik 30 günü aştı (K-465) */
+                            overdue: boolean;
+                            /** @description Kontrol listesi ilerlemesi (hesaplanır, saklanmaz) */
+                            checklist: {
+                                total: number;
+                                done: number;
+                                requiredTotal: number;
+                                requiredDone: number;
+                                /** @description Tamamlanan madde / toplam madde, yüzde; madde yoksa boş */
+                                percent: number | null;
+                            };
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için eşleşme sürümü */
+                            version: number;
+                            /** @description Görüşmeler, yeni gün önce */
+                            meetings: {
+                                id: string;
+                                /** @description Görüşme günü (YYYY-MM-DD) */
+                                meetingDate: string;
+                                /** @description Süre, dakika */
+                                durationMinutes: number;
+                                topic: string;
+                                note: string | null;
+                                nextStep: string | null;
+                                createdAt: string;
+                            }[];
+                            /** @description Kontrol listesi, sırasıyla */
+                            checklistItems: {
+                                id: string;
+                                position: number;
+                                label: string;
+                                required: boolean;
+                                /** @description Tamamlanma anı (ISO 8601 UTC) */
+                                completedAt: string | null;
+                                /** @description Maddeyi işaretleyen */
+                                completedByName: string | null;
+                            }[];
                         };
                     };
                 };

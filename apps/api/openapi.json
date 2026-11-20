@@ -287246,6 +287246,3173 @@
         }
       }
     },
+    "/api/v1/finance/staff-feedback-settings": {
+      "get": {
+        "operationId": "getStaffFeedbackSettings",
+        "summary": "Meslektaş anonimlik eşiği",
+        "tags": [
+          "finance-staff-feedback"
+        ],
+        "description": "Kurumun meslektaş anonimlik eşiği (3–10; hiç kaydedilmediyse varsayılan 3, sürüm 1; K-459). Rol: yalnız `yonetici` (K-459; geri bildirim kişiseldir, değerlendirenin ve değerlendirilenin kendi ekranı ayrı iştir). Modül `finance`.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "peerAnonymityThreshold": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Meslektaş anonimlik eşiği (3–10)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için ayar sürümü (hiç kaydedilmediyse 1)"
+                        }
+                      },
+                      "required": [
+                        "peerAnonymityThreshold",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "setStaffFeedbackSettings",
+        "summary": "Meslektaş anonimlik eşiğini kaydet",
+        "tags": [
+          "finance-staff-feedback"
+        ],
+        "description": "Eşik 3–10 (400); aynı değer 422 `staff_feedback_settings_unchanged`. Meslektaş sonucu en az bu kadar yanıtla ve soru başına en az bu kadar cevapla toplu gösterilir (K-459). `If-Match` zorunlu (hiç kaydedilmediyse 1). Denetim `finance.staff_feedback.settings`. Rol: yalnız `yonetici` (K-459; geri bildirim kişiseldir, değerlendirenin ve değerlendirilenin kendi ekranı ayrı iştir). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "peerAnonymityThreshold": {
+                    "type": "integer",
+                    "minimum": 3,
+                    "maximum": 10,
+                    "description": "Meslektaş sonucunun gösterilmesi için gereken en az yanıt (3–10; K-459)"
+                  }
+                },
+                "required": [
+                  "peerAnonymityThreshold"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "peerAnonymityThreshold": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Meslektaş anonimlik eşiği (3–10)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için ayar sürümü (hiç kaydedilmediyse 1)"
+                        }
+                      },
+                      "required": [
+                        "peerAnonymityThreshold",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/performance-periods/{periodId}/staff-feedback": {
+      "get": {
+        "operationId": "getStaffFeedbackOverview",
+        "summary": "Dönemin geri bildirim şablonu ve yanıt oranı",
+        "tags": [
+          "finance-staff-feedback"
+        ],
+        "description": "Şablon (sorular, girilmiş yanıt sayısı, kilit) ya da hazırlanmadıysa boş; atanan, yanıtlanan, bekleyen ve yanıt oranı (toplam ve yönetici/meslektaş; K-458); kurumun anonimlik eşiği. Kişisel veri taşımaz. Başka kurumun dönemi 404. Rol: yalnız `yonetici` (K-459; geri bildirim kişiseldir, değerlendirenin ve değerlendirilenin kendi ekranı ayrı iştir). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "periodId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "periodId": {
+                          "type": "string"
+                        },
+                        "periodStatus": {
+                          "type": "string",
+                          "enum": [
+                            "planning",
+                            "active",
+                            "interim",
+                            "evaluation",
+                            "closed"
+                          ],
+                          "description": "Performans döneminin aşaması"
+                        },
+                        "template": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "periodId": {
+                                  "type": "string"
+                                },
+                                "questions": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "scale",
+                                          "open"
+                                        ],
+                                        "description": "`scale` puanlı (1–5), `open` açık uçlu"
+                                      },
+                                      "text": {
+                                        "type": "string",
+                                        "description": "Soru metni"
+                                      },
+                                      "required": {
+                                        "type": "boolean",
+                                        "description": "Girişte cevap zorunlu mu"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "text",
+                                      "required"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "description": "Sorular, sırasıyla"
+                                },
+                                "responseCount": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Bu şablonla girilmiş yanıt sayısı (geri alınan dahil)"
+                                },
+                                "locked": {
+                                  "type": "boolean",
+                                  "description": "Yanıt girildiği için sorular değiştirilemez (K-457)"
+                                },
+                                "createdAt": {
+                                  "type": "string"
+                                },
+                                "updatedAt": {
+                                  "type": "string"
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "`If-Match` için şablon sürümü"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "periodId",
+                                "questions",
+                                "responseCount",
+                                "locked",
+                                "createdAt",
+                                "updatedAt",
+                                "version"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Dönemin şablonu; hazırlanmadıysa boş"
+                        },
+                        "summary": {
+                          "type": "object",
+                          "properties": {
+                            "assigned": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Atanan değerlendiren"
+                            },
+                            "responded": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Yanıtı girilen"
+                            },
+                            "rate": {
+                              "description": "Yanıtlanan / atanan, yüzde (bir ondalık); atama yoksa boş",
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "pending": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Yanıt bekleyen atama"
+                            },
+                            "byRelation": {
+                              "type": "object",
+                              "properties": {
+                                "manager": {
+                                  "type": "object",
+                                  "properties": {
+                                    "assigned": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Atanan değerlendiren"
+                                    },
+                                    "responded": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Yanıtı girilen"
+                                    },
+                                    "rate": {
+                                      "description": "Yanıtlanan / atanan, yüzde (bir ondalık); atama yoksa boş",
+                                      "type": [
+                                        "number",
+                                        "null"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "assigned",
+                                    "responded",
+                                    "rate"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "peer": {
+                                  "type": "object",
+                                  "properties": {
+                                    "assigned": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Atanan değerlendiren"
+                                    },
+                                    "responded": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Yanıtı girilen"
+                                    },
+                                    "rate": {
+                                      "description": "Yanıtlanan / atanan, yüzde (bir ondalık); atama yoksa boş",
+                                      "type": [
+                                        "number",
+                                        "null"
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "assigned",
+                                    "responded",
+                                    "rate"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "required": [
+                                "manager",
+                                "peer"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "assigned",
+                            "responded",
+                            "rate",
+                            "pending",
+                            "byRelation"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Atanan / yanıtlanan, toplam ve ilişki türüne göre (K-458)"
+                        },
+                        "threshold": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kurumun meslektaş anonimlik eşiği (K-459)"
+                        }
+                      },
+                      "required": [
+                        "periodId",
+                        "periodStatus",
+                        "template",
+                        "summary",
+                        "threshold"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/performance-periods/{periodId}/staff-feedback-template": {
+      "post": {
+        "operationId": "createStaffFeedbackTemplate",
+        "summary": "Dönemin geri bildirim şablonunu hazırla",
+        "tags": [
+          "finance-staff-feedback"
+        ],
+        "description": "Sorular (1–20): tür (`scale` puanlı 1–5, `open` açık uçlu), metin (5–300), zorunlu mu (K-457). Dönem başına tek şablon (409 `staff_feedback_template_exists`); kapanmış dönem 409 `performance_period_closed`. `Idempotency-Key` zorunlu. Başka kurumun dönemi 404. Rol: yalnız `yonetici` (K-459; geri bildirim kişiseldir, değerlendirenin ve değerlendirilenin kendi ekranı ayrı iştir). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "questions": {
+                    "minItems": 1,
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "scale",
+                            "open"
+                          ],
+                          "description": "`scale` puanlı (1–5), `open` açık uçlu"
+                        },
+                        "text": {
+                          "type": "string",
+                          "minLength": 5,
+                          "maxLength": 300,
+                          "description": "Soru metni"
+                        },
+                        "required": {
+                          "type": "boolean",
+                          "description": "Gönderimde cevap zorunlu mu"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "text",
+                        "required"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Sorular, sırasıyla"
+                  }
+                },
+                "required": [
+                  "questions"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "periodId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "periodId": {
+                          "type": "string"
+                        },
+                        "questions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "scale",
+                                  "open"
+                                ],
+                                "description": "`scale` puanlı (1–5), `open` açık uçlu"
+                              },
+                              "text": {
+                                "type": "string",
+                                "description": "Soru metni"
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "description": "Girişte cevap zorunlu mu"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "text",
+                              "required"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Sorular, sırasıyla"
+                        },
+                        "responseCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Bu şablonla girilmiş yanıt sayısı (geri alınan dahil)"
+                        },
+                        "locked": {
+                          "type": "boolean",
+                          "description": "Yanıt girildiği için sorular değiştirilemez (K-457)"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için şablon sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "periodId",
+                        "questions",
+                        "responseCount",
+                        "locked",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/staff-feedback-templates/{templateId}": {
+      "patch": {
+        "operationId": "updateStaffFeedbackTemplate",
+        "summary": "Geri bildirim şablonunun sorularını düzelt",
+        "tags": [
+          "finance-staff-feedback"
+        ],
+        "description": "Soruların tamamı yeniden yazılır (K-457). Şablonla yanıt girildiyse (geri alınan dahil) 409 `staff_feedback_template_in_use`, kapanmış dönem 409 `performance_period_closed`, sürüm tutmazsa 409. `If-Match` zorunlu. Başka kurumun şablonu 404. Rol: yalnız `yonetici` (K-459; geri bildirim kişiseldir, değerlendirenin ve değerlendirilenin kendi ekranı ayrı iştir). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "questions": {
+                    "minItems": 1,
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "scale",
+                            "open"
+                          ],
+                          "description": "`scale` puanlı (1–5), `open` açık uçlu"
+                        },
+                        "text": {
+                          "type": "string",
+                          "minLength": 5,
+                          "maxLength": 300,
+                          "description": "Soru metni"
+                        },
+                        "required": {
+                          "type": "boolean",
+                          "description": "Gönderimde cevap zorunlu mu"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "text",
+                        "required"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Sorular, sırasıyla"
+                  }
+                },
+                "required": [
+                  "questions"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "templateId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "periodId": {
+                          "type": "string"
+                        },
+                        "questions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "scale",
+                                  "open"
+                                ],
+                                "description": "`scale` puanlı (1–5), `open` açık uçlu"
+                              },
+                              "text": {
+                                "type": "string",
+                                "description": "Soru metni"
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "description": "Girişte cevap zorunlu mu"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "text",
+                              "required"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Sorular, sırasıyla"
+                        },
+                        "responseCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Bu şablonla girilmiş yanıt sayısı (geri alınan dahil)"
+                        },
+                        "locked": {
+                          "type": "boolean",
+                          "description": "Yanıt girildiği için sorular değiştirilemez (K-457)"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için şablon sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "periodId",
+                        "questions",
+                        "responseCount",
+                        "locked",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/performance-periods/{periodId}/staff-feedback-subjects": {
+      "get": {
+        "operationId": "listStaffFeedbackSubjects",
+        "summary": "Dönemin değerlendirilenleri ve yanıt oranı",
+        "tags": [
+          "finance-staff-feedback"
+        ],
+        "description": "Dönemde performans kaydı olan her personel, ada göre: atanan ve yanıtlanan değerlendiren sayısı (toplam, yönetici, meslektaş; K-458). Değerlendiren adı ve cevap dönmez. Başka kurumun dönemi 404. Rol: yalnız `yonetici` (K-459; geri bildirim kişiseldir, değerlendirenin ve değerlendirilenin kendi ekranı ayrı iştir). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Personel adında arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "periodId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "membershipId": {
+                            "type": "string",
+                            "description": "Değerlendirilen personelin kurum üyeliği"
+                          },
+                          "staffName": {
+                            "type": "string",
+                            "description": "Personel adı"
+                          },
+                          "staffRole": {
+                            "type": "string",
+                            "description": "Personelin rolü"
+                          },
+                          "assigned": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Atanan değerlendiren"
+                          },
+                          "responded": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Yanıtı girilen"
+                          },
+                          "manager": {
+                            "type": "object",
+                            "properties": {
+                              "assigned": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Atanan değerlendiren"
+                              },
+                              "responded": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Yanıtı girilen"
+                              },
+                              "rate": {
+                                "description": "Yanıtlanan / atanan, yüzde (bir ondalık); atama yoksa boş",
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "assigned",
+                              "responded",
+                              "rate"
+                            ],
+                            "additionalProperties": false,
+                            "description": "Yönetici ilişkisindeki atamalar"
+                          },
+                          "peer": {
+                            "type": "object",
+                            "properties": {
+                              "assigned": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Atanan değerlendiren"
+                              },
+                              "responded": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Yanıtı girilen"
+                              },
+                              "rate": {
+                                "description": "Yanıtlanan / atanan, yüzde (bir ondalık); atama yoksa boş",
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "assigned",
+                              "responded",
+                              "rate"
+                            ],
+                            "additionalProperties": false,
+                            "description": "Meslektaş ilişkisindeki atamalar"
+                          }
+                        },
+                        "required": [
+                          "membershipId",
+                          "staffName",
+                          "staffRole",
+                          "assigned",
+                          "responded",
+                          "manager",
+                          "peer"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/performance-periods/{periodId}/staff-feedback-assignments": {
+      "get": {
+        "operationId": "listStaffFeedbackAssignments",
+        "summary": "Dönemin değerlendiren atamaları",
+        "tags": [
+          "finance-staff-feedback"
+        ],
+        "description": "Değerlendirilen, değerlendiren, ilişki (`manager`, `peer`), durum (`pending`, `submitted`), kanal ve giriş anı (K-458). Cevap ve geri alma gerekçesi dönmez (K-459). Değerlendirilen, ilişki ve durumla süzülür; adlarda aranır. Başka kurumun dönemi 404. Rol: yalnız `yonetici` (K-459; geri bildirim kişiseldir, değerlendirenin ve değerlendirilenin kendi ekranı ayrı iştir). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Değerlendirilen ya da değerlendiren adında arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "subjectMembershipId",
+            "required": false,
+            "description": "Değerlendirilen süzgeci"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "manager",
+                "peer"
+              ]
+            },
+            "in": "query",
+            "name": "relation",
+            "required": false,
+            "description": "İlişki türü süzgeci"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "submitted"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Durum süzgeci"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "periodId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "periodId": {
+                            "type": "string"
+                          },
+                          "subjectMembershipId": {
+                            "type": "string",
+                            "description": "Değerlendirilen personelin kurum üyeliği"
+                          },
+                          "subjectName": {
+                            "type": "string",
+                            "description": "Değerlendirilen personelin adı"
+                          },
+                          "reviewerMembershipId": {
+                            "type": "string",
+                            "description": "Değerlendirenin kurum üyeliği"
+                          },
+                          "reviewerName": {
+                            "type": "string",
+                            "description": "Değerlendirenin adı"
+                          },
+                          "reviewerRole": {
+                            "type": "string",
+                            "description": "Değerlendirenin rolü"
+                          },
+                          "relation": {
+                            "type": "string",
+                            "enum": [
+                              "manager",
+                              "peer"
+                            ],
+                            "description": "`manager` yönetici, `peer` meslektaş"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "submitted"
+                            ],
+                            "description": "`pending` yanıt bekleniyor, `submitted` yanıtlandı"
+                          },
+                          "channel": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "paper",
+                                  "email"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Yanıtın geldiği kanal; yanıt yoksa boş"
+                          },
+                          "submittedAt": {
+                            "description": "Yanıtın girildiği an (ISO 8601 UTC)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "withdrawCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Yanıtın geri alınma sayısı"
+                          },
+                          "withdrawnAt": {
+                            "description": "Son geri alma anı",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için atama sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "periodId",
+                          "subjectMembershipId",
+                          "subjectName",
+                          "reviewerMembershipId",
+                          "reviewerName",
+                          "reviewerRole",
+                          "relation",
+                          "status",
+                          "channel",
+                          "submittedAt",
+                          "withdrawCount",
+                          "withdrawnAt",
+                          "createdAt",
+                          "updatedAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createStaffFeedbackAssignment",
+        "summary": "Değerlendiren ata",
+        "tags": [
+          "finance-staff-feedback"
+        ],
+        "description": "Değerlendirilen (dönemde performans kaydı olmalı; 422 `staff_feedback_not_enrolled`), değerlendiren (kurumun etkin yönetici, öğretmen ya da ön bürosu; 422 `staff_feedback_reviewer_not_found`, `staff_feedback_reviewer_not_staff`, `staff_feedback_reviewer_inactive`) ve ilişki (`manager`, `peer`). Kişi kendini değerlendirmez (422 `staff_feedback_self`); dönemde değerlendirilen × değerlendiren tek atama (409 `staff_feedback_assignment_exists`). Yalnız planlama, yürürlük ve ara görüşmede (409 `staff_feedback_assign_closed`; kapanmış 409 `performance_period_closed`) (K-458). `Idempotency-Key` zorunlu. Başka kurumun dönemi 404. Rol: yalnız `yonetici` (K-459; geri bildirim kişiseldir, değerlendirenin ve değerlendirilenin kendi ekranı ayrı iştir). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "subjectMembershipId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Değerlendirilen personelin kurum üyeliği; dönemde performans kaydı olmalı"
+                  },
+                  "reviewerMembershipId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Değerlendirenin kurum üyeliği; kurumun etkin personeli, değerlendirilenden başka kişi"
+                  },
+                  "relation": {
+                    "type": "string",
+                    "enum": [
+                      "manager",
+                      "peer"
+                    ],
+                    "description": "`manager` yönetici (anonim değil), `peer` meslektaş (anonim; K-459)"
+                  }
+                },
+                "required": [
+                  "subjectMembershipId",
+                  "reviewerMembershipId",
+                  "relation"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "periodId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "periodId": {
+                          "type": "string"
+                        },
+                        "subjectMembershipId": {
+                          "type": "string",
+                          "description": "Değerlendirilen personelin kurum üyeliği"
+                        },
+                        "subjectName": {
+                          "type": "string",
+                          "description": "Değerlendirilen personelin adı"
+                        },
+                        "reviewerMembershipId": {
+                          "type": "string",
+                          "description": "Değerlendirenin kurum üyeliği"
+                        },
+                        "reviewerName": {
+                          "type": "string",
+                          "description": "Değerlendirenin adı"
+                        },
+                        "reviewerRole": {
+                          "type": "string",
+                          "description": "Değerlendirenin rolü"
+                        },
+                        "relation": {
+                          "type": "string",
+                          "enum": [
+                            "manager",
+                            "peer"
+                          ],
+                          "description": "`manager` yönetici, `peer` meslektaş"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "submitted"
+                          ],
+                          "description": "`pending` yanıt bekleniyor, `submitted` yanıtlandı"
+                        },
+                        "channel": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "paper",
+                                "email"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Yanıtın geldiği kanal; yanıt yoksa boş"
+                        },
+                        "submittedAt": {
+                          "description": "Yanıtın girildiği an (ISO 8601 UTC)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "withdrawCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Yanıtın geri alınma sayısı"
+                        },
+                        "withdrawnAt": {
+                          "description": "Son geri alma anı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için atama sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "periodId",
+                        "subjectMembershipId",
+                        "subjectName",
+                        "reviewerMembershipId",
+                        "reviewerName",
+                        "reviewerRole",
+                        "relation",
+                        "status",
+                        "channel",
+                        "submittedAt",
+                        "withdrawCount",
+                        "withdrawnAt",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/staff-feedback-assignments/{assignmentId}": {
+      "delete": {
+        "operationId": "removeStaffFeedbackAssignment",
+        "summary": "Değerlendiren atamasını kaldır",
+        "tags": [
+          "finance-staff-feedback"
+        ],
+        "description": "Yanıtı girilmemiş atama arşivlenir (K-458); yanıtlanmış 409 `staff_feedback_responded`, değerlendirme aşaması 409 `staff_feedback_assign_closed`, kapanmış dönem 409 `performance_period_closed`. `If-Match` zorunlu. Başka kurumun ataması 404. Rol: yalnız `yonetici` (K-459; geri bildirim kişiseldir, değerlendirenin ve değerlendirilenin kendi ekranı ayrı iştir). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "assignmentId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/staff-feedback-assignments/{assignmentId}/response": {
+      "post": {
+        "operationId": "recordStaffFeedbackResponse",
+        "summary": "Değerlendiren adına yanıtı gir",
+        "tags": [
+          "finance-staff-feedback"
+        ],
+        "description": "Kanal (`paper` kâğıt form, `email` e-posta) ve soru sırasıyla cevaplar (puanlı soruda `score` 1–5, açık uçluda `text`); giriş yanıtı gönderir (K-458). Dönem yürürlük ya da ara görüşmede olmalı (422 `staff_feedback_not_open`; kapanmış 409 `performance_period_closed`); şablon yoksa 422 `staff_feedback_template_missing`; yanıtlanmış atama 409 `staff_feedback_already_responded`; değerlendirilen yönetici kendi hakkındaki yanıtı giremez (422 `staff_feedback_subject_entry`); cevap sayısı/türü şablona uymazsa 422 `staff_feedback_answers_mismatch` / `staff_feedback_answer_kind`; zorunlu soru boşsa 422 `staff_feedback_incomplete`. Yanıtta cevap dönmez; cevaplar denetime yazılmaz (K-459). `If-Match` zorunlu. Başka kurumun ataması 404. Rol: yalnız `yonetici` (K-459; geri bildirim kişiseldir, değerlendirenin ve değerlendirilenin kendi ekranı ayrı iştir). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "paper",
+                      "email"
+                    ],
+                    "description": "Yanıtın geldiği kanal: `paper` kâğıt form, `email` e-posta (K-458)"
+                  },
+                  "answers": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "score": {
+                          "description": "Puanlı soru için 1–5; boş = cevaplanmadı",
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 5
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "text": {
+                          "description": "Açık uçlu soru için cevap; boş = cevaplanmadı",
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 2000
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "description": "Soru sırasıyla cevaplar; dizi soru sayısı kadardır"
+                  }
+                },
+                "required": [
+                  "channel",
+                  "answers"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "assignmentId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "periodId": {
+                          "type": "string"
+                        },
+                        "subjectMembershipId": {
+                          "type": "string",
+                          "description": "Değerlendirilen personelin kurum üyeliği"
+                        },
+                        "subjectName": {
+                          "type": "string",
+                          "description": "Değerlendirilen personelin adı"
+                        },
+                        "reviewerMembershipId": {
+                          "type": "string",
+                          "description": "Değerlendirenin kurum üyeliği"
+                        },
+                        "reviewerName": {
+                          "type": "string",
+                          "description": "Değerlendirenin adı"
+                        },
+                        "reviewerRole": {
+                          "type": "string",
+                          "description": "Değerlendirenin rolü"
+                        },
+                        "relation": {
+                          "type": "string",
+                          "enum": [
+                            "manager",
+                            "peer"
+                          ],
+                          "description": "`manager` yönetici, `peer` meslektaş"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "submitted"
+                          ],
+                          "description": "`pending` yanıt bekleniyor, `submitted` yanıtlandı"
+                        },
+                        "channel": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "paper",
+                                "email"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Yanıtın geldiği kanal; yanıt yoksa boş"
+                        },
+                        "submittedAt": {
+                          "description": "Yanıtın girildiği an (ISO 8601 UTC)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "withdrawCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Yanıtın geri alınma sayısı"
+                        },
+                        "withdrawnAt": {
+                          "description": "Son geri alma anı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için atama sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "periodId",
+                        "subjectMembershipId",
+                        "subjectName",
+                        "reviewerMembershipId",
+                        "reviewerName",
+                        "reviewerRole",
+                        "relation",
+                        "status",
+                        "channel",
+                        "submittedAt",
+                        "withdrawCount",
+                        "withdrawnAt",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/staff-feedback-assignments/{assignmentId}/withdraw": {
+      "post": {
+        "operationId": "withdrawStaffFeedbackResponse",
+        "summary": "Girilmiş yanıtı geri al",
+        "tags": [
+          "finance-staff-feedback"
+        ],
+        "description": "Gerekçe (5–500) zorunlu; cevaplar silinir, atama yanıt bekler, son gerekçe, geri alan ve an saklanır, geri alma sayısı artar (K-458). Yanıtsız atama 409 `staff_feedback_not_responded`; dönem yürürlük ya da ara görüşmede değilse 422 `staff_feedback_not_open`, kapanmışsa 409 `performance_period_closed`. Gerekçe metni denetime yazılmaz. `If-Match` zorunlu. Başka kurumun ataması 404. Rol: yalnız `yonetici` (K-459; geri bildirim kişiseldir, değerlendirenin ve değerlendirilenin kendi ekranı ayrı iştir). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500,
+                    "description": "Girilmiş yanıtın neden geri alındığı (zorunlu, K-458)"
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "assignmentId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "periodId": {
+                          "type": "string"
+                        },
+                        "subjectMembershipId": {
+                          "type": "string",
+                          "description": "Değerlendirilen personelin kurum üyeliği"
+                        },
+                        "subjectName": {
+                          "type": "string",
+                          "description": "Değerlendirilen personelin adı"
+                        },
+                        "reviewerMembershipId": {
+                          "type": "string",
+                          "description": "Değerlendirenin kurum üyeliği"
+                        },
+                        "reviewerName": {
+                          "type": "string",
+                          "description": "Değerlendirenin adı"
+                        },
+                        "reviewerRole": {
+                          "type": "string",
+                          "description": "Değerlendirenin rolü"
+                        },
+                        "relation": {
+                          "type": "string",
+                          "enum": [
+                            "manager",
+                            "peer"
+                          ],
+                          "description": "`manager` yönetici, `peer` meslektaş"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "submitted"
+                          ],
+                          "description": "`pending` yanıt bekleniyor, `submitted` yanıtlandı"
+                        },
+                        "channel": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "paper",
+                                "email"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Yanıtın geldiği kanal; yanıt yoksa boş"
+                        },
+                        "submittedAt": {
+                          "description": "Yanıtın girildiği an (ISO 8601 UTC)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "withdrawCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Yanıtın geri alınma sayısı"
+                        },
+                        "withdrawnAt": {
+                          "description": "Son geri alma anı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için atama sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "periodId",
+                        "subjectMembershipId",
+                        "subjectName",
+                        "reviewerMembershipId",
+                        "reviewerName",
+                        "reviewerRole",
+                        "relation",
+                        "status",
+                        "channel",
+                        "submittedAt",
+                        "withdrawCount",
+                        "withdrawnAt",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/performance-periods/{periodId}/staff-feedback-results/{membershipId}": {
+      "get": {
+        "operationId": "getStaffFeedbackResult",
+        "summary": "Değerlendirilenin toplu geri bildirim sonucu",
+        "tags": [
+          "finance-staff-feedback"
+        ],
+        "description": "Yönetici yanıtları değerlendirenin adıyla (anonim değil). Meslektaş yanıtları yalnız toplu: dönem değerlendirme ya da kapandı aşamasında (değilse `hiddenReason: period_open`) ve en az eşik kadar meslektaş yanıtı varsa (değilse `below_threshold`); soru başına cevap eşiğin altındaysa o soru gizli. Puanlı soruda ortalama, açık uçluda alfabetik metinler; kimden geldiği dönmez (K-459). Okuma aynı transaction'da denetime yazılır (`finance.staff_feedback_result.read`, alan adları). Dönemde performans kaydı olmayan personel ve başka kurum 404. Rol: yalnız `yonetici` (K-459; geri bildirim kişiseldir, değerlendirenin ve değerlendirilenin kendi ekranı ayrı iştir). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "periodId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "path",
+            "name": "membershipId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "periodId": {
+                          "type": "string"
+                        },
+                        "periodStatus": {
+                          "type": "string",
+                          "enum": [
+                            "planning",
+                            "active",
+                            "interim",
+                            "evaluation",
+                            "closed"
+                          ]
+                        },
+                        "membershipId": {
+                          "type": "string",
+                          "description": "Değerlendirilen personelin kurum üyeliği"
+                        },
+                        "staffName": {
+                          "type": "string",
+                          "description": "Değerlendirilen personelin adı"
+                        },
+                        "staffRole": {
+                          "type": "string"
+                        },
+                        "threshold": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Uygulanan meslektaş anonimlik eşiği"
+                        },
+                        "questions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "scale",
+                                  "open"
+                                ],
+                                "description": "`scale` puanlı (1–5), `open` açık uçlu"
+                              },
+                              "text": {
+                                "type": "string",
+                                "description": "Soru metni"
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "description": "Girişte cevap zorunlu mu"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "text",
+                              "required"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Şablonun soruları; şablon yoksa boş"
+                        },
+                        "manager": {
+                          "type": "object",
+                          "properties": {
+                            "assigned": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Atanan değerlendiren"
+                            },
+                            "responded": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Yanıtı girilen"
+                            },
+                            "rate": {
+                              "description": "Yanıtlanan / atanan, yüzde (bir ondalık); atama yoksa boş",
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "responses": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "reviewerName": {
+                                    "type": "string",
+                                    "description": "Yönetici değerlendiren (anonim değil)"
+                                  },
+                                  "submittedAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "answers": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "score": {
+                                          "anyOf": [
+                                            {
+                                              "type": "integer",
+                                              "minimum": -9007199254740991,
+                                              "maximum": 9007199254740991
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ],
+                                          "description": "Puanlı soru için 1–5; boş = cevaplanmadı"
+                                        },
+                                        "text": {
+                                          "description": "Açık uçlu soru için cevap",
+                                          "type": [
+                                            "string",
+                                            "null"
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "score",
+                                        "text"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "description": "Cevaplar, soru sırasıyla"
+                                  }
+                                },
+                                "required": [
+                                  "reviewerName",
+                                  "submittedAt",
+                                  "answers"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "description": "Yönetici yanıtları, adıyla (K-459)"
+                            }
+                          },
+                          "required": [
+                            "assigned",
+                            "responded",
+                            "rate",
+                            "responses"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "peer": {
+                          "type": "object",
+                          "properties": {
+                            "assigned": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Atanan değerlendiren"
+                            },
+                            "responded": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Yanıtı girilen"
+                            },
+                            "rate": {
+                              "description": "Yanıtlanan / atanan, yüzde (bir ondalık); atama yoksa boş",
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "visible": {
+                              "type": "boolean",
+                              "description": "Meslektaş toplu sonucu gösteriliyor mu"
+                            },
+                            "hiddenReason": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "period_open",
+                                    "below_threshold"
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ],
+                              "description": "`period_open` dönem değerlendirme aşamasına geçmedi, `below_threshold` meslektaş yanıtı eşiğin altında"
+                            },
+                            "questions": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "scale",
+                                      "open"
+                                    ]
+                                  },
+                                  "text": {
+                                    "type": "string",
+                                    "description": "Soru metni"
+                                  },
+                                  "answered": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Soruyu cevaplayan meslektaş sayısı"
+                                  },
+                                  "hidden": {
+                                    "type": "boolean",
+                                    "description": "Soru eşiğin altında cevaplandı; ortalama ve metin dönmez"
+                                  },
+                                  "average": {
+                                    "description": "Puanlı soruda ortalama (iki ondalık)",
+                                    "type": [
+                                      "number",
+                                      "null"
+                                    ]
+                                  },
+                                  "texts": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string"
+                                    },
+                                    "description": "Açık uçlu cevaplar, alfabetik; kimden geldiği dönmez"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "text",
+                                  "answered",
+                                  "hidden",
+                                  "average",
+                                  "texts"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "description": "Soru başına toplu meslektaş sonucu"
+                            }
+                          },
+                          "required": [
+                            "assigned",
+                            "responded",
+                            "rate",
+                            "visible",
+                            "hiddenReason",
+                            "questions"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "periodId",
+                        "periodStatus",
+                        "membershipId",
+                        "staffName",
+                        "staffRole",
+                        "threshold",
+                        "questions",
+                        "manager",
+                        "peer"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

@@ -20724,6 +20724,249 @@
           "followUps"
         ]
       },
+      "PersonnelFileInput": {
+        "type": "object",
+        "properties": {
+          "membershipId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "description": "Personelin adı (platform hesabından)"
+          },
+          "role": {
+            "type": "string",
+            "description": "Personelin rolü"
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Üyelik etkin mi (pasifse ayrılmış)"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Kart sürümü; düzeltmede If-Match"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "access": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "enum": [
+                "identity",
+                "contact",
+                "education",
+                "bank",
+                "emergencyContacts"
+              ]
+            },
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "read",
+                "write"
+              ]
+            },
+            "description": "Okuyanın grup erişimi; okuyamadığı grup yoktur"
+          },
+          "canRevealNationalId": {
+            "type": "boolean",
+            "description": "Tam T.C. kimlik no ucunu çağırabilir mi"
+          },
+          "identity": {
+            "type": "object",
+            "properties": {
+              "nationalIdMasked": {
+                "description": "Maskeli T.C. kimlik no (`*******1234`); tam hâli ayrı uçtan",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "birthDate": {
+                "description": "Doğum günü (YYYY-MM-DD)",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "nationalIdMasked",
+              "birthDate"
+            ],
+            "description": "Kimlik grubu; yalnız okuyabilen rolde bulunur"
+          },
+          "contact": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "phone": {
+                "description": "Kişisel telefon",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "email": {
+                "description": "Kişisel e-posta",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "address",
+              "phone",
+              "email"
+            ],
+            "description": "Kişisel iletişim grubu; yalnız okuyabilen rolde bulunur"
+          },
+          "education": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "string",
+                  "enum": [
+                    "high_school",
+                    "associate",
+                    "bachelor",
+                    "master",
+                    "doctorate",
+                    "other"
+                  ]
+                },
+                "school": {
+                  "type": "string"
+                },
+                "department": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "graduationYear": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Boşsa öğrenim sürüyor"
+                }
+              },
+              "required": [
+                "level",
+                "school",
+                "department",
+                "graduationYear"
+              ]
+            },
+            "description": "Eğitim geçmişi; yalnız okuyabilen rolde bulunur"
+          },
+          "certificates": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Yerine geçilmemiş sertifika/kurs belgesi sayısı"
+              },
+              "expiredCount": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Süresi geçmiş olanlar"
+              },
+              "latestDate": {
+                "description": "En yeni belge günü",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "count",
+              "expiredCount",
+              "latestDate"
+            ],
+            "description": "Özlük belgelerinden sertifika özeti (DOM-FIN-113); eğitim grubuyla birlikte bulunur"
+          },
+          "bank": {
+            "type": "object",
+            "properties": {
+              "ibanMasked": {
+                "description": "Maskeli IBAN (`TR**…1326`); tam IBAN hiçbir okumada dönmez",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "accountHolder": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "ibanMasked",
+              "accountHolder"
+            ],
+            "description": "Banka grubu; yalnız yönetici ve muhasebede bulunur"
+          },
+          "emergencyContacts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "relation": {
+                  "type": "string"
+                },
+                "phone": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "relation",
+                "phone"
+              ]
+            },
+            "description": "Acil durum kişileri; yalnız okuyabilen rolde bulunur"
+          }
+        },
+        "required": [
+          "membershipId",
+          "name",
+          "role",
+          "active",
+          "version",
+          "updatedAt",
+          "access",
+          "canRevealNationalId"
+        ]
+      },
       "ErrorResponse": {
         "type": "object",
         "properties": {
@@ -41887,6 +42130,256 @@
           "meetings",
           "trials",
           "followUps"
+        ],
+        "additionalProperties": false
+      },
+      "PersonnelFile": {
+        "type": "object",
+        "properties": {
+          "membershipId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "description": "Personelin adı (platform hesabından)"
+          },
+          "role": {
+            "type": "string",
+            "description": "Personelin rolü"
+          },
+          "active": {
+            "type": "boolean",
+            "description": "Üyelik etkin mi (pasifse ayrılmış)"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Kart sürümü; düzeltmede If-Match"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "access": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "enum": [
+                "identity",
+                "contact",
+                "education",
+                "bank",
+                "emergencyContacts"
+              ]
+            },
+            "additionalProperties": {
+              "type": "string",
+              "enum": [
+                "read",
+                "write"
+              ]
+            },
+            "description": "Okuyanın grup erişimi; okuyamadığı grup yoktur"
+          },
+          "canRevealNationalId": {
+            "type": "boolean",
+            "description": "Tam T.C. kimlik no ucunu çağırabilir mi"
+          },
+          "identity": {
+            "type": "object",
+            "properties": {
+              "nationalIdMasked": {
+                "description": "Maskeli T.C. kimlik no (`*******1234`); tam hâli ayrı uçtan",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "birthDate": {
+                "description": "Doğum günü (YYYY-MM-DD)",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "nationalIdMasked",
+              "birthDate"
+            ],
+            "additionalProperties": false,
+            "description": "Kimlik grubu; yalnız okuyabilen rolde bulunur"
+          },
+          "contact": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "phone": {
+                "description": "Kişisel telefon",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "email": {
+                "description": "Kişisel e-posta",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "address",
+              "phone",
+              "email"
+            ],
+            "additionalProperties": false,
+            "description": "Kişisel iletişim grubu; yalnız okuyabilen rolde bulunur"
+          },
+          "education": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "level": {
+                  "type": "string",
+                  "enum": [
+                    "high_school",
+                    "associate",
+                    "bachelor",
+                    "master",
+                    "doctorate",
+                    "other"
+                  ]
+                },
+                "school": {
+                  "type": "string"
+                },
+                "department": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "graduationYear": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Boşsa öğrenim sürüyor"
+                }
+              },
+              "required": [
+                "level",
+                "school",
+                "department",
+                "graduationYear"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Eğitim geçmişi; yalnız okuyabilen rolde bulunur"
+          },
+          "certificates": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Yerine geçilmemiş sertifika/kurs belgesi sayısı"
+              },
+              "expiredCount": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Süresi geçmiş olanlar"
+              },
+              "latestDate": {
+                "description": "En yeni belge günü",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "count",
+              "expiredCount",
+              "latestDate"
+            ],
+            "additionalProperties": false,
+            "description": "Özlük belgelerinden sertifika özeti (DOM-FIN-113); eğitim grubuyla birlikte bulunur"
+          },
+          "bank": {
+            "type": "object",
+            "properties": {
+              "ibanMasked": {
+                "description": "Maskeli IBAN (`TR**…1326`); tam IBAN hiçbir okumada dönmez",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "accountHolder": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "ibanMasked",
+              "accountHolder"
+            ],
+            "additionalProperties": false,
+            "description": "Banka grubu; yalnız yönetici ve muhasebede bulunur"
+          },
+          "emergencyContacts": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "relation": {
+                  "type": "string"
+                },
+                "phone": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "relation",
+                "phone"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Acil durum kişileri; yalnız okuyabilen rolde bulunur"
+          }
+        },
+        "required": [
+          "membershipId",
+          "name",
+          "role",
+          "active",
+          "version",
+          "updatedAt",
+          "access",
+          "canRevealNationalId"
         ],
         "additionalProperties": false
       }
@@ -301846,6 +302339,1172 @@
                         "version",
                         "meetings",
                         "checklistItems"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/personnel-files": {
+      "get": {
+        "operationId": "listPersonnelFiles",
+        "summary": "Personel ve özlük kartı durumu",
+        "tags": [
+          "finance-personnel-files"
+        ],
+        "description": "Kurumun yönetici, öğretmen ve ön büro üyelikleri ada göre; kartı var mı, sürümü ve dolu gruplar (yalnız okuyanın görebildiği gruplar; değer yok). Ad, durum (`active`, `passive`) ve kart (`with`, `without`) ile süzülür. Rol: okuma `yonetici` (bütün gruplar) ve `onburo` (yalnız acil durum kişileri); yazma yalnız `yonetici`. Muhasebe rolü açılınca kimlik (maskeli) ve iletişimi okur, bankayı yazar (K-475). Öğretmen, veli ve öğrenci 403. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Personel adında arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "passive"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "`active` etkin, `passive` pasifleştirilmiş (ayrılan) personel"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "with",
+                "without"
+              ]
+            },
+            "in": "query",
+            "name": "file",
+            "required": false,
+            "description": "`with` kartı olan, `without` kartı olmayan personel"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "membershipId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "role": {
+                            "type": "string"
+                          },
+                          "active": {
+                            "type": "boolean"
+                          },
+                          "hasFile": {
+                            "type": "boolean",
+                            "description": "Özlük kartı açılmış mı"
+                          },
+                          "version": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Kart sürümü; kart yoksa boş"
+                          },
+                          "updatedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "filledGroups": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "identity",
+                                "contact",
+                                "education",
+                                "bank",
+                                "emergencyContacts"
+                              ]
+                            },
+                            "description": "Dolu gruplar; yalnız okuyanın görebildiği gruplar sayılır"
+                          }
+                        },
+                        "required": [
+                          "membershipId",
+                          "name",
+                          "role",
+                          "active",
+                          "hasFile",
+                          "version",
+                          "updatedAt",
+                          "filledGroups"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createPersonnelFile",
+        "summary": "Özlük kartı aç",
+        "tags": [
+          "finance-personnel-files"
+        ],
+        "description": "Personel ve en az bir grup: kimlik (T.C. kimlik no kontrol haneli, doğum günü 1920 sonrası ve en az 14 yaş), kişisel iletişim (adres 10–500, telefon 0XXXXXXXXXX, e-posta), eğitim geçmişi (en çok 10 satır), banka (TR IBAN mod-97 ve hesap sahibi birlikte), acil durum kişileri (en çok 5). T.C. kimlik no ve IBAN şifreli saklanır. Rolün yazamadığı grup 403 `personnel_file_group_forbidden`. Olmayan üyelik 422 `personnel_file_staff_not_found`, öğrenci ya da veli 422 `personnel_file_not_staff`, pasif personel 422 `personnel_file_staff_inactive`, kart zaten varsa 409 `personnel_file_exists`; doğum günü 422 `personnel_file_birth_date_invalid`, eksik banka 422 `personnel_file_bank_incomplete`. Denetim kaydına dolu grupların adları yazılır. `Idempotency-Key` zorunlu. Rol: okuma `yonetici` (bütün gruplar) ve `onburo` (yalnız acil durum kişileri); yazma yalnız `yonetici`. Muhasebe rolü açılınca kimlik (maskeli) ve iletişimi okur, bankayı yazar (K-475). Öğretmen, veli ve öğrenci 403. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "membershipId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Kartın personeli (kurum üyeliği)"
+                  },
+                  "identity": {
+                    "description": "Kimlik grubu",
+                    "type": "object",
+                    "properties": {
+                      "nationalId": {
+                        "description": "T.C. kimlik no (11 hane); şifreli saklanır, okumada maskeli",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "birthDate": {
+                        "description": "Doğum günü (YYYY-MM-DD)",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "contact": {
+                    "description": "Kişisel iletişim grubu",
+                    "type": "object",
+                    "properties": {
+                      "address": {
+                        "description": "Ev adresi",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 10,
+                            "maxLength": 500
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "phone": {
+                        "description": "Kişisel telefon (0XXXXXXXXXX)",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "email": {
+                        "description": "Kişisel e-posta (iş e-postası hesaptadır)",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 254,
+                            "format": "email",
+                            "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "education": {
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "level": {
+                          "type": "string",
+                          "enum": [
+                            "high_school",
+                            "associate",
+                            "bachelor",
+                            "master",
+                            "doctorate",
+                            "other"
+                          ],
+                          "description": "Eğitim düzeyi"
+                        },
+                        "school": {
+                          "type": "string",
+                          "minLength": 2,
+                          "maxLength": 150,
+                          "description": "Okul"
+                        },
+                        "department": {
+                          "description": "Bölüm",
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 150
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "graduationYear": {
+                          "default": null,
+                          "description": "Mezuniyet yılı; boşsa öğrenim sürüyor",
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 1950,
+                              "maximum": 2100
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "level",
+                        "school"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Eğitim geçmişi; liste bütün olarak yazılır"
+                  },
+                  "bank": {
+                    "description": "Banka grubu; `null` siler",
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "iban": {
+                            "description": "TR IBAN (mod-97); şifreli saklanır, okumada maskeli",
+                            "type": "string"
+                          },
+                          "accountHolder": {
+                            "description": "Hesap sahibinin adı",
+                            "type": "string",
+                            "minLength": 2,
+                            "maxLength": 120
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "emergencyContacts": {
+                    "maxItems": 5,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 2,
+                          "maxLength": 120,
+                          "description": "Ad soyad"
+                        },
+                        "relation": {
+                          "type": "string",
+                          "minLength": 2,
+                          "maxLength": 60,
+                          "description": "Yakınlık (eşi, annesi, kardeşi…)"
+                        },
+                        "phone": {
+                          "description": "Telefon (0XXXXXXXXXX)",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "relation",
+                        "phone"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Acil durum kişileri; liste bütün olarak yazılır"
+                  }
+                },
+                "required": [
+                  "membershipId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/PersonnelFile"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/personnel-files/{membershipId}": {
+      "get": {
+        "operationId": "getPersonnelFile",
+        "summary": "Personelin özlük kartı",
+        "tags": [
+          "finance-personnel-files"
+        ],
+        "description": "Kartın okuyanın görebildiği grupları (K-475): kimlik (maskeli T.C. kimlik no, doğum günü), kişisel iletişim, eğitim geçmişi ve özlük belgelerinden sertifika özeti, banka (maskeli IBAN, hesap sahibi), acil durum kişileri. Okunamayan grubun anahtarı yanıtta yoktur. `access` grup başına okuma/yazma, `canRevealNationalId` tam kimlik no ucunu gösterir. Kartı olmayan, personel olmayan ya da başka kurumun üyeliği 404. Rol: okuma `yonetici` (bütün gruplar) ve `onburo` (yalnız acil durum kişileri); yazma yalnız `yonetici`. Muhasebe rolü açılınca kimlik (maskeli) ve iletişimi okur, bankayı yazar (K-475). Öğretmen, veli ve öğrenci 403. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "path",
+            "name": "membershipId",
+            "required": true,
+            "description": "Personelin kurum üyeliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/PersonnelFile"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updatePersonnelFile",
+        "summary": "Özlük kartını düzelt",
+        "tags": [
+          "finance-personnel-files"
+        ],
+        "description": "Kısmi: verilmeyen grup ve alan değişmez, `null` temizler; eğitim ve acil durum listeleri bütün olarak yazılır; `bank: null` banka bilgisini siler. Birleşik kart açılış kurallarından geçer; değişiklik yoksa 422 `personnel_file_unchanged`. Rolün yazamadığı grup 403 `personnel_file_group_forbidden`. Pasif personelin kartı düzeltilebilir. Denetim kaydına değişen alanların adları yazılır. `If-Match` zorunlu; sürüm tutmazsa 409. Kartı olmayan ya da başka kurumun üyeliği 404. Rol: okuma `yonetici` (bütün gruplar) ve `onburo` (yalnız acil durum kişileri); yazma yalnız `yonetici`. Muhasebe rolü açılınca kimlik (maskeli) ve iletişimi okur, bankayı yazar (K-475). Öğretmen, veli ve öğrenci 403. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "identity": {
+                    "description": "Kimlik grubu",
+                    "type": "object",
+                    "properties": {
+                      "nationalId": {
+                        "description": "T.C. kimlik no (11 hane); şifreli saklanır, okumada maskeli",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "birthDate": {
+                        "description": "Doğum günü (YYYY-MM-DD)",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "contact": {
+                    "description": "Kişisel iletişim grubu",
+                    "type": "object",
+                    "properties": {
+                      "address": {
+                        "description": "Ev adresi",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 10,
+                            "maxLength": 500
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "phone": {
+                        "description": "Kişisel telefon (0XXXXXXXXXX)",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "email": {
+                        "description": "Kişisel e-posta (iş e-postası hesaptadır)",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 254,
+                            "format": "email",
+                            "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "education": {
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "level": {
+                          "type": "string",
+                          "enum": [
+                            "high_school",
+                            "associate",
+                            "bachelor",
+                            "master",
+                            "doctorate",
+                            "other"
+                          ],
+                          "description": "Eğitim düzeyi"
+                        },
+                        "school": {
+                          "type": "string",
+                          "minLength": 2,
+                          "maxLength": 150,
+                          "description": "Okul"
+                        },
+                        "department": {
+                          "description": "Bölüm",
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 150
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "graduationYear": {
+                          "default": null,
+                          "description": "Mezuniyet yılı; boşsa öğrenim sürüyor",
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 1950,
+                              "maximum": 2100
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "level",
+                        "school"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Eğitim geçmişi; liste bütün olarak yazılır"
+                  },
+                  "bank": {
+                    "description": "Banka grubu; `null` siler",
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "iban": {
+                            "description": "TR IBAN (mod-97); şifreli saklanır, okumada maskeli",
+                            "type": "string"
+                          },
+                          "accountHolder": {
+                            "description": "Hesap sahibinin adı",
+                            "type": "string",
+                            "minLength": 2,
+                            "maxLength": 120
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "emergencyContacts": {
+                    "maxItems": 5,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 2,
+                          "maxLength": 120,
+                          "description": "Ad soyad"
+                        },
+                        "relation": {
+                          "type": "string",
+                          "minLength": 2,
+                          "maxLength": 60,
+                          "description": "Yakınlık (eşi, annesi, kardeşi…)"
+                        },
+                        "phone": {
+                          "description": "Telefon (0XXXXXXXXXX)",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "relation",
+                        "phone"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Acil durum kişileri; liste bütün olarak yazılır"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "path",
+            "name": "membershipId",
+            "required": true,
+            "description": "Personelin kurum üyeliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/PersonnelFile"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/personnel-files/{membershipId}/national-id": {
+      "get": {
+        "operationId": "getPersonnelNationalId",
+        "summary": "Tam T.C. kimlik numarası",
+        "tags": [
+          "finance-personnel-files"
+        ],
+        "description": "Kartın tam T.C. kimlik numarası (K-476): yalnız yönetici. Okuma aynı transaction'da denetime yazılır (`finance.personnel_file.national_id_read`, alan adı; değer yazılmaz); denetim yazılamazsa değer dönmez. Kartta yoksa `null`. Kartı olmayan ya da başka kurumun üyeliği 404. Ön büro 403. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "path",
+            "name": "membershipId",
+            "required": true,
+            "description": "Personelin kurum üyeliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "nationalId": {
+                          "description": "Tam T.C. kimlik no; kartta yoksa boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "nationalId"
                       ],
                       "additionalProperties": false
                     }

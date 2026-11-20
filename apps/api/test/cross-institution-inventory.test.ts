@@ -3598,6 +3598,76 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: çok kaynaklı geri bildirim (ON-212; DOM-FIN-134, K-459).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/staff-feedback-settings', 'settings(a.admin)'],
+        [
+          'gövde',
+          'PATCH /api/v1/finance/staff-feedback-settings',
+          'peerAnonymityThreshold: 4, institutionId: b.id',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/performance-periods/:periodId/staff-feedback',
+          'overview(a.admin, pb)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/performance-periods/:periodId/staff-feedback-template',
+          'createTemplate(a.admin, pb)',
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/staff-feedback-templates/:templateId',
+          'editTemplate(a.admin, template)',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/performance-periods/:periodId/staff-feedback-subjects',
+          'subjects(a.admin, pb)',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/performance-periods/:periodId/staff-feedback-assignments',
+          'assignments(a.admin, pb)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/performance-periods/:periodId/staff-feedback-assignments',
+          'assign(a.admin, pb, selin',
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/staff-feedback-assignments/:assignmentId',
+          'remove(a.admin, assignment)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-feedback-assignments/:assignmentId/response',
+          'respond(a.admin, assignment',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-feedback-assignments/:assignmentId/withdraw',
+          'withdraw(a.admin, done',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/performance-periods/:periodId/staff-feedback-results/:membershipId',
+          'result(a.admin, pb, selin)',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-staff-feedback.test.ts',
+        'DOM-FIN-134: başka kurumun dönemi, şablonu, ataması ve sonucu 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
   // Onur: performans raporu (ON-220; DOM-FIN-137, K-468).
   ...Object.fromEntries(
     (

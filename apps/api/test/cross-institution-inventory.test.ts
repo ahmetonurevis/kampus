@@ -3551,6 +3551,123 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: gözlem sonrası görüşme ve gelişim hedefi (ON-209; DOM-FIN-133, K-456).
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'kayıt',
+          'GET /api/v1/finance/lesson-observations/:observationId/debrief',
+          "call('GET', debriefUrl(setB.observation), a.admin)",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/lesson-observations/:observationId/debrief',
+          'openDebrief(a.admin, setB.observation',
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/observation-debriefs/:debriefId',
+          'patchDebrief(a.admin, debriefB',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/observation-debriefs/:debriefId/finalize',
+          'finalize(a.admin, debriefB)',
+        ],
+        ['liste', 'GET /api/v1/finance/development-goals', "call('GET', GOALS, a.admin)"],
+        ['gövde', 'POST /api/v1/finance/development-goals', 'institutionId: b.id,'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/development-goals/:goalId',
+          '`${GOALS}/${String(goalB.id)}`, a.admin',
+        ],
+        ['kayıt', 'PATCH /api/v1/finance/development-goals/:goalId', 'patchGoal(a.admin, goalB'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/development-goals/:goalId/follow-ups',
+          'followUp(a.admin, goalB',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-observation-debriefs.test.ts',
+        'DOM-FIN-133: başka kurumun görüşmesi ve hedefi 404 ve değişmez; gövdedeki institutionId 400',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: çok kaynaklı geri bildirim (ON-212; DOM-FIN-134, K-459).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/staff-feedback-settings', 'settings(a.admin)'],
+        [
+          'gövde',
+          'PATCH /api/v1/finance/staff-feedback-settings',
+          'peerAnonymityThreshold: 4, institutionId: b.id',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/performance-periods/:periodId/staff-feedback',
+          'overview(a.admin, pb)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/performance-periods/:periodId/staff-feedback-template',
+          'createTemplate(a.admin, pb)',
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/staff-feedback-templates/:templateId',
+          'editTemplate(a.admin, template)',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/performance-periods/:periodId/staff-feedback-subjects',
+          'subjects(a.admin, pb)',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/performance-periods/:periodId/staff-feedback-assignments',
+          'assignments(a.admin, pb)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/performance-periods/:periodId/staff-feedback-assignments',
+          'assign(a.admin, pb, selin',
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/staff-feedback-assignments/:assignmentId',
+          'remove(a.admin, assignment)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-feedback-assignments/:assignmentId/response',
+          'respond(a.admin, assignment',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-feedback-assignments/:assignmentId/withdraw',
+          'withdraw(a.admin, done',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/performance-periods/:periodId/staff-feedback-results/:membershipId',
+          'result(a.admin, pb, selin)',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-staff-feedback.test.ts',
+        'DOM-FIN-134: başka kurumun dönemi, şablonu, ataması ve sonucu 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

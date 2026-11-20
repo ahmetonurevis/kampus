@@ -1,0 +1,302 @@
+import assert from 'node:assert/strict'
+import test from 'node:test'
+
+import {
+  averageOf,
+  canViewPerformanceReport,
+  isObservationInPeriodReport,
+  observationAverage,
+  PERFORMANCE_REPORT_MANAGE_ROLES,
+  PERFORMANCE_REPORT_READ_ROLES,
+  PERFORMANCE_REPORT_SECTIONS,
+  performanceReportAcknowledgeSchema,
+  performanceReportFinalizeSchema,
+  performanceReportStatus,
+  performanceReportSummary,
+  performanceScoreBand,
+  planPerformanceReportAcknowledge,
+  planPerformanceReportFinalize,
+  selfEvaluationScaleAverage,
+  type PerformanceReportFinalizeChecks,
+} from '../packages/school-core/src/lib/finance-performance-reports.ts'
+
+import { isDomainError } from './support/domain-error.ts'
+
+// Personel performans raporu (DOM-FIN-137; ON-220). Kararlar K-466…K-468.
+
+const OPINION = { managerOpinion: 'Dönem hedeflerine ulaştı, okuma becerisinde güçlü.' }
+const finalizeChecks = (
+  patch: Partial<PerformanceReportFinalizeChecks> = {},
+): PerformanceReportFinalizeChecks => ({
+  period: { status: 'closed' },
+  finalized: false,
+  staffUserId: 'u-selin',
+  actorUserId: 'u-mudur',
+  ...patch,
+})
+const PERIOD = { id: 'p1', startDate: '2026-09-01', endDate: '2027-01-31' }
+const observation = (patch: Record<string, unknown> = {}) => ({
+  status: 'completed',
+  performancePeriodId: 'p1',
+  observedDate: '2026-10-01',
+  completedAt: '2026-10-02T09:00:00.000Z',
+  ...patch,
+})
+
+test('DOM-FIN-137 K-468: yazma ve özet yalnız yönetici; okuma yönetici ve öğretmen', () => {
+  assert.deepEqual([...PERFORMANCE_REPORT_MANAGE_ROLES], ['yonetici'])
+  assert.deepEqual([...PERFORMANCE_REPORT_READ_ROLES], ['yonetici', 'ogretmen'])
+})
+
+test('DOM-FIN-137 K-466: rapor bölümlüdür; bu turun bölümleri sırasıyla', () => {
+  assert.deepEqual(
+    [...PERFORMANCE_REPORT_SECTIONS],
+    ['evaluation', 'selfEvaluation', 'observations', 'managerOpinion'],
+  )
+})
+
+test('DOM-FIN-137 K-468: öğretmen yalnız kendi kesinleşmiş raporunu görür', () => {
+  const own = { membershipId: 'm-selin', finalized: true }
+  assert.equal(canViewPerformanceReport({ role: 'yonetici', membershipId: 'x' }, own), true)
+  assert.equal(
+    canViewPerformanceReport({ role: 'yonetici', membershipId: 'x' }, { ...own, finalized: false }),
+    true,
+  )
+  assert.equal(canViewPerformanceReport({ role: 'ogretmen', membershipId: 'm-selin' }, own), true)
+  assert.equal(
+    canViewPerformanceReport(
+      { role: 'ogretmen', membershipId: 'm-selin' },
+      { ...own, finalized: false },
+    ),
+    false,
+  )
+  assert.equal(canViewPerformanceReport({ role: 'ogretmen', membershipId: 'm-baska' }, own), false)
+  for (const role of ['on_buro', 'veli', 'ogrenci', 'muhasebe'])
+    assert.equal(canViewPerformanceReport({ role, membershipId: 'm-selin' }, own), false)
+})
+
+test('DOM-FIN-137 K-467: rapor durumu kesinleştirme ve okuma kaydından türetilir', () => {
+  assert.equal(performanceReportStatus(null), 'draft')
+  assert.equal(performanceReportStatus({ finalizedAt: null, acknowledgedDate: null }), 'draft')
+  assert.equal(
+    performanceReportStatus({ finalizedAt: '2026-10-06T09:00:00Z', acknowledgedDate: null }),
+    'finalized',
+  )
+  assert.equal(
+    performanceReportStatus({
+      finalizedAt: '2026-10-06T09:00:00Z',
+      acknowledgedDate: '2026-10-07',
+    }),
+    'acknowledged',
+  )
+})
+
+test('DOM-FIN-137 K-467: kesinleştirme görüşü 10–2000 karakter, fazla alan 400', () => {
+  assert.equal(
+    performanceReportFinalizeSchema.parse({ managerOpinion: `  ${OPINION.managerOpinion}  ` })
+      .managerOpinion,
+    OPINION.managerOpinion,
+  )
+  for (const bad of [
+    {},
+    { managerOpinion: 'Kısa' },
+    { managerOpinion: 'x'.repeat(2001) },
+    { ...OPINION, institutionId: 'b' },
+  ])
+    assert.equal(performanceReportFinalizeSchema.safeParse(bad).success, false)
+})
+
+test('DOM-FIN-137 K-467: rapor dönem kapanınca bir kez kesinleşir, kendi raporu kesinleşmez', () => {
+  assert.deepEqual(planPerformanceReportFinalize(OPINION, finalizeChecks()), OPINION)
+  for (const status of ['planning', 'active', 'interim', 'evaluation'] as const)
+    assert.throws(
+      () => planPerformanceReportFinalize(OPINION, finalizeChecks({ period: { status } })),
+      isDomainError('performance_report_period_open'),
+    )
+  assert.throws(
+    () => planPerformanceReportFinalize(OPINION, finalizeChecks({ finalized: true })),
+    isDomainError('performance_report_finalized', 'conflict'),
+  )
+  assert.throws(
+    () => planPerformanceReportFinalize(OPINION, finalizeChecks({ staffUserId: 'u-mudur' })),
+    isDomainError('performance_report_self'),
+  )
+  assert.throws(() => planPerformanceReportFinalize({ managerOpinion: 'x' }, finalizeChecks()))
+})
+
+test('DOM-FIN-137 K-467: okudum kaydı kesinleşmiş rapora bir kez, gün aralığında', () => {
+  const report = { finalizedDate: '2026-10-05', acknowledgedDate: null }
+  const input = { channel: 'paper', acknowledgedDate: '2026-10-06' }
+  assert.deepEqual(planPerformanceReportAcknowledge(report, input, '2026-10-06'), input)
+  assert.equal(
+    planPerformanceReportAcknowledge(
+      report,
+      { channel: 'in_person', acknowledgedDate: '2026-10-05' },
+      '2026-10-06',
+    ).channel,
+    'in_person',
+  )
+  assert.throws(
+    () => planPerformanceReportAcknowledge(null, input, '2026-10-06'),
+    isDomainError('performance_report_not_finalized'),
+  )
+  assert.throws(
+    () =>
+      planPerformanceReportAcknowledge(
+        { ...report, acknowledgedDate: '2026-10-06' },
+        input,
+        '2026-10-06',
+      ),
+    isDomainError('performance_report_acknowledged', 'conflict'),
+  )
+  assert.throws(
+    () =>
+      planPerformanceReportAcknowledge(
+        report,
+        { ...input, acknowledgedDate: '2026-10-07' },
+        '2026-10-06',
+      ),
+    isDomainError('performance_report_ack_date_future'),
+  )
+  assert.throws(
+    () =>
+      planPerformanceReportAcknowledge(
+        report,
+        { ...input, acknowledgedDate: '2026-10-04' },
+        '2026-10-06',
+      ),
+    isDomainError('performance_report_ack_before_final'),
+  )
+  for (const bad of [
+    {},
+    { channel: 'sms', acknowledgedDate: '2026-10-06' },
+    { channel: 'paper', acknowledgedDate: '2026-13-01' },
+    { ...input, note: 'x' },
+  ])
+    assert.equal(performanceReportAcknowledgeSchema.safeParse(bad).success, false)
+})
+
+test('DOM-FIN-137 K-466: dönemdeki tamamlanmış gözlemler rapora girer', () => {
+  assert.equal(isObservationInPeriodReport(observation(), PERIOD, null), true)
+  assert.equal(isObservationInPeriodReport(observation({ status: 'draft' }), PERIOD, null), false)
+  assert.equal(isObservationInPeriodReport(observation({ completedAt: null }), PERIOD, null), false)
+  assert.equal(
+    isObservationInPeriodReport(observation({ performancePeriodId: 'p2' }), PERIOD, null),
+    false,
+  )
+  // Döneme bağlanmamış gözlem günüyle karar verilir.
+  assert.equal(
+    isObservationInPeriodReport(observation({ performancePeriodId: null }), PERIOD, null),
+    true,
+  )
+  assert.equal(
+    isObservationInPeriodReport(
+      observation({ performancePeriodId: null, observedDate: '2026-08-31' }),
+      PERIOD,
+      null,
+    ),
+    false,
+  )
+  assert.equal(
+    isObservationInPeriodReport(
+      observation({ performancePeriodId: null, observedDate: '2027-02-01' }),
+      PERIOD,
+      null,
+    ),
+    false,
+  )
+  // Kesinleşen rapora sonradan tamamlanan gözlem girmez.
+  assert.equal(isObservationInPeriodReport(observation(), PERIOD, '2026-10-02T09:00:00.000Z'), true)
+  assert.equal(
+    isObservationInPeriodReport(observation(), PERIOD, '2026-10-01T09:00:00.000Z'),
+    false,
+  )
+})
+
+test('DOM-FIN-137 K-466: ortalamalar ve puan bantları', () => {
+  assert.equal(averageOf([], 2), null)
+  assert.equal(averageOf([1, 2], 2), 1.5)
+  assert.equal(observationAverage([73, 80, 67]), 73.3)
+  assert.equal(observationAverage([]), null)
+  assert.equal(
+    selfEvaluationScaleAverage(
+      [
+        { kind: 'scale', text: 'Soru bir', required: true },
+        { kind: 'open', text: 'Soru iki', required: true },
+        { kind: 'scale', text: 'Soru üç', required: false },
+        { kind: 'scale', text: 'Soru dört', required: false },
+      ],
+      [
+        { score: 4, text: null },
+        { score: null, text: 'Metin' },
+        { score: 5, text: null },
+        { score: null, text: null },
+      ],
+    ),
+    4.5,
+  )
+  assert.equal(
+    selfEvaluationScaleAverage([{ kind: 'open', text: 'Soru', required: true }], []),
+    null,
+  )
+  assert.equal(performanceScoreBand(null), null)
+  assert.equal(performanceScoreBand(Number.NaN), null)
+  assert.equal(performanceScoreBand(1), '1')
+  assert.equal(performanceScoreBand(1.99), '1')
+  assert.equal(performanceScoreBand(3.5), '3')
+  assert.equal(performanceScoreBand(4.99), '4')
+  assert.equal(performanceScoreBand(5), '5')
+})
+
+test('DOM-FIN-137 K-466: dönem özeti ortalama, dağılım ve rapor sayıları', () => {
+  const summary = performanceReportSummary([
+    {
+      overallScore: 4.2,
+      status: 'acknowledged',
+      selfEvaluationStatus: 'submitted',
+      observationPercents: [80, 70],
+    },
+    {
+      overallScore: 3,
+      status: 'finalized',
+      selfEvaluationStatus: 'draft',
+      observationPercents: [60],
+    },
+    {
+      overallScore: 4.8,
+      status: 'draft',
+      selfEvaluationStatus: 'missing',
+      observationPercents: [],
+    },
+    {
+      overallScore: null,
+      status: 'draft',
+      selfEvaluationStatus: 'missing',
+      observationPercents: [],
+    },
+  ])
+  assert.equal(summary.staffCount, 4)
+  assert.equal(summary.scoredCount, 3)
+  assert.equal(summary.unscoredCount, 1)
+  assert.equal(summary.averageScore, 4)
+  assert.equal(summary.minScore, 3)
+  assert.equal(summary.maxScore, 4.8)
+  assert.deepEqual(summary.distribution, [
+    { band: '1', count: 0 },
+    { band: '2', count: 0 },
+    { band: '3', count: 1 },
+    { band: '4', count: 2 },
+    { band: '5', count: 0 },
+  ])
+  assert.equal(summary.observationCount, 3)
+  assert.equal(summary.observationAverage, 70)
+  assert.equal(summary.selfEvaluationSubmitted, 1)
+  assert.equal(summary.finalizedCount, 2)
+  assert.equal(summary.acknowledgedCount, 1)
+
+  const empty = performanceReportSummary([])
+  assert.equal(empty.averageScore, null)
+  assert.equal(empty.minScore, null)
+  assert.equal(empty.maxScore, null)
+  assert.equal(empty.observationAverage, null)
+})

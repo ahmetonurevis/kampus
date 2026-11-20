@@ -212,6 +212,11 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // yanıtı açmaz (routes/finance-self-evaluations.ts; DOM-FIN-131, ON-210).
   'POST /api/v1/finance/performance-periods/{periodId}/self-evaluation-template',
   'POST /api/v1/finance/performance-periods/{periodId}/self-evaluations',
+  // Organizasyon birimi, pozisyonu ve ataması; çift tıklama ikinci birimi, pozisyonu ya da atamayı
+  // açmaz (routes/finance-org-chart.ts; DOM-FIN-129, ON-187).
+  'POST /api/v1/finance/org-units',
+  'POST /api/v1/finance/org-positions',
+  'POST /api/v1/finance/org-assignments',
 ]
 // Onur: kayıt ve finans sonu
 

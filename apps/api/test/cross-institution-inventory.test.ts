@@ -3336,6 +3336,47 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: organizasyon şeması (ON-187; DOM-FIN-129).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/org-chart', 'chartOf(a.admin)'],
+        ['liste', 'GET /api/v1/finance/org-vacancies', 'listOf(a.admin, VACANCIES)'],
+        ['gövde', 'POST /api/v1/finance/org-units', 'institutionId: b.id'],
+        ['kayıt', 'PATCH /api/v1/finance/org-units/:unitId', 'patchUnit(a.admin, bUnit'],
+        ['gövde', 'POST /api/v1/finance/org-positions', 'unitId: bUnit.id'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/org-positions/:positionId',
+          'patchPosition(a.admin, bPosition',
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/org-positions/:positionId',
+          'removePosition(a.admin, bPosition)',
+        ],
+        ['liste', 'GET /api/v1/finance/org-assignments', 'listOf(a.admin, ASSIGNMENTS)'],
+        ['gövde', 'POST /api/v1/finance/org-assignments', 'positionId: bPosition.id'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/org-assignments/:assignmentId',
+          'patchAssignment(a.admin, bAssignment',
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/org-assignments/:assignmentId',
+          'removeAssignment(a.admin, bAssignment)',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-org-chart.test.ts',
+        'DOM-FIN-129: başka kurumun birimi, pozisyonu, ataması ve personeli 404/422, B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

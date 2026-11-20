@@ -3285,6 +3285,98 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: öz değerlendirme (ON-210; DOM-FIN-131, K-450).
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'kayıt',
+          'GET /api/v1/finance/performance-periods/:periodId/self-evaluation',
+          'overview(a.admin, pb)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/performance-periods/:periodId/self-evaluation-template',
+          'createTemplate(a.admin, pb)',
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/self-evaluation-templates/:templateId',
+          'editTemplate(a.admin, template)',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/performance-periods/:periodId/self-evaluations',
+          'tracking(a.admin, pb)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/performance-periods/:periodId/self-evaluations',
+          'respond(a.admin, pb, selin)',
+        ],
+        ['kayıt', 'GET /api/v1/finance/self-evaluations/:responseId', 'read(a.admin, response)'],
+        ['kayıt', 'PATCH /api/v1/finance/self-evaluations/:responseId', 'patch(a.admin, response'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/self-evaluations/:responseId/submit',
+          'submit(a.admin, response)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/self-evaluations/:responseId/reopen',
+          'reopen(a.admin, response',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-self-evaluations.test.ts',
+        'DOM-FIN-131: başka kurumun dönemi, şablonu ve yanıtı 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: organizasyon şeması (ON-187; DOM-FIN-129).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/org-chart', 'chartOf(a.admin)'],
+        ['liste', 'GET /api/v1/finance/org-vacancies', 'listOf(a.admin, VACANCIES)'],
+        ['gövde', 'POST /api/v1/finance/org-units', 'institutionId: b.id'],
+        ['kayıt', 'PATCH /api/v1/finance/org-units/:unitId', 'patchUnit(a.admin, bUnit'],
+        ['gövde', 'POST /api/v1/finance/org-positions', 'unitId: bUnit.id'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/org-positions/:positionId',
+          'patchPosition(a.admin, bPosition',
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/org-positions/:positionId',
+          'removePosition(a.admin, bPosition)',
+        ],
+        ['liste', 'GET /api/v1/finance/org-assignments', 'listOf(a.admin, ASSIGNMENTS)'],
+        ['gövde', 'POST /api/v1/finance/org-assignments', 'positionId: bPosition.id'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/org-assignments/:assignmentId',
+          'patchAssignment(a.admin, bAssignment',
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/org-assignments/:assignmentId',
+          'removeAssignment(a.admin, bAssignment)',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-org-chart.test.ts',
+        'DOM-FIN-129: başka kurumun birimi, pozisyonu, ataması ve personeli 404/422, B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

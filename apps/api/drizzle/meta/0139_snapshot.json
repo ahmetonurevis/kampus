@@ -1,5 +1,5 @@
 {
-  "id": "c5f95784-d57f-4ee8-a206-baa5c4d330c8",
+  "id": "ad5611b8-cf63-411f-9d02-368e3a4802df",
   "prevId": "2ffa6968-e49d-482d-a92d-e8cb261e9c7b",
   "version": "7",
   "dialect": "postgresql",
@@ -17770,539 +17770,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.org_assignments": {
-      "name": "org_assignments",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "position_id": {
-          "name": "position_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "membership_id": {
-          "name": "membership_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "start_date": {
-          "name": "start_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "end_date": {
-          "name": "end_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "org_assignments_position_idx": {
-          "name": "org_assignments_position_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "position_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "start_date",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "org_assignments_membership_idx": {
-          "name": "org_assignments_membership_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "membership_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "org_assignments_institution_id_institutions_id_fk": {
-          "name": "org_assignments_institution_id_institutions_id_fk",
-          "tableFrom": "org_assignments",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "org_assignments_position_fkey": {
-          "name": "org_assignments_position_fkey",
-          "tableFrom": "org_assignments",
-          "tableTo": "org_positions",
-          "columnsFrom": [
-            "institution_id",
-            "position_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "org_assignments_membership_fkey": {
-          "name": "org_assignments_membership_fkey",
-          "tableFrom": "org_assignments",
-          "tableTo": "memberships",
-          "columnsFrom": [
-            "institution_id",
-            "membership_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "org_assignments_pkey": {
-          "name": "org_assignments_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "org_assignments_dates_check": {
-          "name": "org_assignments_dates_check",
-          "value": "\"org_assignments\".\"end_date\" is null or \"org_assignments\".\"end_date\" >= \"org_assignments\".\"start_date\""
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.org_positions": {
-      "name": "org_positions",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "unit_id": {
-          "name": "unit_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "title": {
-          "name": "title",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "headcount": {
-          "name": "headcount",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "reports_to_position_id": {
-          "name": "reports_to_position_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "org_positions_unit_idx": {
-          "name": "org_positions_unit_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "unit_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "org_positions_reports_to_idx": {
-          "name": "org_positions_reports_to_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "reports_to_position_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "org_positions_institution_id_institutions_id_fk": {
-          "name": "org_positions_institution_id_institutions_id_fk",
-          "tableFrom": "org_positions",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "org_positions_unit_fkey": {
-          "name": "org_positions_unit_fkey",
-          "tableFrom": "org_positions",
-          "tableTo": "org_units",
-          "columnsFrom": [
-            "institution_id",
-            "unit_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "org_positions_reports_to_fkey": {
-          "name": "org_positions_reports_to_fkey",
-          "tableFrom": "org_positions",
-          "tableTo": "org_positions",
-          "columnsFrom": [
-            "institution_id",
-            "reports_to_position_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "org_positions_pkey": {
-          "name": "org_positions_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "org_positions_title_check": {
-          "name": "org_positions_title_check",
-          "value": "char_length(\"org_positions\".\"title\") between 2 and 120"
-        },
-        "org_positions_headcount_check": {
-          "name": "org_positions_headcount_check",
-          "value": "\"org_positions\".\"headcount\" between 1 and 500"
-        },
-        "org_positions_reports_to_check": {
-          "name": "org_positions_reports_to_check",
-          "value": "\"org_positions\".\"reports_to_position_id\" is null or \"org_positions\".\"reports_to_position_id\" <> \"org_positions\".\"id\""
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.org_units": {
-      "name": "org_units",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "parent_id": {
-          "name": "parent_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "is_active": {
-          "name": "is_active",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "org_units_parent_idx": {
-          "name": "org_units_parent_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "parent_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "org_units_institution_id_institutions_id_fk": {
-          "name": "org_units_institution_id_institutions_id_fk",
-          "tableFrom": "org_units",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "org_units_parent_fkey": {
-          "name": "org_units_parent_fkey",
-          "tableFrom": "org_units",
-          "tableTo": "org_units",
-          "columnsFrom": [
-            "institution_id",
-            "parent_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "org_units_pkey": {
-          "name": "org_units_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "org_units_kind_check": {
-          "name": "org_units_kind_check",
-          "value": "\"org_units\".\"kind\" in ('management', 'academic_department', 'administrative', 'support')"
-        },
-        "org_units_name_check": {
-          "name": "org_units_name_check",
-          "value": "char_length(\"org_units\".\"name\") between 2 and 120"
-        },
-        "org_units_parent_check": {
-          "name": "org_units_parent_check",
-          "value": "\"org_units\".\"parent_id\" is null or \"org_units\".\"parent_id\" <> \"org_units\".\"id\""
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.lesson_package_hour_entries": {
       "name": "lesson_package_hour_entries",
       "schema": "",
@@ -27917,6 +27384,469 @@
         "scholarship_terminations_clawback_check": {
           "name": "scholarship_terminations_clawback_check",
           "value": "(\"scholarship_terminations\".\"kind\" = 'revoke') or (\"scholarship_terminations\".\"principal_cents\" = 0 and \"scholarship_terminations\".\"interest_cents\" = 0 and \"scholarship_terminations\".\"clawback_due_date\" is null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.self_evaluation_responses": {
+      "name": "self_evaluation_responses",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_id": {
+          "name": "period_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "template_id": {
+          "name": "template_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "membership_id": {
+          "name": "membership_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "answers": {
+          "name": "answers",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "channel": {
+          "name": "channel",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "submitted_at": {
+          "name": "submitted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "submitted_by_user_id": {
+          "name": "submitted_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "manager_comment": {
+          "name": "manager_comment",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "manager_comment_by_name": {
+          "name": "manager_comment_by_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "manager_comment_at": {
+          "name": "manager_comment_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reopen_count": {
+          "name": "reopen_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "reopened_at": {
+          "name": "reopened_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reopened_by_user_id": {
+          "name": "reopened_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reopen_reason": {
+          "name": "reopen_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "self_evaluation_responses_member_key": {
+          "name": "self_evaluation_responses_member_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "period_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "self_evaluation_responses_template_idx": {
+          "name": "self_evaluation_responses_template_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "template_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "self_evaluation_responses_membership_idx": {
+          "name": "self_evaluation_responses_membership_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "self_evaluation_responses_institution_id_institutions_id_fk": {
+          "name": "self_evaluation_responses_institution_id_institutions_id_fk",
+          "tableFrom": "self_evaluation_responses",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "self_evaluation_responses_period_fkey": {
+          "name": "self_evaluation_responses_period_fkey",
+          "tableFrom": "self_evaluation_responses",
+          "tableTo": "performance_periods",
+          "columnsFrom": [
+            "institution_id",
+            "period_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "self_evaluation_responses_template_fkey": {
+          "name": "self_evaluation_responses_template_fkey",
+          "tableFrom": "self_evaluation_responses",
+          "tableTo": "self_evaluation_templates",
+          "columnsFrom": [
+            "institution_id",
+            "template_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "self_evaluation_responses_membership_fkey": {
+          "name": "self_evaluation_responses_membership_fkey",
+          "tableFrom": "self_evaluation_responses",
+          "tableTo": "memberships",
+          "columnsFrom": [
+            "institution_id",
+            "membership_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "self_evaluation_responses_review_fkey": {
+          "name": "self_evaluation_responses_review_fkey",
+          "tableFrom": "self_evaluation_responses",
+          "tableTo": "performance_reviews",
+          "columnsFrom": [
+            "institution_id",
+            "period_id",
+            "membership_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "period_id",
+            "membership_id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "self_evaluation_responses_pkey": {
+          "name": "self_evaluation_responses_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "self_evaluation_responses_status_check": {
+          "name": "self_evaluation_responses_status_check",
+          "value": "\"self_evaluation_responses\".\"status\" in ('draft', 'submitted')"
+        },
+        "self_evaluation_responses_channel_check": {
+          "name": "self_evaluation_responses_channel_check",
+          "value": "\"self_evaluation_responses\".\"channel\" in ('paper', 'email')"
+        },
+        "self_evaluation_responses_answers_check": {
+          "name": "self_evaluation_responses_answers_check",
+          "value": "jsonb_typeof(\"self_evaluation_responses\".\"answers\") = 'array' and jsonb_array_length(\"self_evaluation_responses\".\"answers\") between 1 and 20"
+        },
+        "self_evaluation_responses_submitted_check": {
+          "name": "self_evaluation_responses_submitted_check",
+          "value": "((\"self_evaluation_responses\".\"status\" = 'submitted') = (\"self_evaluation_responses\".\"submitted_at\" is not null))\n        and ((\"self_evaluation_responses\".\"submitted_at\" is null) = (\"self_evaluation_responses\".\"submitted_by_user_id\" is null))"
+        },
+        "self_evaluation_responses_comment_check": {
+          "name": "self_evaluation_responses_comment_check",
+          "value": "(\"self_evaluation_responses\".\"manager_comment\" is null or char_length(\"self_evaluation_responses\".\"manager_comment\") between 1 and 2000)\n        and ((\"self_evaluation_responses\".\"manager_comment\" is null) = (\"self_evaluation_responses\".\"manager_comment_by_name\" is null))\n        and ((\"self_evaluation_responses\".\"manager_comment\" is null) = (\"self_evaluation_responses\".\"manager_comment_at\" is null))"
+        },
+        "self_evaluation_responses_reopen_check": {
+          "name": "self_evaluation_responses_reopen_check",
+          "value": "\"self_evaluation_responses\".\"reopen_count\" >= 0\n        and ((\"self_evaluation_responses\".\"reopen_count\" = 0) = (\"self_evaluation_responses\".\"reopened_at\" is null))\n        and ((\"self_evaluation_responses\".\"reopened_at\" is null) = (\"self_evaluation_responses\".\"reopened_by_user_id\" is null))\n        and ((\"self_evaluation_responses\".\"reopened_at\" is null) = (\"self_evaluation_responses\".\"reopen_reason\" is null))\n        and (\"self_evaluation_responses\".\"reopen_reason\" is null or char_length(\"self_evaluation_responses\".\"reopen_reason\") between 5 and 500)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.self_evaluation_templates": {
+      "name": "self_evaluation_templates",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_id": {
+          "name": "period_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "questions": {
+          "name": "questions",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "self_evaluation_templates_period_key": {
+          "name": "self_evaluation_templates_period_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "period_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "self_evaluation_templates_institution_id_institutions_id_fk": {
+          "name": "self_evaluation_templates_institution_id_institutions_id_fk",
+          "tableFrom": "self_evaluation_templates",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "self_evaluation_templates_period_fkey": {
+          "name": "self_evaluation_templates_period_fkey",
+          "tableFrom": "self_evaluation_templates",
+          "tableTo": "performance_periods",
+          "columnsFrom": [
+            "institution_id",
+            "period_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "self_evaluation_templates_pkey": {
+          "name": "self_evaluation_templates_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "self_evaluation_templates_questions_check": {
+          "name": "self_evaluation_templates_questions_check",
+          "value": "jsonb_typeof(\"self_evaluation_templates\".\"questions\") = 'array' and jsonb_array_length(\"self_evaluation_templates\".\"questions\") between 1 and 20"
         }
       },
       "isRLSEnabled": false

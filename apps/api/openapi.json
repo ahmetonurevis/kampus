@@ -270143,6 +270143,2882 @@
         }
       }
     },
+    "/api/v1/finance/performance-periods/{periodId}/self-evaluation": {
+      "get": {
+        "operationId": "getSelfEvaluationOverview",
+        "summary": "Dönemin öz değerlendirme şablonu ve gönderen oranı",
+        "tags": [
+          "finance-self-evaluations"
+        ],
+        "description": "Şablon (sorular, açılmış yanıt sayısı, kilit) ya da hazırlanmadıysa boş; özet: dönemde performans kaydı olan personel, gönderen, taslak, gönderilmeyen ve gönderen oranı (yüzde, bir ondalık; K-450). Kişisel veri taşımaz, okuma denetime yazılmaz. Başka kurumun dönemi 404. Rol: yalnız `yonetici` (K-450; öz değerlendirme kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "periodId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "periodId": {
+                          "type": "string"
+                        },
+                        "periodStatus": {
+                          "type": "string",
+                          "enum": [
+                            "planning",
+                            "active",
+                            "interim",
+                            "evaluation",
+                            "closed"
+                          ],
+                          "description": "Performans döneminin aşaması"
+                        },
+                        "template": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "periodId": {
+                                  "type": "string"
+                                },
+                                "questions": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "scale",
+                                          "open"
+                                        ],
+                                        "description": "`scale` puanlı (1–5), `open` açık uçlu"
+                                      },
+                                      "text": {
+                                        "type": "string",
+                                        "description": "Soru metni"
+                                      },
+                                      "required": {
+                                        "type": "boolean",
+                                        "description": "Gönderimde cevap zorunlu mu"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "text",
+                                      "required"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "description": "Sorular, sırasıyla"
+                                },
+                                "responseCount": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Bu şablonla açılmış yanıt sayısı"
+                                },
+                                "locked": {
+                                  "type": "boolean",
+                                  "description": "Yanıt açıldığı için sorular değiştirilemez (K-448)"
+                                },
+                                "createdAt": {
+                                  "type": "string"
+                                },
+                                "updatedAt": {
+                                  "type": "string"
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "`If-Match` için şablon sürümü"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "periodId",
+                                "questions",
+                                "responseCount",
+                                "locked",
+                                "createdAt",
+                                "updatedAt",
+                                "version"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Dönemin şablonu; hazırlanmadıysa boş"
+                        },
+                        "summary": {
+                          "type": "object",
+                          "properties": {
+                            "enrolled": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Dönemde performans kaydı olan personel"
+                            },
+                            "submitted": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Öz değerlendirmesini gönderen"
+                            },
+                            "draft": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Yanıtı taslakta olan"
+                            },
+                            "missing": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Yanıtı hiç açılmamış"
+                            },
+                            "rate": {
+                              "description": "Gönderen oranı, yüzde (bir ondalık); dönemde personel yoksa boş",
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "enrolled",
+                            "submitted",
+                            "draft",
+                            "missing",
+                            "rate"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "periodId",
+                        "periodStatus",
+                        "template",
+                        "summary"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/performance-periods/{periodId}/self-evaluation-template": {
+      "post": {
+        "operationId": "createSelfEvaluationTemplate",
+        "summary": "Dönemin öz değerlendirme şablonunu hazırla",
+        "tags": [
+          "finance-self-evaluations"
+        ],
+        "description": "Sorular (1–20): tür (`scale` puanlı 1–5, `open` açık uçlu), metin (5–300), zorunlu mu (K-448). Dönem başına tek şablon (409 `self_evaluation_template_exists`); kapanmış dönem 409 `performance_period_closed`. `Idempotency-Key` zorunlu. Başka kurumun dönemi 404. Rol: yalnız `yonetici` (K-450; öz değerlendirme kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "questions": {
+                    "minItems": 1,
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "scale",
+                            "open"
+                          ],
+                          "description": "`scale` puanlı (1–5), `open` açık uçlu"
+                        },
+                        "text": {
+                          "type": "string",
+                          "minLength": 5,
+                          "maxLength": 300,
+                          "description": "Soru metni"
+                        },
+                        "required": {
+                          "type": "boolean",
+                          "description": "Gönderimde cevap zorunlu mu"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "text",
+                        "required"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Sorular, sırasıyla"
+                  }
+                },
+                "required": [
+                  "questions"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "periodId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "periodId": {
+                          "type": "string"
+                        },
+                        "questions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "scale",
+                                  "open"
+                                ],
+                                "description": "`scale` puanlı (1–5), `open` açık uçlu"
+                              },
+                              "text": {
+                                "type": "string",
+                                "description": "Soru metni"
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "description": "Gönderimde cevap zorunlu mu"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "text",
+                              "required"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Sorular, sırasıyla"
+                        },
+                        "responseCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Bu şablonla açılmış yanıt sayısı"
+                        },
+                        "locked": {
+                          "type": "boolean",
+                          "description": "Yanıt açıldığı için sorular değiştirilemez (K-448)"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için şablon sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "periodId",
+                        "questions",
+                        "responseCount",
+                        "locked",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/self-evaluation-templates/{templateId}": {
+      "patch": {
+        "operationId": "updateSelfEvaluationTemplate",
+        "summary": "Öz değerlendirme şablonunun sorularını düzelt",
+        "tags": [
+          "finance-self-evaluations"
+        ],
+        "description": "Soruların tamamı yeniden yazılır (K-448). Dönemde yanıt açıldıysa 409 `self_evaluation_template_in_use`, kapanmış dönem 409 `performance_period_closed`, sürüm tutmazsa 409. `If-Match` zorunlu. Başka kurumun şablonu 404. Rol: yalnız `yonetici` (K-450; öz değerlendirme kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "questions": {
+                    "minItems": 1,
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "scale",
+                            "open"
+                          ],
+                          "description": "`scale` puanlı (1–5), `open` açık uçlu"
+                        },
+                        "text": {
+                          "type": "string",
+                          "minLength": 5,
+                          "maxLength": 300,
+                          "description": "Soru metni"
+                        },
+                        "required": {
+                          "type": "boolean",
+                          "description": "Gönderimde cevap zorunlu mu"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "text",
+                        "required"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Sorular, sırasıyla"
+                  }
+                },
+                "required": [
+                  "questions"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "templateId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "periodId": {
+                          "type": "string"
+                        },
+                        "questions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "scale",
+                                  "open"
+                                ],
+                                "description": "`scale` puanlı (1–5), `open` açık uçlu"
+                              },
+                              "text": {
+                                "type": "string",
+                                "description": "Soru metni"
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "description": "Gönderimde cevap zorunlu mu"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "text",
+                              "required"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Sorular, sırasıyla"
+                        },
+                        "responseCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Bu şablonla açılmış yanıt sayısı"
+                        },
+                        "locked": {
+                          "type": "boolean",
+                          "description": "Yanıt açıldığı için sorular değiştirilemez (K-448)"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için şablon sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "periodId",
+                        "questions",
+                        "responseCount",
+                        "locked",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/performance-periods/{periodId}/self-evaluations": {
+      "get": {
+        "operationId": "listSelfEvaluations",
+        "summary": "Dönemin öz değerlendirme takibi",
+        "tags": [
+          "finance-self-evaluations"
+        ],
+        "description": "Dönemde performans kaydı olan her personel, ada göre: yanıt durumu (`missing` gönderilmedi, `draft` taslak, `submitted` gönderildi), kanal, gönderim anı, geri açılma sayısı ve yönetici görüşü var mı (K-450). Cevap ve görüş metni dönmez; okuma denetime yazılmaz. Ad aranır, durumla süzülür. Başka kurumun dönemi 404. Rol: yalnız `yonetici` (K-450; öz değerlendirme kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Personel adında arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "missing",
+                "draft",
+                "submitted"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Durum süzgeci"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "periodId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "membershipId": {
+                            "type": "string",
+                            "description": "Personelin kurum üyeliği"
+                          },
+                          "staffName": {
+                            "type": "string",
+                            "description": "Personel adı"
+                          },
+                          "staffRole": {
+                            "type": "string",
+                            "description": "Personelin rolü"
+                          },
+                          "responseId": {
+                            "description": "Yanıt kimliği; yanıt açılmadıysa boş",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "missing",
+                              "draft",
+                              "submitted"
+                            ],
+                            "description": "`missing` gönderilmedi (yanıt yok), `draft` taslak, `submitted` gönderildi"
+                          },
+                          "channel": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "paper",
+                                  "email"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Yanıtın geldiği kanal"
+                          },
+                          "submittedAt": {
+                            "description": "Gönderim anı (ISO 8601 UTC)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "reopenCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Geri açılma sayısı"
+                          },
+                          "hasManagerComment": {
+                            "type": "boolean",
+                            "description": "Yönetici görüşü yazıldı mı"
+                          },
+                          "updatedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "membershipId",
+                          "staffName",
+                          "staffRole",
+                          "responseId",
+                          "status",
+                          "channel",
+                          "submittedAt",
+                          "reopenCount",
+                          "hasManagerComment",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createSelfEvaluation",
+        "summary": "Personel adına öz değerlendirme yanıtı aç",
+        "tags": [
+          "finance-self-evaluations"
+        ],
+        "description": "Personel üyeliği, kanal (`paper` kâğıt form, `email` e-posta) ve isteğe bağlı cevaplar (soru sırasıyla; puanlı soruda `score` 1–5, açık uçluda `text`); yanıt taslak açılır (K-449). Dönem yürürlük, ara görüşme ya da değerlendirmede olmalı (422 `self_evaluation_not_open`; kapanmış 409 `performance_period_closed`); şablon yoksa 422 `self_evaluation_template_missing`; dönemde performans kaydı olmayan personel 422 `self_evaluation_not_enrolled`; personel × dönem tek yanıt (409 `self_evaluation_exists`); cevap sayısı ya da türü şablona uymazsa 422 `self_evaluation_answers_mismatch` / `self_evaluation_answer_kind`. `Idempotency-Key` zorunlu. Başka kurumun dönemi 404. Rol: yalnız `yonetici` (K-450; öz değerlendirme kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "membershipId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Yanıtı veren personelin kurum üyeliği; dönemde performans kaydı olmalı"
+                  },
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "paper",
+                      "email"
+                    ],
+                    "description": "Yanıtın geldiği kanal: `paper` kâğıt form, `email` e-posta (K-449)"
+                  },
+                  "answers": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "score": {
+                          "description": "Puanlı soru için 1–5; boş = cevaplanmadı",
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 5
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "text": {
+                          "description": "Açık uçlu soru için cevap; boş = cevaplanmadı",
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 2000
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "description": "Soru sırasıyla cevaplar; dizi soru sayısı kadardır"
+                  }
+                },
+                "required": [
+                  "membershipId",
+                  "channel"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "periodId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "periodId": {
+                          "type": "string"
+                        },
+                        "templateId": {
+                          "type": "string"
+                        },
+                        "membershipId": {
+                          "type": "string",
+                          "description": "Yanıtı veren personelin kurum üyeliği"
+                        },
+                        "staffName": {
+                          "type": "string",
+                          "description": "Personel adı"
+                        },
+                        "staffRole": {
+                          "type": "string",
+                          "description": "Personelin rolü"
+                        },
+                        "questions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "scale",
+                                  "open"
+                                ],
+                                "description": "`scale` puanlı (1–5), `open` açık uçlu"
+                              },
+                              "text": {
+                                "type": "string",
+                                "description": "Soru metni"
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "description": "Gönderimde cevap zorunlu mu"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "text",
+                              "required"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Şablonun soruları, sırasıyla"
+                        },
+                        "answers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "score": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Puanlı soru için 1–5; boş = cevaplanmadı"
+                              },
+                              "text": {
+                                "description": "Açık uçlu soru için cevap",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "score",
+                              "text"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Cevaplar, soru sırasıyla"
+                        },
+                        "answeredCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Cevaplanmış soru sayısı"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "submitted"
+                          ],
+                          "description": "`draft` taslak, `submitted` gönderildi"
+                        },
+                        "channel": {
+                          "type": "string",
+                          "enum": [
+                            "paper",
+                            "email"
+                          ],
+                          "description": "Yanıtın geldiği kanal: `paper` kâğıt form, `email` e-posta"
+                        },
+                        "submittedAt": {
+                          "description": "Gönderim anı (ISO 8601 UTC)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "managerComment": {
+                          "description": "Yöneticinin görüşü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "managerCommentByName": {
+                          "description": "Görüşü son yazan yönetici",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "managerCommentAt": {
+                          "description": "Görüşün son yazıldığı an",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reopenCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geri açılma sayısı"
+                        },
+                        "reopenedAt": {
+                          "description": "Son geri açma anı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reopenReason": {
+                          "description": "Son geri açmanın gerekçesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için yanıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "periodId",
+                        "templateId",
+                        "membershipId",
+                        "staffName",
+                        "staffRole",
+                        "questions",
+                        "answers",
+                        "answeredCount",
+                        "status",
+                        "channel",
+                        "submittedAt",
+                        "managerComment",
+                        "managerCommentByName",
+                        "managerCommentAt",
+                        "reopenCount",
+                        "reopenedAt",
+                        "reopenReason",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/self-evaluations/{responseId}": {
+      "get": {
+        "operationId": "getSelfEvaluation",
+        "summary": "Öz değerlendirme yanıtı",
+        "tags": [
+          "finance-self-evaluations"
+        ],
+        "description": "Sorular ve cevaplar, durum, kanal, yönetici görüşü ve son geri açma (an, gerekçe). Okuma aynı transaction'da denetime yazılır (`finance.self_evaluation.read`; alan adları, K-450). Başka kurumun yanıtı 404. Rol: yalnız `yonetici` (K-450; öz değerlendirme kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "responseId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "periodId": {
+                          "type": "string"
+                        },
+                        "templateId": {
+                          "type": "string"
+                        },
+                        "membershipId": {
+                          "type": "string",
+                          "description": "Yanıtı veren personelin kurum üyeliği"
+                        },
+                        "staffName": {
+                          "type": "string",
+                          "description": "Personel adı"
+                        },
+                        "staffRole": {
+                          "type": "string",
+                          "description": "Personelin rolü"
+                        },
+                        "questions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "scale",
+                                  "open"
+                                ],
+                                "description": "`scale` puanlı (1–5), `open` açık uçlu"
+                              },
+                              "text": {
+                                "type": "string",
+                                "description": "Soru metni"
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "description": "Gönderimde cevap zorunlu mu"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "text",
+                              "required"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Şablonun soruları, sırasıyla"
+                        },
+                        "answers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "score": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Puanlı soru için 1–5; boş = cevaplanmadı"
+                              },
+                              "text": {
+                                "description": "Açık uçlu soru için cevap",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "score",
+                              "text"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Cevaplar, soru sırasıyla"
+                        },
+                        "answeredCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Cevaplanmış soru sayısı"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "submitted"
+                          ],
+                          "description": "`draft` taslak, `submitted` gönderildi"
+                        },
+                        "channel": {
+                          "type": "string",
+                          "enum": [
+                            "paper",
+                            "email"
+                          ],
+                          "description": "Yanıtın geldiği kanal: `paper` kâğıt form, `email` e-posta"
+                        },
+                        "submittedAt": {
+                          "description": "Gönderim anı (ISO 8601 UTC)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "managerComment": {
+                          "description": "Yöneticinin görüşü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "managerCommentByName": {
+                          "description": "Görüşü son yazan yönetici",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "managerCommentAt": {
+                          "description": "Görüşün son yazıldığı an",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reopenCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geri açılma sayısı"
+                        },
+                        "reopenedAt": {
+                          "description": "Son geri açma anı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reopenReason": {
+                          "description": "Son geri açmanın gerekçesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için yanıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "periodId",
+                        "templateId",
+                        "membershipId",
+                        "staffName",
+                        "staffRole",
+                        "questions",
+                        "answers",
+                        "answeredCount",
+                        "status",
+                        "channel",
+                        "submittedAt",
+                        "managerComment",
+                        "managerCommentByName",
+                        "managerCommentAt",
+                        "reopenCount",
+                        "reopenedAt",
+                        "reopenReason",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateSelfEvaluation",
+        "summary": "Öz değerlendirme yanıtını düzelt",
+        "tags": [
+          "finance-self-evaluations"
+        ],
+        "description": "Kısmi düzeltme: cevaplar ve kanal yalnız taslakta (gönderilmiş yanıt 409 `self_evaluation_submitted`; K-449), yönetici görüşü (≤ 2000, boş metin siler) yalnız gönderilmiş yanıtta (422 `self_evaluation_not_submitted`; K-450). Kapanmış dönem 409 `performance_period_closed`, sürüm tutmazsa 409. Cevap ve görüş metni denetime yazılmaz. `If-Match` zorunlu. Başka kurumun yanıtı 404. Rol: yalnız `yonetici` (K-450; öz değerlendirme kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "answers": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "score": {
+                          "description": "Puanlı soru için 1–5; boş = cevaplanmadı",
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 5
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "text": {
+                          "description": "Açık uçlu soru için cevap; boş = cevaplanmadı",
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 2000
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "description": "Soru sırasıyla cevaplar; dizi soru sayısı kadardır"
+                  },
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "paper",
+                      "email"
+                    ],
+                    "description": "Yanıtın geldiği kanal: `paper` kâğıt form, `email` e-posta (K-449)"
+                  },
+                  "managerComment": {
+                    "description": "Yöneticinin öz değerlendirmeye görüşü; boş metin görüşü siler (K-450)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 2000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "responseId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "periodId": {
+                          "type": "string"
+                        },
+                        "templateId": {
+                          "type": "string"
+                        },
+                        "membershipId": {
+                          "type": "string",
+                          "description": "Yanıtı veren personelin kurum üyeliği"
+                        },
+                        "staffName": {
+                          "type": "string",
+                          "description": "Personel adı"
+                        },
+                        "staffRole": {
+                          "type": "string",
+                          "description": "Personelin rolü"
+                        },
+                        "questions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "scale",
+                                  "open"
+                                ],
+                                "description": "`scale` puanlı (1–5), `open` açık uçlu"
+                              },
+                              "text": {
+                                "type": "string",
+                                "description": "Soru metni"
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "description": "Gönderimde cevap zorunlu mu"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "text",
+                              "required"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Şablonun soruları, sırasıyla"
+                        },
+                        "answers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "score": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Puanlı soru için 1–5; boş = cevaplanmadı"
+                              },
+                              "text": {
+                                "description": "Açık uçlu soru için cevap",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "score",
+                              "text"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Cevaplar, soru sırasıyla"
+                        },
+                        "answeredCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Cevaplanmış soru sayısı"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "submitted"
+                          ],
+                          "description": "`draft` taslak, `submitted` gönderildi"
+                        },
+                        "channel": {
+                          "type": "string",
+                          "enum": [
+                            "paper",
+                            "email"
+                          ],
+                          "description": "Yanıtın geldiği kanal: `paper` kâğıt form, `email` e-posta"
+                        },
+                        "submittedAt": {
+                          "description": "Gönderim anı (ISO 8601 UTC)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "managerComment": {
+                          "description": "Yöneticinin görüşü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "managerCommentByName": {
+                          "description": "Görüşü son yazan yönetici",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "managerCommentAt": {
+                          "description": "Görüşün son yazıldığı an",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reopenCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geri açılma sayısı"
+                        },
+                        "reopenedAt": {
+                          "description": "Son geri açma anı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reopenReason": {
+                          "description": "Son geri açmanın gerekçesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için yanıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "periodId",
+                        "templateId",
+                        "membershipId",
+                        "staffName",
+                        "staffRole",
+                        "questions",
+                        "answers",
+                        "answeredCount",
+                        "status",
+                        "channel",
+                        "submittedAt",
+                        "managerComment",
+                        "managerCommentByName",
+                        "managerCommentAt",
+                        "reopenCount",
+                        "reopenedAt",
+                        "reopenReason",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/self-evaluations/{responseId}/submit": {
+      "post": {
+        "operationId": "submitSelfEvaluation",
+        "summary": "Öz değerlendirmeyi gönder",
+        "tags": [
+          "finance-self-evaluations"
+        ],
+        "description": "Taslak gönderilir (K-449): zorunlu sorular cevaplı olmalı (422 `self_evaluation_incomplete`, ileti eksik soru sayısını verir); gönderilmiş yanıt 409 `self_evaluation_already_submitted`; dönem yanıta kapalıysa 422 `self_evaluation_not_open`, kapanmışsa 409 `performance_period_closed`. Gönderilen yanıt düzenlenmez. `If-Match` zorunlu. Başka kurumun yanıtı 404. Rol: yalnız `yonetici` (K-450; öz değerlendirme kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "responseId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "periodId": {
+                          "type": "string"
+                        },
+                        "templateId": {
+                          "type": "string"
+                        },
+                        "membershipId": {
+                          "type": "string",
+                          "description": "Yanıtı veren personelin kurum üyeliği"
+                        },
+                        "staffName": {
+                          "type": "string",
+                          "description": "Personel adı"
+                        },
+                        "staffRole": {
+                          "type": "string",
+                          "description": "Personelin rolü"
+                        },
+                        "questions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "scale",
+                                  "open"
+                                ],
+                                "description": "`scale` puanlı (1–5), `open` açık uçlu"
+                              },
+                              "text": {
+                                "type": "string",
+                                "description": "Soru metni"
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "description": "Gönderimde cevap zorunlu mu"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "text",
+                              "required"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Şablonun soruları, sırasıyla"
+                        },
+                        "answers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "score": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Puanlı soru için 1–5; boş = cevaplanmadı"
+                              },
+                              "text": {
+                                "description": "Açık uçlu soru için cevap",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "score",
+                              "text"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Cevaplar, soru sırasıyla"
+                        },
+                        "answeredCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Cevaplanmış soru sayısı"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "submitted"
+                          ],
+                          "description": "`draft` taslak, `submitted` gönderildi"
+                        },
+                        "channel": {
+                          "type": "string",
+                          "enum": [
+                            "paper",
+                            "email"
+                          ],
+                          "description": "Yanıtın geldiği kanal: `paper` kâğıt form, `email` e-posta"
+                        },
+                        "submittedAt": {
+                          "description": "Gönderim anı (ISO 8601 UTC)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "managerComment": {
+                          "description": "Yöneticinin görüşü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "managerCommentByName": {
+                          "description": "Görüşü son yazan yönetici",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "managerCommentAt": {
+                          "description": "Görüşün son yazıldığı an",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reopenCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geri açılma sayısı"
+                        },
+                        "reopenedAt": {
+                          "description": "Son geri açma anı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reopenReason": {
+                          "description": "Son geri açmanın gerekçesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için yanıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "periodId",
+                        "templateId",
+                        "membershipId",
+                        "staffName",
+                        "staffRole",
+                        "questions",
+                        "answers",
+                        "answeredCount",
+                        "status",
+                        "channel",
+                        "submittedAt",
+                        "managerComment",
+                        "managerCommentByName",
+                        "managerCommentAt",
+                        "reopenCount",
+                        "reopenedAt",
+                        "reopenReason",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/self-evaluations/{responseId}/reopen": {
+      "post": {
+        "operationId": "reopenSelfEvaluation",
+        "summary": "Gönderilmiş öz değerlendirmeyi geri aç",
+        "tags": [
+          "finance-self-evaluations"
+        ],
+        "description": "Gerekçe (5–500) zorunlu; yanıt taslağa döner, son gerekçe, açan ve an saklanır, açılma sayısı artar (K-449). Taslak 409 `self_evaluation_not_submitted`, kapanmış dönem 409 `performance_period_closed`. Denetime `finance.self_evaluation.reopen` alan adlarıyla yazılır, gerekçe metni yazılmaz. `If-Match` zorunlu. Başka kurumun yanıtı 404. Rol: yalnız `yonetici` (K-450; öz değerlendirme kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500,
+                    "description": "Gönderilmiş yanıtın neden taslağa döndüğü (zorunlu, K-449)"
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "responseId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "periodId": {
+                          "type": "string"
+                        },
+                        "templateId": {
+                          "type": "string"
+                        },
+                        "membershipId": {
+                          "type": "string",
+                          "description": "Yanıtı veren personelin kurum üyeliği"
+                        },
+                        "staffName": {
+                          "type": "string",
+                          "description": "Personel adı"
+                        },
+                        "staffRole": {
+                          "type": "string",
+                          "description": "Personelin rolü"
+                        },
+                        "questions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "scale",
+                                  "open"
+                                ],
+                                "description": "`scale` puanlı (1–5), `open` açık uçlu"
+                              },
+                              "text": {
+                                "type": "string",
+                                "description": "Soru metni"
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "description": "Gönderimde cevap zorunlu mu"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "text",
+                              "required"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Şablonun soruları, sırasıyla"
+                        },
+                        "answers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "score": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Puanlı soru için 1–5; boş = cevaplanmadı"
+                              },
+                              "text": {
+                                "description": "Açık uçlu soru için cevap",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "score",
+                              "text"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Cevaplar, soru sırasıyla"
+                        },
+                        "answeredCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Cevaplanmış soru sayısı"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "submitted"
+                          ],
+                          "description": "`draft` taslak, `submitted` gönderildi"
+                        },
+                        "channel": {
+                          "type": "string",
+                          "enum": [
+                            "paper",
+                            "email"
+                          ],
+                          "description": "Yanıtın geldiği kanal: `paper` kâğıt form, `email` e-posta"
+                        },
+                        "submittedAt": {
+                          "description": "Gönderim anı (ISO 8601 UTC)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "managerComment": {
+                          "description": "Yöneticinin görüşü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "managerCommentByName": {
+                          "description": "Görüşü son yazan yönetici",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "managerCommentAt": {
+                          "description": "Görüşün son yazıldığı an",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reopenCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Geri açılma sayısı"
+                        },
+                        "reopenedAt": {
+                          "description": "Son geri açma anı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reopenReason": {
+                          "description": "Son geri açmanın gerekçesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için yanıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "periodId",
+                        "templateId",
+                        "membershipId",
+                        "staffName",
+                        "staffRole",
+                        "questions",
+                        "answers",
+                        "answeredCount",
+                        "status",
+                        "channel",
+                        "submittedAt",
+                        "managerComment",
+                        "managerCommentByName",
+                        "managerCommentAt",
+                        "reopenCount",
+                        "reopenedAt",
+                        "reopenReason",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/finance/org-chart": {
       "get": {
         "operationId": "getOrgChart",

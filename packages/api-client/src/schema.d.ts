@@ -11608,6 +11608,526 @@ export interface paths {
         patch: operations["updateProfessionalDevelopmentEnrollment"];
         trace?: never;
     };
+    "/api/v1/finance/performance-periods/{periodId}/self-evaluation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Dönemin öz değerlendirme şablonu ve gönderen oranı
+         * @description Şablon (sorular, açılmış yanıt sayısı, kilit) ya da hazırlanmadıysa boş; özet: dönemde performans kaydı olan personel, gönderen, taslak, gönderilmeyen ve gönderen oranı (yüzde, bir ondalık; K-450). Kişisel veri taşımaz, okuma denetime yazılmaz. Başka kurumun dönemi 404. Rol: yalnız `yonetici` (K-450; öz değerlendirme kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.
+         */
+        get: operations["getSelfEvaluationOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/performance-periods/{periodId}/self-evaluation-template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dönemin öz değerlendirme şablonunu hazırla
+         * @description Sorular (1–20): tür (`scale` puanlı 1–5, `open` açık uçlu), metin (5–300), zorunlu mu (K-448). Dönem başına tek şablon (409 `self_evaluation_template_exists`); kapanmış dönem 409 `performance_period_closed`. `Idempotency-Key` zorunlu. Başka kurumun dönemi 404. Rol: yalnız `yonetici` (K-450; öz değerlendirme kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.
+         */
+        post: operations["createSelfEvaluationTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/self-evaluation-templates/{templateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Öz değerlendirme şablonunun sorularını düzelt
+         * @description Soruların tamamı yeniden yazılır (K-448). Dönemde yanıt açıldıysa 409 `self_evaluation_template_in_use`, kapanmış dönem 409 `performance_period_closed`, sürüm tutmazsa 409. `If-Match` zorunlu. Başka kurumun şablonu 404. Rol: yalnız `yonetici` (K-450; öz değerlendirme kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.
+         */
+        patch: operations["updateSelfEvaluationTemplate"];
+        trace?: never;
+    };
+    "/api/v1/finance/performance-periods/{periodId}/self-evaluations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Dönemin öz değerlendirme takibi
+         * @description Dönemde performans kaydı olan her personel, ada göre: yanıt durumu (`missing` gönderilmedi, `draft` taslak, `submitted` gönderildi), kanal, gönderim anı, geri açılma sayısı ve yönetici görüşü var mı (K-450). Cevap ve görüş metni dönmez; okuma denetime yazılmaz. Ad aranır, durumla süzülür. Başka kurumun dönemi 404. Rol: yalnız `yonetici` (K-450; öz değerlendirme kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.
+         */
+        get: operations["listSelfEvaluations"];
+        put?: never;
+        /**
+         * Personel adına öz değerlendirme yanıtı aç
+         * @description Personel üyeliği, kanal (`paper` kâğıt form, `email` e-posta) ve isteğe bağlı cevaplar (soru sırasıyla; puanlı soruda `score` 1–5, açık uçluda `text`); yanıt taslak açılır (K-449). Dönem yürürlük, ara görüşme ya da değerlendirmede olmalı (422 `self_evaluation_not_open`; kapanmış 409 `performance_period_closed`); şablon yoksa 422 `self_evaluation_template_missing`; dönemde performans kaydı olmayan personel 422 `self_evaluation_not_enrolled`; personel × dönem tek yanıt (409 `self_evaluation_exists`); cevap sayısı ya da türü şablona uymazsa 422 `self_evaluation_answers_mismatch` / `self_evaluation_answer_kind`. `Idempotency-Key` zorunlu. Başka kurumun dönemi 404. Rol: yalnız `yonetici` (K-450; öz değerlendirme kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.
+         */
+        post: operations["createSelfEvaluation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/self-evaluations/{responseId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Öz değerlendirme yanıtı
+         * @description Sorular ve cevaplar, durum, kanal, yönetici görüşü ve son geri açma (an, gerekçe). Okuma aynı transaction'da denetime yazılır (`finance.self_evaluation.read`; alan adları, K-450). Başka kurumun yanıtı 404. Rol: yalnız `yonetici` (K-450; öz değerlendirme kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.
+         */
+        get: operations["getSelfEvaluation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Öz değerlendirme yanıtını düzelt
+         * @description Kısmi düzeltme: cevaplar ve kanal yalnız taslakta (gönderilmiş yanıt 409 `self_evaluation_submitted`; K-449), yönetici görüşü (≤ 2000, boş metin siler) yalnız gönderilmiş yanıtta (422 `self_evaluation_not_submitted`; K-450). Kapanmış dönem 409 `performance_period_closed`, sürüm tutmazsa 409. Cevap ve görüş metni denetime yazılmaz. `If-Match` zorunlu. Başka kurumun yanıtı 404. Rol: yalnız `yonetici` (K-450; öz değerlendirme kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.
+         */
+        patch: operations["updateSelfEvaluation"];
+        trace?: never;
+    };
+    "/api/v1/finance/self-evaluations/{responseId}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Öz değerlendirmeyi gönder
+         * @description Taslak gönderilir (K-449): zorunlu sorular cevaplı olmalı (422 `self_evaluation_incomplete`, ileti eksik soru sayısını verir); gönderilmiş yanıt 409 `self_evaluation_already_submitted`; dönem yanıta kapalıysa 422 `self_evaluation_not_open`, kapanmışsa 409 `performance_period_closed`. Gönderilen yanıt düzenlenmez. `If-Match` zorunlu. Başka kurumun yanıtı 404. Rol: yalnız `yonetici` (K-450; öz değerlendirme kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.
+         */
+        post: operations["submitSelfEvaluation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/self-evaluations/{responseId}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Gönderilmiş öz değerlendirmeyi geri aç
+         * @description Gerekçe (5–500) zorunlu; yanıt taslağa döner, son gerekçe, açan ve an saklanır, açılma sayısı artar (K-449). Taslak 409 `self_evaluation_not_submitted`, kapanmış dönem 409 `performance_period_closed`. Denetime `finance.self_evaluation.reopen` alan adlarıyla yazılır, gerekçe metni yazılmaz. `If-Match` zorunlu. Başka kurumun yanıtı 404. Rol: yalnız `yonetici` (K-450; öz değerlendirme kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.
+         */
+        post: operations["reopenSelfEvaluation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/org-chart": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Organizasyon şeması
+         * @description Görsel şema verisi (DOM-FIN-129): bütün birimler (pasifler dahil), kaldırılmamış pozisyonlar ve verilen gün (varsayılan bugün) pozisyonda süren atamalar; dolu ve boş kadro, toplamlar. Kurum başına birim ≤ 300 ve pozisyon ≤ 1000 olduğu için sayfasızdır. Rol: yalnız `yonetici` (K-444). Modül `finance`.
+         */
+        get: operations["getOrgChart"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/org-vacancies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Boş pozisyonlar
+         * @description Verilen gün (varsayılan bugün) kadrosu dolmamış pozisyonlar (K-444): dolu = o gün süren atama, boş = kadro − dolu. Pasif birimin pozisyonu listelenmez. Birim adına ve unvana göre; birimle süzülür, unvanda ya da birim adında aranır. Rol: yalnız `yonetici` (K-444). Modül `finance`.
+         */
+        get: operations["listOrgVacancies"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/org-units": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Birim ekle
+         * @description Yeni birim etkin açılır (K-442). Üst birim kurumda olmalı (422 `org_unit_parent_not_found`) ve etkin olmalı (422 `org_unit_parent_inactive`); ağaç en fazla 10 düzey (422 `org_unit_too_deep`); aynı üst birimde aynı ad 409 `org_unit_name_taken`; kurumda en fazla 300 birim (422 `org_unit_limit`). Denetim kaydına alan adları yazılır. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (K-444). Modül `finance`.
+         */
+        post: operations["createOrgUnit"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/org-units/{unitId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Birimi düzelt, taşı ya da pasife al
+         * @description Ad, üst birim, tür ve etkinlik kısmi yazılır (K-442). Birim kendisinin ya da alt biriminin altına taşınamaz (422 `org_unit_cycle`); etkin alt birimi (422 `org_unit_has_active_children`) ya da süren veya başlayacak ataması (422 `org_unit_has_assignments`) olan birim pasife alınamaz; etkin birim pasif üst birime bağlanamaz (422 `org_unit_parent_inactive`). Değişiklik yoksa 422 `org_unit_unchanged`. `If-Match` zorunlu. Başka kurumun birimi 404. Rol: yalnız `yonetici` (K-444). Modül `finance`.
+         */
+        patch: operations["updateOrgUnit"];
+        trace?: never;
+    };
+    "/api/v1/finance/org-positions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Pozisyon aç
+         * @description Birimde unvan, kadro sayısı (1–500) ve raporladığı pozisyon (K-443). Birim kurumda (422 `org_position_unit_not_found`) ve etkin olmalı (422 `org_unit_inactive`); raporlanan pozisyon kurumda olmalı (422 `org_position_reports_to_not_found`); aynı birimde aynı unvan 409 `org_position_title_taken`; kurumda en fazla 1000 pozisyon (422 `org_position_limit`). Kadro planındaki açık pozisyon (DOM-FIN-126) ayrı kayıttır. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (K-444). Modül `finance`.
+         */
+        post: operations["createOrgPosition"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/org-positions/{positionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Pozisyonu kaldır
+         * @description Pozisyon arşivlenir; geçmiş atamaları kalır (K-443). Kendisine raporlayan pozisyon (422 `org_position_has_reports`) ya da süren veya başlayacak ataması (422 `org_position_has_assignments`) varken kaldırılmaz. `If-Match` zorunlu. Başka kurumun ya da kaldırılmış pozisyon 404. Rol: yalnız `yonetici` (K-444). Modül `finance`.
+         */
+        delete: operations["archiveOrgPosition"];
+        options?: never;
+        head?: never;
+        /**
+         * Pozisyonu düzelt
+         * @description Birim, unvan, kadro sayısı ve raporlama hattı kısmi yazılır (K-443). Pozisyon kendisine ya da kendisine raporlayan pozisyona raporlayamaz (422 `org_position_cycle`); kadro sayısı bugünden sonraki herhangi bir günün atama sayısının altına inemez (422 `org_position_headcount_below_assigned`). Değişiklik yoksa 422 `org_position_unchanged`. `If-Match` zorunlu. Başka kurumun ya da kaldırılmış pozisyon 404. Rol: yalnız `yonetici` (K-444). Modül `finance`.
+         */
+        patch: operations["updateOrgPosition"];
+        trace?: never;
+    };
+    "/api/v1/finance/org-assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Atamalar
+         * @description Personelin pozisyon atamaları (K-444), başlangıca göre yeniden eskiye; pozisyon, personel ve durumla (verilen güne göre süren, başlayacak, bitti) süzülür. Kaldırılmış pozisyonun geçmiş atamaları da listelenir. Rol: yalnız `yonetici` (K-444). Modül `finance`.
+         */
+        get: operations["listOrgAssignments"];
+        put?: never;
+        /**
+         * Personeli pozisyona ata
+         * @description Kurum personel üyeliği × pozisyon, başlangıç ve isteğe bağlı bitiş günü (uçlar dahil; K-444). Pozisyon kurumda olmalı (422 `org_assignment_position_not_found`), birimi etkin olmalı (422 `org_unit_inactive`); personel kurumun etkin yönetici, öğretmen ya da ön büro üyeliği (422 `org_assignment_staff_not_found`, `org_assignment_not_staff`, `org_assignment_staff_inactive`). Aynı personel aynı pozisyona kesişen aralıkla 409 `org_assignment_overlap`; aralıkta herhangi bir gün kadro dolarsa 422 `org_position_full`. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (K-444). Modül `finance`.
+         */
+        post: operations["createOrgAssignment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/org-assignments/{assignmentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Yanlış atamayı kaldır
+         * @description Yanlış girilen atama arşivlenir; kadroya ve geçmişe sayılmaz (K-444). Biten görev için kaldırma değil bitiş günü kullanılır. `If-Match` zorunlu. Başka kurumun ya da kaldırılmış atama 404. Rol: yalnız `yonetici` (K-444). Modül `finance`.
+         */
+        delete: operations["archiveOrgAssignment"];
+        options?: never;
+        head?: never;
+        /**
+         * Atamanın bitiş gününü yaz
+         * @description Atama bitirilir ya da bitişi değişir/kaldırılır (K-444). Bitiş başlangıçtan önce olamaz (422 `org_assignment_end_before_start`); uzatmada çakışma (409 `org_assignment_overlap`) ve kadro (422 `org_position_full`) yeniden denetlenir. Değişiklik yoksa 422 `org_assignment_unchanged`; kaldırılmış pozisyonun ataması 422 `org_position_archived`. `If-Match` zorunlu. Başka kurumun ataması 404. Rol: yalnız `yonetici` (K-444). Modül `finance`.
+         */
+        patch: operations["updateOrgAssignment"];
+        trace?: never;
+    };
+    "/api/v1/finance/job-postings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * İş ilanları
+         * @description İlanlar: taslak ve yayındakiler önce, son başvuru gününe göre. Satırda başvuru, süren başvuru ve işe alınan sayısı; yayındaki ilanın son başvuru günü geçtiyse `deadlinePassed` (K-439). Arama başlık ve pozisyonda. Rol: `yonetici` ve `onburo`. Modül `finance`.
+         */
+        get: operations["listJobPostings"];
+        put?: never;
+        /**
+         * İş ilanı aç
+         * @description Başlık (2–160), pozisyon/branş (2–120), çalışma türü, açıklama (10–4000), isteğe bağlı nitelikler (≤ 4000), yayın ve son başvuru günü (yayından önce olamaz, 400). İlan taslak açılır (K-439). Denetim `finance.job_posting.create`. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.
+         */
+        post: operations["createJobPosting"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/job-postings/{postingId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * İş ilanı
+         * @description İlan ve başvuru sayıları. Başka kurumun ilanı 404. Rol: `yonetici` ve `onburo`. Modül `finance`.
+         */
+        get: operations["getJobPosting"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * İş ilanını düzelt
+         * @description Tam gövde. Kapanan ilan 422 `job_posting_closed`; değişiklik yoksa 422 `job_posting_unchanged`; yayındaki ilanın yayın günü 422 `job_posting_publish_locked`; son başvuru günü alınmış başvuruların gününden önceye 422 `job_posting_deadline_before_applications` (K-439). `If-Match` zorunlu; sürüm tutmazsa 409. Denetim `finance.job_posting.update` (alan adları). Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.
+         */
+        patch: operations["updateJobPosting"];
+        trace?: never;
+    };
+    "/api/v1/finance/job-postings/{postingId}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * İş ilanını yayımla ya da kapat
+         * @description Taslak → yayında → kapandı; taslak doğrudan kapanabilir, kapanan ilan yeniden açılmaz (422 `job_posting_transition`). Son başvuru günü geçmiş ilan yayımlanmaz (422 `job_posting_deadline_passed`). Kapanış günü bugündür; kapanan ilandaki işe alınmamış başvuruların saklama süresi bu günden başlar (K-441). `If-Match` zorunlu. Denetim `finance.job_posting.status`. Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.
+         */
+        post: operations["changeJobPostingStatus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/job-applications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Başvuru havuzu
+         * @description Başvurular en yeni önce; satır iletişim ve not taşımaz (K-440). Süzgeç ilan, aşama, kanal ve `open=true` (süren başvurular); arama aday adı ve ilan başlığında. Satırda saklama süresinin dolduğu gün (K-441). Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.
+         */
+        get: operations["listJobApplications"];
+        put?: never;
+        /**
+         * Başvuru kaydet
+         * @description Personel başvuruyu girer (kurum sitesi, e-posta, elden, tavsiye): ilan, aday adı, e-posta ya da telefon (biri zorunlu, 400), kanal, başvuru günü, isteğe bağlı özgeçmiş (`POST /files` amaç `document`, PDF; yükleyenin, hazır ve bağsız), gösterilen aday aydınlatma metni sürümü ve günü (zorunlu), not. İlan yok 422 `job_application_posting_not_found`, taslak 422 `job_application_posting_draft`; başvuru günü yayından önce 422 `job_application_before_publish`, son başvurudan sonra 422 `job_application_after_deadline`, bugünden sonra 422 `job_application_received_in_future`; aydınlatma günü bugünden sonra 422 `job_application_notice_in_future`. Aynı ilana aynı e-posta ya da telefon 409 `job_application_duplicate` (K-440). Aşama `new`, geçmişe ilk satır yazılır. Denetim `finance.job_application.create` (alan adları; aday verisi yok). `Idempotency-Key` zorunlu. Rol: `yonetici` ve `onburo`. Modül `finance`.
+         */
+        post: operations["createJobApplication"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/job-applications/{applicationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Başvuru ayrıntısı
+         * @description İletişim, özgeçmiş, aydınlatma kaydı, not ve aşama geçmişi. Anonimleştirilmiş başvuruda kişisel alanlar boştur. Başka kurumun başvurusu 404. Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.
+         */
+        get: operations["getJobApplication"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Başvuruyu düzelt
+         * @description Gönderilen alanlar değişir: ad, e-posta, telefon, not. Anonimleştirilmiş 422 `job_application_anonymized`; değişiklik yoksa 422 `job_application_unchanged`; iletişim kalmazsa 422 `job_application_contact_required`; aynı ilanda aynı iletişim 409 `job_application_duplicate`. `If-Match` zorunlu. Denetim `finance.job_application.update` (alan adları). Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.
+         */
+        patch: operations["updateJobApplication"];
+        trace?: never;
+    };
+    "/api/v1/finance/job-applications/{applicationId}/stage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Başvurunun aşamasını değiştir
+         * @description Yalnız ileri (ara aşama atlanabilir) ya da açık her aşamadan `rejected`; geri 422 `job_application_stage_transition`, aynı aşama 422 `job_application_stage_unchanged`, işe alındı ve reddedildi sondur (422 `job_application_closed`). Gün bugünden sonra (422 `job_application_stage_in_future`) ve önceki aşama gününden önce (422 `job_application_stage_before_previous`) olamaz. Geçmişe satır yazılır (K-440). `If-Match` zorunlu. Denetim `finance.job_application.stage`. Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.
+         */
+        post: operations["changeJobApplicationStage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/job-application-retention": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Saklama süresi dolan başvurular
+         * @description Anonimleştirilmemiş, işe alınmamış ve saklama süresi dolmuş başvurular, en eski süre sonu önce: reddedilende ret gününden, kapanan ilandaki süren başvuruda kapanış gününden itibaren kurum ayarlı süre (K-441). Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.
+         */
+        get: operations["listJobApplicationRetention"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/job-application-anonymizations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Başvuruları anonimleştir
+         * @description 1–100 başvuru tek işlemde; biri reddedilirse hiçbiri değişmez. Ad "Anonim aday" olur, e-posta, telefon, not ve özgeçmiş bağı silinir; özgeçmiş dosyasının saklama sonu şimdiye çekilir, nesneyi platformun saklama sonu imhası siler. İlan, kanal, günler, aşama geçmişi ve aydınlatma kaydı kalır (K-441). `retention_expired` yalnız süresi dolanlarda (422 `job_application_retention_not_due`); `data_subject_request` süre beklemez. Olmayan ya da başka kurumun 422 `job_application_not_found`, anonim 422 `job_application_already_anonymized`, işe alınan 422 `job_application_hired`. Başvuru başına `finance.job_application.anonymize` denetimi. Taze oturum (403 `reauthentication_required`) ve `Idempotency-Key` zorunlu. Geri alınamaz. Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.
+         */
+        post: operations["anonymizeJobApplications"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/job-application-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Başvuru havuzu ayarı
+         * @description Saklama süresi (ay; varsayılan 12) ve geçerli aday aydınlatma metni sürümü; hiç kaydedilmediyse varsayılan ve sürüm 1 (K-441). Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.
+         */
+        get: operations["getJobApplicationSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Başvuru havuzu ayarını kaydet
+         * @description Saklama süresi (1–60 ay, 400) ve aydınlatma sürümü (≤ 40, boş bırakılabilir); gönderilmeyen alan korunur, değişiklik yoksa 422 `job_application_settings_unchanged`. Süre değişince süre sonları yeniden hesaplanır. `If-Match` zorunlu (hiç kaydedilmediyse 1). Denetim `finance.job_application.settings`. Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.
+         */
+        patch: operations["setJobApplicationSettings"];
+        trace?: never;
+    };
     "/api/v1/finance/department-meetings": {
         parameters: {
             query?: never;
@@ -122736,6 +123256,4784 @@ export interface operations {
                             attendedHours: number | null;
                             statusChangedAt: string;
                             createdAt: string;
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getSelfEvaluationOverview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                periodId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            periodId: string;
+                            /**
+                             * @description Performans döneminin aşaması
+                             * @enum {string}
+                             */
+                            periodStatus: "planning" | "active" | "interim" | "evaluation" | "closed";
+                            /** @description Dönemin şablonu; hazırlanmadıysa boş */
+                            template: {
+                                id: string;
+                                periodId: string;
+                                /** @description Sorular, sırasıyla */
+                                questions: {
+                                    /**
+                                     * @description `scale` puanlı (1–5), `open` açık uçlu
+                                     * @enum {string}
+                                     */
+                                    kind: "scale" | "open";
+                                    /** @description Soru metni */
+                                    text: string;
+                                    /** @description Gönderimde cevap zorunlu mu */
+                                    required: boolean;
+                                }[];
+                                /** @description Bu şablonla açılmış yanıt sayısı */
+                                responseCount: number;
+                                /** @description Yanıt açıldığı için sorular değiştirilemez (K-448) */
+                                locked: boolean;
+                                createdAt: string;
+                                updatedAt: string;
+                                /** @description `If-Match` için şablon sürümü */
+                                version: number;
+                            } | null;
+                            summary: {
+                                /** @description Dönemde performans kaydı olan personel */
+                                enrolled: number;
+                                /** @description Öz değerlendirmesini gönderen */
+                                submitted: number;
+                                /** @description Yanıtı taslakta olan */
+                                draft: number;
+                                /** @description Yanıtı hiç açılmamış */
+                                missing: number;
+                                /** @description Gönderen oranı, yüzde (bir ondalık); dönemde personel yoksa boş */
+                                rate: number | null;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createSelfEvaluationTemplate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                periodId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Sorular, sırasıyla */
+                    questions: {
+                        /**
+                         * @description `scale` puanlı (1–5), `open` açık uçlu
+                         * @enum {string}
+                         */
+                        kind: "scale" | "open";
+                        /** @description Soru metni */
+                        text: string;
+                        /** @description Gönderimde cevap zorunlu mu */
+                        required: boolean;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            periodId: string;
+                            /** @description Sorular, sırasıyla */
+                            questions: {
+                                /**
+                                 * @description `scale` puanlı (1–5), `open` açık uçlu
+                                 * @enum {string}
+                                 */
+                                kind: "scale" | "open";
+                                /** @description Soru metni */
+                                text: string;
+                                /** @description Gönderimde cevap zorunlu mu */
+                                required: boolean;
+                            }[];
+                            /** @description Bu şablonla açılmış yanıt sayısı */
+                            responseCount: number;
+                            /** @description Yanıt açıldığı için sorular değiştirilemez (K-448) */
+                            locked: boolean;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için şablon sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateSelfEvaluationTemplate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Sorular, sırasıyla */
+                    questions: {
+                        /**
+                         * @description `scale` puanlı (1–5), `open` açık uçlu
+                         * @enum {string}
+                         */
+                        kind: "scale" | "open";
+                        /** @description Soru metni */
+                        text: string;
+                        /** @description Gönderimde cevap zorunlu mu */
+                        required: boolean;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            periodId: string;
+                            /** @description Sorular, sırasıyla */
+                            questions: {
+                                /**
+                                 * @description `scale` puanlı (1–5), `open` açık uçlu
+                                 * @enum {string}
+                                 */
+                                kind: "scale" | "open";
+                                /** @description Soru metni */
+                                text: string;
+                                /** @description Gönderimde cevap zorunlu mu */
+                                required: boolean;
+                            }[];
+                            /** @description Bu şablonla açılmış yanıt sayısı */
+                            responseCount: number;
+                            /** @description Yanıt açıldığı için sorular değiştirilemez (K-448) */
+                            locked: boolean;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için şablon sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listSelfEvaluations: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Personel adında arama */
+                q?: string;
+                /** @description Durum süzgeci */
+                status?: "missing" | "draft" | "submitted";
+            };
+            header?: never;
+            path: {
+                periodId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı */
+                            staffName: string;
+                            /** @description Personelin rolü */
+                            staffRole: string;
+                            /** @description Yanıt kimliği; yanıt açılmadıysa boş */
+                            responseId: string | null;
+                            /**
+                             * @description `missing` gönderilmedi (yanıt yok), `draft` taslak, `submitted` gönderildi
+                             * @enum {string}
+                             */
+                            status: "missing" | "draft" | "submitted";
+                            /** @description Yanıtın geldiği kanal */
+                            channel: ("paper" | "email") | null;
+                            /** @description Gönderim anı (ISO 8601 UTC) */
+                            submittedAt: string | null;
+                            /** @description Geri açılma sayısı */
+                            reopenCount: number;
+                            /** @description Yönetici görüşü yazıldı mı */
+                            hasManagerComment: boolean;
+                            updatedAt: string | null;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createSelfEvaluation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                periodId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Yanıtı veren personelin kurum üyeliği; dönemde performans kaydı olmalı */
+                    membershipId: string;
+                    /**
+                     * @description Yanıtın geldiği kanal: `paper` kâğıt form, `email` e-posta (K-449)
+                     * @enum {string}
+                     */
+                    channel: "paper" | "email";
+                    /** @description Soru sırasıyla cevaplar; dizi soru sayısı kadardır */
+                    answers?: {
+                        /** @description Puanlı soru için 1–5; boş = cevaplanmadı */
+                        score?: number | null;
+                        /** @description Açık uçlu soru için cevap; boş = cevaplanmadı */
+                        text?: string | null;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            periodId: string;
+                            templateId: string;
+                            /** @description Yanıtı veren personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı */
+                            staffName: string;
+                            /** @description Personelin rolü */
+                            staffRole: string;
+                            /** @description Şablonun soruları, sırasıyla */
+                            questions: {
+                                /**
+                                 * @description `scale` puanlı (1–5), `open` açık uçlu
+                                 * @enum {string}
+                                 */
+                                kind: "scale" | "open";
+                                /** @description Soru metni */
+                                text: string;
+                                /** @description Gönderimde cevap zorunlu mu */
+                                required: boolean;
+                            }[];
+                            /** @description Cevaplar, soru sırasıyla */
+                            answers: {
+                                /** @description Puanlı soru için 1–5; boş = cevaplanmadı */
+                                score: number | null;
+                                /** @description Açık uçlu soru için cevap */
+                                text: string | null;
+                            }[];
+                            /** @description Cevaplanmış soru sayısı */
+                            answeredCount: number;
+                            /**
+                             * @description `draft` taslak, `submitted` gönderildi
+                             * @enum {string}
+                             */
+                            status: "draft" | "submitted";
+                            /**
+                             * @description Yanıtın geldiği kanal: `paper` kâğıt form, `email` e-posta
+                             * @enum {string}
+                             */
+                            channel: "paper" | "email";
+                            /** @description Gönderim anı (ISO 8601 UTC) */
+                            submittedAt: string | null;
+                            /** @description Yöneticinin görüşü */
+                            managerComment: string | null;
+                            /** @description Görüşü son yazan yönetici */
+                            managerCommentByName: string | null;
+                            /** @description Görüşün son yazıldığı an */
+                            managerCommentAt: string | null;
+                            /** @description Geri açılma sayısı */
+                            reopenCount: number;
+                            /** @description Son geri açma anı */
+                            reopenedAt: string | null;
+                            /** @description Son geri açmanın gerekçesi */
+                            reopenReason: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için yanıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getSelfEvaluation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                responseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            periodId: string;
+                            templateId: string;
+                            /** @description Yanıtı veren personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı */
+                            staffName: string;
+                            /** @description Personelin rolü */
+                            staffRole: string;
+                            /** @description Şablonun soruları, sırasıyla */
+                            questions: {
+                                /**
+                                 * @description `scale` puanlı (1–5), `open` açık uçlu
+                                 * @enum {string}
+                                 */
+                                kind: "scale" | "open";
+                                /** @description Soru metni */
+                                text: string;
+                                /** @description Gönderimde cevap zorunlu mu */
+                                required: boolean;
+                            }[];
+                            /** @description Cevaplar, soru sırasıyla */
+                            answers: {
+                                /** @description Puanlı soru için 1–5; boş = cevaplanmadı */
+                                score: number | null;
+                                /** @description Açık uçlu soru için cevap */
+                                text: string | null;
+                            }[];
+                            /** @description Cevaplanmış soru sayısı */
+                            answeredCount: number;
+                            /**
+                             * @description `draft` taslak, `submitted` gönderildi
+                             * @enum {string}
+                             */
+                            status: "draft" | "submitted";
+                            /**
+                             * @description Yanıtın geldiği kanal: `paper` kâğıt form, `email` e-posta
+                             * @enum {string}
+                             */
+                            channel: "paper" | "email";
+                            /** @description Gönderim anı (ISO 8601 UTC) */
+                            submittedAt: string | null;
+                            /** @description Yöneticinin görüşü */
+                            managerComment: string | null;
+                            /** @description Görüşü son yazan yönetici */
+                            managerCommentByName: string | null;
+                            /** @description Görüşün son yazıldığı an */
+                            managerCommentAt: string | null;
+                            /** @description Geri açılma sayısı */
+                            reopenCount: number;
+                            /** @description Son geri açma anı */
+                            reopenedAt: string | null;
+                            /** @description Son geri açmanın gerekçesi */
+                            reopenReason: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için yanıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateSelfEvaluation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                responseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Soru sırasıyla cevaplar; dizi soru sayısı kadardır */
+                    answers?: {
+                        /** @description Puanlı soru için 1–5; boş = cevaplanmadı */
+                        score?: number | null;
+                        /** @description Açık uçlu soru için cevap; boş = cevaplanmadı */
+                        text?: string | null;
+                    }[];
+                    /**
+                     * @description Yanıtın geldiği kanal: `paper` kâğıt form, `email` e-posta (K-449)
+                     * @enum {string}
+                     */
+                    channel?: "paper" | "email";
+                    /** @description Yöneticinin öz değerlendirmeye görüşü; boş metin görüşü siler (K-450) */
+                    managerComment?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            periodId: string;
+                            templateId: string;
+                            /** @description Yanıtı veren personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı */
+                            staffName: string;
+                            /** @description Personelin rolü */
+                            staffRole: string;
+                            /** @description Şablonun soruları, sırasıyla */
+                            questions: {
+                                /**
+                                 * @description `scale` puanlı (1–5), `open` açık uçlu
+                                 * @enum {string}
+                                 */
+                                kind: "scale" | "open";
+                                /** @description Soru metni */
+                                text: string;
+                                /** @description Gönderimde cevap zorunlu mu */
+                                required: boolean;
+                            }[];
+                            /** @description Cevaplar, soru sırasıyla */
+                            answers: {
+                                /** @description Puanlı soru için 1–5; boş = cevaplanmadı */
+                                score: number | null;
+                                /** @description Açık uçlu soru için cevap */
+                                text: string | null;
+                            }[];
+                            /** @description Cevaplanmış soru sayısı */
+                            answeredCount: number;
+                            /**
+                             * @description `draft` taslak, `submitted` gönderildi
+                             * @enum {string}
+                             */
+                            status: "draft" | "submitted";
+                            /**
+                             * @description Yanıtın geldiği kanal: `paper` kâğıt form, `email` e-posta
+                             * @enum {string}
+                             */
+                            channel: "paper" | "email";
+                            /** @description Gönderim anı (ISO 8601 UTC) */
+                            submittedAt: string | null;
+                            /** @description Yöneticinin görüşü */
+                            managerComment: string | null;
+                            /** @description Görüşü son yazan yönetici */
+                            managerCommentByName: string | null;
+                            /** @description Görüşün son yazıldığı an */
+                            managerCommentAt: string | null;
+                            /** @description Geri açılma sayısı */
+                            reopenCount: number;
+                            /** @description Son geri açma anı */
+                            reopenedAt: string | null;
+                            /** @description Son geri açmanın gerekçesi */
+                            reopenReason: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için yanıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    submitSelfEvaluation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                responseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            periodId: string;
+                            templateId: string;
+                            /** @description Yanıtı veren personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı */
+                            staffName: string;
+                            /** @description Personelin rolü */
+                            staffRole: string;
+                            /** @description Şablonun soruları, sırasıyla */
+                            questions: {
+                                /**
+                                 * @description `scale` puanlı (1–5), `open` açık uçlu
+                                 * @enum {string}
+                                 */
+                                kind: "scale" | "open";
+                                /** @description Soru metni */
+                                text: string;
+                                /** @description Gönderimde cevap zorunlu mu */
+                                required: boolean;
+                            }[];
+                            /** @description Cevaplar, soru sırasıyla */
+                            answers: {
+                                /** @description Puanlı soru için 1–5; boş = cevaplanmadı */
+                                score: number | null;
+                                /** @description Açık uçlu soru için cevap */
+                                text: string | null;
+                            }[];
+                            /** @description Cevaplanmış soru sayısı */
+                            answeredCount: number;
+                            /**
+                             * @description `draft` taslak, `submitted` gönderildi
+                             * @enum {string}
+                             */
+                            status: "draft" | "submitted";
+                            /**
+                             * @description Yanıtın geldiği kanal: `paper` kâğıt form, `email` e-posta
+                             * @enum {string}
+                             */
+                            channel: "paper" | "email";
+                            /** @description Gönderim anı (ISO 8601 UTC) */
+                            submittedAt: string | null;
+                            /** @description Yöneticinin görüşü */
+                            managerComment: string | null;
+                            /** @description Görüşü son yazan yönetici */
+                            managerCommentByName: string | null;
+                            /** @description Görüşün son yazıldığı an */
+                            managerCommentAt: string | null;
+                            /** @description Geri açılma sayısı */
+                            reopenCount: number;
+                            /** @description Son geri açma anı */
+                            reopenedAt: string | null;
+                            /** @description Son geri açmanın gerekçesi */
+                            reopenReason: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için yanıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reopenSelfEvaluation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                responseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Gönderilmiş yanıtın neden taslağa döndüğü (zorunlu, K-449) */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            periodId: string;
+                            templateId: string;
+                            /** @description Yanıtı veren personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı */
+                            staffName: string;
+                            /** @description Personelin rolü */
+                            staffRole: string;
+                            /** @description Şablonun soruları, sırasıyla */
+                            questions: {
+                                /**
+                                 * @description `scale` puanlı (1–5), `open` açık uçlu
+                                 * @enum {string}
+                                 */
+                                kind: "scale" | "open";
+                                /** @description Soru metni */
+                                text: string;
+                                /** @description Gönderimde cevap zorunlu mu */
+                                required: boolean;
+                            }[];
+                            /** @description Cevaplar, soru sırasıyla */
+                            answers: {
+                                /** @description Puanlı soru için 1–5; boş = cevaplanmadı */
+                                score: number | null;
+                                /** @description Açık uçlu soru için cevap */
+                                text: string | null;
+                            }[];
+                            /** @description Cevaplanmış soru sayısı */
+                            answeredCount: number;
+                            /**
+                             * @description `draft` taslak, `submitted` gönderildi
+                             * @enum {string}
+                             */
+                            status: "draft" | "submitted";
+                            /**
+                             * @description Yanıtın geldiği kanal: `paper` kâğıt form, `email` e-posta
+                             * @enum {string}
+                             */
+                            channel: "paper" | "email";
+                            /** @description Gönderim anı (ISO 8601 UTC) */
+                            submittedAt: string | null;
+                            /** @description Yöneticinin görüşü */
+                            managerComment: string | null;
+                            /** @description Görüşü son yazan yönetici */
+                            managerCommentByName: string | null;
+                            /** @description Görüşün son yazıldığı an */
+                            managerCommentAt: string | null;
+                            /** @description Geri açılma sayısı */
+                            reopenCount: number;
+                            /** @description Son geri açma anı */
+                            reopenedAt: string | null;
+                            /** @description Son geri açmanın gerekçesi */
+                            reopenReason: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için yanıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getOrgChart: {
+        parameters: {
+            query?: {
+                /** @description Hesap günü (YYYY-MM-DD); varsayılan bugün (Europe/Istanbul) */
+                date?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Görevlilerin hesaplandığı gün */
+                            date: string;
+                            /** @description Bütün birimler (pasifler dahil) */
+                            units: {
+                                id: string;
+                                name: string;
+                                /** @description Üst birim; boşsa kök */
+                                parentId: string | null;
+                                /** @enum {string} */
+                                kind: "management" | "academic_department" | "administrative" | "support";
+                                isActive: boolean;
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                            }[];
+                            /** @description Kaldırılmamış pozisyonlar */
+                            positions: {
+                                id: string;
+                                unitId: string;
+                                title: string;
+                                /** @description Kadro sayısı */
+                                headcount: number;
+                                /** @description Raporladığı pozisyon; boşsa en üst */
+                                reportsToPositionId: string | null;
+                                /** @description Verilen gün süren atama sayısı */
+                                filled: number;
+                                /** @description Boş kadro (kadro − dolu, en az 0) */
+                                vacant: number;
+                                /** @description Verilen gün pozisyondaki personel */
+                                holders: {
+                                    assignmentId: string;
+                                    /** @description Personelin kurum üyeliği */
+                                    membershipId: string;
+                                    /** @description Personel adı (üyelikten) */
+                                    staffName: string;
+                                    startDate: string;
+                                    endDate: string | null;
+                                    /** @description Atamanın `If-Match` sürümü */
+                                    version: number;
+                                }[];
+                                /** @description `If-Match` için kayıt sürümü */
+                                version: number;
+                            }[];
+                            totals: {
+                                units: number;
+                                activeUnits: number;
+                                positions: number;
+                                headcount: number;
+                                filled: number;
+                                vacant: number;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listOrgVacancies: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Hesap günü (YYYY-MM-DD); varsayılan bugün (Europe/Istanbul) */
+                date?: string;
+                /** @description Yalnız bu birimin pozisyonları */
+                unitId?: string;
+                /** @description Unvanda ya da birim adında arama */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            positionId: string;
+                            title: string;
+                            unitId: string;
+                            unitName: string;
+                            headcount: number;
+                            filled: number;
+                            vacant: number;
+                            reportsToPositionId: string | null;
+                        }[];
+                        meta: {
+                            /** @description Sayfa numarası (1’den başlar) */
+                            page: number;
+                            /** @description Sayfa boyutu */
+                            pageSize: number;
+                            /** @description Filtre uygulanmış toplam kayıt sayısı */
+                            total: number;
+                            /** @description Hesap günü */
+                            date: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createOrgUnit: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Birimin adı; aynı üst birimde bir kez */
+                    name: string;
+                    /**
+                     * @description Üst birim; boşsa kök birim
+                     * @default null
+                     */
+                    parentId?: string | null;
+                    /**
+                     * @description `management` yönetim, `academic_department` akademik zümre, `administrative` idari, `support` destek
+                     * @enum {string}
+                     */
+                    kind: "management" | "academic_department" | "administrative" | "support";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @description Üst birim; boşsa kök */
+                            parentId: string | null;
+                            /** @enum {string} */
+                            kind: "management" | "academic_department" | "administrative" | "support";
+                            isActive: boolean;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateOrgUnit: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                unitId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    /** @description Boş: kök birim */
+                    parentId?: string | null;
+                    /** @enum {string} */
+                    kind?: "management" | "academic_department" | "administrative" | "support";
+                    /** @description Etkin ya da pasif */
+                    isActive?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @description Üst birim; boşsa kök */
+                            parentId: string | null;
+                            /** @enum {string} */
+                            kind: "management" | "academic_department" | "administrative" | "support";
+                            isActive: boolean;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createOrgPosition: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * Format: uuid
+                     * @description Pozisyonun birimi
+                     */
+                    unitId: string;
+                    /** @description Pozisyon unvanı; aynı birimde bir kez */
+                    title: string;
+                    /** @description Pozisyondaki kadro (aynı anda atanabilecek personel) sayısı */
+                    headcount: number;
+                    /**
+                     * @description Raporladığı pozisyon (raporlama hattı); boşsa en üst
+                     * @default null
+                     */
+                    reportsToPositionId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            unitId: string;
+                            title: string;
+                            /** @description Kadro sayısı */
+                            headcount: number;
+                            /** @description Raporladığı pozisyon; boşsa en üst */
+                            reportsToPositionId: string | null;
+                            /** @description Verilen gün süren atama sayısı */
+                            filled: number;
+                            /** @description Boş kadro (kadro − dolu, en az 0) */
+                            vacant: number;
+                            /** @description Verilen gün pozisyondaki personel */
+                            holders: {
+                                assignmentId: string;
+                                /** @description Personelin kurum üyeliği */
+                                membershipId: string;
+                                /** @description Personel adı (üyelikten) */
+                                staffName: string;
+                                startDate: string;
+                                endDate: string | null;
+                                /** @description Atamanın `If-Match` sürümü */
+                                version: number;
+                            }[];
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveOrgPosition: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                positionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            id: string;
+                            archivedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateOrgPosition: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                positionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    unitId?: string;
+                    title?: string;
+                    /** @description Pozisyondaki kadro (aynı anda atanabilecek personel) sayısı */
+                    headcount?: number;
+                    reportsToPositionId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            unitId: string;
+                            title: string;
+                            /** @description Kadro sayısı */
+                            headcount: number;
+                            /** @description Raporladığı pozisyon; boşsa en üst */
+                            reportsToPositionId: string | null;
+                            /** @description Verilen gün süren atama sayısı */
+                            filled: number;
+                            /** @description Boş kadro (kadro − dolu, en az 0) */
+                            vacant: number;
+                            /** @description Verilen gün pozisyondaki personel */
+                            holders: {
+                                assignmentId: string;
+                                /** @description Personelin kurum üyeliği */
+                                membershipId: string;
+                                /** @description Personel adı (üyelikten) */
+                                staffName: string;
+                                startDate: string;
+                                endDate: string | null;
+                                /** @description Atamanın `If-Match` sürümü */
+                                version: number;
+                            }[];
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listOrgAssignments: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Hesap günü (YYYY-MM-DD); varsayılan bugün (Europe/Istanbul) */
+                date?: string;
+                /** @description Yalnız bu pozisyonun atamaları */
+                positionId?: string;
+                /** @description Yalnız bu personel */
+                membershipId?: string;
+                /** @description Atama durumu */
+                state?: "current" | "upcoming" | "past";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            positionId: string;
+                            positionTitle: string;
+                            unitId: string;
+                            /** @description Personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı (üyelikten) */
+                            staffName: string;
+                            staffRole: string;
+                            startDate: string;
+                            endDate: string | null;
+                            /**
+                             * @description Hesap gününe göre süren, başlayacak, bitti
+                             * @enum {string}
+                             */
+                            state: "current" | "upcoming" | "past";
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createOrgAssignment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * Format: uuid
+                     * @description Atanan pozisyon
+                     */
+                    positionId: string;
+                    /** @description Atanan personelin kurum üyeliği */
+                    membershipId: string;
+                    /** @description Başlangıç günü (YYYY-MM-DD, dahil) */
+                    startDate: string;
+                    /**
+                     * @description Bitiş günü (dahil); boşsa süresiz
+                     * @default null
+                     */
+                    endDate?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            positionId: string;
+                            positionTitle: string;
+                            unitId: string;
+                            /** @description Personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı (üyelikten) */
+                            staffName: string;
+                            staffRole: string;
+                            startDate: string;
+                            endDate: string | null;
+                            /**
+                             * @description Hesap gününe göre süren, başlayacak, bitti
+                             * @enum {string}
+                             */
+                            state: "current" | "upcoming" | "past";
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveOrgAssignment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                assignmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            id: string;
+                            archivedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateOrgAssignment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                assignmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Bitiş günü (dahil); boşsa süresiz */
+                    endDate: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            positionId: string;
+                            positionTitle: string;
+                            unitId: string;
+                            /** @description Personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı (üyelikten) */
+                            staffName: string;
+                            staffRole: string;
+                            startDate: string;
+                            endDate: string | null;
+                            /**
+                             * @description Hesap gününe göre süren, başlayacak, bitti
+                             * @enum {string}
+                             */
+                            state: "current" | "upcoming" | "past";
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listJobPostings: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description İlan başlığı ve pozisyonda arama */
+                q?: string;
+                /** @description `draft` taslak, `published` yayında, `closed` kapandı */
+                status?: "draft" | "published" | "closed";
+                /** @description `full_time` tam zamanlı, `part_time` yarı zamanlı, `extra_lessons` ek ders */
+                employmentType?: "full_time" | "part_time" | "extra_lessons";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            title: string;
+                            /** @description Pozisyon / branş */
+                            position: string;
+                            /**
+                             * @description `full_time` tam zamanlı, `part_time` yarı zamanlı, `extra_lessons` ek ders
+                             * @enum {string}
+                             */
+                            employmentType: "full_time" | "part_time" | "extra_lessons";
+                            description: string;
+                            requirements: string | null;
+                            /** @description Yayın günü (YYYY-MM-DD) */
+                            publishOn: string;
+                            /** @description Son başvuru günü (YYYY-MM-DD) */
+                            deadlineOn: string;
+                            /**
+                             * @description `draft` taslak, `published` yayında, `closed` kapandı
+                             * @enum {string}
+                             */
+                            status: "draft" | "published" | "closed";
+                            /** @description Kapanış günü; yalnız kapanan ilanda */
+                            closedOn: string | null;
+                            /** @description Yayındaki ilanın son başvuru günü geçti mi (kapatılması önerilir) */
+                            deadlinePassed: boolean;
+                            /** @description Bütün başvurular (anonimleştirilmişler dahil) */
+                            applicationCount: number;
+                            /** @description Süren başvurular (yeni → teklif) */
+                            openApplicationCount: number;
+                            hiredCount: number;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createJobPosting: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description İlan başlığı (2–160), ör. "2027–2028 İngilizce öğretmeni" */
+                    title: string;
+                    /** @description Pozisyon / branş (2–120), ör. İngilizce öğretmeni */
+                    position: string;
+                    /**
+                     * @description `full_time` tam zamanlı, `part_time` yarı zamanlı, `extra_lessons` ek ders
+                     * @enum {string}
+                     */
+                    employmentType: "full_time" | "part_time" | "extra_lessons";
+                    /** @description İş tanımı (10–4000) */
+                    description: string;
+                    /** @description Aranan nitelikler (≤ 4000, isteğe bağlı) */
+                    requirements?: string | null;
+                    /** @description Yayın günü (YYYY-MM-DD) */
+                    publishOn: string;
+                    /** @description Son başvuru günü (YYYY-MM-DD); yayın gününden önce olamaz */
+                    deadlineOn: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            title: string;
+                            /** @description Pozisyon / branş */
+                            position: string;
+                            /**
+                             * @description `full_time` tam zamanlı, `part_time` yarı zamanlı, `extra_lessons` ek ders
+                             * @enum {string}
+                             */
+                            employmentType: "full_time" | "part_time" | "extra_lessons";
+                            description: string;
+                            requirements: string | null;
+                            /** @description Yayın günü (YYYY-MM-DD) */
+                            publishOn: string;
+                            /** @description Son başvuru günü (YYYY-MM-DD) */
+                            deadlineOn: string;
+                            /**
+                             * @description `draft` taslak, `published` yayında, `closed` kapandı
+                             * @enum {string}
+                             */
+                            status: "draft" | "published" | "closed";
+                            /** @description Kapanış günü; yalnız kapanan ilanda */
+                            closedOn: string | null;
+                            /** @description Yayındaki ilanın son başvuru günü geçti mi (kapatılması önerilir) */
+                            deadlinePassed: boolean;
+                            /** @description Bütün başvurular (anonimleştirilmişler dahil) */
+                            applicationCount: number;
+                            /** @description Süren başvurular (yeni → teklif) */
+                            openApplicationCount: number;
+                            hiredCount: number;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getJobPosting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                postingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            title: string;
+                            /** @description Pozisyon / branş */
+                            position: string;
+                            /**
+                             * @description `full_time` tam zamanlı, `part_time` yarı zamanlı, `extra_lessons` ek ders
+                             * @enum {string}
+                             */
+                            employmentType: "full_time" | "part_time" | "extra_lessons";
+                            description: string;
+                            requirements: string | null;
+                            /** @description Yayın günü (YYYY-MM-DD) */
+                            publishOn: string;
+                            /** @description Son başvuru günü (YYYY-MM-DD) */
+                            deadlineOn: string;
+                            /**
+                             * @description `draft` taslak, `published` yayında, `closed` kapandı
+                             * @enum {string}
+                             */
+                            status: "draft" | "published" | "closed";
+                            /** @description Kapanış günü; yalnız kapanan ilanda */
+                            closedOn: string | null;
+                            /** @description Yayındaki ilanın son başvuru günü geçti mi (kapatılması önerilir) */
+                            deadlinePassed: boolean;
+                            /** @description Bütün başvurular (anonimleştirilmişler dahil) */
+                            applicationCount: number;
+                            /** @description Süren başvurular (yeni → teklif) */
+                            openApplicationCount: number;
+                            hiredCount: number;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateJobPosting: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                postingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description İlan başlığı (2–160), ör. "2027–2028 İngilizce öğretmeni" */
+                    title: string;
+                    /** @description Pozisyon / branş (2–120), ör. İngilizce öğretmeni */
+                    position: string;
+                    /**
+                     * @description `full_time` tam zamanlı, `part_time` yarı zamanlı, `extra_lessons` ek ders
+                     * @enum {string}
+                     */
+                    employmentType: "full_time" | "part_time" | "extra_lessons";
+                    /** @description İş tanımı (10–4000) */
+                    description: string;
+                    /** @description Aranan nitelikler (≤ 4000, isteğe bağlı) */
+                    requirements?: string | null;
+                    /** @description Yayın günü (YYYY-MM-DD) */
+                    publishOn: string;
+                    /** @description Son başvuru günü (YYYY-MM-DD); yayın gününden önce olamaz */
+                    deadlineOn: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            title: string;
+                            /** @description Pozisyon / branş */
+                            position: string;
+                            /**
+                             * @description `full_time` tam zamanlı, `part_time` yarı zamanlı, `extra_lessons` ek ders
+                             * @enum {string}
+                             */
+                            employmentType: "full_time" | "part_time" | "extra_lessons";
+                            description: string;
+                            requirements: string | null;
+                            /** @description Yayın günü (YYYY-MM-DD) */
+                            publishOn: string;
+                            /** @description Son başvuru günü (YYYY-MM-DD) */
+                            deadlineOn: string;
+                            /**
+                             * @description `draft` taslak, `published` yayında, `closed` kapandı
+                             * @enum {string}
+                             */
+                            status: "draft" | "published" | "closed";
+                            /** @description Kapanış günü; yalnız kapanan ilanda */
+                            closedOn: string | null;
+                            /** @description Yayındaki ilanın son başvuru günü geçti mi (kapatılması önerilir) */
+                            deadlinePassed: boolean;
+                            /** @description Bütün başvurular (anonimleştirilmişler dahil) */
+                            applicationCount: number;
+                            /** @description Süren başvurular (yeni → teklif) */
+                            openApplicationCount: number;
+                            hiredCount: number;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    changeJobPostingStatus: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                postingId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description `published` yayımla, `closed` kapat
+                     * @enum {string}
+                     */
+                    status: "published" | "closed";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            title: string;
+                            /** @description Pozisyon / branş */
+                            position: string;
+                            /**
+                             * @description `full_time` tam zamanlı, `part_time` yarı zamanlı, `extra_lessons` ek ders
+                             * @enum {string}
+                             */
+                            employmentType: "full_time" | "part_time" | "extra_lessons";
+                            description: string;
+                            requirements: string | null;
+                            /** @description Yayın günü (YYYY-MM-DD) */
+                            publishOn: string;
+                            /** @description Son başvuru günü (YYYY-MM-DD) */
+                            deadlineOn: string;
+                            /**
+                             * @description `draft` taslak, `published` yayında, `closed` kapandı
+                             * @enum {string}
+                             */
+                            status: "draft" | "published" | "closed";
+                            /** @description Kapanış günü; yalnız kapanan ilanda */
+                            closedOn: string | null;
+                            /** @description Yayındaki ilanın son başvuru günü geçti mi (kapatılması önerilir) */
+                            deadlinePassed: boolean;
+                            /** @description Bütün başvurular (anonimleştirilmişler dahil) */
+                            applicationCount: number;
+                            /** @description Süren başvurular (yeni → teklif) */
+                            openApplicationCount: number;
+                            hiredCount: number;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listJobApplications: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Aday adı ve ilan başlığında arama */
+                q?: string;
+                jobPostingId?: string;
+                /** @description `new` yeni, `screening` ön eleme, `interview` mülakat, `offer` teklif, `hired` işe alındı, `rejected` reddedildi */
+                stage?: "new" | "screening" | "interview" | "offer" | "hired" | "rejected";
+                /** @description `website` kurum sitesi, `email` e-posta, `in_person` elden, `referral` tavsiye */
+                channel?: "website" | "email" | "in_person" | "referral";
+                /** @description `true` yalnız süren (yeni → teklif, anonimleştirilmemiş) başvurular */
+                open?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            jobPostingId: string;
+                            postingTitle: string;
+                            /** @description Anonimleştirilmişte "Anonim aday" */
+                            candidateName: string;
+                            /**
+                             * @description `website` kurum sitesi, `email` e-posta, `in_person` elden, `referral` tavsiye
+                             * @enum {string}
+                             */
+                            channel: "website" | "email" | "in_person" | "referral";
+                            receivedOn: string;
+                            /**
+                             * @description `new` yeni, `screening` ön eleme, `interview` mülakat, `offer` teklif, `hired` işe alındı, `rejected` reddedildi
+                             * @enum {string}
+                             */
+                            stage: "new" | "screening" | "interview" | "offer" | "hired" | "rejected";
+                            /** @description Son aşama değişikliğinin günü */
+                            stageChangedOn: string;
+                            hasCv: boolean;
+                            anonymized: boolean;
+                            /** @description Saklama süresinin dolduğu gün; işe alınan ve süren başvuruda boş (K-441) */
+                            retentionDueOn: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createJobApplication: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * Format: uuid
+                     * @description Başvurulan ilan
+                     */
+                    jobPostingId: string;
+                    /** @description Adayın adı soyadı (2–120) */
+                    candidateName: string;
+                    /** @description Adayın e-postası (isteğe bağlı) */
+                    email?: string | null;
+                    /** @description Adayın telefonu (isteğe bağlı, 0XXXXXXXXXX); e-posta ya da telefondan biri zorunlu */
+                    phone?: string | null;
+                    /**
+                     * @description `website` kurum sitesi, `email` e-posta, `in_person` elden, `referral` tavsiye
+                     * @enum {string}
+                     */
+                    channel: "website" | "email" | "in_person" | "referral";
+                    /** @description Başvurunun alındığı gün; yayın gününden önce, son başvuru gününden ve bugünden sonra olamaz */
+                    receivedOn: string;
+                    /**
+                     * @description Özgeçmiş (`POST /files` amaç `document`, PDF); isteğe bağlı
+                     * @default null
+                     */
+                    cvFileId?: string | null;
+                    /** @description Adaya gösterilen aday aydınlatma metninin sürümü (zorunlu) */
+                    privacyNoticeVersion: string;
+                    /** @description Aydınlatma metninin adaya gösterildiği gün (zorunlu); bugünden sonra olamaz */
+                    privacyNoticeShownOn: string;
+                    /** @description İç not (≤ 1000); denetime ve loga yazılmaz */
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            jobPostingId: string;
+                            postingTitle: string;
+                            /** @description Anonimleştirilmişte "Anonim aday" */
+                            candidateName: string;
+                            /**
+                             * @description `website` kurum sitesi, `email` e-posta, `in_person` elden, `referral` tavsiye
+                             * @enum {string}
+                             */
+                            channel: "website" | "email" | "in_person" | "referral";
+                            receivedOn: string;
+                            /**
+                             * @description `new` yeni, `screening` ön eleme, `interview` mülakat, `offer` teklif, `hired` işe alındı, `rejected` reddedildi
+                             * @enum {string}
+                             */
+                            stage: "new" | "screening" | "interview" | "offer" | "hired" | "rejected";
+                            /** @description Son aşama değişikliğinin günü */
+                            stageChangedOn: string;
+                            hasCv: boolean;
+                            anonymized: boolean;
+                            /** @description Saklama süresinin dolduğu gün; işe alınan ve süren başvuruda boş (K-441) */
+                            retentionDueOn: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                            email: string | null;
+                            phone: string | null;
+                            /** @description Özgeçmiş; bağlantı `GET /files/{fileId}/url` */
+                            cvFileId: string | null;
+                            /** @description Gösterilen aday aydınlatma metni sürümü */
+                            privacyNoticeVersion: string;
+                            /** @description Aydınlatmanın gösterildiği gün */
+                            privacyNoticeShownOn: string;
+                            note: string | null;
+                            /**
+                             * @description `draft` taslak, `published` yayında, `closed` kapandı
+                             * @enum {string}
+                             */
+                            postingStatus: "draft" | "published" | "closed";
+                            anonymizedAt: string | null;
+                            anonymizationReason: ("retention_expired" | "data_subject_request") | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description Aşama geçmişi, eskiden yeniye; ilk satır kayıt */
+                            history: {
+                                fromStage: ("new" | "screening" | "interview" | "offer" | "hired" | "rejected") | null;
+                                /**
+                                 * @description `new` yeni, `screening` ön eleme, `interview` mülakat, `offer` teklif, `hired` işe alındı, `rejected` reddedildi
+                                 * @enum {string}
+                                 */
+                                toStage: "new" | "screening" | "interview" | "offer" | "hired" | "rejected";
+                                changedOn: string;
+                                changedByUserId: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getJobApplication: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                applicationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            jobPostingId: string;
+                            postingTitle: string;
+                            /** @description Anonimleştirilmişte "Anonim aday" */
+                            candidateName: string;
+                            /**
+                             * @description `website` kurum sitesi, `email` e-posta, `in_person` elden, `referral` tavsiye
+                             * @enum {string}
+                             */
+                            channel: "website" | "email" | "in_person" | "referral";
+                            receivedOn: string;
+                            /**
+                             * @description `new` yeni, `screening` ön eleme, `interview` mülakat, `offer` teklif, `hired` işe alındı, `rejected` reddedildi
+                             * @enum {string}
+                             */
+                            stage: "new" | "screening" | "interview" | "offer" | "hired" | "rejected";
+                            /** @description Son aşama değişikliğinin günü */
+                            stageChangedOn: string;
+                            hasCv: boolean;
+                            anonymized: boolean;
+                            /** @description Saklama süresinin dolduğu gün; işe alınan ve süren başvuruda boş (K-441) */
+                            retentionDueOn: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                            email: string | null;
+                            phone: string | null;
+                            /** @description Özgeçmiş; bağlantı `GET /files/{fileId}/url` */
+                            cvFileId: string | null;
+                            /** @description Gösterilen aday aydınlatma metni sürümü */
+                            privacyNoticeVersion: string;
+                            /** @description Aydınlatmanın gösterildiği gün */
+                            privacyNoticeShownOn: string;
+                            note: string | null;
+                            /**
+                             * @description `draft` taslak, `published` yayında, `closed` kapandı
+                             * @enum {string}
+                             */
+                            postingStatus: "draft" | "published" | "closed";
+                            anonymizedAt: string | null;
+                            anonymizationReason: ("retention_expired" | "data_subject_request") | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description Aşama geçmişi, eskiden yeniye; ilk satır kayıt */
+                            history: {
+                                fromStage: ("new" | "screening" | "interview" | "offer" | "hired" | "rejected") | null;
+                                /**
+                                 * @description `new` yeni, `screening` ön eleme, `interview` mülakat, `offer` teklif, `hired` işe alındı, `rejected` reddedildi
+                                 * @enum {string}
+                                 */
+                                toStage: "new" | "screening" | "interview" | "offer" | "hired" | "rejected";
+                                changedOn: string;
+                                changedByUserId: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateJobApplication: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                applicationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    candidateName?: string;
+                    email?: string | null;
+                    phone?: string | null;
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            jobPostingId: string;
+                            postingTitle: string;
+                            /** @description Anonimleştirilmişte "Anonim aday" */
+                            candidateName: string;
+                            /**
+                             * @description `website` kurum sitesi, `email` e-posta, `in_person` elden, `referral` tavsiye
+                             * @enum {string}
+                             */
+                            channel: "website" | "email" | "in_person" | "referral";
+                            receivedOn: string;
+                            /**
+                             * @description `new` yeni, `screening` ön eleme, `interview` mülakat, `offer` teklif, `hired` işe alındı, `rejected` reddedildi
+                             * @enum {string}
+                             */
+                            stage: "new" | "screening" | "interview" | "offer" | "hired" | "rejected";
+                            /** @description Son aşama değişikliğinin günü */
+                            stageChangedOn: string;
+                            hasCv: boolean;
+                            anonymized: boolean;
+                            /** @description Saklama süresinin dolduğu gün; işe alınan ve süren başvuruda boş (K-441) */
+                            retentionDueOn: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                            email: string | null;
+                            phone: string | null;
+                            /** @description Özgeçmiş; bağlantı `GET /files/{fileId}/url` */
+                            cvFileId: string | null;
+                            /** @description Gösterilen aday aydınlatma metni sürümü */
+                            privacyNoticeVersion: string;
+                            /** @description Aydınlatmanın gösterildiği gün */
+                            privacyNoticeShownOn: string;
+                            note: string | null;
+                            /**
+                             * @description `draft` taslak, `published` yayında, `closed` kapandı
+                             * @enum {string}
+                             */
+                            postingStatus: "draft" | "published" | "closed";
+                            anonymizedAt: string | null;
+                            anonymizationReason: ("retention_expired" | "data_subject_request") | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description Aşama geçmişi, eskiden yeniye; ilk satır kayıt */
+                            history: {
+                                fromStage: ("new" | "screening" | "interview" | "offer" | "hired" | "rejected") | null;
+                                /**
+                                 * @description `new` yeni, `screening` ön eleme, `interview` mülakat, `offer` teklif, `hired` işe alındı, `rejected` reddedildi
+                                 * @enum {string}
+                                 */
+                                toStage: "new" | "screening" | "interview" | "offer" | "hired" | "rejected";
+                                changedOn: string;
+                                changedByUserId: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    changeJobApplicationStage: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                applicationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description `new` yeni, `screening` ön eleme, `interview` mülakat, `offer` teklif, `hired` işe alındı, `rejected` reddedildi
+                     * @enum {string}
+                     */
+                    stage: "new" | "screening" | "interview" | "offer" | "hired" | "rejected";
+                    /** @description Aşamanın değiştiği gün; bugünden sonra olamaz */
+                    changedOn: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            jobPostingId: string;
+                            postingTitle: string;
+                            /** @description Anonimleştirilmişte "Anonim aday" */
+                            candidateName: string;
+                            /**
+                             * @description `website` kurum sitesi, `email` e-posta, `in_person` elden, `referral` tavsiye
+                             * @enum {string}
+                             */
+                            channel: "website" | "email" | "in_person" | "referral";
+                            receivedOn: string;
+                            /**
+                             * @description `new` yeni, `screening` ön eleme, `interview` mülakat, `offer` teklif, `hired` işe alındı, `rejected` reddedildi
+                             * @enum {string}
+                             */
+                            stage: "new" | "screening" | "interview" | "offer" | "hired" | "rejected";
+                            /** @description Son aşama değişikliğinin günü */
+                            stageChangedOn: string;
+                            hasCv: boolean;
+                            anonymized: boolean;
+                            /** @description Saklama süresinin dolduğu gün; işe alınan ve süren başvuruda boş (K-441) */
+                            retentionDueOn: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                            email: string | null;
+                            phone: string | null;
+                            /** @description Özgeçmiş; bağlantı `GET /files/{fileId}/url` */
+                            cvFileId: string | null;
+                            /** @description Gösterilen aday aydınlatma metni sürümü */
+                            privacyNoticeVersion: string;
+                            /** @description Aydınlatmanın gösterildiği gün */
+                            privacyNoticeShownOn: string;
+                            note: string | null;
+                            /**
+                             * @description `draft` taslak, `published` yayında, `closed` kapandı
+                             * @enum {string}
+                             */
+                            postingStatus: "draft" | "published" | "closed";
+                            anonymizedAt: string | null;
+                            anonymizationReason: ("retention_expired" | "data_subject_request") | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description Aşama geçmişi, eskiden yeniye; ilk satır kayıt */
+                            history: {
+                                fromStage: ("new" | "screening" | "interview" | "offer" | "hired" | "rejected") | null;
+                                /**
+                                 * @description `new` yeni, `screening` ön eleme, `interview` mülakat, `offer` teklif, `hired` işe alındı, `rejected` reddedildi
+                                 * @enum {string}
+                                 */
+                                toStage: "new" | "screening" | "interview" | "offer" | "hired" | "rejected";
+                                changedOn: string;
+                                changedByUserId: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listJobApplicationRetention: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            jobPostingId: string;
+                            postingTitle: string;
+                            /** @description Anonimleştirilmişte "Anonim aday" */
+                            candidateName: string;
+                            /**
+                             * @description `website` kurum sitesi, `email` e-posta, `in_person` elden, `referral` tavsiye
+                             * @enum {string}
+                             */
+                            channel: "website" | "email" | "in_person" | "referral";
+                            receivedOn: string;
+                            /**
+                             * @description `new` yeni, `screening` ön eleme, `interview` mülakat, `offer` teklif, `hired` işe alındı, `rejected` reddedildi
+                             * @enum {string}
+                             */
+                            stage: "new" | "screening" | "interview" | "offer" | "hired" | "rejected";
+                            /** @description Son aşama değişikliğinin günü */
+                            stageChangedOn: string;
+                            hasCv: boolean;
+                            anonymized: boolean;
+                            /** @description Saklama süresinin dolduğu gün; işe alınan ve süren başvuruda boş (K-441) */
+                            retentionDueOn: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                        }[];
+                        meta: {
+                            /** @description Sayfa numarası (1’den başlar) */
+                            page: number;
+                            /** @description Sayfa boyutu */
+                            pageSize: number;
+                            /** @description Filtre uygulanmış toplam kayıt sayısı */
+                            total: number;
+                            /** @description Kurumun saklama süresi (ay) */
+                            retentionMonths: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    anonymizeJobApplications: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Anonimleştirilecek başvurular (1–100) */
+                    applicationIds: string[];
+                    /**
+                     * @description `retention_expired` saklama süresi dolanlar, `data_subject_request` adayın silme talebi (süre beklenmez)
+                     * @enum {string}
+                     */
+                    reason: "retention_expired" | "data_subject_request";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            anonymizedCount: number;
+                            /** @description İmhaya işaretlenen özgeçmiş dosyası */
+                            cvFileCount: number;
+                            /**
+                             * @description `retention_expired` saklama süresi doldu, `data_subject_request` adayın silme talebi
+                             * @enum {string}
+                             */
+                            reason: "retention_expired" | "data_subject_request";
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getJobApplicationSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            retentionMonths: number;
+                            privacyNoticeVersion: string | null;
+                            /** @description `If-Match` sürümü; hiç kaydedilmediyse 1 */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    setJobApplicationSettings: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Saklama süresi (ay, 1–60; varsayılan 12) */
+                    retentionMonths?: number;
+                    /** @description Geçerli aday aydınlatma metninin sürümü; başvuru formunda önerilir, boş bırakılabilir */
+                    privacyNoticeVersion?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            retentionMonths: number;
+                            privacyNoticeVersion: string | null;
+                            /** @description `If-Match` sürümü; hiç kaydedilmediyse 1 */
                             version: number;
                         };
                     };

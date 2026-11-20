@@ -45,6 +45,7 @@ import type { BadgeTone } from '@/lib/badge-tone.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { notify } from '@/lib/notify.ts'
 import { RootError } from '../management/FormParts.tsx'
+import { SelfEvaluationPanel } from './FinanceSelfEvaluationSection.tsx'
 import { staffOptionText } from './finance-staff-certificate-forms.ts'
 import {
   emptyGoal,
@@ -106,6 +107,7 @@ type ReviewRow = {
  * Üstte dönemler (aşama, ilerleme, sıradaki aşamaya geçiş); dönem seçilince personel kayıtları
  * (hedefler, ara görüşme, puan, genel puan). Kayıt düzenleme formu yalnız dönemin aşamasında açık
  * alanları gösterir (K-428); kapanmış dönem salt okunur. Kayıt listesi açılışı denetime yazılır.
+ * Seçili dönemin altında öz değerlendirme bölümü (DOM-FIN-131; ON-210).
  */
 export function FinancePerformanceSection() {
   const list = useListState('performans', { urlPrefix: 'perf_' })
@@ -219,6 +221,7 @@ export function FinancePerformanceSection() {
         />
       </section>
       {selected ? <ReviewsPanel key={selected.id} period={selected} /> : null}
+      {selected ? <SelfEvaluationPanel key={selected.id} period={selected} /> : null}
       <Modal
         open={creating}
         onOpenChange={setCreating}

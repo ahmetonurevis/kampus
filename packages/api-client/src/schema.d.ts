@@ -136590,7 +136590,7 @@ export interface operations {
                             /** @description Personelin rolü */
                             staffRole: string;
                             /** @description Rapordaki bölümler, sırasıyla (K-466) */
-                            sections: ("evaluation" | "selfEvaluation" | "observations" | "developmentGoals" | "managerOpinion")[];
+                            sections: ("evaluation" | "selfEvaluation" | "observations" | "staffFeedback" | "developmentGoals" | "managerOpinion")[];
                             /** @description Dönem sonu değerlendirmesi (DOM-FIN-124) */
                             evaluation: {
                                 goals: {
@@ -136650,7 +136650,58 @@ export interface operations {
                                     percent: number;
                                 }[];
                             };
-                            /** @description Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez (K-468) */
+                            /** @description Çok kaynaklı geri bildirim (DOM-FIN-134): yalnız eşik üstünde toplu meslektaş sonucu (K-459, K-468) */
+                            staffFeedback: {
+                                /**
+                                 * @description `not_collected` dönemde şablon ya da atama yok, `period_open` dönem değerlendirme aşamasına geçmedi, `below_threshold` yeterli meslektaş yanıtı yok, `visible` meslektaş toplu sonucu görünür
+                                 * @enum {string}
+                                 */
+                                state: "not_collected" | "period_open" | "below_threshold" | "visible";
+                                /** @description Meslektaş anonimlik eşiği; kesinleşmiş raporda kesinleştirme anındaki (K-468) */
+                                threshold: number;
+                                questionCount: number;
+                                /** @description Yönetici yanıtları adıyla ve soru metniyle */
+                                manager: {
+                                    /** @description Atanan değerlendiren */
+                                    assigned: number;
+                                    /** @description Yanıtı girilen değerlendiren */
+                                    responded: number;
+                                    responses: {
+                                        /** @description Yönetici değerlendiren (anonim değil, K-459) */
+                                        reviewerName: string;
+                                        submittedAt: string | null;
+                                        items: {
+                                            question: string;
+                                            /** @enum {string} */
+                                            kind: "scale" | "open";
+                                            score: number | null;
+                                            text: string | null;
+                                        }[];
+                                    }[];
+                                };
+                                /** @description Meslektaş yanıtlarının toplu sonucu */
+                                peer: {
+                                    /** @description Atanan değerlendiren */
+                                    assigned: number;
+                                    /** @description Yanıtı girilen değerlendiren */
+                                    responded: number;
+                                    /** @description Yalnız `visible` durumunda dolu; tek meslektaş yanıtı hiç dönmez (K-459) */
+                                    questions: {
+                                        question: string;
+                                        /** @enum {string} */
+                                        kind: "scale" | "open";
+                                        /** @description Soruyu cevaplayan meslektaş sayısı */
+                                        answered: number;
+                                        /** @description Eşik altında cevaplanan soru gizlidir */
+                                        hidden: boolean;
+                                        /** @description Puanlı soruda ortalama, iki ondalık */
+                                        average: number | null;
+                                        /** @description Açık uçlu cevaplar, alfabetik; kimden geldiği yok */
+                                        texts: string[];
+                                    }[];
+                                };
+                            };
+                            /** @description Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez. Kesinleşmiş raporda kesinleştirme anındaki anlık görüntü (K-468) */
                             developmentGoals: {
                                 count: number;
                                 /** @description Ulaşılan hedef sayısı */
@@ -136820,7 +136871,7 @@ export interface operations {
                             /** @description Personelin rolü */
                             staffRole: string;
                             /** @description Rapordaki bölümler, sırasıyla (K-466) */
-                            sections: ("evaluation" | "selfEvaluation" | "observations" | "developmentGoals" | "managerOpinion")[];
+                            sections: ("evaluation" | "selfEvaluation" | "observations" | "staffFeedback" | "developmentGoals" | "managerOpinion")[];
                             /** @description Dönem sonu değerlendirmesi (DOM-FIN-124) */
                             evaluation: {
                                 goals: {
@@ -136880,7 +136931,58 @@ export interface operations {
                                     percent: number;
                                 }[];
                             };
-                            /** @description Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez (K-468) */
+                            /** @description Çok kaynaklı geri bildirim (DOM-FIN-134): yalnız eşik üstünde toplu meslektaş sonucu (K-459, K-468) */
+                            staffFeedback: {
+                                /**
+                                 * @description `not_collected` dönemde şablon ya da atama yok, `period_open` dönem değerlendirme aşamasına geçmedi, `below_threshold` yeterli meslektaş yanıtı yok, `visible` meslektaş toplu sonucu görünür
+                                 * @enum {string}
+                                 */
+                                state: "not_collected" | "period_open" | "below_threshold" | "visible";
+                                /** @description Meslektaş anonimlik eşiği; kesinleşmiş raporda kesinleştirme anındaki (K-468) */
+                                threshold: number;
+                                questionCount: number;
+                                /** @description Yönetici yanıtları adıyla ve soru metniyle */
+                                manager: {
+                                    /** @description Atanan değerlendiren */
+                                    assigned: number;
+                                    /** @description Yanıtı girilen değerlendiren */
+                                    responded: number;
+                                    responses: {
+                                        /** @description Yönetici değerlendiren (anonim değil, K-459) */
+                                        reviewerName: string;
+                                        submittedAt: string | null;
+                                        items: {
+                                            question: string;
+                                            /** @enum {string} */
+                                            kind: "scale" | "open";
+                                            score: number | null;
+                                            text: string | null;
+                                        }[];
+                                    }[];
+                                };
+                                /** @description Meslektaş yanıtlarının toplu sonucu */
+                                peer: {
+                                    /** @description Atanan değerlendiren */
+                                    assigned: number;
+                                    /** @description Yanıtı girilen değerlendiren */
+                                    responded: number;
+                                    /** @description Yalnız `visible` durumunda dolu; tek meslektaş yanıtı hiç dönmez (K-459) */
+                                    questions: {
+                                        question: string;
+                                        /** @enum {string} */
+                                        kind: "scale" | "open";
+                                        /** @description Soruyu cevaplayan meslektaş sayısı */
+                                        answered: number;
+                                        /** @description Eşik altında cevaplanan soru gizlidir */
+                                        hidden: boolean;
+                                        /** @description Puanlı soruda ortalama, iki ondalık */
+                                        average: number | null;
+                                        /** @description Açık uçlu cevaplar, alfabetik; kimden geldiği yok */
+                                        texts: string[];
+                                    }[];
+                                };
+                            };
+                            /** @description Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez. Kesinleşmiş raporda kesinleştirme anındaki anlık görüntü (K-468) */
                             developmentGoals: {
                                 count: number;
                                 /** @description Ulaşılan hedef sayısı */
@@ -137055,7 +137157,7 @@ export interface operations {
                             /** @description Personelin rolü */
                             staffRole: string;
                             /** @description Rapordaki bölümler, sırasıyla (K-466) */
-                            sections: ("evaluation" | "selfEvaluation" | "observations" | "developmentGoals" | "managerOpinion")[];
+                            sections: ("evaluation" | "selfEvaluation" | "observations" | "staffFeedback" | "developmentGoals" | "managerOpinion")[];
                             /** @description Dönem sonu değerlendirmesi (DOM-FIN-124) */
                             evaluation: {
                                 goals: {
@@ -137115,7 +137217,58 @@ export interface operations {
                                     percent: number;
                                 }[];
                             };
-                            /** @description Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez (K-468) */
+                            /** @description Çok kaynaklı geri bildirim (DOM-FIN-134): yalnız eşik üstünde toplu meslektaş sonucu (K-459, K-468) */
+                            staffFeedback: {
+                                /**
+                                 * @description `not_collected` dönemde şablon ya da atama yok, `period_open` dönem değerlendirme aşamasına geçmedi, `below_threshold` yeterli meslektaş yanıtı yok, `visible` meslektaş toplu sonucu görünür
+                                 * @enum {string}
+                                 */
+                                state: "not_collected" | "period_open" | "below_threshold" | "visible";
+                                /** @description Meslektaş anonimlik eşiği; kesinleşmiş raporda kesinleştirme anındaki (K-468) */
+                                threshold: number;
+                                questionCount: number;
+                                /** @description Yönetici yanıtları adıyla ve soru metniyle */
+                                manager: {
+                                    /** @description Atanan değerlendiren */
+                                    assigned: number;
+                                    /** @description Yanıtı girilen değerlendiren */
+                                    responded: number;
+                                    responses: {
+                                        /** @description Yönetici değerlendiren (anonim değil, K-459) */
+                                        reviewerName: string;
+                                        submittedAt: string | null;
+                                        items: {
+                                            question: string;
+                                            /** @enum {string} */
+                                            kind: "scale" | "open";
+                                            score: number | null;
+                                            text: string | null;
+                                        }[];
+                                    }[];
+                                };
+                                /** @description Meslektaş yanıtlarının toplu sonucu */
+                                peer: {
+                                    /** @description Atanan değerlendiren */
+                                    assigned: number;
+                                    /** @description Yanıtı girilen değerlendiren */
+                                    responded: number;
+                                    /** @description Yalnız `visible` durumunda dolu; tek meslektaş yanıtı hiç dönmez (K-459) */
+                                    questions: {
+                                        question: string;
+                                        /** @enum {string} */
+                                        kind: "scale" | "open";
+                                        /** @description Soruyu cevaplayan meslektaş sayısı */
+                                        answered: number;
+                                        /** @description Eşik altında cevaplanan soru gizlidir */
+                                        hidden: boolean;
+                                        /** @description Puanlı soruda ortalama, iki ondalık */
+                                        average: number | null;
+                                        /** @description Açık uçlu cevaplar, alfabetik; kimden geldiği yok */
+                                        texts: string[];
+                                    }[];
+                                };
+                            };
+                            /** @description Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez. Kesinleşmiş raporda kesinleştirme anındaki anlık görüntü (K-468) */
                             developmentGoals: {
                                 count: number;
                                 /** @description Ulaşılan hedef sayısı */

@@ -11608,6 +11608,154 @@ export interface paths {
         patch: operations["updateProfessionalDevelopmentEnrollment"];
         trace?: never;
     };
+    "/api/v1/finance/performance-periods/{periodId}/self-evaluation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Dönemin öz değerlendirme şablonu ve gönderen oranı
+         * @description Şablon (sorular, açılmış yanıt sayısı, kilit) ya da hazırlanmadıysa boş; özet: dönemde performans kaydı olan personel, gönderen, taslak, gönderilmeyen ve gönderen oranı (yüzde, bir ondalık; K-450). Kişisel veri taşımaz, okuma denetime yazılmaz. Başka kurumun dönemi 404. Rol: yalnız `yonetici` (K-450; öz değerlendirme kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.
+         */
+        get: operations["getSelfEvaluationOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/performance-periods/{periodId}/self-evaluation-template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dönemin öz değerlendirme şablonunu hazırla
+         * @description Sorular (1–20): tür (`scale` puanlı 1–5, `open` açık uçlu), metin (5–300), zorunlu mu (K-448). Dönem başına tek şablon (409 `self_evaluation_template_exists`); kapanmış dönem 409 `performance_period_closed`. `Idempotency-Key` zorunlu. Başka kurumun dönemi 404. Rol: yalnız `yonetici` (K-450; öz değerlendirme kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.
+         */
+        post: operations["createSelfEvaluationTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/self-evaluation-templates/{templateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Öz değerlendirme şablonunun sorularını düzelt
+         * @description Soruların tamamı yeniden yazılır (K-448). Dönemde yanıt açıldıysa 409 `self_evaluation_template_in_use`, kapanmış dönem 409 `performance_period_closed`, sürüm tutmazsa 409. `If-Match` zorunlu. Başka kurumun şablonu 404. Rol: yalnız `yonetici` (K-450; öz değerlendirme kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.
+         */
+        patch: operations["updateSelfEvaluationTemplate"];
+        trace?: never;
+    };
+    "/api/v1/finance/performance-periods/{periodId}/self-evaluations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Dönemin öz değerlendirme takibi
+         * @description Dönemde performans kaydı olan her personel, ada göre: yanıt durumu (`missing` gönderilmedi, `draft` taslak, `submitted` gönderildi), kanal, gönderim anı, geri açılma sayısı ve yönetici görüşü var mı (K-450). Cevap ve görüş metni dönmez; okuma denetime yazılmaz. Ad aranır, durumla süzülür. Başka kurumun dönemi 404. Rol: yalnız `yonetici` (K-450; öz değerlendirme kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.
+         */
+        get: operations["listSelfEvaluations"];
+        put?: never;
+        /**
+         * Personel adına öz değerlendirme yanıtı aç
+         * @description Personel üyeliği, kanal (`paper` kâğıt form, `email` e-posta) ve isteğe bağlı cevaplar (soru sırasıyla; puanlı soruda `score` 1–5, açık uçluda `text`); yanıt taslak açılır (K-449). Dönem yürürlük, ara görüşme ya da değerlendirmede olmalı (422 `self_evaluation_not_open`; kapanmış 409 `performance_period_closed`); şablon yoksa 422 `self_evaluation_template_missing`; dönemde performans kaydı olmayan personel 422 `self_evaluation_not_enrolled`; personel × dönem tek yanıt (409 `self_evaluation_exists`); cevap sayısı ya da türü şablona uymazsa 422 `self_evaluation_answers_mismatch` / `self_evaluation_answer_kind`. `Idempotency-Key` zorunlu. Başka kurumun dönemi 404. Rol: yalnız `yonetici` (K-450; öz değerlendirme kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.
+         */
+        post: operations["createSelfEvaluation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/self-evaluations/{responseId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Öz değerlendirme yanıtı
+         * @description Sorular ve cevaplar, durum, kanal, yönetici görüşü ve son geri açma (an, gerekçe). Okuma aynı transaction'da denetime yazılır (`finance.self_evaluation.read`; alan adları, K-450). Başka kurumun yanıtı 404. Rol: yalnız `yonetici` (K-450; öz değerlendirme kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.
+         */
+        get: operations["getSelfEvaluation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Öz değerlendirme yanıtını düzelt
+         * @description Kısmi düzeltme: cevaplar ve kanal yalnız taslakta (gönderilmiş yanıt 409 `self_evaluation_submitted`; K-449), yönetici görüşü (≤ 2000, boş metin siler) yalnız gönderilmiş yanıtta (422 `self_evaluation_not_submitted`; K-450). Kapanmış dönem 409 `performance_period_closed`, sürüm tutmazsa 409. Cevap ve görüş metni denetime yazılmaz. `If-Match` zorunlu. Başka kurumun yanıtı 404. Rol: yalnız `yonetici` (K-450; öz değerlendirme kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.
+         */
+        patch: operations["updateSelfEvaluation"];
+        trace?: never;
+    };
+    "/api/v1/finance/self-evaluations/{responseId}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Öz değerlendirmeyi gönder
+         * @description Taslak gönderilir (K-449): zorunlu sorular cevaplı olmalı (422 `self_evaluation_incomplete`, ileti eksik soru sayısını verir); gönderilmiş yanıt 409 `self_evaluation_already_submitted`; dönem yanıta kapalıysa 422 `self_evaluation_not_open`, kapanmışsa 409 `performance_period_closed`. Gönderilen yanıt düzenlenmez. `If-Match` zorunlu. Başka kurumun yanıtı 404. Rol: yalnız `yonetici` (K-450; öz değerlendirme kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.
+         */
+        post: operations["submitSelfEvaluation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/self-evaluations/{responseId}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Gönderilmiş öz değerlendirmeyi geri aç
+         * @description Gerekçe (5–500) zorunlu; yanıt taslağa döner, son gerekçe, açan ve an saklanır, açılma sayısı artar (K-449). Taslak 409 `self_evaluation_not_submitted`, kapanmış dönem 409 `performance_period_closed`. Denetime `finance.self_evaluation.reopen` alan adlarıyla yazılır, gerekçe metni yazılmaz. `If-Match` zorunlu. Başka kurumun yanıtı 404. Rol: yalnız `yonetici` (K-450; öz değerlendirme kişiseldir, personelin kendi ekranı ayrı iştir). Modül `finance`.
+         */
+        post: operations["reopenSelfEvaluation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -122564,6 +122712,1397 @@ export interface operations {
                             attendedHours: number | null;
                             statusChangedAt: string;
                             createdAt: string;
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getSelfEvaluationOverview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                periodId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            periodId: string;
+                            /**
+                             * @description Performans döneminin aşaması
+                             * @enum {string}
+                             */
+                            periodStatus: "planning" | "active" | "interim" | "evaluation" | "closed";
+                            /** @description Dönemin şablonu; hazırlanmadıysa boş */
+                            template: {
+                                id: string;
+                                periodId: string;
+                                /** @description Sorular, sırasıyla */
+                                questions: {
+                                    /**
+                                     * @description `scale` puanlı (1–5), `open` açık uçlu
+                                     * @enum {string}
+                                     */
+                                    kind: "scale" | "open";
+                                    /** @description Soru metni */
+                                    text: string;
+                                    /** @description Gönderimde cevap zorunlu mu */
+                                    required: boolean;
+                                }[];
+                                /** @description Bu şablonla açılmış yanıt sayısı */
+                                responseCount: number;
+                                /** @description Yanıt açıldığı için sorular değiştirilemez (K-448) */
+                                locked: boolean;
+                                createdAt: string;
+                                updatedAt: string;
+                                /** @description `If-Match` için şablon sürümü */
+                                version: number;
+                            } | null;
+                            summary: {
+                                /** @description Dönemde performans kaydı olan personel */
+                                enrolled: number;
+                                /** @description Öz değerlendirmesini gönderen */
+                                submitted: number;
+                                /** @description Yanıtı taslakta olan */
+                                draft: number;
+                                /** @description Yanıtı hiç açılmamış */
+                                missing: number;
+                                /** @description Gönderen oranı, yüzde (bir ondalık); dönemde personel yoksa boş */
+                                rate: number | null;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createSelfEvaluationTemplate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                periodId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Sorular, sırasıyla */
+                    questions: {
+                        /**
+                         * @description `scale` puanlı (1–5), `open` açık uçlu
+                         * @enum {string}
+                         */
+                        kind: "scale" | "open";
+                        /** @description Soru metni */
+                        text: string;
+                        /** @description Gönderimde cevap zorunlu mu */
+                        required: boolean;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            periodId: string;
+                            /** @description Sorular, sırasıyla */
+                            questions: {
+                                /**
+                                 * @description `scale` puanlı (1–5), `open` açık uçlu
+                                 * @enum {string}
+                                 */
+                                kind: "scale" | "open";
+                                /** @description Soru metni */
+                                text: string;
+                                /** @description Gönderimde cevap zorunlu mu */
+                                required: boolean;
+                            }[];
+                            /** @description Bu şablonla açılmış yanıt sayısı */
+                            responseCount: number;
+                            /** @description Yanıt açıldığı için sorular değiştirilemez (K-448) */
+                            locked: boolean;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için şablon sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateSelfEvaluationTemplate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Sorular, sırasıyla */
+                    questions: {
+                        /**
+                         * @description `scale` puanlı (1–5), `open` açık uçlu
+                         * @enum {string}
+                         */
+                        kind: "scale" | "open";
+                        /** @description Soru metni */
+                        text: string;
+                        /** @description Gönderimde cevap zorunlu mu */
+                        required: boolean;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            periodId: string;
+                            /** @description Sorular, sırasıyla */
+                            questions: {
+                                /**
+                                 * @description `scale` puanlı (1–5), `open` açık uçlu
+                                 * @enum {string}
+                                 */
+                                kind: "scale" | "open";
+                                /** @description Soru metni */
+                                text: string;
+                                /** @description Gönderimde cevap zorunlu mu */
+                                required: boolean;
+                            }[];
+                            /** @description Bu şablonla açılmış yanıt sayısı */
+                            responseCount: number;
+                            /** @description Yanıt açıldığı için sorular değiştirilemez (K-448) */
+                            locked: boolean;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için şablon sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listSelfEvaluations: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Personel adında arama */
+                q?: string;
+                /** @description Durum süzgeci */
+                status?: "missing" | "draft" | "submitted";
+            };
+            header?: never;
+            path: {
+                periodId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı */
+                            staffName: string;
+                            /** @description Personelin rolü */
+                            staffRole: string;
+                            /** @description Yanıt kimliği; yanıt açılmadıysa boş */
+                            responseId: string | null;
+                            /**
+                             * @description `missing` gönderilmedi (yanıt yok), `draft` taslak, `submitted` gönderildi
+                             * @enum {string}
+                             */
+                            status: "missing" | "draft" | "submitted";
+                            /** @description Yanıtın geldiği kanal */
+                            channel: ("paper" | "email") | null;
+                            /** @description Gönderim anı (ISO 8601 UTC) */
+                            submittedAt: string | null;
+                            /** @description Geri açılma sayısı */
+                            reopenCount: number;
+                            /** @description Yönetici görüşü yazıldı mı */
+                            hasManagerComment: boolean;
+                            updatedAt: string | null;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createSelfEvaluation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                periodId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Yanıtı veren personelin kurum üyeliği; dönemde performans kaydı olmalı */
+                    membershipId: string;
+                    /**
+                     * @description Yanıtın geldiği kanal: `paper` kâğıt form, `email` e-posta (K-449)
+                     * @enum {string}
+                     */
+                    channel: "paper" | "email";
+                    /** @description Soru sırasıyla cevaplar; dizi soru sayısı kadardır */
+                    answers?: {
+                        /** @description Puanlı soru için 1–5; boş = cevaplanmadı */
+                        score?: number | null;
+                        /** @description Açık uçlu soru için cevap; boş = cevaplanmadı */
+                        text?: string | null;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            periodId: string;
+                            templateId: string;
+                            /** @description Yanıtı veren personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı */
+                            staffName: string;
+                            /** @description Personelin rolü */
+                            staffRole: string;
+                            /** @description Şablonun soruları, sırasıyla */
+                            questions: {
+                                /**
+                                 * @description `scale` puanlı (1–5), `open` açık uçlu
+                                 * @enum {string}
+                                 */
+                                kind: "scale" | "open";
+                                /** @description Soru metni */
+                                text: string;
+                                /** @description Gönderimde cevap zorunlu mu */
+                                required: boolean;
+                            }[];
+                            /** @description Cevaplar, soru sırasıyla */
+                            answers: {
+                                /** @description Puanlı soru için 1–5; boş = cevaplanmadı */
+                                score: number | null;
+                                /** @description Açık uçlu soru için cevap */
+                                text: string | null;
+                            }[];
+                            /** @description Cevaplanmış soru sayısı */
+                            answeredCount: number;
+                            /**
+                             * @description `draft` taslak, `submitted` gönderildi
+                             * @enum {string}
+                             */
+                            status: "draft" | "submitted";
+                            /**
+                             * @description Yanıtın geldiği kanal: `paper` kâğıt form, `email` e-posta
+                             * @enum {string}
+                             */
+                            channel: "paper" | "email";
+                            /** @description Gönderim anı (ISO 8601 UTC) */
+                            submittedAt: string | null;
+                            /** @description Yöneticinin görüşü */
+                            managerComment: string | null;
+                            /** @description Görüşü son yazan yönetici */
+                            managerCommentByName: string | null;
+                            /** @description Görüşün son yazıldığı an */
+                            managerCommentAt: string | null;
+                            /** @description Geri açılma sayısı */
+                            reopenCount: number;
+                            /** @description Son geri açma anı */
+                            reopenedAt: string | null;
+                            /** @description Son geri açmanın gerekçesi */
+                            reopenReason: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için yanıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getSelfEvaluation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                responseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            periodId: string;
+                            templateId: string;
+                            /** @description Yanıtı veren personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı */
+                            staffName: string;
+                            /** @description Personelin rolü */
+                            staffRole: string;
+                            /** @description Şablonun soruları, sırasıyla */
+                            questions: {
+                                /**
+                                 * @description `scale` puanlı (1–5), `open` açık uçlu
+                                 * @enum {string}
+                                 */
+                                kind: "scale" | "open";
+                                /** @description Soru metni */
+                                text: string;
+                                /** @description Gönderimde cevap zorunlu mu */
+                                required: boolean;
+                            }[];
+                            /** @description Cevaplar, soru sırasıyla */
+                            answers: {
+                                /** @description Puanlı soru için 1–5; boş = cevaplanmadı */
+                                score: number | null;
+                                /** @description Açık uçlu soru için cevap */
+                                text: string | null;
+                            }[];
+                            /** @description Cevaplanmış soru sayısı */
+                            answeredCount: number;
+                            /**
+                             * @description `draft` taslak, `submitted` gönderildi
+                             * @enum {string}
+                             */
+                            status: "draft" | "submitted";
+                            /**
+                             * @description Yanıtın geldiği kanal: `paper` kâğıt form, `email` e-posta
+                             * @enum {string}
+                             */
+                            channel: "paper" | "email";
+                            /** @description Gönderim anı (ISO 8601 UTC) */
+                            submittedAt: string | null;
+                            /** @description Yöneticinin görüşü */
+                            managerComment: string | null;
+                            /** @description Görüşü son yazan yönetici */
+                            managerCommentByName: string | null;
+                            /** @description Görüşün son yazıldığı an */
+                            managerCommentAt: string | null;
+                            /** @description Geri açılma sayısı */
+                            reopenCount: number;
+                            /** @description Son geri açma anı */
+                            reopenedAt: string | null;
+                            /** @description Son geri açmanın gerekçesi */
+                            reopenReason: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için yanıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateSelfEvaluation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                responseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Soru sırasıyla cevaplar; dizi soru sayısı kadardır */
+                    answers?: {
+                        /** @description Puanlı soru için 1–5; boş = cevaplanmadı */
+                        score?: number | null;
+                        /** @description Açık uçlu soru için cevap; boş = cevaplanmadı */
+                        text?: string | null;
+                    }[];
+                    /**
+                     * @description Yanıtın geldiği kanal: `paper` kâğıt form, `email` e-posta (K-449)
+                     * @enum {string}
+                     */
+                    channel?: "paper" | "email";
+                    /** @description Yöneticinin öz değerlendirmeye görüşü; boş metin görüşü siler (K-450) */
+                    managerComment?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            periodId: string;
+                            templateId: string;
+                            /** @description Yanıtı veren personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı */
+                            staffName: string;
+                            /** @description Personelin rolü */
+                            staffRole: string;
+                            /** @description Şablonun soruları, sırasıyla */
+                            questions: {
+                                /**
+                                 * @description `scale` puanlı (1–5), `open` açık uçlu
+                                 * @enum {string}
+                                 */
+                                kind: "scale" | "open";
+                                /** @description Soru metni */
+                                text: string;
+                                /** @description Gönderimde cevap zorunlu mu */
+                                required: boolean;
+                            }[];
+                            /** @description Cevaplar, soru sırasıyla */
+                            answers: {
+                                /** @description Puanlı soru için 1–5; boş = cevaplanmadı */
+                                score: number | null;
+                                /** @description Açık uçlu soru için cevap */
+                                text: string | null;
+                            }[];
+                            /** @description Cevaplanmış soru sayısı */
+                            answeredCount: number;
+                            /**
+                             * @description `draft` taslak, `submitted` gönderildi
+                             * @enum {string}
+                             */
+                            status: "draft" | "submitted";
+                            /**
+                             * @description Yanıtın geldiği kanal: `paper` kâğıt form, `email` e-posta
+                             * @enum {string}
+                             */
+                            channel: "paper" | "email";
+                            /** @description Gönderim anı (ISO 8601 UTC) */
+                            submittedAt: string | null;
+                            /** @description Yöneticinin görüşü */
+                            managerComment: string | null;
+                            /** @description Görüşü son yazan yönetici */
+                            managerCommentByName: string | null;
+                            /** @description Görüşün son yazıldığı an */
+                            managerCommentAt: string | null;
+                            /** @description Geri açılma sayısı */
+                            reopenCount: number;
+                            /** @description Son geri açma anı */
+                            reopenedAt: string | null;
+                            /** @description Son geri açmanın gerekçesi */
+                            reopenReason: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için yanıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    submitSelfEvaluation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                responseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            periodId: string;
+                            templateId: string;
+                            /** @description Yanıtı veren personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı */
+                            staffName: string;
+                            /** @description Personelin rolü */
+                            staffRole: string;
+                            /** @description Şablonun soruları, sırasıyla */
+                            questions: {
+                                /**
+                                 * @description `scale` puanlı (1–5), `open` açık uçlu
+                                 * @enum {string}
+                                 */
+                                kind: "scale" | "open";
+                                /** @description Soru metni */
+                                text: string;
+                                /** @description Gönderimde cevap zorunlu mu */
+                                required: boolean;
+                            }[];
+                            /** @description Cevaplar, soru sırasıyla */
+                            answers: {
+                                /** @description Puanlı soru için 1–5; boş = cevaplanmadı */
+                                score: number | null;
+                                /** @description Açık uçlu soru için cevap */
+                                text: string | null;
+                            }[];
+                            /** @description Cevaplanmış soru sayısı */
+                            answeredCount: number;
+                            /**
+                             * @description `draft` taslak, `submitted` gönderildi
+                             * @enum {string}
+                             */
+                            status: "draft" | "submitted";
+                            /**
+                             * @description Yanıtın geldiği kanal: `paper` kâğıt form, `email` e-posta
+                             * @enum {string}
+                             */
+                            channel: "paper" | "email";
+                            /** @description Gönderim anı (ISO 8601 UTC) */
+                            submittedAt: string | null;
+                            /** @description Yöneticinin görüşü */
+                            managerComment: string | null;
+                            /** @description Görüşü son yazan yönetici */
+                            managerCommentByName: string | null;
+                            /** @description Görüşün son yazıldığı an */
+                            managerCommentAt: string | null;
+                            /** @description Geri açılma sayısı */
+                            reopenCount: number;
+                            /** @description Son geri açma anı */
+                            reopenedAt: string | null;
+                            /** @description Son geri açmanın gerekçesi */
+                            reopenReason: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için yanıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reopenSelfEvaluation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                responseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Gönderilmiş yanıtın neden taslağa döndüğü (zorunlu, K-449) */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            periodId: string;
+                            templateId: string;
+                            /** @description Yanıtı veren personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı */
+                            staffName: string;
+                            /** @description Personelin rolü */
+                            staffRole: string;
+                            /** @description Şablonun soruları, sırasıyla */
+                            questions: {
+                                /**
+                                 * @description `scale` puanlı (1–5), `open` açık uçlu
+                                 * @enum {string}
+                                 */
+                                kind: "scale" | "open";
+                                /** @description Soru metni */
+                                text: string;
+                                /** @description Gönderimde cevap zorunlu mu */
+                                required: boolean;
+                            }[];
+                            /** @description Cevaplar, soru sırasıyla */
+                            answers: {
+                                /** @description Puanlı soru için 1–5; boş = cevaplanmadı */
+                                score: number | null;
+                                /** @description Açık uçlu soru için cevap */
+                                text: string | null;
+                            }[];
+                            /** @description Cevaplanmış soru sayısı */
+                            answeredCount: number;
+                            /**
+                             * @description `draft` taslak, `submitted` gönderildi
+                             * @enum {string}
+                             */
+                            status: "draft" | "submitted";
+                            /**
+                             * @description Yanıtın geldiği kanal: `paper` kâğıt form, `email` e-posta
+                             * @enum {string}
+                             */
+                            channel: "paper" | "email";
+                            /** @description Gönderim anı (ISO 8601 UTC) */
+                            submittedAt: string | null;
+                            /** @description Yöneticinin görüşü */
+                            managerComment: string | null;
+                            /** @description Görüşü son yazan yönetici */
+                            managerCommentByName: string | null;
+                            /** @description Görüşün son yazıldığı an */
+                            managerCommentAt: string | null;
+                            /** @description Geri açılma sayısı */
+                            reopenCount: number;
+                            /** @description Son geri açma anı */
+                            reopenedAt: string | null;
+                            /** @description Son geri açmanın gerekçesi */
+                            reopenReason: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için yanıt sürümü */
                             version: number;
                         };
                     };

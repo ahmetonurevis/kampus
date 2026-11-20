@@ -370,7 +370,7 @@ Ara nokta: yeni öğretim yılı açıldı; pilot okul tam yıl, dil okulu ve ye
 | ON-217 | Zümre toplantısı tutanağı: gündem, katılım, karar, sorumlu, takip                       | S     | bitti       | 206e0140                 | Migration 0142; K-451…K-453; H-98; DOM-FIN-132                                                                                 |
 | ON-218 | Öğretmenler kurulu ve şube kurulu tutanakları: gündem şablonu, karar takibi             | S     | çalışılıyor | onur/kurul-tutanaklari   | doğrulanmalı                                                                                                                   |
 | ON-219 | Yeni öğretmen mentorluğu: eşleştirme, görüşme kaydı, kontrol listesi                    | M     | çalışılıyor | onur/ogretmen-mentorlugu | bağımlılık: K20 işe başlama listesi                                                                                            |
-| ON-220 | Performans raporu: dönem sonuçları, gelişim hedefleri                                   | S     | çalışılıyor | onur/performans-raporu   | KVKK: yalnız yönetici ve ilgili öğretmen                                                                                       |
+| ON-220 | Performans raporu: dönem sonuçları, gelişim hedefleri                                   | S     | bitti       | 1e4a7eef                 | Migration 0146; K-466…K-468; DOM-FIN-137; geri bildirim bölümü takipte                                                         |
 
 ### K23 · Satın alma, stok ve demirbaş
 

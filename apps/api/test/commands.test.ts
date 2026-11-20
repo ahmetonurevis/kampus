@@ -231,6 +231,10 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // (routes/finance-lesson-observations.ts; DOM-FIN-130, ON-206).
   'POST /api/v1/finance/lesson-observation-templates',
   'POST /api/v1/finance/lesson-observations',
+  // Gözlem sonrası görüşme ve gelişim hedefi açma; çift tıklama ikinci kaydı açmaz
+  // (routes/finance-observation-debriefs.ts; DOM-FIN-133, ON-209).
+  'POST /api/v1/finance/lesson-observations/{observationId}/debrief',
+  'POST /api/v1/finance/development-goals',
 ]
 // Onur: kayıt ve finans sonu
 

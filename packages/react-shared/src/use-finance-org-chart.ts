@@ -119,3 +119,49 @@ export function useEndOrgAssignment() {
     exclusive: true,
   })
 }
+
+export type OrgPositionUpdateBody = JsonBody<'updateOrgPosition'>
+
+export function useUpdateOrgPosition() {
+  return useApiCommand({
+    request: (
+      client,
+      input: { positionId: string; version: number; body: OrgPositionUpdateBody },
+      headers: CommandHeaders,
+    ) =>
+      client.PATCH('/api/v1/finance/org-positions/{positionId}', {
+        params: {
+          path: { positionId: input.positionId },
+          header: {
+            'idempotency-key': headers['idempotency-key'],
+            'if-match': requireIfMatch(headers),
+          },
+        },
+        body: input.body,
+      }),
+    invalidates: [ORG_CHART_KEY],
+    version: (input) => input.version,
+    messages: MESSAGES,
+    exclusive: true,
+  })
+}
+
+/** Pozisyonu kaldırır (arşiv); raporlayan pozisyon ya da süren atama varken 422. */
+export function useArchiveOrgPosition() {
+  return useApiCommand({
+    request: (client, input: { positionId: string; version: number }, headers: CommandHeaders) =>
+      client.DELETE('/api/v1/finance/org-positions/{positionId}', {
+        params: {
+          path: { positionId: input.positionId },
+          header: {
+            'idempotency-key': headers['idempotency-key'],
+            'if-match': requireIfMatch(headers),
+          },
+        },
+      }),
+    invalidates: [ORG_CHART_KEY],
+    version: (input) => input.version,
+    messages: MESSAGES,
+    exclusive: true,
+  })
+}

@@ -48,12 +48,13 @@ export const ORG_POSITIONS_MAX = 1000
 /** Kök birim 1. düzeydir. */
 export const ORG_UNIT_DEPTH_MAX = 10
 
-const nameSchema = (label: string) =>
+/** `subject` yalın ("Birim adı"), `object` belirtme durumu ("Birim adını"). */
+const nameSchema = (subject: string, object: string) =>
   z
-    .string(`${label} yazın.`)
+    .string(`${object} yazın.`)
     .trim()
-    .min(ORG_NAME_MIN, `${label} en az ${String(ORG_NAME_MIN)} karakter olmalı.`)
-    .max(ORG_NAME_MAX, `${label} en fazla ${String(ORG_NAME_MAX)} karakter olabilir.`)
+    .min(ORG_NAME_MIN, `${subject} en az ${String(ORG_NAME_MIN)} karakter olmalı.`)
+    .max(ORG_NAME_MAX, `${subject} en fazla ${String(ORG_NAME_MAX)} karakter olabilir.`)
 
 const headcountSchema = z
   .number('Kadro sayısını girin.')
@@ -65,7 +66,7 @@ const headcountSchema = z
 // --- Şemalar ---------------------------------------------------------------------------------------
 
 export const orgUnitInputSchema = z.strictObject({
-  name: nameSchema('Birim adını').describe('Birimin adı; aynı üst birimde bir kez'),
+  name: nameSchema('Birim adı', 'Birim adını').describe('Birimin adı; aynı üst birimde bir kez'),
   parentId: z
     .uuid('Üst birim geçersiz.')
     .nullable()
@@ -81,7 +82,7 @@ export type OrgUnitInput = z.output<typeof orgUnitInputSchema>
 
 export const orgUnitUpdateSchema = z
   .strictObject({
-    name: nameSchema('Birim adını').optional(),
+    name: nameSchema('Birim adı', 'Birim adını').optional(),
     parentId: z.uuid('Üst birim geçersiz.').nullable().optional().describe('Boş: kök birim'),
     kind: z.enum(ORG_UNIT_KINDS, 'Birim türünü seçin.').optional(),
     isActive: z.boolean().optional().describe('Etkin ya da pasif'),
@@ -93,7 +94,7 @@ export type OrgUnitUpdate = z.output<typeof orgUnitUpdateSchema>
 
 export const orgPositionInputSchema = z.strictObject({
   unitId: z.uuid('Birim seçin.').describe('Pozisyonun birimi'),
-  title: nameSchema('Unvanı').describe('Pozisyon unvanı; aynı birimde bir kez'),
+  title: nameSchema('Unvan', 'Unvanı').describe('Pozisyon unvanı; aynı birimde bir kez'),
   headcount: headcountSchema,
   reportsToPositionId: z
     .uuid('Raporladığı pozisyon geçersiz.')
@@ -106,7 +107,7 @@ export type OrgPositionInput = z.output<typeof orgPositionInputSchema>
 export const orgPositionUpdateSchema = z
   .strictObject({
     unitId: z.uuid('Birim seçin.').optional(),
-    title: nameSchema('Unvanı').optional(),
+    title: nameSchema('Unvan', 'Unvanı').optional(),
     headcount: headcountSchema.optional(),
     reportsToPositionId: z.uuid('Raporladığı pozisyon geçersiz.').nullable().optional(),
   })

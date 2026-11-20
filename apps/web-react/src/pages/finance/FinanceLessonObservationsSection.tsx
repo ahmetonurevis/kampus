@@ -775,7 +775,7 @@ function ObservationEditor({
   return observation.status === 'completed' ? (
     <ObservationView observation={observation} />
   ) : (
-    <ObservationForm key={observation.version} observation={observation} onDone={onDone} />
+    <ObservationForm key={observation.id} observation={observation} onDone={onDone} />
   )
 }
 
@@ -833,6 +833,9 @@ function ObservationForm({
 }) {
   const update = useUpdateLessonObservation()
   const complete = useCompleteLessonObservation()
+  // Kaydedilen sürüm: "Kaydet ve tamamla" kaydettikten sonra tamamlama reddedilirse form açık
+  // kalır ve sonraki gönderim yeni sürümle yapılır (yeniden çizim alanı sıfırlamaz).
+  const [version, setVersion] = useState(observation.version)
   const form = useForm<ObservationEditValues>({
     resolver: zodResolver(observationEditFormSchema),
     defaultValues: observationEditValues(observation),
@@ -846,7 +849,7 @@ function ObservationForm({
       const saved = await update.submit(
         {
           observationId: observation.id,
-          version: observation.version,
+          version,
           body: observationUpdateBody(values),
         },
         { setError: form.setError },
@@ -855,6 +858,7 @@ function ObservationForm({
         if (saved.status === 'failed' && saved.error.code === 'version_conflict') onDone()
         return
       }
+      setVersion(saved.data.data.version)
       if (!finish) {
         notify.success('Gözlem kaydedildi.')
         return

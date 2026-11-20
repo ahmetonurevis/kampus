@@ -20,6 +20,7 @@ export function reportFixture(patch: Partial<PerformanceReport> = {}): Performan
       'evaluation',
       'selfEvaluation',
       'observations',
+      'staffFeedback',
       'developmentGoals',
       'managerOpinion',
     ],
@@ -77,6 +78,47 @@ export function reportFixture(patch: Partial<PerformanceReport> = {}): Performan
           percent: 73,
         },
       ],
+    },
+    staffFeedback: {
+      state: 'visible',
+      threshold: 3,
+      questionCount: 2,
+      manager: {
+        assigned: 1,
+        responded: 1,
+        responses: [
+          {
+            reviewerName: 'Murat Yılmaz',
+            submittedAt: '2026-09-18T09:00:00.000Z',
+            items: [
+              { question: 'Ekip çalışmasına katkısı', kind: 'scale', score: 5, text: null },
+              { question: 'Güçlü yanları', kind: 'open', score: null, text: 'Planlı ve özenli' },
+            ],
+          },
+        ],
+      },
+      peer: {
+        assigned: 4,
+        responded: 3,
+        questions: [
+          {
+            question: 'Ekip çalışmasına katkısı',
+            kind: 'scale',
+            answered: 3,
+            hidden: false,
+            average: 4.33,
+            texts: [],
+          },
+          {
+            question: 'Güçlü yanları',
+            kind: 'open',
+            answered: 3,
+            hidden: false,
+            average: null,
+            texts: ['Düzenli', 'Sabırlı', 'Yardımsever'],
+          },
+        ],
+      },
     },
     developmentGoals: {
       count: 2,

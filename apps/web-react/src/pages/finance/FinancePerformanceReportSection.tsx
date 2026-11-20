@@ -14,6 +14,7 @@ import {
 import {
   PERFORMANCE_REPORT_ACK_CHANNEL_LABELS,
   PERFORMANCE_REPORT_ACK_CHANNELS,
+  PERFORMANCE_REPORT_FEEDBACK_STATE_LABELS,
   PERFORMANCE_REPORT_SECTION_LABELS,
   PERFORMANCE_REPORT_SELF_STATUS_LABELS,
   PERFORMANCE_REPORT_STATUS_LABELS,
@@ -38,7 +39,12 @@ import { useListState } from '@/hooks/use-list-state.ts'
 import type { BadgeTone } from '@/lib/badge-tone.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { notify } from '@/lib/notify.ts'
-import { PERFORMANCE_REPORT_TITLE } from '@/lib/pdf/templates/finance-performance-report.ts'
+import {
+  PERFORMANCE_REPORT_TITLE,
+  performanceFeedbackAnswerText,
+  performanceFeedbackPeerRows,
+  performanceFeedbackProgressText,
+} from '@/lib/pdf/templates/finance-performance-report.ts'
 import { RootError } from '../management/FormParts.tsx'
 import { PdfDialogButton } from './CorporateParts.tsx'
 import {
@@ -79,10 +85,10 @@ type Row = {
  * Performans raporu bölümü (DOM-FIN-137; ON-220): Finans "Performans" sekmesinde seçili dönemin
  * altında, yalnız yönetici (K-468). Dönem özeti (ortalama, dağılım, gözlem ortalaması, rapor
  * sayıları), personel başına satırlar ve personel × dönem raporu: dönem sonu değerlendirmesi, öz
- * değerlendirme, ders gözlemleri, gelişim hedefleri ve yönetici görüşü (K-466, K-468). Kapanan
- * dönemde rapor görüşle kesinleşir, personelin "okudum" kaydı kanalıyla girilir (K-467). Satır ve
- * rapor açılışı ile PDF denetim kaydına yazılır. Çok kaynaklı geri bildirim (ON-212) bölümü
- * birleşince sunucunun `sections` listesiyle eklenir.
+ * değerlendirme, ders gözlemleri, çok kaynaklı geri bildirim (meslektaş sonucu yalnız eşik üstünde
+ * toplu), gelişim hedefleri ve yönetici görüşü (K-466, K-468; bölüm sırası sunucunun `sections`
+ * listesi). Kapanan dönemde rapor görüşle kesinleşir, personelin "okudum" kaydı kanalıyla girilir
+ * (K-467). Satır ve rapor açılışı ile PDF denetim kaydına yazılır.
  */
 export function PerformanceReportPanel({ period }: { period: PerformancePeriod }) {
   const summary = usePerformanceReportSummary(period.id)
@@ -162,10 +168,10 @@ export function PerformanceReportPanel({ period }: { period: PerformancePeriod }
           {period.name} · rapor
         </h2>
         <p className="text-sm text-muted-foreground">
-          Dönem sonu değerlendirmesi, öz değerlendirme, ders gözlemleri ve gelişim hedefleri
-          personel başına bir raporda. Dönem kapanınca rapor yönetici görüşüyle kesinleşir;
-          personelin okuduğu kanalıyla kaydedilir. Satırların, raporların ve PDF&apos;lerin açılışı
-          denetim kaydına yazılır.
+          Dönem sonu değerlendirmesi, öz değerlendirme, ders gözlemleri, çok kaynaklı geri bildirim
+          ve gelişim hedefleri personel başına bir raporda. Dönem kapanınca rapor yönetici görüşüyle
+          kesinleşir; personelin okuduğu kanalıyla kaydedilir. Satırların, raporların ve
+          PDF&apos;lerin açılışı denetim kaydına yazılır.
         </p>
         {summary.error ? (
           <QueryError error={summary.error} onRetry={() => void summary.refetch()} />
@@ -350,6 +356,8 @@ function SectionBody({
         </>
       )
     }
+    case 'staffFeedback':
+      return <FeedbackBody feedback={report.staffFeedback} />
     case 'developmentGoals': {
       const goals = report.developmentGoals
       if (goals.count === 0)
@@ -383,6 +391,56 @@ function SectionBody({
     default:
       return section satisfies never
   }
+}
+
+/**
+ * Çok kaynaklı geri bildirim (K-468, K-459): yönetici yanıtları adıyla; meslektaş sonucu yalnız
+ * eşik üstünde soru başına toplu, eşik altında "yeterli yanıt yok". Tek meslektaş yanıtı sunucudan
+ * hiç gelmez.
+ */
+function FeedbackBody({ feedback }: { feedback: PerformanceReport['staffFeedback'] }) {
+  if (feedback.state === 'not_collected')
+    return (
+      <p className="text-sm text-muted-foreground">
+        {PERFORMANCE_REPORT_FEEDBACK_STATE_LABELS.not_collected}
+      </p>
+    )
+  return (
+    <>
+      <p className="text-sm">{performanceFeedbackProgressText(feedback)}</p>
+      {feedback.manager.responses.map((response, index) => (
+        <div key={`${response.reviewerName}-${String(index)}`} className="grid gap-2 text-sm">
+          <p className="font-medium">Yönetici değerlendirmesi: {response.reviewerName}</p>
+          <dl
+            aria-label={`Yönetici değerlendirmesi: ${response.reviewerName}`}
+            className="grid gap-2"
+          >
+            {response.items.map((item, itemIndex) => (
+              <div key={`${item.question}-${String(itemIndex)}`} className="grid gap-0.5">
+                <dt className="text-muted-foreground">{item.question}</dt>
+                <dd className="whitespace-pre-wrap">{performanceFeedbackAnswerText(item)}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      ))}
+      <p className={feedback.state === 'visible' ? 'text-sm' : 'text-sm text-muted-foreground'}>
+        {PERFORMANCE_REPORT_FEEDBACK_STATE_LABELS[feedback.state]}
+      </p>
+      {feedback.state === 'visible' ? (
+        <dl aria-label="Meslektaş toplu sonucu" className="grid gap-2 text-sm">
+          {performanceFeedbackPeerRows(feedback).map(([question, answered, result], index) => (
+            <div key={`${question ?? ''}-${String(index)}`} className="grid gap-0.5">
+              <dt className="font-medium">
+                {question} ({answered} yanıt)
+              </dt>
+              <dd className="whitespace-pre-wrap">{result}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+    </>
+  )
 }
 
 function AcknowledgementText({ report }: { report: PerformanceReport }) {

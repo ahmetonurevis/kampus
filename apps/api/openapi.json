@@ -295466,6 +295466,7 @@
                               "evaluation",
                               "selfEvaluation",
                               "observations",
+                              "staffFeedback",
                               "developmentGoals",
                               "managerOpinion"
                             ]
@@ -295747,6 +295748,208 @@
                           "additionalProperties": false,
                           "description": "Dönemdeki tamamlanmış ders gözlemleri (DOM-FIN-130)"
                         },
+                        "staffFeedback": {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "not_collected",
+                                "period_open",
+                                "below_threshold",
+                                "visible"
+                              ],
+                              "description": "`not_collected` dönemde şablon ya da atama yok, `period_open` dönem değerlendirme aşamasına geçmedi, `below_threshold` yeterli meslektaş yanıtı yok, `visible` meslektaş toplu sonucu görünür"
+                            },
+                            "threshold": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Meslektaş anonimlik eşiği; kesinleşmiş raporda kesinleştirme anındaki (K-468)"
+                            },
+                            "questionCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "manager": {
+                              "type": "object",
+                              "properties": {
+                                "assigned": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Atanan değerlendiren"
+                                },
+                                "responded": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Yanıtı girilen değerlendiren"
+                                },
+                                "responses": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "reviewerName": {
+                                        "type": "string",
+                                        "description": "Yönetici değerlendiren (anonim değil, K-459)"
+                                      },
+                                      "submittedAt": {
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "items": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "question": {
+                                              "type": "string"
+                                            },
+                                            "kind": {
+                                              "type": "string",
+                                              "enum": [
+                                                "scale",
+                                                "open"
+                                              ]
+                                            },
+                                            "score": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "integer",
+                                                  "minimum": -9007199254740991,
+                                                  "maximum": 9007199254740991
+                                                },
+                                                {
+                                                  "type": "null"
+                                                }
+                                              ]
+                                            },
+                                            "text": {
+                                              "type": [
+                                                "string",
+                                                "null"
+                                              ]
+                                            }
+                                          },
+                                          "required": [
+                                            "question",
+                                            "kind",
+                                            "score",
+                                            "text"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      }
+                                    },
+                                    "required": [
+                                      "reviewerName",
+                                      "submittedAt",
+                                      "items"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                }
+                              },
+                              "required": [
+                                "assigned",
+                                "responded",
+                                "responses"
+                              ],
+                              "additionalProperties": false,
+                              "description": "Yönetici yanıtları adıyla ve soru metniyle"
+                            },
+                            "peer": {
+                              "type": "object",
+                              "properties": {
+                                "assigned": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Atanan değerlendiren"
+                                },
+                                "responded": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Yanıtı girilen değerlendiren"
+                                },
+                                "questions": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "question": {
+                                        "type": "string"
+                                      },
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "scale",
+                                          "open"
+                                        ]
+                                      },
+                                      "answered": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Soruyu cevaplayan meslektaş sayısı"
+                                      },
+                                      "hidden": {
+                                        "type": "boolean",
+                                        "description": "Eşik altında cevaplanan soru gizlidir"
+                                      },
+                                      "average": {
+                                        "description": "Puanlı soruda ortalama, iki ondalık",
+                                        "type": [
+                                          "number",
+                                          "null"
+                                        ]
+                                      },
+                                      "texts": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string"
+                                        },
+                                        "description": "Açık uçlu cevaplar, alfabetik; kimden geldiği yok"
+                                      }
+                                    },
+                                    "required": [
+                                      "question",
+                                      "kind",
+                                      "answered",
+                                      "hidden",
+                                      "average",
+                                      "texts"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "description": "Yalnız `visible` durumunda dolu; tek meslektaş yanıtı hiç dönmez (K-459)"
+                                }
+                              },
+                              "required": [
+                                "assigned",
+                                "responded",
+                                "questions"
+                              ],
+                              "additionalProperties": false,
+                              "description": "Meslektaş yanıtlarının toplu sonucu"
+                            }
+                          },
+                          "required": [
+                            "state",
+                            "threshold",
+                            "questionCount",
+                            "manager",
+                            "peer"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Çok kaynaklı geri bildirim (DOM-FIN-134): yalnız eşik üstünde toplu meslektaş sonucu (K-459, K-468)"
+                        },
                         "developmentGoals": {
                           "type": "object",
                           "properties": {
@@ -295825,7 +296028,7 @@
                             "items"
                           ],
                           "additionalProperties": false,
-                          "description": "Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez (K-468)"
+                          "description": "Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez. Kesinleşmiş raporda kesinleştirme anındaki anlık görüntü (K-468)"
                         },
                         "managerOpinion": {
                           "description": "Yönetici görüşü; kesinleştirmede yazılır",
@@ -295916,6 +296119,7 @@
                         "evaluation",
                         "selfEvaluation",
                         "observations",
+                        "staffFeedback",
                         "developmentGoals",
                         "managerOpinion",
                         "reportId",
@@ -296130,6 +296334,7 @@
                               "evaluation",
                               "selfEvaluation",
                               "observations",
+                              "staffFeedback",
                               "developmentGoals",
                               "managerOpinion"
                             ]
@@ -296411,6 +296616,208 @@
                           "additionalProperties": false,
                           "description": "Dönemdeki tamamlanmış ders gözlemleri (DOM-FIN-130)"
                         },
+                        "staffFeedback": {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "not_collected",
+                                "period_open",
+                                "below_threshold",
+                                "visible"
+                              ],
+                              "description": "`not_collected` dönemde şablon ya da atama yok, `period_open` dönem değerlendirme aşamasına geçmedi, `below_threshold` yeterli meslektaş yanıtı yok, `visible` meslektaş toplu sonucu görünür"
+                            },
+                            "threshold": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Meslektaş anonimlik eşiği; kesinleşmiş raporda kesinleştirme anındaki (K-468)"
+                            },
+                            "questionCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "manager": {
+                              "type": "object",
+                              "properties": {
+                                "assigned": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Atanan değerlendiren"
+                                },
+                                "responded": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Yanıtı girilen değerlendiren"
+                                },
+                                "responses": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "reviewerName": {
+                                        "type": "string",
+                                        "description": "Yönetici değerlendiren (anonim değil, K-459)"
+                                      },
+                                      "submittedAt": {
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "items": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "question": {
+                                              "type": "string"
+                                            },
+                                            "kind": {
+                                              "type": "string",
+                                              "enum": [
+                                                "scale",
+                                                "open"
+                                              ]
+                                            },
+                                            "score": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "integer",
+                                                  "minimum": -9007199254740991,
+                                                  "maximum": 9007199254740991
+                                                },
+                                                {
+                                                  "type": "null"
+                                                }
+                                              ]
+                                            },
+                                            "text": {
+                                              "type": [
+                                                "string",
+                                                "null"
+                                              ]
+                                            }
+                                          },
+                                          "required": [
+                                            "question",
+                                            "kind",
+                                            "score",
+                                            "text"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      }
+                                    },
+                                    "required": [
+                                      "reviewerName",
+                                      "submittedAt",
+                                      "items"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                }
+                              },
+                              "required": [
+                                "assigned",
+                                "responded",
+                                "responses"
+                              ],
+                              "additionalProperties": false,
+                              "description": "Yönetici yanıtları adıyla ve soru metniyle"
+                            },
+                            "peer": {
+                              "type": "object",
+                              "properties": {
+                                "assigned": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Atanan değerlendiren"
+                                },
+                                "responded": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Yanıtı girilen değerlendiren"
+                                },
+                                "questions": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "question": {
+                                        "type": "string"
+                                      },
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "scale",
+                                          "open"
+                                        ]
+                                      },
+                                      "answered": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Soruyu cevaplayan meslektaş sayısı"
+                                      },
+                                      "hidden": {
+                                        "type": "boolean",
+                                        "description": "Eşik altında cevaplanan soru gizlidir"
+                                      },
+                                      "average": {
+                                        "description": "Puanlı soruda ortalama, iki ondalık",
+                                        "type": [
+                                          "number",
+                                          "null"
+                                        ]
+                                      },
+                                      "texts": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string"
+                                        },
+                                        "description": "Açık uçlu cevaplar, alfabetik; kimden geldiği yok"
+                                      }
+                                    },
+                                    "required": [
+                                      "question",
+                                      "kind",
+                                      "answered",
+                                      "hidden",
+                                      "average",
+                                      "texts"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "description": "Yalnız `visible` durumunda dolu; tek meslektaş yanıtı hiç dönmez (K-459)"
+                                }
+                              },
+                              "required": [
+                                "assigned",
+                                "responded",
+                                "questions"
+                              ],
+                              "additionalProperties": false,
+                              "description": "Meslektaş yanıtlarının toplu sonucu"
+                            }
+                          },
+                          "required": [
+                            "state",
+                            "threshold",
+                            "questionCount",
+                            "manager",
+                            "peer"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Çok kaynaklı geri bildirim (DOM-FIN-134): yalnız eşik üstünde toplu meslektaş sonucu (K-459, K-468)"
+                        },
                         "developmentGoals": {
                           "type": "object",
                           "properties": {
@@ -296489,7 +296896,7 @@
                             "items"
                           ],
                           "additionalProperties": false,
-                          "description": "Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez (K-468)"
+                          "description": "Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez. Kesinleşmiş raporda kesinleştirme anındaki anlık görüntü (K-468)"
                         },
                         "managerOpinion": {
                           "description": "Yönetici görüşü; kesinleştirmede yazılır",
@@ -296580,6 +296987,7 @@
                         "evaluation",
                         "selfEvaluation",
                         "observations",
+                        "staffFeedback",
                         "developmentGoals",
                         "managerOpinion",
                         "reportId",
@@ -296803,6 +297211,7 @@
                               "evaluation",
                               "selfEvaluation",
                               "observations",
+                              "staffFeedback",
                               "developmentGoals",
                               "managerOpinion"
                             ]
@@ -297084,6 +297493,208 @@
                           "additionalProperties": false,
                           "description": "Dönemdeki tamamlanmış ders gözlemleri (DOM-FIN-130)"
                         },
+                        "staffFeedback": {
+                          "type": "object",
+                          "properties": {
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "not_collected",
+                                "period_open",
+                                "below_threshold",
+                                "visible"
+                              ],
+                              "description": "`not_collected` dönemde şablon ya da atama yok, `period_open` dönem değerlendirme aşamasına geçmedi, `below_threshold` yeterli meslektaş yanıtı yok, `visible` meslektaş toplu sonucu görünür"
+                            },
+                            "threshold": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Meslektaş anonimlik eşiği; kesinleşmiş raporda kesinleştirme anındaki (K-468)"
+                            },
+                            "questionCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "manager": {
+                              "type": "object",
+                              "properties": {
+                                "assigned": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Atanan değerlendiren"
+                                },
+                                "responded": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Yanıtı girilen değerlendiren"
+                                },
+                                "responses": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "reviewerName": {
+                                        "type": "string",
+                                        "description": "Yönetici değerlendiren (anonim değil, K-459)"
+                                      },
+                                      "submittedAt": {
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "items": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "question": {
+                                              "type": "string"
+                                            },
+                                            "kind": {
+                                              "type": "string",
+                                              "enum": [
+                                                "scale",
+                                                "open"
+                                              ]
+                                            },
+                                            "score": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "integer",
+                                                  "minimum": -9007199254740991,
+                                                  "maximum": 9007199254740991
+                                                },
+                                                {
+                                                  "type": "null"
+                                                }
+                                              ]
+                                            },
+                                            "text": {
+                                              "type": [
+                                                "string",
+                                                "null"
+                                              ]
+                                            }
+                                          },
+                                          "required": [
+                                            "question",
+                                            "kind",
+                                            "score",
+                                            "text"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      }
+                                    },
+                                    "required": [
+                                      "reviewerName",
+                                      "submittedAt",
+                                      "items"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                }
+                              },
+                              "required": [
+                                "assigned",
+                                "responded",
+                                "responses"
+                              ],
+                              "additionalProperties": false,
+                              "description": "Yönetici yanıtları adıyla ve soru metniyle"
+                            },
+                            "peer": {
+                              "type": "object",
+                              "properties": {
+                                "assigned": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Atanan değerlendiren"
+                                },
+                                "responded": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Yanıtı girilen değerlendiren"
+                                },
+                                "questions": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "question": {
+                                        "type": "string"
+                                      },
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "scale",
+                                          "open"
+                                        ]
+                                      },
+                                      "answered": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Soruyu cevaplayan meslektaş sayısı"
+                                      },
+                                      "hidden": {
+                                        "type": "boolean",
+                                        "description": "Eşik altında cevaplanan soru gizlidir"
+                                      },
+                                      "average": {
+                                        "description": "Puanlı soruda ortalama, iki ondalık",
+                                        "type": [
+                                          "number",
+                                          "null"
+                                        ]
+                                      },
+                                      "texts": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string"
+                                        },
+                                        "description": "Açık uçlu cevaplar, alfabetik; kimden geldiği yok"
+                                      }
+                                    },
+                                    "required": [
+                                      "question",
+                                      "kind",
+                                      "answered",
+                                      "hidden",
+                                      "average",
+                                      "texts"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "description": "Yalnız `visible` durumunda dolu; tek meslektaş yanıtı hiç dönmez (K-459)"
+                                }
+                              },
+                              "required": [
+                                "assigned",
+                                "responded",
+                                "questions"
+                              ],
+                              "additionalProperties": false,
+                              "description": "Meslektaş yanıtlarının toplu sonucu"
+                            }
+                          },
+                          "required": [
+                            "state",
+                            "threshold",
+                            "questionCount",
+                            "manager",
+                            "peer"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Çok kaynaklı geri bildirim (DOM-FIN-134): yalnız eşik üstünde toplu meslektaş sonucu (K-459, K-468)"
+                        },
                         "developmentGoals": {
                           "type": "object",
                           "properties": {
@@ -297162,7 +297773,7 @@
                             "items"
                           ],
                           "additionalProperties": false,
-                          "description": "Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez (K-468)"
+                          "description": "Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez. Kesinleşmiş raporda kesinleştirme anındaki anlık görüntü (K-468)"
                         },
                         "managerOpinion": {
                           "description": "Yönetici görüşü; kesinleştirmede yazılır",
@@ -297253,6 +297864,7 @@
                         "evaluation",
                         "selfEvaluation",
                         "observations",
+                        "staffFeedback",
                         "developmentGoals",
                         "managerOpinion",
                         "reportId",

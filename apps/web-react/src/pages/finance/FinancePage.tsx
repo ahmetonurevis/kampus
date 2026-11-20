@@ -223,6 +223,9 @@ const FinanceLessonObservationsSection = lazy(async () => ({
   default: (await import('./FinanceLessonObservationsSection.tsx'))
     .FinanceLessonObservationsSection,
 }))
+const FinanceDevelopmentGoalsSection = lazy(async () => ({
+  default: (await import('./FinanceDevelopmentGoalsSection.tsx')).FinanceDevelopmentGoalsSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -295,6 +298,7 @@ const VIEWS = {
   jobPostings: { label: 'İş ilanları', param: 'is-ilanlari' },
   departmentMeetings: { label: 'Zümre toplantıları', param: 'zumre-toplantilari' },
   lessonObservations: { label: 'Ders gözlemleri', param: 'ders-gozlemleri' },
+  developmentGoals: { label: 'Gelişim hedefleri', param: 'gelisim-hedefleri' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -356,6 +360,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * yalnız API'den girer (K-440).
  * Zümre toplantıları (DOM-FIN-132) yalnız yöneticidedir (K-451).
  * Ders gözlemleri (DOM-FIN-130) yalnız yöneticidedir; gözlem kişisel veridir (K-447).
+ * Gelişim hedefleri (DOM-FIN-133) yalnız yöneticidedir; hedef kişisel veridir (K-456).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -371,6 +376,7 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'severance' ||
       value === 'freeTuition' ||
       value === 'lessonObservations' ||
+      value === 'developmentGoals' ||
       value === 'departmentMeetings' ||
       value === 'jobPostings' ||
       value === 'staffingPlan' ||
@@ -612,6 +618,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'jobPostings' ? <FinanceJobPostingsSection /> : null}
         {tab === 'departmentMeetings' ? <FinanceDepartmentMeetingsSection /> : null}
         {tab === 'lessonObservations' ? <FinanceLessonObservationsSection /> : null}
+        {tab === 'developmentGoals' ? <FinanceDevelopmentGoalsSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

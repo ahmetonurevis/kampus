@@ -287246,6 +287246,3099 @@
         }
       }
     },
+    "/api/v1/finance/lesson-observations/{observationId}/debrief": {
+      "get": {
+        "operationId": "getObservationDebrief",
+        "summary": "Gözlem sonrası görüşmeyi getir",
+        "tags": [
+          "finance-observation-debriefs"
+        ],
+        "description": "Gözlemin görüşmesi (DOM-FIN-133): gün, katılanlar, güçlü yönler, gelişim alanları, öğretmenin görüşü ve durum. Görüşme yoksa ya da gözlenen öğretmen taslağı henüz göremiyorsa `data` boş. Görülemeyen, arşivli ya da başka kurumun gözlemi 404. Okuma aynı transaction'da denetime yazılır (`finance.observation_debrief.read`; alan adları ve kayıt sayısı). Rol: `yonetici` hepsini; `ogretmen` gözlemcisi olduğu gözlemin görüşmesini (taslak dahil) ve gözlendiği gözlemin kesinleşmiş görüşmesini görür (K-456). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "observationId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "observationId": {
+                              "type": "string"
+                            },
+                            "observedDate": {
+                              "type": "string",
+                              "description": "Gözlem günü (YYYY-MM-DD)"
+                            },
+                            "observationStatus": {
+                              "type": "string",
+                              "enum": [
+                                "draft",
+                                "completed"
+                              ]
+                            },
+                            "teacherMembershipId": {
+                              "type": "string",
+                              "description": "Gözlenen öğretmenin kurum üyeliği"
+                            },
+                            "teacherName": {
+                              "type": "string"
+                            },
+                            "observerMembershipId": {
+                              "type": "string",
+                              "description": "Gözlemcinin kurum üyeliği"
+                            },
+                            "observerName": {
+                              "type": "string"
+                            },
+                            "debriefDate": {
+                              "type": "string",
+                              "description": "Görüşme günü (YYYY-MM-DD)"
+                            },
+                            "participants": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "membershipId": {
+                                    "type": "string",
+                                    "description": "Katılanın kurum üyeliği"
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  },
+                                  "role": {
+                                    "type": "string",
+                                    "description": "Üyelik rolü (`yonetici`, `ogretmen`)"
+                                  },
+                                  "active": {
+                                    "type": "boolean",
+                                    "description": "Üyelik etkin mi; ayrılmış personel listede kalabilir"
+                                  }
+                                },
+                                "required": [
+                                  "membershipId",
+                                  "name",
+                                  "role",
+                                  "active"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "description": "Görüşmeye katılanlar, ada göre"
+                            },
+                            "strengths": {
+                              "description": "Güçlü yönler",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "developmentAreas": {
+                              "description": "Gelişim alanları",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "teacherComment": {
+                              "description": "Öğretmenin görüşü",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "draft",
+                                "finalized"
+                              ],
+                              "description": "`draft` taslak (düzeltilebilir), `finalized` kesinleşti (değişmez)"
+                            },
+                            "finalizedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "createdAt": {
+                              "type": "string"
+                            },
+                            "updatedAt": {
+                              "type": "string"
+                            },
+                            "version": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "`If-Match` için kayıt sürümü"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "observationId",
+                            "observedDate",
+                            "observationStatus",
+                            "teacherMembershipId",
+                            "teacherName",
+                            "observerMembershipId",
+                            "observerName",
+                            "debriefDate",
+                            "participants",
+                            "strengths",
+                            "developmentAreas",
+                            "teacherComment",
+                            "status",
+                            "finalizedAt",
+                            "createdAt",
+                            "updatedAt",
+                            "version"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Gözlemin görüşmesi; görüşme yoksa ya da öğretmen henüz göremiyorsa boş"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createObservationDebrief",
+        "summary": "Gözlem sonrası görüşme aç",
+        "tags": [
+          "finance-observation-debriefs"
+        ],
+        "description": "Taslak açılır (K-454): görüşme günü (gözlem gününden önce değil, bugünden sonra değil), katılanlar (1–10 kurum yönetici ya da öğretmen üyeliği, etkin; gözlenen öğretmen dahil) ve isteğe bağlı güçlü yönler, gelişim alanları, öğretmenin görüşü. Ret: gözlem tamamlanmamış 422 `debrief_observation_not_completed`; gözlemin görüşmesi var 409 `debrief_exists` (gözlem başına bir görüşme); gün 422 `debrief_date_before_observation`/`debrief_date_future`; katılımcı 422 `debrief_participant_not_found`/`debrief_participant_invalid`/`debrief_participant_inactive`; öğretmen listede değil 422 `debrief_teacher_missing`. Metinler denetime yazılmaz. `Idempotency-Key` zorunlu. Başka kurumun gözlemi 404. Rol: yalnız `yonetici`. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "debriefDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Görüşme günü; gözlem gününden önce ve bugünden sonra olamaz"
+                  },
+                  "participantMembershipIds": {
+                    "minItems": 1,
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    },
+                    "description": "Görüşmeye katılanların kurum üyelikleri (1–10); gözlenen öğretmen dahil"
+                  },
+                  "strengths": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 4000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Güçlü yönler; kesinleştirmek için zorunlu"
+                  },
+                  "developmentAreas": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 4000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Gelişim alanları; kesinleştirmek için zorunlu"
+                  },
+                  "teacherComment": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 4000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Öğretmenin görüşü; öğretmen görüş bildirmediyse boş"
+                  }
+                },
+                "required": [
+                  "debriefDate",
+                  "participantMembershipIds"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "observationId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "observationId": {
+                          "type": "string"
+                        },
+                        "observedDate": {
+                          "type": "string",
+                          "description": "Gözlem günü (YYYY-MM-DD)"
+                        },
+                        "observationStatus": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "completed"
+                          ]
+                        },
+                        "teacherMembershipId": {
+                          "type": "string",
+                          "description": "Gözlenen öğretmenin kurum üyeliği"
+                        },
+                        "teacherName": {
+                          "type": "string"
+                        },
+                        "observerMembershipId": {
+                          "type": "string",
+                          "description": "Gözlemcinin kurum üyeliği"
+                        },
+                        "observerName": {
+                          "type": "string"
+                        },
+                        "debriefDate": {
+                          "type": "string",
+                          "description": "Görüşme günü (YYYY-MM-DD)"
+                        },
+                        "participants": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "membershipId": {
+                                "type": "string",
+                                "description": "Katılanın kurum üyeliği"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "role": {
+                                "type": "string",
+                                "description": "Üyelik rolü (`yonetici`, `ogretmen`)"
+                              },
+                              "active": {
+                                "type": "boolean",
+                                "description": "Üyelik etkin mi; ayrılmış personel listede kalabilir"
+                              }
+                            },
+                            "required": [
+                              "membershipId",
+                              "name",
+                              "role",
+                              "active"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Görüşmeye katılanlar, ada göre"
+                        },
+                        "strengths": {
+                          "description": "Güçlü yönler",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "developmentAreas": {
+                          "description": "Gelişim alanları",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "teacherComment": {
+                          "description": "Öğretmenin görüşü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "finalized"
+                          ],
+                          "description": "`draft` taslak (düzeltilebilir), `finalized` kesinleşti (değişmez)"
+                        },
+                        "finalizedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "observationId",
+                        "observedDate",
+                        "observationStatus",
+                        "teacherMembershipId",
+                        "teacherName",
+                        "observerMembershipId",
+                        "observerName",
+                        "debriefDate",
+                        "participants",
+                        "strengths",
+                        "developmentAreas",
+                        "teacherComment",
+                        "status",
+                        "finalizedAt",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/observation-debriefs/{debriefId}": {
+      "patch": {
+        "operationId": "updateObservationDebrief",
+        "summary": "Görüşme taslağını düzelt",
+        "tags": [
+          "finance-observation-debriefs"
+        ],
+        "description": "Kısmi düzeltme (K-454): gün, katılanlar (tam liste; listede zaten olan ayrılmış personel kalabilir), güçlü yönler, gelişim alanları, öğretmenin görüşü (boş metin siler). Kesinleşen görüşme 409 `debrief_finalized`, sürüm tutmazsa 409. `If-Match` zorunlu. Başka kurumun görüşmesi 404. Rol: yalnız `yonetici`. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "debriefDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Görüşme günü; gözlem gününden önce ve bugünden sonra olamaz"
+                  },
+                  "participantMembershipIds": {
+                    "minItems": 1,
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    },
+                    "description": "Görüşmeye katılanların kurum üyelikleri (1–10); gözlenen öğretmen dahil"
+                  },
+                  "strengths": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 4000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Güçlü yönler; kesinleştirmek için zorunlu"
+                  },
+                  "developmentAreas": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 4000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Gelişim alanları; kesinleştirmek için zorunlu"
+                  },
+                  "teacherComment": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 4000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Öğretmenin görüşü; öğretmen görüş bildirmediyse boş"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "debriefId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "observationId": {
+                          "type": "string"
+                        },
+                        "observedDate": {
+                          "type": "string",
+                          "description": "Gözlem günü (YYYY-MM-DD)"
+                        },
+                        "observationStatus": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "completed"
+                          ]
+                        },
+                        "teacherMembershipId": {
+                          "type": "string",
+                          "description": "Gözlenen öğretmenin kurum üyeliği"
+                        },
+                        "teacherName": {
+                          "type": "string"
+                        },
+                        "observerMembershipId": {
+                          "type": "string",
+                          "description": "Gözlemcinin kurum üyeliği"
+                        },
+                        "observerName": {
+                          "type": "string"
+                        },
+                        "debriefDate": {
+                          "type": "string",
+                          "description": "Görüşme günü (YYYY-MM-DD)"
+                        },
+                        "participants": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "membershipId": {
+                                "type": "string",
+                                "description": "Katılanın kurum üyeliği"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "role": {
+                                "type": "string",
+                                "description": "Üyelik rolü (`yonetici`, `ogretmen`)"
+                              },
+                              "active": {
+                                "type": "boolean",
+                                "description": "Üyelik etkin mi; ayrılmış personel listede kalabilir"
+                              }
+                            },
+                            "required": [
+                              "membershipId",
+                              "name",
+                              "role",
+                              "active"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Görüşmeye katılanlar, ada göre"
+                        },
+                        "strengths": {
+                          "description": "Güçlü yönler",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "developmentAreas": {
+                          "description": "Gelişim alanları",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "teacherComment": {
+                          "description": "Öğretmenin görüşü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "finalized"
+                          ],
+                          "description": "`draft` taslak (düzeltilebilir), `finalized` kesinleşti (değişmez)"
+                        },
+                        "finalizedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "observationId",
+                        "observedDate",
+                        "observationStatus",
+                        "teacherMembershipId",
+                        "teacherName",
+                        "observerMembershipId",
+                        "observerName",
+                        "debriefDate",
+                        "participants",
+                        "strengths",
+                        "developmentAreas",
+                        "teacherComment",
+                        "status",
+                        "finalizedAt",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/observation-debriefs/{debriefId}/finalize": {
+      "post": {
+        "operationId": "finalizeObservationDebrief",
+        "summary": "Görüşmeyi kesinleştir",
+        "tags": [
+          "finance-observation-debriefs"
+        ],
+        "description": "Kesinleştirme (K-454): güçlü yönler (422 `debrief_strengths_required`) ve gelişim alanları (422 `debrief_development_areas_required`) yazılmış olmalı; öğretmenin görüşü isteğe bağlı. Kesinleşen görüşme değişmez (veritabanı tetikleyicisi); yeniden kesinleştirme 409 `debrief_finalized`. Gövde boş nesne. `If-Match` zorunlu. Başka kurumun görüşmesi 404. Rol: yalnız `yonetici`. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "debriefId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "observationId": {
+                          "type": "string"
+                        },
+                        "observedDate": {
+                          "type": "string",
+                          "description": "Gözlem günü (YYYY-MM-DD)"
+                        },
+                        "observationStatus": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "completed"
+                          ]
+                        },
+                        "teacherMembershipId": {
+                          "type": "string",
+                          "description": "Gözlenen öğretmenin kurum üyeliği"
+                        },
+                        "teacherName": {
+                          "type": "string"
+                        },
+                        "observerMembershipId": {
+                          "type": "string",
+                          "description": "Gözlemcinin kurum üyeliği"
+                        },
+                        "observerName": {
+                          "type": "string"
+                        },
+                        "debriefDate": {
+                          "type": "string",
+                          "description": "Görüşme günü (YYYY-MM-DD)"
+                        },
+                        "participants": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "membershipId": {
+                                "type": "string",
+                                "description": "Katılanın kurum üyeliği"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "role": {
+                                "type": "string",
+                                "description": "Üyelik rolü (`yonetici`, `ogretmen`)"
+                              },
+                              "active": {
+                                "type": "boolean",
+                                "description": "Üyelik etkin mi; ayrılmış personel listede kalabilir"
+                              }
+                            },
+                            "required": [
+                              "membershipId",
+                              "name",
+                              "role",
+                              "active"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Görüşmeye katılanlar, ada göre"
+                        },
+                        "strengths": {
+                          "description": "Güçlü yönler",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "developmentAreas": {
+                          "description": "Gelişim alanları",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "teacherComment": {
+                          "description": "Öğretmenin görüşü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "finalized"
+                          ],
+                          "description": "`draft` taslak (düzeltilebilir), `finalized` kesinleşti (değişmez)"
+                        },
+                        "finalizedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "observationId",
+                        "observedDate",
+                        "observationStatus",
+                        "teacherMembershipId",
+                        "teacherName",
+                        "observerMembershipId",
+                        "observerName",
+                        "debriefDate",
+                        "participants",
+                        "strengths",
+                        "developmentAreas",
+                        "teacherComment",
+                        "status",
+                        "finalizedAt",
+                        "createdAt",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/development-goals": {
+      "get": {
+        "operationId": "listDevelopmentGoals",
+        "summary": "Gelişim hedeflerini listele",
+        "tags": [
+          "finance-observation-debriefs"
+        ],
+        "description": "Gelişim hedefleri, takip tarihi yakın önce (DOM-FIN-133): öğretmen, kaynak (gözlem görüşmesi ya da doğrudan), performans dönemi, hedef, ölçüt, takip tarihi, durum ve gecikme (İstanbul gününe göre takip tarihi geçmiş süren hedef; K-455). Öğretmen adında aranır; durum, öğretmen, performans dönemi ve kaynak görüşmeyle süzülür; `overdue=true` yalnız takip tarihi geçmiş açık ve süren hedefleri getirir. Okuma aynı transaction'da denetime yazılır (`finance.development_goal.read`). Rol: `yonetici` hepsini; `ogretmen` kendi hedeflerini ve gözlemcisi olduğu gözlemin görüşmesinden doğan hedefleri görür (K-456). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Öğretmen adında arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "in_progress",
+                "achieved",
+                "dropped"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Durum süzgeci"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "teacherMembershipId",
+            "required": false,
+            "description": "Öğretmen süzgeci"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "performancePeriodId",
+            "required": false,
+            "description": "Performans dönemi süzgeci"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "debriefId",
+            "required": false,
+            "description": "Kaynak görüşme süzgeci"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "in": "query",
+            "name": "overdue",
+            "required": false,
+            "description": "Yalnız takip tarihi geçmiş süren (açık ya da sürüyor) hedefler"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "teacherMembershipId": {
+                            "type": "string",
+                            "description": "Hedefin öğretmeni (kurum üyeliği)"
+                          },
+                          "teacherName": {
+                            "type": "string"
+                          },
+                          "source": {
+                            "type": "string",
+                            "enum": [
+                              "observation_debrief",
+                              "direct"
+                            ],
+                            "description": "`observation_debrief` gözlem görüşmesinden, `direct` doğrudan"
+                          },
+                          "debriefId": {
+                            "description": "Kaynak gözlem görüşmesi",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "observationId": {
+                            "description": "Kaynak görüşmenin gözlemi",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "observedDate": {
+                            "description": "Kaynak gözlemin günü",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "observerMembershipId": {
+                            "description": "Kaynak gözlemin gözlemcisi",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "performancePeriodId": {
+                            "description": "Bağlı performans dönemi (DOM-FIN-124)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "performancePeriodName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "title": {
+                            "type": "string",
+                            "description": "Hedef"
+                          },
+                          "successCriterion": {
+                            "type": "string",
+                            "description": "Ölçüt"
+                          },
+                          "followUpDate": {
+                            "type": "string",
+                            "description": "Takip tarihi (YYYY-MM-DD)"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "open",
+                              "in_progress",
+                              "achieved",
+                              "dropped"
+                            ],
+                            "description": "`open` açık, `in_progress` sürüyor, `achieved` ulaşıldı, `dropped` bırakıldı"
+                          },
+                          "active": {
+                            "type": "boolean",
+                            "description": "Takip sürüyor mu (açık ya da sürüyor)"
+                          },
+                          "overdue": {
+                            "type": "boolean",
+                            "description": "Takip tarihi İstanbul gününe göre geçmiş süren hedef (K-455)"
+                          },
+                          "overdueDays": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Gecikme günü; gecikmemişse 0"
+                          },
+                          "closedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "teacherMembershipId",
+                          "teacherName",
+                          "source",
+                          "debriefId",
+                          "observationId",
+                          "observedDate",
+                          "observerMembershipId",
+                          "performancePeriodId",
+                          "performancePeriodName",
+                          "title",
+                          "successCriterion",
+                          "followUpDate",
+                          "status",
+                          "active",
+                          "overdue",
+                          "overdueDays",
+                          "closedAt",
+                          "createdAt",
+                          "updatedAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createDevelopmentGoal",
+        "summary": "Gelişim hedefi aç",
+        "tags": [
+          "finance-observation-debriefs"
+        ],
+        "description": "Hedef \"açık\" başlar (K-455). Kaynak gözlem görüşmesiyse `debriefId` (öğretmen gözlemin öğretmenidir), doğrudansa `teacherMembershipId`; ikisinden yalnız biri (400). Hedef (2–500), ölçüt (2–1000), takip tarihi (bugünden önce değil) ve isteğe bağlı performans dönemi. Ret: görüşme yok 422 `development_goal_debrief_not_found`; öğretmen yok/öğretmen değil/ayrılmış 422 `development_goal_teacher_not_found`/`development_goal_not_teacher`/`development_goal_teacher_inactive`; dönem yok/kapalı 422 `development_goal_period_not_found`/`development_goal_period_closed`; takip tarihi 422 `development_goal_follow_up_past`. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici`. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "debriefId": {
+                    "description": "Kaynak gözlem görüşmesi; verilirse öğretmen gözlemin öğretmenidir",
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "teacherMembershipId": {
+                    "description": "Doğrudan hedefte öğretmenin kurum üyeliği",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "performancePeriodId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "İsteğe bağlı performans dönemi (DOM-FIN-124)"
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 500,
+                    "description": "Gelişim hedefi (ör. \"Ders sonunda kazanım yoklaması yapmak\")"
+                  },
+                  "successCriterion": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 1000,
+                    "description": "Hedefe ulaşıldığı neyle anlaşılır"
+                  },
+                  "followUpDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Takip tarihi; bugünden önce olamaz"
+                  }
+                },
+                "required": [
+                  "title",
+                  "successCriterion",
+                  "followUpDate"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "teacherMembershipId": {
+                          "type": "string",
+                          "description": "Hedefin öğretmeni (kurum üyeliği)"
+                        },
+                        "teacherName": {
+                          "type": "string"
+                        },
+                        "source": {
+                          "type": "string",
+                          "enum": [
+                            "observation_debrief",
+                            "direct"
+                          ],
+                          "description": "`observation_debrief` gözlem görüşmesinden, `direct` doğrudan"
+                        },
+                        "debriefId": {
+                          "description": "Kaynak gözlem görüşmesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "observationId": {
+                          "description": "Kaynak görüşmenin gözlemi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "observedDate": {
+                          "description": "Kaynak gözlemin günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "observerMembershipId": {
+                          "description": "Kaynak gözlemin gözlemcisi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "performancePeriodId": {
+                          "description": "Bağlı performans dönemi (DOM-FIN-124)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "performancePeriodName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "title": {
+                          "type": "string",
+                          "description": "Hedef"
+                        },
+                        "successCriterion": {
+                          "type": "string",
+                          "description": "Ölçüt"
+                        },
+                        "followUpDate": {
+                          "type": "string",
+                          "description": "Takip tarihi (YYYY-MM-DD)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "in_progress",
+                            "achieved",
+                            "dropped"
+                          ],
+                          "description": "`open` açık, `in_progress` sürüyor, `achieved` ulaşıldı, `dropped` bırakıldı"
+                        },
+                        "active": {
+                          "type": "boolean",
+                          "description": "Takip sürüyor mu (açık ya da sürüyor)"
+                        },
+                        "overdue": {
+                          "type": "boolean",
+                          "description": "Takip tarihi İstanbul gününe göre geçmiş süren hedef (K-455)"
+                        },
+                        "overdueDays": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Gecikme günü; gecikmemişse 0"
+                        },
+                        "closedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "notes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "note": {
+                                "type": "string"
+                              },
+                              "statusFrom": {
+                                "type": "string",
+                                "enum": [
+                                  "open",
+                                  "in_progress",
+                                  "achieved",
+                                  "dropped"
+                                ],
+                                "description": "Not yazıldığındaki durum"
+                              },
+                              "statusTo": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "open",
+                                      "in_progress",
+                                      "achieved",
+                                      "dropped"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Notla geçilen durum; değişmediyse boş"
+                              },
+                              "nextFollowUpDate": {
+                                "description": "Notla verilen sonraki takip tarihi",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "authorName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "note",
+                              "statusFrom",
+                              "statusTo",
+                              "nextFollowUpDate",
+                              "authorName",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Takip geçmişi, eskiden yeniye; değişmez"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "teacherMembershipId",
+                        "teacherName",
+                        "source",
+                        "debriefId",
+                        "observationId",
+                        "observedDate",
+                        "observerMembershipId",
+                        "performancePeriodId",
+                        "performancePeriodName",
+                        "title",
+                        "successCriterion",
+                        "followUpDate",
+                        "status",
+                        "active",
+                        "overdue",
+                        "overdueDays",
+                        "closedAt",
+                        "createdAt",
+                        "updatedAt",
+                        "version",
+                        "notes"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/development-goals/{goalId}": {
+      "get": {
+        "operationId": "getDevelopmentGoal",
+        "summary": "Gelişim hedefini getir",
+        "tags": [
+          "finance-observation-debriefs"
+        ],
+        "description": "Hedef ve takip geçmişi (not, durum değişikliği, sonraki takip tarihi; eskiden yeniye, değişmez). Okuma denetime yazılır. Görülemeyen ya da başka kurumun hedefi 404. Rol: `yonetici` hepsini; `ogretmen` kendi hedeflerini ve gözlemcisi olduğu gözlemin görüşmesinden doğan hedefleri görür (K-456). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "goalId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "teacherMembershipId": {
+                          "type": "string",
+                          "description": "Hedefin öğretmeni (kurum üyeliği)"
+                        },
+                        "teacherName": {
+                          "type": "string"
+                        },
+                        "source": {
+                          "type": "string",
+                          "enum": [
+                            "observation_debrief",
+                            "direct"
+                          ],
+                          "description": "`observation_debrief` gözlem görüşmesinden, `direct` doğrudan"
+                        },
+                        "debriefId": {
+                          "description": "Kaynak gözlem görüşmesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "observationId": {
+                          "description": "Kaynak görüşmenin gözlemi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "observedDate": {
+                          "description": "Kaynak gözlemin günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "observerMembershipId": {
+                          "description": "Kaynak gözlemin gözlemcisi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "performancePeriodId": {
+                          "description": "Bağlı performans dönemi (DOM-FIN-124)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "performancePeriodName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "title": {
+                          "type": "string",
+                          "description": "Hedef"
+                        },
+                        "successCriterion": {
+                          "type": "string",
+                          "description": "Ölçüt"
+                        },
+                        "followUpDate": {
+                          "type": "string",
+                          "description": "Takip tarihi (YYYY-MM-DD)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "in_progress",
+                            "achieved",
+                            "dropped"
+                          ],
+                          "description": "`open` açık, `in_progress` sürüyor, `achieved` ulaşıldı, `dropped` bırakıldı"
+                        },
+                        "active": {
+                          "type": "boolean",
+                          "description": "Takip sürüyor mu (açık ya da sürüyor)"
+                        },
+                        "overdue": {
+                          "type": "boolean",
+                          "description": "Takip tarihi İstanbul gününe göre geçmiş süren hedef (K-455)"
+                        },
+                        "overdueDays": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Gecikme günü; gecikmemişse 0"
+                        },
+                        "closedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "notes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "note": {
+                                "type": "string"
+                              },
+                              "statusFrom": {
+                                "type": "string",
+                                "enum": [
+                                  "open",
+                                  "in_progress",
+                                  "achieved",
+                                  "dropped"
+                                ],
+                                "description": "Not yazıldığındaki durum"
+                              },
+                              "statusTo": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "open",
+                                      "in_progress",
+                                      "achieved",
+                                      "dropped"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Notla geçilen durum; değişmediyse boş"
+                              },
+                              "nextFollowUpDate": {
+                                "description": "Notla verilen sonraki takip tarihi",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "authorName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "note",
+                              "statusFrom",
+                              "statusTo",
+                              "nextFollowUpDate",
+                              "authorName",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Takip geçmişi, eskiden yeniye; değişmez"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "teacherMembershipId",
+                        "teacherName",
+                        "source",
+                        "debriefId",
+                        "observationId",
+                        "observedDate",
+                        "observerMembershipId",
+                        "performancePeriodId",
+                        "performancePeriodName",
+                        "title",
+                        "successCriterion",
+                        "followUpDate",
+                        "status",
+                        "active",
+                        "overdue",
+                        "overdueDays",
+                        "closedAt",
+                        "createdAt",
+                        "updatedAt",
+                        "version",
+                        "notes"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateDevelopmentGoal",
+        "summary": "Gelişim hedefini düzelt",
+        "tags": [
+          "finance-observation-debriefs"
+        ],
+        "description": "Süren (açık ya da sürüyor) hedefin hedef metni, ölçütü, takip tarihi (bugünden önce değil, 422 `development_goal_follow_up_past`) ve performans dönemi (`null` bağı kaldırır). Kapanan hedef 409 `development_goal_closed`, sürüm tutmazsa 409. `If-Match` zorunlu. Başka kurumun hedefi 404. Rol: yalnız `yonetici`. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 500,
+                    "description": "Gelişim hedefi (ör. \"Ders sonunda kazanım yoklaması yapmak\")"
+                  },
+                  "successCriterion": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 1000,
+                    "description": "Hedefe ulaşıldığı neyle anlaşılır"
+                  },
+                  "followUpDate": {
+                    "description": "Yeni takip tarihi; bugünden önce olamaz",
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "performancePeriodId": {
+                    "description": "Performans dönemi; `null` bağı kaldırır",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "goalId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "teacherMembershipId": {
+                          "type": "string",
+                          "description": "Hedefin öğretmeni (kurum üyeliği)"
+                        },
+                        "teacherName": {
+                          "type": "string"
+                        },
+                        "source": {
+                          "type": "string",
+                          "enum": [
+                            "observation_debrief",
+                            "direct"
+                          ],
+                          "description": "`observation_debrief` gözlem görüşmesinden, `direct` doğrudan"
+                        },
+                        "debriefId": {
+                          "description": "Kaynak gözlem görüşmesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "observationId": {
+                          "description": "Kaynak görüşmenin gözlemi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "observedDate": {
+                          "description": "Kaynak gözlemin günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "observerMembershipId": {
+                          "description": "Kaynak gözlemin gözlemcisi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "performancePeriodId": {
+                          "description": "Bağlı performans dönemi (DOM-FIN-124)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "performancePeriodName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "title": {
+                          "type": "string",
+                          "description": "Hedef"
+                        },
+                        "successCriterion": {
+                          "type": "string",
+                          "description": "Ölçüt"
+                        },
+                        "followUpDate": {
+                          "type": "string",
+                          "description": "Takip tarihi (YYYY-MM-DD)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "in_progress",
+                            "achieved",
+                            "dropped"
+                          ],
+                          "description": "`open` açık, `in_progress` sürüyor, `achieved` ulaşıldı, `dropped` bırakıldı"
+                        },
+                        "active": {
+                          "type": "boolean",
+                          "description": "Takip sürüyor mu (açık ya da sürüyor)"
+                        },
+                        "overdue": {
+                          "type": "boolean",
+                          "description": "Takip tarihi İstanbul gününe göre geçmiş süren hedef (K-455)"
+                        },
+                        "overdueDays": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Gecikme günü; gecikmemişse 0"
+                        },
+                        "closedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "notes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "note": {
+                                "type": "string"
+                              },
+                              "statusFrom": {
+                                "type": "string",
+                                "enum": [
+                                  "open",
+                                  "in_progress",
+                                  "achieved",
+                                  "dropped"
+                                ],
+                                "description": "Not yazıldığındaki durum"
+                              },
+                              "statusTo": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "open",
+                                      "in_progress",
+                                      "achieved",
+                                      "dropped"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Notla geçilen durum; değişmediyse boş"
+                              },
+                              "nextFollowUpDate": {
+                                "description": "Notla verilen sonraki takip tarihi",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "authorName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "note",
+                              "statusFrom",
+                              "statusTo",
+                              "nextFollowUpDate",
+                              "authorName",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Takip geçmişi, eskiden yeniye; değişmez"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "teacherMembershipId",
+                        "teacherName",
+                        "source",
+                        "debriefId",
+                        "observationId",
+                        "observedDate",
+                        "observerMembershipId",
+                        "performancePeriodId",
+                        "performancePeriodName",
+                        "title",
+                        "successCriterion",
+                        "followUpDate",
+                        "status",
+                        "active",
+                        "overdue",
+                        "overdueDays",
+                        "closedAt",
+                        "createdAt",
+                        "updatedAt",
+                        "version",
+                        "notes"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/development-goals/{goalId}/follow-ups": {
+      "post": {
+        "operationId": "followUpDevelopmentGoal",
+        "summary": "Gelişim hedefine takip notu yaz",
+        "tags": [
+          "finance-observation-debriefs"
+        ],
+        "description": "Takip notu (2–1000) geçmişe değişmez satır olarak eklenir (K-455); isteğe bağlı yeni durum ve sonraki takip tarihi. Durum yalnız ileri gider: açık → sürüyor → ulaşıldı ya da bırakıldı (açık doğrudan kapanabilir); geri ya da aynı durum 422 `development_goal_status_invalid`. Sonraki takip tarihi bugünden önce olamaz (422 `development_goal_follow_up_past`), kapanan hedefe verilmez (422 `development_goal_follow_up_closed`). Kapanan hedef 409 `development_goal_closed`. Not metni denetime yazılmaz. `If-Match` hedef sürümü. Başka kurumun hedefi 404. Rol: yalnız `yonetici`. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "note": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 1000,
+                    "description": "Takip notu (görüşme, gözlenen ilerleme)"
+                  },
+                  "status": {
+                    "description": "Yeni durum; boşsa durum değişmez",
+                    "type": "string",
+                    "enum": [
+                      "open",
+                      "in_progress",
+                      "achieved",
+                      "dropped"
+                    ]
+                  },
+                  "nextFollowUpDate": {
+                    "description": "Sonraki takip tarihi; bugünden önce olamaz, kapanan hedefte verilmez",
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  }
+                },
+                "required": [
+                  "note"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "goalId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "teacherMembershipId": {
+                          "type": "string",
+                          "description": "Hedefin öğretmeni (kurum üyeliği)"
+                        },
+                        "teacherName": {
+                          "type": "string"
+                        },
+                        "source": {
+                          "type": "string",
+                          "enum": [
+                            "observation_debrief",
+                            "direct"
+                          ],
+                          "description": "`observation_debrief` gözlem görüşmesinden, `direct` doğrudan"
+                        },
+                        "debriefId": {
+                          "description": "Kaynak gözlem görüşmesi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "observationId": {
+                          "description": "Kaynak görüşmenin gözlemi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "observedDate": {
+                          "description": "Kaynak gözlemin günü",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "observerMembershipId": {
+                          "description": "Kaynak gözlemin gözlemcisi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "performancePeriodId": {
+                          "description": "Bağlı performans dönemi (DOM-FIN-124)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "performancePeriodName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "title": {
+                          "type": "string",
+                          "description": "Hedef"
+                        },
+                        "successCriterion": {
+                          "type": "string",
+                          "description": "Ölçüt"
+                        },
+                        "followUpDate": {
+                          "type": "string",
+                          "description": "Takip tarihi (YYYY-MM-DD)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "in_progress",
+                            "achieved",
+                            "dropped"
+                          ],
+                          "description": "`open` açık, `in_progress` sürüyor, `achieved` ulaşıldı, `dropped` bırakıldı"
+                        },
+                        "active": {
+                          "type": "boolean",
+                          "description": "Takip sürüyor mu (açık ya da sürüyor)"
+                        },
+                        "overdue": {
+                          "type": "boolean",
+                          "description": "Takip tarihi İstanbul gününe göre geçmiş süren hedef (K-455)"
+                        },
+                        "overdueDays": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Gecikme günü; gecikmemişse 0"
+                        },
+                        "closedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "notes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "note": {
+                                "type": "string"
+                              },
+                              "statusFrom": {
+                                "type": "string",
+                                "enum": [
+                                  "open",
+                                  "in_progress",
+                                  "achieved",
+                                  "dropped"
+                                ],
+                                "description": "Not yazıldığındaki durum"
+                              },
+                              "statusTo": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "open",
+                                      "in_progress",
+                                      "achieved",
+                                      "dropped"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Notla geçilen durum; değişmediyse boş"
+                              },
+                              "nextFollowUpDate": {
+                                "description": "Notla verilen sonraki takip tarihi",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "authorName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "note",
+                              "statusFrom",
+                              "statusTo",
+                              "nextFollowUpDate",
+                              "authorName",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Takip geçmişi, eskiden yeniye; değişmez"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "teacherMembershipId",
+                        "teacherName",
+                        "source",
+                        "debriefId",
+                        "observationId",
+                        "observedDate",
+                        "observerMembershipId",
+                        "performancePeriodId",
+                        "performancePeriodName",
+                        "title",
+                        "successCriterion",
+                        "followUpDate",
+                        "status",
+                        "active",
+                        "overdue",
+                        "overdueDays",
+                        "closedAt",
+                        "createdAt",
+                        "updatedAt",
+                        "version",
+                        "notes"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/finance/performance-periods/{periodId}/report-summary": {
       "get": {
         "operationId": "getPerformanceReportSummary",

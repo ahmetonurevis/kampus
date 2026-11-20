@@ -1,5 +1,5 @@
 {
-  "id": "b469001d-df76-4633-9eb9-bf542cc5ddaa",
+  "id": "9f76c23d-6fdd-430f-94bd-610b7f6353e3",
   "prevId": "ecf2184e-a1fb-4fd1-97b9-da2d73262aeb",
   "version": "7",
   "dialect": "postgresql",
@@ -19915,6 +19915,847 @@
       },
       "isRLSEnabled": false
     },
+    "public.observation_debrief_participants": {
+      "name": "observation_debrief_participants",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "debrief_id": {
+          "name": "debrief_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "membership_id": {
+          "name": "membership_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "observation_debrief_participants_member_key": {
+          "name": "observation_debrief_participants_member_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "debrief_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"observation_debrief_participants\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "observation_debrief_participants_debrief_idx": {
+          "name": "observation_debrief_participants_debrief_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "debrief_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "observation_debrief_participants_membership_idx": {
+          "name": "observation_debrief_participants_membership_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "observation_debrief_participants_institution_id_institutions_id_fk": {
+          "name": "observation_debrief_participants_institution_id_institutions_id_fk",
+          "tableFrom": "observation_debrief_participants",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "observation_debrief_participants_debrief_fkey": {
+          "name": "observation_debrief_participants_debrief_fkey",
+          "tableFrom": "observation_debrief_participants",
+          "tableTo": "observation_debriefs",
+          "columnsFrom": [
+            "institution_id",
+            "debrief_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "observation_debrief_participants_membership_fkey": {
+          "name": "observation_debrief_participants_membership_fkey",
+          "tableFrom": "observation_debrief_participants",
+          "tableTo": "memberships",
+          "columnsFrom": [
+            "institution_id",
+            "membership_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "observation_debrief_participants_pkey": {
+          "name": "observation_debrief_participants_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.observation_debriefs": {
+      "name": "observation_debriefs",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "observation_id": {
+          "name": "observation_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "debrief_date": {
+          "name": "debrief_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "strengths": {
+          "name": "strengths",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "development_areas": {
+          "name": "development_areas",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "teacher_comment": {
+          "name": "teacher_comment",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "finalized_at": {
+          "name": "finalized_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "finalized_by_user_id": {
+          "name": "finalized_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "observation_debriefs_observation_key": {
+          "name": "observation_debriefs_observation_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "observation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "observation_debriefs_date_idx": {
+          "name": "observation_debriefs_date_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "debrief_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "observation_debriefs_institution_id_institutions_id_fk": {
+          "name": "observation_debriefs_institution_id_institutions_id_fk",
+          "tableFrom": "observation_debriefs",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "observation_debriefs_observation_fkey": {
+          "name": "observation_debriefs_observation_fkey",
+          "tableFrom": "observation_debriefs",
+          "tableTo": "lesson_observations",
+          "columnsFrom": [
+            "institution_id",
+            "observation_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "observation_debriefs_pkey": {
+          "name": "observation_debriefs_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "observation_debriefs_status_check": {
+          "name": "observation_debriefs_status_check",
+          "value": "\"observation_debriefs\".\"status\" in ('draft', 'finalized')"
+        },
+        "observation_debriefs_text_check": {
+          "name": "observation_debriefs_text_check",
+          "value": "(\"observation_debriefs\".\"strengths\" is null or char_length(\"observation_debriefs\".\"strengths\") between 1 and 4000)\n        and (\"observation_debriefs\".\"development_areas\" is null or char_length(\"observation_debriefs\".\"development_areas\") between 1 and 4000)\n        and (\"observation_debriefs\".\"teacher_comment\" is null or char_length(\"observation_debriefs\".\"teacher_comment\") between 1 and 4000)"
+        },
+        "observation_debriefs_finalized_check": {
+          "name": "observation_debriefs_finalized_check",
+          "value": "((\"observation_debriefs\".\"status\" = 'finalized') = (\"observation_debriefs\".\"finalized_at\" is not null))\n        and ((\"observation_debriefs\".\"finalized_at\" is null) = (\"observation_debriefs\".\"finalized_by_user_id\" is null))\n        and (\"observation_debriefs\".\"status\" = 'draft'\n          or (\"observation_debriefs\".\"strengths\" is not null and \"observation_debriefs\".\"development_areas\" is not null))"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.staff_development_goal_notes": {
+      "name": "staff_development_goal_notes",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "goal_id": {
+          "name": "goal_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status_from": {
+          "name": "status_from",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status_to": {
+          "name": "status_to",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "next_follow_up_date": {
+          "name": "next_follow_up_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "staff_development_goal_notes_goal_idx": {
+          "name": "staff_development_goal_notes_goal_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "goal_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "staff_development_goal_notes_institution_id_institutions_id_fk": {
+          "name": "staff_development_goal_notes_institution_id_institutions_id_fk",
+          "tableFrom": "staff_development_goal_notes",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "staff_development_goal_notes_goal_fkey": {
+          "name": "staff_development_goal_notes_goal_fkey",
+          "tableFrom": "staff_development_goal_notes",
+          "tableTo": "staff_development_goals",
+          "columnsFrom": [
+            "institution_id",
+            "goal_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "staff_development_goal_notes_pkey": {
+          "name": "staff_development_goal_notes_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "staff_development_goal_notes_status_check": {
+          "name": "staff_development_goal_notes_status_check",
+          "value": "\"staff_development_goal_notes\".\"status_from\" in ('open', 'in_progress', 'achieved', 'dropped')\n        and (\"staff_development_goal_notes\".\"status_to\" is null or \"staff_development_goal_notes\".\"status_to\" in ('open', 'in_progress', 'achieved', 'dropped'))"
+        },
+        "staff_development_goal_notes_note_check": {
+          "name": "staff_development_goal_notes_note_check",
+          "value": "char_length(\"staff_development_goal_notes\".\"note\") between 2 and 1000"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.staff_development_goals": {
+      "name": "staff_development_goals",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "teacher_membership_id": {
+          "name": "teacher_membership_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "debrief_id": {
+          "name": "debrief_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "performance_period_id": {
+          "name": "performance_period_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "success_criterion": {
+          "name": "success_criterion",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "follow_up_date": {
+          "name": "follow_up_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'open'"
+        },
+        "closed_at": {
+          "name": "closed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "staff_development_goals_teacher_idx": {
+          "name": "staff_development_goals_teacher_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "teacher_membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "staff_development_goals_debrief_idx": {
+          "name": "staff_development_goals_debrief_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "debrief_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "staff_development_goals_period_idx": {
+          "name": "staff_development_goals_period_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "performance_period_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "staff_development_goals_follow_up_idx": {
+          "name": "staff_development_goals_follow_up_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "follow_up_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "staff_development_goals_institution_id_institutions_id_fk": {
+          "name": "staff_development_goals_institution_id_institutions_id_fk",
+          "tableFrom": "staff_development_goals",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "staff_development_goals_teacher_fkey": {
+          "name": "staff_development_goals_teacher_fkey",
+          "tableFrom": "staff_development_goals",
+          "tableTo": "memberships",
+          "columnsFrom": [
+            "institution_id",
+            "teacher_membership_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "staff_development_goals_debrief_fkey": {
+          "name": "staff_development_goals_debrief_fkey",
+          "tableFrom": "staff_development_goals",
+          "tableTo": "observation_debriefs",
+          "columnsFrom": [
+            "institution_id",
+            "debrief_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "staff_development_goals_period_fkey": {
+          "name": "staff_development_goals_period_fkey",
+          "tableFrom": "staff_development_goals",
+          "tableTo": "performance_periods",
+          "columnsFrom": [
+            "institution_id",
+            "performance_period_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "staff_development_goals_pkey": {
+          "name": "staff_development_goals_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "staff_development_goals_status_check": {
+          "name": "staff_development_goals_status_check",
+          "value": "\"staff_development_goals\".\"status\" in ('open', 'in_progress', 'achieved', 'dropped')"
+        },
+        "staff_development_goals_source_check": {
+          "name": "staff_development_goals_source_check",
+          "value": "\"staff_development_goals\".\"source\" in ('observation_debrief', 'direct')"
+        },
+        "staff_development_goals_source_debrief_check": {
+          "name": "staff_development_goals_source_debrief_check",
+          "value": "(\"staff_development_goals\".\"source\" = 'observation_debrief') = (\"staff_development_goals\".\"debrief_id\" is not null)"
+        },
+        "staff_development_goals_text_check": {
+          "name": "staff_development_goals_text_check",
+          "value": "char_length(\"staff_development_goals\".\"title\") between 2 and 500\n        and char_length(\"staff_development_goals\".\"success_criterion\") between 2 and 1000"
+        },
+        "staff_development_goals_closed_check": {
+          "name": "staff_development_goals_closed_check",
+          "value": "(\"staff_development_goals\".\"status\" in ('achieved', 'dropped')) = (\"staff_development_goals\".\"closed_at\" is not null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.org_assignments": {
       "name": "org_assignments",
       "schema": "",
@@ -24177,190 +25018,6 @@
         "payroll_tax_carryovers_archive_check": {
           "name": "payroll_tax_carryovers_archive_check",
           "value": "(\"payroll_tax_carryovers\".\"archived_at\" is null) = (\"payroll_tax_carryovers\".\"archived_by_user_id\" is null)"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.performance_reports": {
-      "name": "performance_reports",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "review_id": {
-          "name": "review_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "manager_opinion": {
-          "name": "manager_opinion",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "finalized_at": {
-          "name": "finalized_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "finalized_by_user_id": {
-          "name": "finalized_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "finalized_by_name": {
-          "name": "finalized_by_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "acknowledged_date": {
-          "name": "acknowledged_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "acknowledgement_channel": {
-          "name": "acknowledgement_channel",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "acknowledgement_recorded_at": {
-          "name": "acknowledgement_recorded_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "acknowledgement_recorded_by_user_id": {
-          "name": "acknowledgement_recorded_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "acknowledgement_recorded_by_name": {
-          "name": "acknowledgement_recorded_by_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "performance_reports_review_key": {
-          "name": "performance_reports_review_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "review_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "performance_reports_institution_id_institutions_id_fk": {
-          "name": "performance_reports_institution_id_institutions_id_fk",
-          "tableFrom": "performance_reports",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "performance_reports_review_fkey": {
-          "name": "performance_reports_review_fkey",
-          "tableFrom": "performance_reports",
-          "tableTo": "performance_reviews",
-          "columnsFrom": [
-            "institution_id",
-            "review_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "performance_reports_pkey": {
-          "name": "performance_reports_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "performance_reports_opinion_check": {
-          "name": "performance_reports_opinion_check",
-          "value": "char_length(\"performance_reports\".\"manager_opinion\") between 10 and 2000"
-        },
-        "performance_reports_channel_check": {
-          "name": "performance_reports_channel_check",
-          "value": "\"performance_reports\".\"acknowledgement_channel\" is null or \"performance_reports\".\"acknowledgement_channel\" in ('paper', 'email', 'in_person')"
-        },
-        "performance_reports_ack_check": {
-          "name": "performance_reports_ack_check",
-          "value": "((\"performance_reports\".\"acknowledged_date\" is null) = (\"performance_reports\".\"acknowledgement_channel\" is null))\n        and ((\"performance_reports\".\"acknowledged_date\" is null) = (\"performance_reports\".\"acknowledgement_recorded_at\" is null))\n        and ((\"performance_reports\".\"acknowledged_date\" is null) = (\"performance_reports\".\"acknowledgement_recorded_by_user_id\" is null))\n        and ((\"performance_reports\".\"acknowledged_date\" is null) = (\"performance_reports\".\"acknowledgement_recorded_by_name\" is null))"
         }
       },
       "isRLSEnabled": false

@@ -873,6 +873,15 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Cevap değişirse:** Çalışma süresi sayılırsa katılım saati ek ders/fazla çalışma girdisine bağlanır (ON-196 deseni); taahhüt gerekirse atamaya taahhüt süresi ve tutarı eklenir (migration) ve ayrılış dosyası (`DOM-FIN-118`) iade alacağını gösterir; ön büroya liste kapanacaksa okuma rolü daralır; asgari saat gerekirse İK raporuna personel başı yıllık saat eklenir.
 - **Cevap:** bekleniyor
 
+#### H-99 · Ders gözlem kaydının işlenme dayanağı, öğretmenin erişimi ve saklama süresi
+
+- **Kural:** `DOM-FIN-130`; K-446, K-447; ON-206. İlgili: H-92 (performans değerlendirmesi), DOM-FIN-122 (özlük saklama ve imha).
+- **Soru:** (1) Ders gözlem kaydı (ölçüt seviyeleri, notlar, genel değerlendirme, puan) KVKK md. 5/2-c ya da 5/2-f dayanağıyla, ayrıca açık rıza istenmeden işlenebilir mi; çalışan aydınlatma metnine ayrıca eklenmeli mi? (2) Gözlenen öğretmenin kaydı yalnız tamamlandıktan sonra görmesi ve itiraz ya da görüş ekleyememesi yeterli mi; taslağın öğretmene kapalı tutulması md. 11 (bilgi talep hakkı) ile çelişir mi? (3) Gözlemci başka bir öğretmen (zümre başkanı, mentor) olduğunda gözlemcinin kaydı görmesi ölçülü mü? (4) Gözlem kayıtları ne kadar saklanmalı; iş ilişkisi bitince özlük imha süresine mi bağlanmalı, düşük puan fesih dayanağı yapılacaksa (4857 md. 18–19) savunma kaydıyla birlikte mi tutulmalı?
+- **Bugünkü varsayım:** Gözlem kaydı meşru menfaat ve iş sözleşmesinin ifası dayanağıyla işlenir; yönetici hepsini, gözlemci kendi kaydını, gözlenen öğretmen yalnız tamamlanmış kaydını görür (öğretmen ekranı henüz yok); öğretmen görüş eklemez. Her okuma denetim kaydına alan adlarıyla düşer, not metni denetime ve loga yazılmaz. Tamamlanan gözlem değişmez ve silinmez; henüz özlük saklama ve imha kategorisine bağlı değildir.
+- **Kodda:** `lib/finance-lesson-observations.ts` (`canViewLessonObservation`, `LESSON_OBSERVATION_READ_ROLES`); `services/finance-lesson-observations.ts` (`listLessonObservationsFor`, `getLessonObservationFor`); tablo `lesson_observations`.
+- **Cevap değişirse:** Açık rıza ya da ek aydınlatma gerekirse gözlem açılışına aydınlatma işareti eklenir; öğretmenin taslağı görmesi ya da görüş eklemesi gerekirse görünürlük kuralı ve öğretmen ekranına görüş alanı eklenir; saklama süresi belirlenince `lesson_observations` özlük imha kategorisine (DOM-FIN-122) eklenir.
+- **Cevap:** bekleniyor
+
 ## Mali müşavire
 
 #### M-01 · Eğitim hizmetinde fatura ve e-Arşiv zorunluluğu

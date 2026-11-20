@@ -7,6 +7,7 @@ import { and, eq } from 'drizzle-orm'
 import type { App } from '../src/app.ts'
 import type { Role } from '../src/auth.ts'
 import type { Database } from '../src/db/client.ts'
+import { insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { memberships } from '../src/db/schema/auth.ts'
 import {
@@ -35,6 +36,13 @@ import {
 const URL = '/api/v1/finance/department-meetings'
 const DECISIONS_URL = '/api/v1/finance/department-meeting-decisions'
 const SUBJECTS_URL = '/api/v1/finance/department-meeting-subjects'
+
+/** Yalnız B kurumunda bulunan ders kaydı (zümre seçeneği kapsamı). */
+const B_SUBJECT = {
+  collection: 'subjects' as const,
+  id: 'b-zumre',
+  data: { id: 'b-zumre', name: 'B Kurumu Dersi' },
+}
 
 type Json = Record<string, unknown>
 type AgendaItem = { id: string; title: string; discussion: string | null }
@@ -169,6 +177,10 @@ describe('DOM-FIN-132: zümre toplantısı tutanağı uçları', () => {
       body,
       ifMatch(decision.version),
     )
+  const editDecision = (cookie: string, meeting: { id: string }, decision: Decision, body: Json) =>
+    call('PATCH', decisionUrl(meeting, decision), cookie, body, ifMatch(decision.version))
+  const removeDecision = (cookie: string, meeting: { id: string }, decision: Decision) =>
+    call('DELETE', decisionUrl(meeting, decision), cookie, undefined, ifMatch(decision.version))
   const decisionBody = (t: Tenant, meeting: Meeting, extra: Json = {}) => ({
     agendaItemId: meeting.agenda[1]?.id,
     text: 'Ortak yazılı sınav takvimi hazırlanacak.',
@@ -429,37 +441,16 @@ describe('DOM-FIN-132: zümre toplantısı tutanağı uçları', () => {
     )
 
     const edited = ok<Decision>(
-      await call(
-        'PATCH',
-        decisionUrl(meeting, decision),
+      await editDecision(
         t.admin,
+        meeting,
+        decision,
         decisionBody(t, meeting, { text: 'Ortak sınav takvimi ekim başında duyurulacak.' }),
-        ifMatch(decision.version),
       ),
     )
     assert.equal(edited.text, 'Ortak sınav takvimi ekim başında duyurulacak.')
-    assertError(
-      await call(
-        'DELETE',
-        decisionUrl(meeting, decision),
-        t.admin,
-        undefined,
-        ifMatch(decision.version),
-      ),
-      409,
-    )
-    assert.deepEqual(
-      ok(
-        await call(
-          'DELETE',
-          decisionUrl(meeting, early),
-          t.admin,
-          undefined,
-          ifMatch(early.version),
-        ),
-      ),
-      { id: early.id },
-    )
+    assertError(await removeDecision(t.admin, meeting, decision), 409)
+    assert.deepEqual(ok(await removeDecision(t.admin, meeting, early)), { id: early.id })
     const after = ok<Meeting>(await get(urlOf(meeting), t.admin))
     assert.deepEqual(
       after.decisions.map((row) => row.id),
@@ -514,21 +505,11 @@ describe('DOM-FIN-132: zümre toplantısı tutanağı uçları', () => {
       'department_meeting_finalized',
     )
     assertError(
-      await call(
-        'PATCH',
-        decisionUrl(final, late),
-        t.admin,
-        decisionBody(t, final, { text: 'Değişti' }),
-        ifMatch(late.version),
-      ),
+      await editDecision(t.admin, final, late, decisionBody(t, final, { text: 'Değişti' })),
       409,
       'department_meeting_finalized',
     )
-    assertError(
-      await call('DELETE', decisionUrl(final, late), t.admin, undefined, ifMatch(late.version)),
-      409,
-      'department_meeting_finalized',
-    )
+    assertError(await removeDecision(t.admin, final, late), 409, 'department_meeting_finalized')
 
     // Termini geçmiş açık kararlar (bugün 2026-10-06).
     const overdue = await listOf(t.admin, `${DECISIONS_URL}?overdue=true`)
@@ -564,12 +545,9 @@ describe('DOM-FIN-132: zümre toplantısı tutanağı uçları', () => {
       409,
       'department_decision_cancelled',
     )
-    assertError(
-      await followUp(t.admin, final, later, { status: 'completed' }).then(() =>
-        followUp(t.admin, final, later, { status: 'completed' }),
-      ),
-      409,
-    )
+    ok<Decision>(await followUp(t.admin, final, later, { status: 'completed' }))
+    // Eski sürümle ikinci yazma 409; takip notu sürüm kilidine tabidir.
+    assertError(await followUp(t.admin, final, later, { status: 'open' }), 409)
     const [audit] = await auditOf(t.id, 'finance.department_meeting.finalize')
     assert.deepEqual(audit?.changes?.fields, ['status', 'signedDate'])
 
@@ -608,45 +586,29 @@ describe('DOM-FIN-132: zümre toplantısı tutanağı uçları', () => {
     const bMeeting = await draft(b)
     const bDecision = ok<Decision>(await decide(b.admin, bMeeting, decisionBody(b, bMeeting)), 201)
     const bUrl = urlOf(bMeeting)
+    await insertMissingRecords(db, b.id, [B_SUBJECT], FIXED_NOW)
 
     assert.equal((await listOf(a.admin)).meta.total, 0)
+    const aSubjects = ok<{ id: string }[]>(await get(SUBJECTS_URL, a.admin))
+    assert.ok(!aSubjects.some((subject) => subject.id === B_SUBJECT.id))
+    assert.deepEqual(ok(await get(SUBJECTS_URL, b.admin)), [
+      { id: 'b-zumre', name: 'B Kurumu Dersi' },
+    ])
+    assertError(
+      await create(a.admin, bodyFor(a, { subjectId: B_SUBJECT.id })),
+      422,
+      'department_meeting_subject_not_found',
+    )
     assertError(await get(bUrl, a.admin), 404)
     assertError(await patch(a.admin, bMeeting, bodyFor(a)), 404)
     assertError(await finalize(a.admin, bMeeting), 404)
     assertError(await decide(a.admin, bMeeting, decisionBody(a, bMeeting)), 404)
-    assertError(
-      await call(
-        'PATCH',
-        decisionUrl(bMeeting, bDecision),
-        a.admin,
-        decisionBody(a, bMeeting),
-        ifMatch(bDecision.version),
-      ),
-      404,
-    )
-    assertError(
-      await call(
-        'DELETE',
-        decisionUrl(bMeeting, bDecision),
-        a.admin,
-        undefined,
-        ifMatch(bDecision.version),
-      ),
-      404,
-    )
+    assertError(await editDecision(a.admin, bMeeting, bDecision, decisionBody(a, bMeeting)), 404)
+    assertError(await removeDecision(a.admin, bMeeting, bDecision), 404)
     assertError(await followUp(a.admin, bMeeting, bDecision, { status: 'completed' }), 404)
 
     const aMeeting = await draft(a)
-    assertError(
-      await call(
-        'PATCH',
-        decisionUrl(aMeeting, bDecision),
-        a.admin,
-        decisionBody(a, aMeeting),
-        ifMatch(bDecision.version),
-      ),
-      404,
-    )
+    assertError(await editDecision(a.admin, aMeeting, bDecision, decisionBody(a, aMeeting)), 404)
     assertError(
       await create(
         a.admin,

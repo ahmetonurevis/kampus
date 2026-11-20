@@ -3551,6 +3551,53 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: gözlem sonrası görüşme ve gelişim hedefi (ON-209; DOM-FIN-133, K-456).
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'kayıt',
+          'GET /api/v1/finance/lesson-observations/:observationId/debrief',
+          "call('GET', debriefUrl(setB.observation), a.admin)",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/lesson-observations/:observationId/debrief',
+          'openDebrief(a.admin, setB.observation',
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/observation-debriefs/:debriefId',
+          'patchDebrief(a.admin, debriefB',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/observation-debriefs/:debriefId/finalize',
+          'finalize(a.admin, debriefB)',
+        ],
+        ['liste', 'GET /api/v1/finance/development-goals', "call('GET', GOALS, a.admin)"],
+        ['gövde', 'POST /api/v1/finance/development-goals', 'institutionId: b.id,'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/development-goals/:goalId',
+          '`${GOALS}/${String(goalB.id)}`, a.admin',
+        ],
+        ['kayıt', 'PATCH /api/v1/finance/development-goals/:goalId', 'patchGoal(a.admin, goalB'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/development-goals/:goalId/follow-ups',
+          'followUp(a.admin, goalB',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-observation-debriefs.test.ts',
+        'DOM-FIN-133: başka kurumun görüşmesi ve hedefi 404 ve değişmez; gövdedeki institutionId 400',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

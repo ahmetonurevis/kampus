@@ -50,6 +50,7 @@ import { useListState } from '@/hooks/use-list-state.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { notify } from '@/lib/notify.ts'
 import { RootError } from '../management/FormParts.tsx'
+import { ObservationDebriefPanel } from './FinanceObservationDebriefPanel.tsx'
 import {
   defaultTemplateFormValues,
   emptyCriterion,
@@ -792,7 +793,7 @@ function ObservationHeader({ observation }: { observation: LessonObservationDeta
   )
 }
 
-/** Tamamlanmış gözlem: salt okunur seviyeler, notlar ve sunucunun puanı. */
+/** Tamamlanmış gözlem: salt okunur seviyeler, notlar, sunucunun puanı ve görüşme (ON-209). */
 function ObservationView({ observation }: { observation: LessonObservationDetail }) {
   const byId = new Map(observation.ratings.map((rating) => [rating.criterionId, rating]))
   return (
@@ -820,6 +821,7 @@ function ObservationView({ observation }: { observation: LessonObservationDetail
       </dl>
       <p className="text-sm">Genel değerlendirme: {observation.generalNote ?? '—'}</p>
       <p className="text-sm text-muted-foreground">Gözlem tamamlandı; değiştirilemez.</p>
+      <ObservationDebriefPanel observation={observation} />
     </div>
   )
 }

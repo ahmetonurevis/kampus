@@ -230,6 +230,9 @@ const FinanceTeacherMentorshipsSection = lazy(async () => ({
   default: (await import('./FinanceTeacherMentorshipsSection.tsx'))
     .FinanceTeacherMentorshipsSection,
 }))
+const FinanceVisitorsSection = lazy(async () => ({
+  default: (await import('./FinanceVisitorsSection.tsx')).FinanceVisitorsSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -304,6 +307,7 @@ const VIEWS = {
   lessonObservations: { label: 'Ders gözlemleri', param: 'ders-gozlemleri' },
   developmentGoals: { label: 'Gelişim hedefleri', param: 'gelisim-hedefleri' },
   teacherMentorships: { label: 'Mentorluk', param: 'mentorluk' },
+  visitors: { label: 'Ziyaretçiler', param: 'ziyaretciler' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -367,6 +371,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Ders gözlemleri (DOM-FIN-130) yalnız yöneticidedir; gözlem kişisel veridir (K-447).
  * Gelişim hedefleri (DOM-FIN-133) yalnız yöneticidedir; hedef kişisel veridir (K-456).
  * Mentorluk (DOM-FIN-136) yalnız yöneticidedir; görüşme notu kişisel veridir (K-465).
+ * Ziyaretçiler (DOM-FIN-141) ikisine açıktır; ayar ve saklama yöneticide (K-478, K-480).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -627,6 +632,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'lessonObservations' ? <FinanceLessonObservationsSection /> : null}
         {tab === 'developmentGoals' ? <FinanceDevelopmentGoalsSection /> : null}
         {tab === 'teacherMentorships' ? <FinanceTeacherMentorshipsSection /> : null}
+        {tab === 'visitors' ? <FinanceVisitorsSection isManager={isManager} /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

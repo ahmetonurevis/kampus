@@ -30,6 +30,9 @@ const templateOf = (institutionId: string) =>
 const versionOf = (institutionId: string) =>
   eq(lessonObservationTemplateVersions.institutionId, institutionId)
 const observationOf = (institutionId: string) => eq(lessonObservations.institutionId, institutionId)
+/** Arşivlenmemiş gözlem: arşivli taslak okunmaz ve yazılmaz (K-446). */
+const liveObservationOf = (institutionId: string) =>
+  and(observationOf(institutionId), isNull(lessonObservations.archivedAt))
 
 // --- Şablon --------------------------------------------------------------------------------------
 
@@ -420,7 +423,7 @@ export async function findLessonObservation(
   id: string,
 ): Promise<StoredLessonObservation | null> {
   const [row] = await observationBase(db)
-    .where(and(observationOf(institutionId), eq(lessonObservations.id, id)))
+    .where(and(liveObservationOf(institutionId), eq(lessonObservations.id, id)))
     .limit(1)
   return row === undefined ? null : toObservation(row)
 }
@@ -442,7 +445,7 @@ export async function listLessonObservations(
 ): Promise<{ items: StoredLessonObservation[]; total: number }> {
   const search = query.q === undefined ? undefined : foldSearch(query.q)
   const where = and(
-    observationOf(institutionId),
+    liveObservationOf(institutionId),
     visibleTo(viewerMembershipId),
     query.status === undefined ? undefined : eq(lessonObservations.status, query.status),
     query.performancePeriodId === undefined
@@ -543,7 +546,7 @@ export async function updateLessonObservation(
     .set({ ...input.patch, updatedAt: input.now, version: input.expectedVersion + 1 })
     .where(
       and(
-        observationOf(institutionId),
+        liveObservationOf(institutionId),
         eq(lessonObservations.id, input.id),
         eq(lessonObservations.version, input.expectedVersion),
         eq(lessonObservations.status, 'draft'),
@@ -570,7 +573,28 @@ export async function completeLessonObservation(
     })
     .where(
       and(
-        observationOf(institutionId),
+        liveObservationOf(institutionId),
+        eq(lessonObservations.id, input.id),
+        eq(lessonObservations.version, input.expectedVersion),
+        eq(lessonObservations.status, 'draft'),
+      ),
+    )
+    .returning({ id: lessonObservations.id })
+  return rows.length === 1
+}
+
+/** Taslak arşivi (K-446); yalnız taslak ve sürüm tutarsa. */
+export async function archiveLessonObservation(
+  tx: Database,
+  institutionId: string,
+  input: { id: string; expectedVersion: number; now: Date },
+): Promise<boolean> {
+  const rows = await tx
+    .update(lessonObservations)
+    .set({ archivedAt: input.now, updatedAt: input.now, version: input.expectedVersion + 1 })
+    .where(
+      and(
+        liveObservationOf(institutionId),
         eq(lessonObservations.id, input.id),
         eq(lessonObservations.version, input.expectedVersion),
         eq(lessonObservations.status, 'draft'),

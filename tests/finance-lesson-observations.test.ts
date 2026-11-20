@@ -13,6 +13,7 @@ import {
   lessonObservationUpdateSchema,
   OBSERVATION_LEVELS,
   planLessonObservation,
+  planLessonObservationArchive,
   planLessonObservationComplete,
   planLessonObservationTemplate,
   planLessonObservationTemplateArchive,
@@ -394,4 +395,12 @@ test('DOM-FIN-130 K-447: yönetici hepsini, gözlemci kendi kaydını, gözlenen
   )
   for (const role of ['onburo', 'veli', 'ogrenci'])
     assert.equal(canViewLessonObservation({ role, membershipId: 'm-selin' }, completed), false)
+})
+
+test('DOM-FIN-130 K-446: yalnız taslak arşivlenir; tamamlanan gözlem 409', () => {
+  planLessonObservationArchive({ status: 'draft' })
+  assert.throws(
+    () => planLessonObservationArchive({ status: 'completed' }),
+    isDomainError('observation_completed', 'conflict'),
+  )
 })

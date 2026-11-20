@@ -7,6 +7,7 @@ import {
   lessonObservationScore,
   lessonObservationUpdateSchema,
   planLessonObservation,
+  planLessonObservationArchive,
   planLessonObservationComplete,
   planLessonObservationTemplate,
   planLessonObservationTemplateArchive,
@@ -20,6 +21,7 @@ import { dayKey } from '@kampus/school-core/lib/format.ts'
 
 import type { Database } from '../db/client.ts'
 import {
+  archiveLessonObservation,
   archiveObservationTemplate,
   completeLessonObservation,
   findLessonObservation,
@@ -588,6 +590,42 @@ export function completeLessonObservationCommand(
           'completedAt',
         ])
         body = { data: await observationBody(tx, ctx, id) }
+      },
+    },
+    () => ({ statusCode: 200, body }),
+    idempotency,
+  )
+}
+
+/** Taslak arşivi (K-446): yanlış açılmış taslak listeden kalkar; tamamlanan gözlem 409. */
+export function archiveLessonObservationCommand(
+  ctx: ServiceContext,
+  id: string,
+  input: unknown,
+  expectedVersion: number,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  const entity = { type: OBSERVATION_ENTITY, id }
+  const body = { data: { id, archivedAt: ctx.now.toISOString() } }
+  return runCommand(
+    ctx,
+    {
+      action: 'finance.lesson_observation.archive',
+      collections: [],
+      entity,
+      load: async (tx) => {
+        lessonObservationEmptySchema.parse(input)
+        const observation = await loadObservationForWrite(tx, ctx, id, expectedVersion)
+        return { run: () => planLessonObservationArchive(observation) }
+      },
+      after: async (tx) => {
+        const saved = await archiveLessonObservation(tx, ctx.institutionId, {
+          id,
+          expectedVersion,
+          now: ctx.now,
+        })
+        if (!saved) throw new ConflictError()
+        await auditWork(tx, ctx, 'finance.lesson_observation.archive', entity, ['archivedAt'])
       },
     },
     () => ({ statusCode: 200, body }),

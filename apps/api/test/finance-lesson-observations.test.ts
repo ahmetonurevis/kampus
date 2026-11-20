@@ -112,6 +112,8 @@ describe('DOM-FIN-130: ders gözlem formu uçları', () => {
     call('PATCH', `${OBSERVATIONS}/${String(row.id)}`, cookie, body, ifMatch(row.version))
   const complete = (cookie: string | null, row: Json) =>
     call('POST', `${OBSERVATIONS}/${String(row.id)}/complete`, cookie, {}, ifMatch(row.version))
+  const archive = (cookie: string | null, row: Json) =>
+    call('POST', `${OBSERVATIONS}/${String(row.id)}/archive`, cookie, {}, ifMatch(row.version))
   const rowsOf = (institutionId: string) =>
     db.select().from(lessonObservations).where(eq(lessonObservations.institutionId, institutionId))
 
@@ -247,6 +249,7 @@ describe('DOM-FIN-130: ders gözlem formu uçları', () => {
     )
     assertError(await patch(a.admin, rowB, { generalNote: 'x' }), 404)
     assertError(await complete(a.admin, rowB), 404)
+    assertError(await archive(a.admin, rowB), 404)
     assertError(await call('GET', `${OBSERVATIONS}/${String(rowB.id)}`, a.admin), 404)
     assertError(
       await observe(a.admin, { templateId: formB.id, teacherMembershipId: selinB.membershipId }),
@@ -286,6 +289,44 @@ describe('DOM-FIN-130: ders gözlem formu uçları', () => {
     assert.equal(list.meta.total, 0)
     const [row] = await rowsOf(b.id)
     assert.equal(row?.version, 1)
+  })
+
+  test('DOM-FIN-130 K-446: taslak arşivlenir ve listeden kalkar; tamamlanan gözlem arşivlenmez', async () => {
+    const t = await institution()
+    const form = await template(t)
+    const selin = await person(t, 'ogretmen', 'Selin Kaya')
+    const draft = ok(
+      await observe(t.admin, { templateId: form.id, teacherMembershipId: selin.membershipId }),
+      201,
+    )
+    assertError(await archive(t.admin, { ...draft, version: 9 }), 409)
+    const archived = ok(await archive(t.admin, draft))
+    assert.equal(archived.id, draft.id)
+    assertError(await call('GET', `${OBSERVATIONS}/${String(draft.id)}`, t.admin), 404)
+    assertError(await patch(t.admin, { ...draft, version: 2 }, { generalNote: 'x' }), 404)
+    const list = (await call('GET', OBSERVATIONS, t.admin)).json() as { meta: { total: number } }
+    assert.equal(list.meta.total, 0)
+
+    let done = ok(
+      await observe(t.admin, { templateId: form.id, teacherMembershipId: selin.membershipId }),
+      201,
+    )
+    done = ok(
+      await patch(t.admin, done, {
+        ratings: [
+          { criterionId: 'k1', level: 3 },
+          { criterionId: 'k2', level: 5 },
+        ],
+        generalNote: 'Hedef seviyede',
+      }),
+    )
+    done = ok(await complete(t.admin, done))
+    assertError(await archive(t.admin, done), 409, 'observation_completed')
+    const frontDesk = await signInAs(app, await createMember(app, t.id, 'onburo'))
+    assertError(await archive(frontDesk, done), 403)
+    const rows = await rowsOf(t.id)
+    assert.equal(rows.filter((row) => row.archivedAt !== null).length, 1)
+    assert.equal(rows.find((row) => row.id === done.id)?.archivedAt, null)
   })
 
   test('DOM-FIN-130: finance modülü kapalıyken 403 module_disabled', async () => {

@@ -13,6 +13,7 @@ import {
 
 import { contextOf } from '../plugins/authenticate.ts'
 import {
+  archiveLessonObservationCommand,
   archiveObservationTemplateCommand,
   completeLessonObservationCommand,
   createLessonObservationCommand,
@@ -28,6 +29,7 @@ import type { CommandResponse } from '../services/operation-runner.ts'
 import { captureInput, options, rejectIfMatch, requireIfMatch } from './commands.ts'
 import { commandErrors, commandHeadersSchema } from './commands.schemas.ts'
 import {
+  observationArchiveResponse,
   observationDetailResponse,
   observationListQuery,
   observationListResponse,
@@ -324,6 +326,34 @@ export function registerFinanceLessonObservationRoutes(app: FastifyInstance) {
         opts.idempotency,
       )
       return observationResponse.parse(sendBody(reply, result))
+    },
+  )
+
+  typed.post(
+    `${OBSERVATIONS}/:observationId/archive`,
+    {
+      preValidation: [...managers, requireIfMatch(), captureInput()],
+      schema: {
+        operationId: 'archiveLessonObservation',
+        tags,
+        summary: 'Gözlem taslağını arşivle',
+        description: `Yanlış açılmış taslak arşivlenir; listede ve okumada görünmez, düzeltilemez (K-446). Tamamlanan gözlem arşivlenmez: 409 \`observation_completed\`. Gövde boş nesne. \`If-Match\` zorunlu. Başka kurumun ya da arşivli gözlem 404. ${MANAGER}`,
+        headers: commandHeadersSchema('optional', { ifMatch: 'required' }),
+        params: observationParams,
+        body: lessonObservationEmptySchema,
+        response: { 200: observationArchiveResponse, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const opts = options(request, 'optional')
+      const result = await archiveLessonObservationCommand(
+        contextOf(request),
+        request.params.observationId,
+        request.commandInput,
+        expected(opts.expectedVersion),
+        opts.idempotency,
+      )
+      return observationArchiveResponse.parse(sendBody(reply, result))
     },
   )
 }

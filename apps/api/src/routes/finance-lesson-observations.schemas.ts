@@ -114,5 +114,10 @@ export const observationDetailResponse = dataResponse(
 )
 export const observationResponse = observationDetailResponse
 
+/** Taslak arşivinin yanıtı: arşivli gözlem okunmaz, yalnız kimlik ve an döner. */
+export const observationArchiveResponse = dataResponse(
+  z.object({ id: z.string(), archivedAt: z.string().describe('Arşiv anı (ISO 8601 UTC)') }),
+)
+
 export const templateParams = z.object({ templateId: z.uuid('Form geçersiz.') })
 export const observationParams = z.object({ observationId: z.uuid('Gözlem geçersiz.') })

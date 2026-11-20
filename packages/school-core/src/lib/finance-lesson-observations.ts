@@ -620,6 +620,20 @@ export function planLessonObservationComplete(
 }
 
 /**
+ * Taslak arşivi (K-446): yanlış açılmış taslak listeden kalkar; tamamlanan gözlem arşivlenmez
+ * (409), kayıt olarak kalır.
+ */
+export function planLessonObservationArchive(observation: {
+  status: LessonObservationStatus
+}): void {
+  if (observation.status === 'completed')
+    throw conflict(
+      'observation_completed',
+      'Tamamlanan gözlem arşivlenmez; yalnız taslak arşivlenir.',
+    )
+}
+
+/**
  * Gözlem görünürlüğü (K-447): yönetici hepsini; gözlemci kendi gözlemini (taslak dahil); gözlenen
  * öğretmen yalnız tamamlanmış gözlemini görür. Diğer roller görmez.
  */

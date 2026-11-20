@@ -3668,6 +3668,41 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: performans raporu (ON-220; DOM-FIN-137, K-468).
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'kayıt',
+          'GET /api/v1/finance/performance-periods/:periodId/report-summary',
+          'summary(b.admin, p)',
+        ],
+        ['kayıt', 'GET /api/v1/finance/performance-periods/:periodId/reports', 'rows(b.admin, p)'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/performance-reviews/:reviewId/report',
+          'report(b.admin, review)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/performance-reviews/:reviewId/report/finalize',
+          'finalize(b.admin, review)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/performance-reviews/:reviewId/report/acknowledge',
+          'acknowledge(b.admin, review)',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-performance-reports.test.ts',
+        'DOM-FIN-137: başka kurumun dönemi ve raporu 404; A değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

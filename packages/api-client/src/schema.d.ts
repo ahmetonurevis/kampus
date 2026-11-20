@@ -12812,6 +12812,106 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/performance-periods/{periodId}/report-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Performans döneminin rapor özeti
+         * @description Dönemdeki personel kaydı, genel puan ortalaması (iki ondalık), en düşük ve en yüksek puan, bant dağılımı (`1` 1,00–1,99 … `5` 5,00; puanı eksik kayıt ayrı), rapora giren gözlem sayısı ve 100'lük ortalaması, öz değerlendirme gönderen, kesinleşen ve okunan rapor sayısı (DOM-FIN-137, K-466). Kişi adı ve kimliği taşımaz, okuma denetime yazılmaz. Başka kurumun dönemi 404. Rol: yalnız `yonetici` (K-468; performans raporu kişiseldir). Modül `finance`.
+         */
+        get: operations["getPerformanceReportSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/performance-periods/{periodId}/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Dönemin personel başına rapor satırları
+         * @description Personel adına göre: genel puan, öz değerlendirme durumu, rapora giren gözlem sayısı ve ortalaması, rapor durumu (kesinleşmedi, kesinleşti, okundu) ve okuma kaydı (K-466). Okuma aynı transaction'da `finance.performance_report.list` denetimine (alan adları, satır sayısı) yazılır (K-468). Başka kurumun dönemi 404. Rol: yalnız `yonetici` (K-468; performans raporu kişiseldir). Modül `finance`.
+         */
+        get: operations["listPerformanceReports"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/performance-reviews/{reviewId}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Personel × dönem performans raporu
+         * @description Bölümler (K-466): dönem sonu değerlendirmesi (hedefler, puanlar, genel puan, ara görüşme, personel görüşü), öz değerlendirme özeti (yalnız gönderildiyse soru ve cevaplar, puanlı soruların ortalaması, yönetici görüşü), dönemdeki tamamlanmış ders gözlemleri (döneme bağlı ya da günü dönem içinde; kesinleşmiş raporda kesinleştirme anına kadar tamamlananlar) ve puan ortalaması, döneme bağlı gelişim hedefleri (açık, sürüyor, ulaşıldı; kesinleşmiş raporda kesinleştirme anındaki durumuyla, K-468), yönetici görüşü; kesinleştirme ve "okudum" kaydı. Çok kaynaklı geri bildirim bölümü sonraki işte eklenir (`sections`). Her okuma aynı transaction'da denetime yazılır: `purpose=view` `finance.performance_report.read`, `purpose=pdf` `finance.performance_report.export` (alan adları; K-468). Rol: `yonetici` her raporu, `ogretmen` yalnız kendi kesinleşmiş raporunu okur; başka personelin ya da kesinleşmemiş rapor 404. Başka kurumun kaydı 404. Modül `finance`.
+         */
+        get: operations["getPerformanceReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/performance-reviews/{reviewId}/report/finalize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Performans raporunu kesinleştir
+         * @description Yönetici görüşüyle (10–2000) raporu kesinleştirir (K-467). Dönem kapanmamışsa 422 `performance_report_period_open`, rapor zaten kesinleştiyse 409 `performance_report_finalized`, raporun sahibi yöneticinin kendisiyse 422 `performance_report_self`. Kesinleşen raporun görüşü değişmez; rapora kesinleştirme anına kadar tamamlanan gözlemler girer. Görüş metni denetime yazılmaz. `Idempotency-Key` zorunlu. Başka kurumun kaydı 404. Rol: yalnız `yonetici` (K-468; performans raporu kişiseldir). Modül `finance`.
+         */
+        post: operations["finalizePerformanceReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/performance-reviews/{reviewId}/report/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Personelin "okudum" kaydını gir
+         * @description Yönetici personelin raporu okuduğunu kanalıyla (`paper` ıslak imzalı nüsha, `email` e-posta, `in_person` yüz yüze görüşme) ve günüyle personel adına girer (K-467). Kesinleşmemiş rapor 422 `performance_report_not_finalized`, kayıt zaten girildiyse 409 `performance_report_acknowledged`; gün bugünden sonra 422 `performance_report_ack_date_future`, kesinleştirme gününden önce 422 `performance_report_ack_before_final`. `Idempotency-Key` zorunlu. Başka kurumun kaydı 404. Rol: yalnız `yonetici` (K-468; performans raporu kişiseldir). Modül `finance`.
+         */
+        post: operations["acknowledgePerformanceReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -135006,6 +135106,959 @@ export interface operations {
                                     texts: string[];
                                 }[];
                             };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPerformanceReportSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                periodId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            periodId: string;
+                            periodName: string;
+                            /** @enum {string} */
+                            periodStatus: "planning" | "active" | "interim" | "evaluation" | "closed";
+                            periodStartDate: string;
+                            periodEndDate: string;
+                            /** @description Dönemdeki personel kaydı */
+                            staffCount: number;
+                            /** @description Genel puanı hesaplanan kayıt */
+                            scoredCount: number;
+                            /** @description Puanı eksik kayıt */
+                            unscoredCount: number;
+                            /** @description Genel puan ortalaması (iki ondalık) */
+                            averageScore: number | null;
+                            minScore: number | null;
+                            maxScore: number | null;
+                            /** @description Genel puan bantları: `1` 1,00–1,99 … `5` 5,00 */
+                            distribution: {
+                                /** @enum {string} */
+                                band: "1" | "2" | "3" | "4" | "5";
+                                count: number;
+                            }[];
+                            /** @description Rapora giren tamamlanmış gözlem */
+                            observationCount: number;
+                            /** @description Gözlem puanı ortalaması (100'lük) */
+                            observationAverage: number | null;
+                            /** @description Öz değerlendirmesini gönderen */
+                            selfEvaluationSubmitted: number;
+                            /** @description Kesinleşen rapor (okunanlar dahil) */
+                            finalizedCount: number;
+                            /** @description "Okudum" kaydı girilen rapor */
+                            acknowledgedCount: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listPerformanceReports: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Personel adında arama */
+                q?: string;
+            };
+            header?: never;
+            path: {
+                periodId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            reviewId: string;
+                            membershipId: string;
+                            staffName: string;
+                            staffRole: string;
+                            /** @description Genel puan (1–5) */
+                            overallScore: number | null;
+                            scored: boolean;
+                            /** @enum {string} */
+                            selfEvaluationStatus: "missing" | "draft" | "submitted";
+                            observationCount: number;
+                            /** @description Gözlem puanı ortalaması (100'lük) */
+                            observationAverage: number | null;
+                            /** @description Kesinleştirme kaydı; kesinleşmediyse boş */
+                            reportId: string | null;
+                            /**
+                             * @description `draft` kesinleşmedi, `finalized` kesinleşti, `acknowledged` personel okudu
+                             * @enum {string}
+                             */
+                            status: "draft" | "finalized" | "acknowledged";
+                            /** @description Kesinleştirme anı (ISO 8601 UTC) */
+                            finalizedAt: string | null;
+                            /** @description Kesinleştiren yönetici */
+                            finalizedByName: string | null;
+                            /** @description Personelin okuduğunu bildirdiği gün */
+                            acknowledgedDate: string | null;
+                            /** @description "Okudum" kanalı: `paper` ıslak imzalı nüsha, `email` e-posta, `in_person` yüz yüze */
+                            acknowledgementChannel: ("paper" | "email" | "in_person") | null;
+                            /** @description "Okudum" kaydının girildiği an */
+                            acknowledgementRecordedAt: string | null;
+                            /** @description "Okudum" kaydını personel adına giren yönetici */
+                            acknowledgementRecordedByName: string | null;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPerformanceReport: {
+        parameters: {
+            query?: {
+                /** @description `view` ekran (denetim `finance.performance_report.read`), `pdf` PDF üretimi (denetim `finance.performance_report.export`) */
+                purpose?: "view" | "pdf";
+            };
+            header?: never;
+            path: {
+                reviewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Personel × dönem performans kaydı */
+                            reviewId: string;
+                            periodId: string;
+                            periodName: string;
+                            periodStartDate: string;
+                            periodEndDate: string;
+                            /** @enum {string} */
+                            periodStatus: "planning" | "active" | "interim" | "evaluation" | "closed";
+                            /** @description Personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı */
+                            staffName: string;
+                            /** @description Personelin rolü */
+                            staffRole: string;
+                            /** @description Rapordaki bölümler, sırasıyla (K-466) */
+                            sections: ("evaluation" | "selfEvaluation" | "observations" | "developmentGoals" | "managerOpinion")[];
+                            /** @description Dönem sonu değerlendirmesi (DOM-FIN-124) */
+                            evaluation: {
+                                goals: {
+                                    title: string;
+                                    criterion: string;
+                                    /** @description Ağırlık, yüzde */
+                                    weight: number;
+                                    /** @description Dönem sonu puanı (1–5) */
+                                    score: number | null;
+                                }[];
+                                /** @description Genel puan (ağırlıklı ortalama, 1–5) */
+                                overallScore: number | null;
+                                scored: boolean;
+                                interimDate: string | null;
+                                interimNote: string | null;
+                                evaluatorName: string | null;
+                                evaluatedAt: string | null;
+                                /** @description Personelin değerlendirmeye görüşü */
+                                staffComment: string | null;
+                            };
+                            /** @description Öz değerlendirme özeti (DOM-FIN-131); yalnız gönderildiyse içerik taşır */
+                            selfEvaluation: {
+                                /**
+                                 * @description `missing` yanıt yok, `draft` gönderilmedi, `submitted` gönderildi
+                                 * @enum {string}
+                                 */
+                                status: "missing" | "draft" | "submitted";
+                                submittedAt: string | null;
+                                channel: ("paper" | "email") | null;
+                                /** @description Puanlı soruların ortalaması (1–5) */
+                                scaleAverage: number | null;
+                                answeredCount: number;
+                                questionCount: number;
+                                /** @description Soru ve cevaplar; yalnız gönderilmiş öz değerlendirmede dolu */
+                                items: {
+                                    question: string;
+                                    /** @enum {string} */
+                                    kind: "scale" | "open";
+                                    score: number | null;
+                                    text: string | null;
+                                }[];
+                                /** @description Yöneticinin öz değerlendirmeye görüşü */
+                                managerComment: string | null;
+                            };
+                            /** @description Dönemdeki tamamlanmış ders gözlemleri (DOM-FIN-130) */
+                            observations: {
+                                count: number;
+                                /** @description Gözlem puanı ortalaması (100'lük) */
+                                averagePercent: number | null;
+                                items: {
+                                    id: string;
+                                    observedDate: string;
+                                    templateName: string;
+                                    observerName: string;
+                                    total: number;
+                                    max: number;
+                                    percent: number;
+                                }[];
+                            };
+                            /** @description Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez (K-468) */
+                            developmentGoals: {
+                                count: number;
+                                /** @description Ulaşılan hedef sayısı */
+                                achievedCount: number;
+                                items: {
+                                    id: string;
+                                    /** @description Hedef */
+                                    title: string;
+                                    /** @description Başarı ölçütü */
+                                    successCriterion: string;
+                                    /**
+                                     * @description `observation_debrief` gözlem görüşmesi, `direct` doğrudan
+                                     * @enum {string}
+                                     */
+                                    source: "observation_debrief" | "direct";
+                                    /** @description Kaynak gözlemin günü */
+                                    observedDate: string | null;
+                                    /** @description Takip tarihi */
+                                    followUpDate: string;
+                                    /**
+                                     * @description Durum (kesinleşmiş raporda kesinleştirme anındaki): `open` açık, `in_progress` sürüyor, `achieved` ulaşıldı
+                                     * @enum {string}
+                                     */
+                                    status: "open" | "in_progress" | "achieved";
+                                }[];
+                            };
+                            /** @description Yönetici görüşü; kesinleştirmede yazılır */
+                            managerOpinion: string | null;
+                            /** @description Kesinleştirme kaydı; kesinleşmediyse boş */
+                            reportId: string | null;
+                            /**
+                             * @description `draft` kesinleşmedi, `finalized` kesinleşti, `acknowledged` personel okudu
+                             * @enum {string}
+                             */
+                            status: "draft" | "finalized" | "acknowledged";
+                            /** @description Kesinleştirme anı (ISO 8601 UTC) */
+                            finalizedAt: string | null;
+                            /** @description Kesinleştiren yönetici */
+                            finalizedByName: string | null;
+                            /** @description Personelin okuduğunu bildirdiği gün */
+                            acknowledgedDate: string | null;
+                            /** @description "Okudum" kanalı: `paper` ıslak imzalı nüsha, `email` e-posta, `in_person` yüz yüze */
+                            acknowledgementChannel: ("paper" | "email" | "in_person") | null;
+                            /** @description "Okudum" kaydının girildiği an */
+                            acknowledgementRecordedAt: string | null;
+                            /** @description "Okudum" kaydını personel adına giren yönetici */
+                            acknowledgementRecordedByName: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    finalizePerformanceReport: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                reviewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Yöneticinin dönem görüşü; kesinleştirmede yazılır, sonra değişmez (K-467) */
+                    managerOpinion: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Personel × dönem performans kaydı */
+                            reviewId: string;
+                            periodId: string;
+                            periodName: string;
+                            periodStartDate: string;
+                            periodEndDate: string;
+                            /** @enum {string} */
+                            periodStatus: "planning" | "active" | "interim" | "evaluation" | "closed";
+                            /** @description Personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı */
+                            staffName: string;
+                            /** @description Personelin rolü */
+                            staffRole: string;
+                            /** @description Rapordaki bölümler, sırasıyla (K-466) */
+                            sections: ("evaluation" | "selfEvaluation" | "observations" | "developmentGoals" | "managerOpinion")[];
+                            /** @description Dönem sonu değerlendirmesi (DOM-FIN-124) */
+                            evaluation: {
+                                goals: {
+                                    title: string;
+                                    criterion: string;
+                                    /** @description Ağırlık, yüzde */
+                                    weight: number;
+                                    /** @description Dönem sonu puanı (1–5) */
+                                    score: number | null;
+                                }[];
+                                /** @description Genel puan (ağırlıklı ortalama, 1–5) */
+                                overallScore: number | null;
+                                scored: boolean;
+                                interimDate: string | null;
+                                interimNote: string | null;
+                                evaluatorName: string | null;
+                                evaluatedAt: string | null;
+                                /** @description Personelin değerlendirmeye görüşü */
+                                staffComment: string | null;
+                            };
+                            /** @description Öz değerlendirme özeti (DOM-FIN-131); yalnız gönderildiyse içerik taşır */
+                            selfEvaluation: {
+                                /**
+                                 * @description `missing` yanıt yok, `draft` gönderilmedi, `submitted` gönderildi
+                                 * @enum {string}
+                                 */
+                                status: "missing" | "draft" | "submitted";
+                                submittedAt: string | null;
+                                channel: ("paper" | "email") | null;
+                                /** @description Puanlı soruların ortalaması (1–5) */
+                                scaleAverage: number | null;
+                                answeredCount: number;
+                                questionCount: number;
+                                /** @description Soru ve cevaplar; yalnız gönderilmiş öz değerlendirmede dolu */
+                                items: {
+                                    question: string;
+                                    /** @enum {string} */
+                                    kind: "scale" | "open";
+                                    score: number | null;
+                                    text: string | null;
+                                }[];
+                                /** @description Yöneticinin öz değerlendirmeye görüşü */
+                                managerComment: string | null;
+                            };
+                            /** @description Dönemdeki tamamlanmış ders gözlemleri (DOM-FIN-130) */
+                            observations: {
+                                count: number;
+                                /** @description Gözlem puanı ortalaması (100'lük) */
+                                averagePercent: number | null;
+                                items: {
+                                    id: string;
+                                    observedDate: string;
+                                    templateName: string;
+                                    observerName: string;
+                                    total: number;
+                                    max: number;
+                                    percent: number;
+                                }[];
+                            };
+                            /** @description Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez (K-468) */
+                            developmentGoals: {
+                                count: number;
+                                /** @description Ulaşılan hedef sayısı */
+                                achievedCount: number;
+                                items: {
+                                    id: string;
+                                    /** @description Hedef */
+                                    title: string;
+                                    /** @description Başarı ölçütü */
+                                    successCriterion: string;
+                                    /**
+                                     * @description `observation_debrief` gözlem görüşmesi, `direct` doğrudan
+                                     * @enum {string}
+                                     */
+                                    source: "observation_debrief" | "direct";
+                                    /** @description Kaynak gözlemin günü */
+                                    observedDate: string | null;
+                                    /** @description Takip tarihi */
+                                    followUpDate: string;
+                                    /**
+                                     * @description Durum (kesinleşmiş raporda kesinleştirme anındaki): `open` açık, `in_progress` sürüyor, `achieved` ulaşıldı
+                                     * @enum {string}
+                                     */
+                                    status: "open" | "in_progress" | "achieved";
+                                }[];
+                            };
+                            /** @description Yönetici görüşü; kesinleştirmede yazılır */
+                            managerOpinion: string | null;
+                            /** @description Kesinleştirme kaydı; kesinleşmediyse boş */
+                            reportId: string | null;
+                            /**
+                             * @description `draft` kesinleşmedi, `finalized` kesinleşti, `acknowledged` personel okudu
+                             * @enum {string}
+                             */
+                            status: "draft" | "finalized" | "acknowledged";
+                            /** @description Kesinleştirme anı (ISO 8601 UTC) */
+                            finalizedAt: string | null;
+                            /** @description Kesinleştiren yönetici */
+                            finalizedByName: string | null;
+                            /** @description Personelin okuduğunu bildirdiği gün */
+                            acknowledgedDate: string | null;
+                            /** @description "Okudum" kanalı: `paper` ıslak imzalı nüsha, `email` e-posta, `in_person` yüz yüze */
+                            acknowledgementChannel: ("paper" | "email" | "in_person") | null;
+                            /** @description "Okudum" kaydının girildiği an */
+                            acknowledgementRecordedAt: string | null;
+                            /** @description "Okudum" kaydını personel adına giren yönetici */
+                            acknowledgementRecordedByName: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    acknowledgePerformanceReport: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                reviewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description "Okudum" kaydının kanalı: `paper` ıslak imzalı nüsha, `email` e-posta, `in_person` yüz yüze görüşme
+                     * @enum {string}
+                     */
+                    channel: "paper" | "email" | "in_person";
+                    /** @description Personelin raporu okuduğunu bildirdiği gün; kesinleştirme gününden önce, bugünden sonra olamaz */
+                    acknowledgedDate: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Personel × dönem performans kaydı */
+                            reviewId: string;
+                            periodId: string;
+                            periodName: string;
+                            periodStartDate: string;
+                            periodEndDate: string;
+                            /** @enum {string} */
+                            periodStatus: "planning" | "active" | "interim" | "evaluation" | "closed";
+                            /** @description Personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı */
+                            staffName: string;
+                            /** @description Personelin rolü */
+                            staffRole: string;
+                            /** @description Rapordaki bölümler, sırasıyla (K-466) */
+                            sections: ("evaluation" | "selfEvaluation" | "observations" | "developmentGoals" | "managerOpinion")[];
+                            /** @description Dönem sonu değerlendirmesi (DOM-FIN-124) */
+                            evaluation: {
+                                goals: {
+                                    title: string;
+                                    criterion: string;
+                                    /** @description Ağırlık, yüzde */
+                                    weight: number;
+                                    /** @description Dönem sonu puanı (1–5) */
+                                    score: number | null;
+                                }[];
+                                /** @description Genel puan (ağırlıklı ortalama, 1–5) */
+                                overallScore: number | null;
+                                scored: boolean;
+                                interimDate: string | null;
+                                interimNote: string | null;
+                                evaluatorName: string | null;
+                                evaluatedAt: string | null;
+                                /** @description Personelin değerlendirmeye görüşü */
+                                staffComment: string | null;
+                            };
+                            /** @description Öz değerlendirme özeti (DOM-FIN-131); yalnız gönderildiyse içerik taşır */
+                            selfEvaluation: {
+                                /**
+                                 * @description `missing` yanıt yok, `draft` gönderilmedi, `submitted` gönderildi
+                                 * @enum {string}
+                                 */
+                                status: "missing" | "draft" | "submitted";
+                                submittedAt: string | null;
+                                channel: ("paper" | "email") | null;
+                                /** @description Puanlı soruların ortalaması (1–5) */
+                                scaleAverage: number | null;
+                                answeredCount: number;
+                                questionCount: number;
+                                /** @description Soru ve cevaplar; yalnız gönderilmiş öz değerlendirmede dolu */
+                                items: {
+                                    question: string;
+                                    /** @enum {string} */
+                                    kind: "scale" | "open";
+                                    score: number | null;
+                                    text: string | null;
+                                }[];
+                                /** @description Yöneticinin öz değerlendirmeye görüşü */
+                                managerComment: string | null;
+                            };
+                            /** @description Dönemdeki tamamlanmış ders gözlemleri (DOM-FIN-130) */
+                            observations: {
+                                count: number;
+                                /** @description Gözlem puanı ortalaması (100'lük) */
+                                averagePercent: number | null;
+                                items: {
+                                    id: string;
+                                    observedDate: string;
+                                    templateName: string;
+                                    observerName: string;
+                                    total: number;
+                                    max: number;
+                                    percent: number;
+                                }[];
+                            };
+                            /** @description Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez (K-468) */
+                            developmentGoals: {
+                                count: number;
+                                /** @description Ulaşılan hedef sayısı */
+                                achievedCount: number;
+                                items: {
+                                    id: string;
+                                    /** @description Hedef */
+                                    title: string;
+                                    /** @description Başarı ölçütü */
+                                    successCriterion: string;
+                                    /**
+                                     * @description `observation_debrief` gözlem görüşmesi, `direct` doğrudan
+                                     * @enum {string}
+                                     */
+                                    source: "observation_debrief" | "direct";
+                                    /** @description Kaynak gözlemin günü */
+                                    observedDate: string | null;
+                                    /** @description Takip tarihi */
+                                    followUpDate: string;
+                                    /**
+                                     * @description Durum (kesinleşmiş raporda kesinleştirme anındaki): `open` açık, `in_progress` sürüyor, `achieved` ulaşıldı
+                                     * @enum {string}
+                                     */
+                                    status: "open" | "in_progress" | "achieved";
+                                }[];
+                            };
+                            /** @description Yönetici görüşü; kesinleştirmede yazılır */
+                            managerOpinion: string | null;
+                            /** @description Kesinleştirme kaydı; kesinleşmediyse boş */
+                            reportId: string | null;
+                            /**
+                             * @description `draft` kesinleşmedi, `finalized` kesinleşti, `acknowledged` personel okudu
+                             * @enum {string}
+                             */
+                            status: "draft" | "finalized" | "acknowledged";
+                            /** @description Kesinleştirme anı (ISO 8601 UTC) */
+                            finalizedAt: string | null;
+                            /** @description Kesinleştiren yönetici */
+                            finalizedByName: string | null;
+                            /** @description Personelin okuduğunu bildirdiği gün */
+                            acknowledgedDate: string | null;
+                            /** @description "Okudum" kanalı: `paper` ıslak imzalı nüsha, `email` e-posta, `in_person` yüz yüze */
+                            acknowledgementChannel: ("paper" | "email" | "in_person") | null;
+                            /** @description "Okudum" kaydının girildiği an */
+                            acknowledgementRecordedAt: string | null;
+                            /** @description "Okudum" kaydını personel adına giren yönetici */
+                            acknowledgementRecordedByName: string | null;
                         };
                     };
                 };

@@ -239,6 +239,10 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // açmaz (routes/finance-staff-feedback.ts; DOM-FIN-134, ON-212).
   'POST /api/v1/finance/performance-periods/{periodId}/staff-feedback-template',
   'POST /api/v1/finance/performance-periods/{periodId}/staff-feedback-assignments',
+  // Performans raporu kesinleştirme ve personel adına "okudum" kaydı; çift tıklama ikinci kaydı
+  // açmaz (routes/finance-performance-reports.ts; DOM-FIN-137, ON-220).
+  'POST /api/v1/finance/performance-reviews/{reviewId}/report/finalize',
+  'POST /api/v1/finance/performance-reviews/{reviewId}/report/acknowledge',
 ]
 // Onur: kayıt ve finans sonu
 

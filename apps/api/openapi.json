@@ -293506,6 +293506,2549 @@
         }
       }
     },
+    "/api/v1/finance/performance-periods/{periodId}/report-summary": {
+      "get": {
+        "operationId": "getPerformanceReportSummary",
+        "summary": "Performans döneminin rapor özeti",
+        "tags": [
+          "finance-performance-reports"
+        ],
+        "description": "Dönemdeki personel kaydı, genel puan ortalaması (iki ondalık), en düşük ve en yüksek puan, bant dağılımı (`1` 1,00–1,99 … `5` 5,00; puanı eksik kayıt ayrı), rapora giren gözlem sayısı ve 100'lük ortalaması, öz değerlendirme gönderen, kesinleşen ve okunan rapor sayısı (DOM-FIN-137, K-466). Kişi adı ve kimliği taşımaz, okuma denetime yazılmaz. Başka kurumun dönemi 404. Rol: yalnız `yonetici` (K-468; performans raporu kişiseldir). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "periodId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "periodId": {
+                          "type": "string"
+                        },
+                        "periodName": {
+                          "type": "string"
+                        },
+                        "periodStatus": {
+                          "type": "string",
+                          "enum": [
+                            "planning",
+                            "active",
+                            "interim",
+                            "evaluation",
+                            "closed"
+                          ]
+                        },
+                        "periodStartDate": {
+                          "type": "string"
+                        },
+                        "periodEndDate": {
+                          "type": "string"
+                        },
+                        "staffCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Dönemdeki personel kaydı"
+                        },
+                        "scoredCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Genel puanı hesaplanan kayıt"
+                        },
+                        "unscoredCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Puanı eksik kayıt"
+                        },
+                        "averageScore": {
+                          "description": "Genel puan ortalaması (iki ondalık)",
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "minScore": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "maxScore": {
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "distribution": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "band": {
+                                "type": "string",
+                                "enum": [
+                                  "1",
+                                  "2",
+                                  "3",
+                                  "4",
+                                  "5"
+                                ]
+                              },
+                              "count": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "band",
+                              "count"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Genel puan bantları: `1` 1,00–1,99 … `5` 5,00"
+                        },
+                        "observationCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Rapora giren tamamlanmış gözlem"
+                        },
+                        "observationAverage": {
+                          "description": "Gözlem puanı ortalaması (100'lük)",
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "selfEvaluationSubmitted": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Öz değerlendirmesini gönderen"
+                        },
+                        "finalizedCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kesinleşen rapor (okunanlar dahil)"
+                        },
+                        "acknowledgedCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "\"Okudum\" kaydı girilen rapor"
+                        }
+                      },
+                      "required": [
+                        "periodId",
+                        "periodName",
+                        "periodStatus",
+                        "periodStartDate",
+                        "periodEndDate",
+                        "staffCount",
+                        "scoredCount",
+                        "unscoredCount",
+                        "averageScore",
+                        "minScore",
+                        "maxScore",
+                        "distribution",
+                        "observationCount",
+                        "observationAverage",
+                        "selfEvaluationSubmitted",
+                        "finalizedCount",
+                        "acknowledgedCount"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/performance-periods/{periodId}/reports": {
+      "get": {
+        "operationId": "listPerformanceReports",
+        "summary": "Dönemin personel başına rapor satırları",
+        "tags": [
+          "finance-performance-reports"
+        ],
+        "description": "Personel adına göre: genel puan, öz değerlendirme durumu, rapora giren gözlem sayısı ve ortalaması, rapor durumu (kesinleşmedi, kesinleşti, okundu) ve okuma kaydı (K-466). Okuma aynı transaction'da `finance.performance_report.list` denetimine (alan adları, satır sayısı) yazılır (K-468). Başka kurumun dönemi 404. Rol: yalnız `yonetici` (K-468; performans raporu kişiseldir). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Personel adında arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "periodId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "reviewId": {
+                            "type": "string"
+                          },
+                          "membershipId": {
+                            "type": "string"
+                          },
+                          "staffName": {
+                            "type": "string"
+                          },
+                          "staffRole": {
+                            "type": "string"
+                          },
+                          "overallScore": {
+                            "description": "Genel puan (1–5)",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "scored": {
+                            "type": "boolean"
+                          },
+                          "selfEvaluationStatus": {
+                            "type": "string",
+                            "enum": [
+                              "missing",
+                              "draft",
+                              "submitted"
+                            ]
+                          },
+                          "observationCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "observationAverage": {
+                            "description": "Gözlem puanı ortalaması (100'lük)",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "reportId": {
+                            "description": "Kesinleştirme kaydı; kesinleşmediyse boş",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "draft",
+                              "finalized",
+                              "acknowledged"
+                            ],
+                            "description": "`draft` kesinleşmedi, `finalized` kesinleşti, `acknowledged` personel okudu"
+                          },
+                          "finalizedAt": {
+                            "description": "Kesinleştirme anı (ISO 8601 UTC)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "finalizedByName": {
+                            "description": "Kesinleştiren yönetici",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "acknowledgedDate": {
+                            "description": "Personelin okuduğunu bildirdiği gün",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "acknowledgementChannel": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "paper",
+                                  "email",
+                                  "in_person"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "\"Okudum\" kanalı: `paper` ıslak imzalı nüsha, `email` e-posta, `in_person` yüz yüze"
+                          },
+                          "acknowledgementRecordedAt": {
+                            "description": "\"Okudum\" kaydının girildiği an",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "acknowledgementRecordedByName": {
+                            "description": "\"Okudum\" kaydını personel adına giren yönetici",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "reviewId",
+                          "membershipId",
+                          "staffName",
+                          "staffRole",
+                          "overallScore",
+                          "scored",
+                          "selfEvaluationStatus",
+                          "observationCount",
+                          "observationAverage",
+                          "reportId",
+                          "status",
+                          "finalizedAt",
+                          "finalizedByName",
+                          "acknowledgedDate",
+                          "acknowledgementChannel",
+                          "acknowledgementRecordedAt",
+                          "acknowledgementRecordedByName"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/performance-reviews/{reviewId}/report": {
+      "get": {
+        "operationId": "getPerformanceReport",
+        "summary": "Personel × dönem performans raporu",
+        "tags": [
+          "finance-performance-reports"
+        ],
+        "description": "Bölümler (K-466): dönem sonu değerlendirmesi (hedefler, puanlar, genel puan, ara görüşme, personel görüşü), öz değerlendirme özeti (yalnız gönderildiyse soru ve cevaplar, puanlı soruların ortalaması, yönetici görüşü), dönemdeki tamamlanmış ders gözlemleri (döneme bağlı ya da günü dönem içinde; kesinleşmiş raporda kesinleştirme anına kadar tamamlananlar) ve puan ortalaması, döneme bağlı gelişim hedefleri (açık, sürüyor, ulaşıldı; kesinleşmiş raporda kesinleştirme anındaki durumuyla, K-468), yönetici görüşü; kesinleştirme ve \"okudum\" kaydı. Çok kaynaklı geri bildirim bölümü sonraki işte eklenir (`sections`). Her okuma aynı transaction'da denetime yazılır: `purpose=view` `finance.performance_report.read`, `purpose=pdf` `finance.performance_report.export` (alan adları; K-468). Rol: `yonetici` her raporu, `ogretmen` yalnız kendi kesinleşmiş raporunu okur; başka personelin ya da kesinleşmemiş rapor 404. Başka kurumun kaydı 404. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": "view",
+              "type": "string",
+              "enum": [
+                "view",
+                "pdf"
+              ]
+            },
+            "in": "query",
+            "name": "purpose",
+            "required": false,
+            "description": "`view` ekran (denetim `finance.performance_report.read`), `pdf` PDF üretimi (denetim `finance.performance_report.export`)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "reviewId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "reviewId": {
+                          "type": "string",
+                          "description": "Personel × dönem performans kaydı"
+                        },
+                        "periodId": {
+                          "type": "string"
+                        },
+                        "periodName": {
+                          "type": "string"
+                        },
+                        "periodStartDate": {
+                          "type": "string"
+                        },
+                        "periodEndDate": {
+                          "type": "string"
+                        },
+                        "periodStatus": {
+                          "type": "string",
+                          "enum": [
+                            "planning",
+                            "active",
+                            "interim",
+                            "evaluation",
+                            "closed"
+                          ]
+                        },
+                        "membershipId": {
+                          "type": "string",
+                          "description": "Personelin kurum üyeliği"
+                        },
+                        "staffName": {
+                          "type": "string",
+                          "description": "Personel adı"
+                        },
+                        "staffRole": {
+                          "type": "string",
+                          "description": "Personelin rolü"
+                        },
+                        "sections": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "evaluation",
+                              "selfEvaluation",
+                              "observations",
+                              "developmentGoals",
+                              "managerOpinion"
+                            ]
+                          },
+                          "description": "Rapordaki bölümler, sırasıyla (K-466)"
+                        },
+                        "evaluation": {
+                          "type": "object",
+                          "properties": {
+                            "goals": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "criterion": {
+                                    "type": "string"
+                                  },
+                                  "weight": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Ağırlık, yüzde"
+                                  },
+                                  "score": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Dönem sonu puanı (1–5)"
+                                  }
+                                },
+                                "required": [
+                                  "title",
+                                  "criterion",
+                                  "weight",
+                                  "score"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "overallScore": {
+                              "description": "Genel puan (ağırlıklı ortalama, 1–5)",
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "scored": {
+                              "type": "boolean"
+                            },
+                            "interimDate": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "interimNote": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "evaluatorName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "evaluatedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "staffComment": {
+                              "description": "Personelin değerlendirmeye görüşü",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "goals",
+                            "overallScore",
+                            "scored",
+                            "interimDate",
+                            "interimNote",
+                            "evaluatorName",
+                            "evaluatedAt",
+                            "staffComment"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Dönem sonu değerlendirmesi (DOM-FIN-124)"
+                        },
+                        "selfEvaluation": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "missing",
+                                "draft",
+                                "submitted"
+                              ],
+                              "description": "`missing` yanıt yok, `draft` gönderilmedi, `submitted` gönderildi"
+                            },
+                            "submittedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "channel": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "paper",
+                                    "email"
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "scaleAverage": {
+                              "description": "Puanlı soruların ortalaması (1–5)",
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "answeredCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "questionCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "question": {
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "scale",
+                                      "open"
+                                    ]
+                                  },
+                                  "score": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "text": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "question",
+                                  "kind",
+                                  "score",
+                                  "text"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "description": "Soru ve cevaplar; yalnız gönderilmiş öz değerlendirmede dolu"
+                            },
+                            "managerComment": {
+                              "description": "Yöneticinin öz değerlendirmeye görüşü",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "submittedAt",
+                            "channel",
+                            "scaleAverage",
+                            "answeredCount",
+                            "questionCount",
+                            "items",
+                            "managerComment"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Öz değerlendirme özeti (DOM-FIN-131); yalnız gönderildiyse içerik taşır"
+                        },
+                        "observations": {
+                          "type": "object",
+                          "properties": {
+                            "count": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "averagePercent": {
+                              "description": "Gözlem puanı ortalaması (100'lük)",
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "observedDate": {
+                                    "type": "string"
+                                  },
+                                  "templateName": {
+                                    "type": "string"
+                                  },
+                                  "observerName": {
+                                    "type": "string"
+                                  },
+                                  "total": {
+                                    "type": "number"
+                                  },
+                                  "max": {
+                                    "type": "number"
+                                  },
+                                  "percent": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "observedDate",
+                                  "templateName",
+                                  "observerName",
+                                  "total",
+                                  "max",
+                                  "percent"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "count",
+                            "averagePercent",
+                            "items"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Dönemdeki tamamlanmış ders gözlemleri (DOM-FIN-130)"
+                        },
+                        "developmentGoals": {
+                          "type": "object",
+                          "properties": {
+                            "count": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "achievedCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ulaşılan hedef sayısı"
+                            },
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "description": "Hedef"
+                                  },
+                                  "successCriterion": {
+                                    "type": "string",
+                                    "description": "Başarı ölçütü"
+                                  },
+                                  "source": {
+                                    "type": "string",
+                                    "enum": [
+                                      "observation_debrief",
+                                      "direct"
+                                    ],
+                                    "description": "`observation_debrief` gözlem görüşmesi, `direct` doğrudan"
+                                  },
+                                  "observedDate": {
+                                    "description": "Kaynak gözlemin günü",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "followUpDate": {
+                                    "type": "string",
+                                    "description": "Takip tarihi"
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "open",
+                                      "in_progress",
+                                      "achieved"
+                                    ],
+                                    "description": "Durum (kesinleşmiş raporda kesinleştirme anındaki): `open` açık, `in_progress` sürüyor, `achieved` ulaşıldı"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "title",
+                                  "successCriterion",
+                                  "source",
+                                  "observedDate",
+                                  "followUpDate",
+                                  "status"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "count",
+                            "achievedCount",
+                            "items"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez (K-468)"
+                        },
+                        "managerOpinion": {
+                          "description": "Yönetici görüşü; kesinleştirmede yazılır",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reportId": {
+                          "description": "Kesinleştirme kaydı; kesinleşmediyse boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "finalized",
+                            "acknowledged"
+                          ],
+                          "description": "`draft` kesinleşmedi, `finalized` kesinleşti, `acknowledged` personel okudu"
+                        },
+                        "finalizedAt": {
+                          "description": "Kesinleştirme anı (ISO 8601 UTC)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "finalizedByName": {
+                          "description": "Kesinleştiren yönetici",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "acknowledgedDate": {
+                          "description": "Personelin okuduğunu bildirdiği gün",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "acknowledgementChannel": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "paper",
+                                "email",
+                                "in_person"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "\"Okudum\" kanalı: `paper` ıslak imzalı nüsha, `email` e-posta, `in_person` yüz yüze"
+                        },
+                        "acknowledgementRecordedAt": {
+                          "description": "\"Okudum\" kaydının girildiği an",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "acknowledgementRecordedByName": {
+                          "description": "\"Okudum\" kaydını personel adına giren yönetici",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "reviewId",
+                        "periodId",
+                        "periodName",
+                        "periodStartDate",
+                        "periodEndDate",
+                        "periodStatus",
+                        "membershipId",
+                        "staffName",
+                        "staffRole",
+                        "sections",
+                        "evaluation",
+                        "selfEvaluation",
+                        "observations",
+                        "developmentGoals",
+                        "managerOpinion",
+                        "reportId",
+                        "status",
+                        "finalizedAt",
+                        "finalizedByName",
+                        "acknowledgedDate",
+                        "acknowledgementChannel",
+                        "acknowledgementRecordedAt",
+                        "acknowledgementRecordedByName"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/performance-reviews/{reviewId}/report/finalize": {
+      "post": {
+        "operationId": "finalizePerformanceReport",
+        "summary": "Performans raporunu kesinleştir",
+        "tags": [
+          "finance-performance-reports"
+        ],
+        "description": "Yönetici görüşüyle (10–2000) raporu kesinleştirir (K-467). Dönem kapanmamışsa 422 `performance_report_period_open`, rapor zaten kesinleştiyse 409 `performance_report_finalized`, raporun sahibi yöneticinin kendisiyse 422 `performance_report_self`. Kesinleşen raporun görüşü değişmez; rapora kesinleştirme anına kadar tamamlanan gözlemler girer. Görüş metni denetime yazılmaz. `Idempotency-Key` zorunlu. Başka kurumun kaydı 404. Rol: yalnız `yonetici` (K-468; performans raporu kişiseldir). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "managerOpinion": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 2000,
+                    "description": "Yöneticinin dönem görüşü; kesinleştirmede yazılır, sonra değişmez (K-467)"
+                  }
+                },
+                "required": [
+                  "managerOpinion"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "reviewId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "reviewId": {
+                          "type": "string",
+                          "description": "Personel × dönem performans kaydı"
+                        },
+                        "periodId": {
+                          "type": "string"
+                        },
+                        "periodName": {
+                          "type": "string"
+                        },
+                        "periodStartDate": {
+                          "type": "string"
+                        },
+                        "periodEndDate": {
+                          "type": "string"
+                        },
+                        "periodStatus": {
+                          "type": "string",
+                          "enum": [
+                            "planning",
+                            "active",
+                            "interim",
+                            "evaluation",
+                            "closed"
+                          ]
+                        },
+                        "membershipId": {
+                          "type": "string",
+                          "description": "Personelin kurum üyeliği"
+                        },
+                        "staffName": {
+                          "type": "string",
+                          "description": "Personel adı"
+                        },
+                        "staffRole": {
+                          "type": "string",
+                          "description": "Personelin rolü"
+                        },
+                        "sections": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "evaluation",
+                              "selfEvaluation",
+                              "observations",
+                              "developmentGoals",
+                              "managerOpinion"
+                            ]
+                          },
+                          "description": "Rapordaki bölümler, sırasıyla (K-466)"
+                        },
+                        "evaluation": {
+                          "type": "object",
+                          "properties": {
+                            "goals": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "criterion": {
+                                    "type": "string"
+                                  },
+                                  "weight": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Ağırlık, yüzde"
+                                  },
+                                  "score": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Dönem sonu puanı (1–5)"
+                                  }
+                                },
+                                "required": [
+                                  "title",
+                                  "criterion",
+                                  "weight",
+                                  "score"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "overallScore": {
+                              "description": "Genel puan (ağırlıklı ortalama, 1–5)",
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "scored": {
+                              "type": "boolean"
+                            },
+                            "interimDate": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "interimNote": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "evaluatorName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "evaluatedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "staffComment": {
+                              "description": "Personelin değerlendirmeye görüşü",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "goals",
+                            "overallScore",
+                            "scored",
+                            "interimDate",
+                            "interimNote",
+                            "evaluatorName",
+                            "evaluatedAt",
+                            "staffComment"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Dönem sonu değerlendirmesi (DOM-FIN-124)"
+                        },
+                        "selfEvaluation": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "missing",
+                                "draft",
+                                "submitted"
+                              ],
+                              "description": "`missing` yanıt yok, `draft` gönderilmedi, `submitted` gönderildi"
+                            },
+                            "submittedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "channel": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "paper",
+                                    "email"
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "scaleAverage": {
+                              "description": "Puanlı soruların ortalaması (1–5)",
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "answeredCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "questionCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "question": {
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "scale",
+                                      "open"
+                                    ]
+                                  },
+                                  "score": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "text": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "question",
+                                  "kind",
+                                  "score",
+                                  "text"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "description": "Soru ve cevaplar; yalnız gönderilmiş öz değerlendirmede dolu"
+                            },
+                            "managerComment": {
+                              "description": "Yöneticinin öz değerlendirmeye görüşü",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "submittedAt",
+                            "channel",
+                            "scaleAverage",
+                            "answeredCount",
+                            "questionCount",
+                            "items",
+                            "managerComment"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Öz değerlendirme özeti (DOM-FIN-131); yalnız gönderildiyse içerik taşır"
+                        },
+                        "observations": {
+                          "type": "object",
+                          "properties": {
+                            "count": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "averagePercent": {
+                              "description": "Gözlem puanı ortalaması (100'lük)",
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "observedDate": {
+                                    "type": "string"
+                                  },
+                                  "templateName": {
+                                    "type": "string"
+                                  },
+                                  "observerName": {
+                                    "type": "string"
+                                  },
+                                  "total": {
+                                    "type": "number"
+                                  },
+                                  "max": {
+                                    "type": "number"
+                                  },
+                                  "percent": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "observedDate",
+                                  "templateName",
+                                  "observerName",
+                                  "total",
+                                  "max",
+                                  "percent"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "count",
+                            "averagePercent",
+                            "items"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Dönemdeki tamamlanmış ders gözlemleri (DOM-FIN-130)"
+                        },
+                        "developmentGoals": {
+                          "type": "object",
+                          "properties": {
+                            "count": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "achievedCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ulaşılan hedef sayısı"
+                            },
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "description": "Hedef"
+                                  },
+                                  "successCriterion": {
+                                    "type": "string",
+                                    "description": "Başarı ölçütü"
+                                  },
+                                  "source": {
+                                    "type": "string",
+                                    "enum": [
+                                      "observation_debrief",
+                                      "direct"
+                                    ],
+                                    "description": "`observation_debrief` gözlem görüşmesi, `direct` doğrudan"
+                                  },
+                                  "observedDate": {
+                                    "description": "Kaynak gözlemin günü",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "followUpDate": {
+                                    "type": "string",
+                                    "description": "Takip tarihi"
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "open",
+                                      "in_progress",
+                                      "achieved"
+                                    ],
+                                    "description": "Durum (kesinleşmiş raporda kesinleştirme anındaki): `open` açık, `in_progress` sürüyor, `achieved` ulaşıldı"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "title",
+                                  "successCriterion",
+                                  "source",
+                                  "observedDate",
+                                  "followUpDate",
+                                  "status"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "count",
+                            "achievedCount",
+                            "items"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez (K-468)"
+                        },
+                        "managerOpinion": {
+                          "description": "Yönetici görüşü; kesinleştirmede yazılır",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reportId": {
+                          "description": "Kesinleştirme kaydı; kesinleşmediyse boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "finalized",
+                            "acknowledged"
+                          ],
+                          "description": "`draft` kesinleşmedi, `finalized` kesinleşti, `acknowledged` personel okudu"
+                        },
+                        "finalizedAt": {
+                          "description": "Kesinleştirme anı (ISO 8601 UTC)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "finalizedByName": {
+                          "description": "Kesinleştiren yönetici",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "acknowledgedDate": {
+                          "description": "Personelin okuduğunu bildirdiği gün",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "acknowledgementChannel": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "paper",
+                                "email",
+                                "in_person"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "\"Okudum\" kanalı: `paper` ıslak imzalı nüsha, `email` e-posta, `in_person` yüz yüze"
+                        },
+                        "acknowledgementRecordedAt": {
+                          "description": "\"Okudum\" kaydının girildiği an",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "acknowledgementRecordedByName": {
+                          "description": "\"Okudum\" kaydını personel adına giren yönetici",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "reviewId",
+                        "periodId",
+                        "periodName",
+                        "periodStartDate",
+                        "periodEndDate",
+                        "periodStatus",
+                        "membershipId",
+                        "staffName",
+                        "staffRole",
+                        "sections",
+                        "evaluation",
+                        "selfEvaluation",
+                        "observations",
+                        "developmentGoals",
+                        "managerOpinion",
+                        "reportId",
+                        "status",
+                        "finalizedAt",
+                        "finalizedByName",
+                        "acknowledgedDate",
+                        "acknowledgementChannel",
+                        "acknowledgementRecordedAt",
+                        "acknowledgementRecordedByName"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/performance-reviews/{reviewId}/report/acknowledge": {
+      "post": {
+        "operationId": "acknowledgePerformanceReport",
+        "summary": "Personelin \"okudum\" kaydını gir",
+        "tags": [
+          "finance-performance-reports"
+        ],
+        "description": "Yönetici personelin raporu okuduğunu kanalıyla (`paper` ıslak imzalı nüsha, `email` e-posta, `in_person` yüz yüze görüşme) ve günüyle personel adına girer (K-467). Kesinleşmemiş rapor 422 `performance_report_not_finalized`, kayıt zaten girildiyse 409 `performance_report_acknowledged`; gün bugünden sonra 422 `performance_report_ack_date_future`, kesinleştirme gününden önce 422 `performance_report_ack_before_final`. `Idempotency-Key` zorunlu. Başka kurumun kaydı 404. Rol: yalnız `yonetici` (K-468; performans raporu kişiseldir). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "paper",
+                      "email",
+                      "in_person"
+                    ],
+                    "description": "\"Okudum\" kaydının kanalı: `paper` ıslak imzalı nüsha, `email` e-posta, `in_person` yüz yüze görüşme"
+                  },
+                  "acknowledgedDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Personelin raporu okuduğunu bildirdiği gün; kesinleştirme gününden önce, bugünden sonra olamaz"
+                  }
+                },
+                "required": [
+                  "channel",
+                  "acknowledgedDate"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "reviewId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "reviewId": {
+                          "type": "string",
+                          "description": "Personel × dönem performans kaydı"
+                        },
+                        "periodId": {
+                          "type": "string"
+                        },
+                        "periodName": {
+                          "type": "string"
+                        },
+                        "periodStartDate": {
+                          "type": "string"
+                        },
+                        "periodEndDate": {
+                          "type": "string"
+                        },
+                        "periodStatus": {
+                          "type": "string",
+                          "enum": [
+                            "planning",
+                            "active",
+                            "interim",
+                            "evaluation",
+                            "closed"
+                          ]
+                        },
+                        "membershipId": {
+                          "type": "string",
+                          "description": "Personelin kurum üyeliği"
+                        },
+                        "staffName": {
+                          "type": "string",
+                          "description": "Personel adı"
+                        },
+                        "staffRole": {
+                          "type": "string",
+                          "description": "Personelin rolü"
+                        },
+                        "sections": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "evaluation",
+                              "selfEvaluation",
+                              "observations",
+                              "developmentGoals",
+                              "managerOpinion"
+                            ]
+                          },
+                          "description": "Rapordaki bölümler, sırasıyla (K-466)"
+                        },
+                        "evaluation": {
+                          "type": "object",
+                          "properties": {
+                            "goals": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "criterion": {
+                                    "type": "string"
+                                  },
+                                  "weight": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Ağırlık, yüzde"
+                                  },
+                                  "score": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Dönem sonu puanı (1–5)"
+                                  }
+                                },
+                                "required": [
+                                  "title",
+                                  "criterion",
+                                  "weight",
+                                  "score"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "overallScore": {
+                              "description": "Genel puan (ağırlıklı ortalama, 1–5)",
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "scored": {
+                              "type": "boolean"
+                            },
+                            "interimDate": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "interimNote": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "evaluatorName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "evaluatedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "staffComment": {
+                              "description": "Personelin değerlendirmeye görüşü",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "goals",
+                            "overallScore",
+                            "scored",
+                            "interimDate",
+                            "interimNote",
+                            "evaluatorName",
+                            "evaluatedAt",
+                            "staffComment"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Dönem sonu değerlendirmesi (DOM-FIN-124)"
+                        },
+                        "selfEvaluation": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "missing",
+                                "draft",
+                                "submitted"
+                              ],
+                              "description": "`missing` yanıt yok, `draft` gönderilmedi, `submitted` gönderildi"
+                            },
+                            "submittedAt": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "channel": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "enum": [
+                                    "paper",
+                                    "email"
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "scaleAverage": {
+                              "description": "Puanlı soruların ortalaması (1–5)",
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "answeredCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "questionCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "question": {
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "type": "string",
+                                    "enum": [
+                                      "scale",
+                                      "open"
+                                    ]
+                                  },
+                                  "score": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "text": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "question",
+                                  "kind",
+                                  "score",
+                                  "text"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "description": "Soru ve cevaplar; yalnız gönderilmiş öz değerlendirmede dolu"
+                            },
+                            "managerComment": {
+                              "description": "Yöneticinin öz değerlendirmeye görüşü",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "submittedAt",
+                            "channel",
+                            "scaleAverage",
+                            "answeredCount",
+                            "questionCount",
+                            "items",
+                            "managerComment"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Öz değerlendirme özeti (DOM-FIN-131); yalnız gönderildiyse içerik taşır"
+                        },
+                        "observations": {
+                          "type": "object",
+                          "properties": {
+                            "count": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "averagePercent": {
+                              "description": "Gözlem puanı ortalaması (100'lük)",
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            },
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "observedDate": {
+                                    "type": "string"
+                                  },
+                                  "templateName": {
+                                    "type": "string"
+                                  },
+                                  "observerName": {
+                                    "type": "string"
+                                  },
+                                  "total": {
+                                    "type": "number"
+                                  },
+                                  "max": {
+                                    "type": "number"
+                                  },
+                                  "percent": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "observedDate",
+                                  "templateName",
+                                  "observerName",
+                                  "total",
+                                  "max",
+                                  "percent"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "count",
+                            "averagePercent",
+                            "items"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Dönemdeki tamamlanmış ders gözlemleri (DOM-FIN-130)"
+                        },
+                        "developmentGoals": {
+                          "type": "object",
+                          "properties": {
+                            "count": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "achievedCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ulaşılan hedef sayısı"
+                            },
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "description": "Hedef"
+                                  },
+                                  "successCriterion": {
+                                    "type": "string",
+                                    "description": "Başarı ölçütü"
+                                  },
+                                  "source": {
+                                    "type": "string",
+                                    "enum": [
+                                      "observation_debrief",
+                                      "direct"
+                                    ],
+                                    "description": "`observation_debrief` gözlem görüşmesi, `direct` doğrudan"
+                                  },
+                                  "observedDate": {
+                                    "description": "Kaynak gözlemin günü",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "followUpDate": {
+                                    "type": "string",
+                                    "description": "Takip tarihi"
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "open",
+                                      "in_progress",
+                                      "achieved"
+                                    ],
+                                    "description": "Durum (kesinleşmiş raporda kesinleştirme anındaki): `open` açık, `in_progress` sürüyor, `achieved` ulaşıldı"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "title",
+                                  "successCriterion",
+                                  "source",
+                                  "observedDate",
+                                  "followUpDate",
+                                  "status"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "count",
+                            "achievedCount",
+                            "items"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez (K-468)"
+                        },
+                        "managerOpinion": {
+                          "description": "Yönetici görüşü; kesinleştirmede yazılır",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reportId": {
+                          "description": "Kesinleştirme kaydı; kesinleşmediyse boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "finalized",
+                            "acknowledged"
+                          ],
+                          "description": "`draft` kesinleşmedi, `finalized` kesinleşti, `acknowledged` personel okudu"
+                        },
+                        "finalizedAt": {
+                          "description": "Kesinleştirme anı (ISO 8601 UTC)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "finalizedByName": {
+                          "description": "Kesinleştiren yönetici",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "acknowledgedDate": {
+                          "description": "Personelin okuduğunu bildirdiği gün",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "acknowledgementChannel": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "paper",
+                                "email",
+                                "in_person"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "\"Okudum\" kanalı: `paper` ıslak imzalı nüsha, `email` e-posta, `in_person` yüz yüze"
+                        },
+                        "acknowledgementRecordedAt": {
+                          "description": "\"Okudum\" kaydının girildiği an",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "acknowledgementRecordedByName": {
+                          "description": "\"Okudum\" kaydını personel adına giren yönetici",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "reviewId",
+                        "periodId",
+                        "periodName",
+                        "periodStartDate",
+                        "periodEndDate",
+                        "periodStatus",
+                        "membershipId",
+                        "staffName",
+                        "staffRole",
+                        "sections",
+                        "evaluation",
+                        "selfEvaluation",
+                        "observations",
+                        "developmentGoals",
+                        "managerOpinion",
+                        "reportId",
+                        "status",
+                        "finalizedAt",
+                        "finalizedByName",
+                        "acknowledgedDate",
+                        "acknowledgementChannel",
+                        "acknowledgementRecordedAt",
+                        "acknowledgementRecordedByName"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

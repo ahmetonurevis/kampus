@@ -235,6 +235,10 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // (routes/finance-observation-debriefs.ts; DOM-FIN-133, ON-209).
   'POST /api/v1/finance/lesson-observations/{observationId}/debrief',
   'POST /api/v1/finance/development-goals',
+  // Geri bildirim şablonu ve değerlendiren ataması; çift tıklama ikinci şablonu ya da atamayı
+  // açmaz (routes/finance-staff-feedback.ts; DOM-FIN-134, ON-212).
+  'POST /api/v1/finance/performance-periods/{periodId}/staff-feedback-template',
+  'POST /api/v1/finance/performance-periods/{periodId}/staff-feedback-assignments',
 ]
 // Onur: kayıt ve finans sonu
 

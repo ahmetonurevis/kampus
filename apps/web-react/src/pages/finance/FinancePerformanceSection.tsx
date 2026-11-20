@@ -45,7 +45,9 @@ import type { BadgeTone } from '@/lib/badge-tone.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { notify } from '@/lib/notify.ts'
 import { RootError } from '../management/FormParts.tsx'
+import { PerformanceReportPanel } from './FinancePerformanceReportSection.tsx'
 import { SelfEvaluationPanel } from './FinanceSelfEvaluationSection.tsx'
+import { StaffFeedbackPanel } from './FinanceStaffFeedbackSection.tsx'
 import { staffOptionText } from './finance-staff-certificate-forms.ts'
 import {
   emptyGoal,
@@ -222,6 +224,7 @@ export function FinancePerformanceSection() {
       </section>
       {selected ? <ReviewsPanel key={selected.id} period={selected} /> : null}
       {selected ? <SelfEvaluationPanel key={selected.id} period={selected} /> : null}
+      {selected ? <StaffFeedbackPanel key={selected.id} period={selected} /> : null}
       <Modal
         open={creating}
         onOpenChange={setCreating}
@@ -237,6 +240,7 @@ export function FinancePerformanceSection() {
       >
         {advancing ? <AdvanceForm period={advancing} onDone={() => setAdvancing(null)} /> : null}
       </Modal>
+      {selected ? <PerformanceReportPanel key={selected.id} period={selected} /> : null}
     </div>
   )
 }

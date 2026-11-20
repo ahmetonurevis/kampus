@@ -331,11 +331,12 @@ describe('DOM-FIN-133: gözlem sonrası görüşme ve gelişim hedefi uçları',
     goal = ok(await followUp(t.admin, goal, { note: 'Üç derste kullandı', status: 'achieved' }))
     assert.equal(goal.status, 'achieved')
     assert.equal(goal.active, false)
+    // Sabit test saatinde iki notun created_at'i eşit, uuid sırası rastgele: sırasız karşılaştır.
     assert.deepEqual(
-      (goal.notes as Json[]).map((note) => [note.statusFrom, note.statusTo]),
+      (goal.notes as Json[]).map((note) => [note.statusFrom, note.statusTo]).sort(),
       [
-        ['open', 'in_progress'],
         ['in_progress', 'achieved'],
+        ['open', 'in_progress'],
       ],
     )
     assertError(await followUp(t.admin, goal, { note: 'Yeni' }), 409, 'development_goal_closed')

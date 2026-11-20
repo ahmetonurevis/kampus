@@ -3551,6 +3551,229 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: gözlem sonrası görüşme ve gelişim hedefi (ON-209; DOM-FIN-133, K-456).
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'kayıt',
+          'GET /api/v1/finance/lesson-observations/:observationId/debrief',
+          "call('GET', debriefUrl(setB.observation), a.admin)",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/lesson-observations/:observationId/debrief',
+          'openDebrief(a.admin, setB.observation',
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/observation-debriefs/:debriefId',
+          'patchDebrief(a.admin, debriefB',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/observation-debriefs/:debriefId/finalize',
+          'finalize(a.admin, debriefB)',
+        ],
+        ['liste', 'GET /api/v1/finance/development-goals', "call('GET', GOALS, a.admin)"],
+        ['gövde', 'POST /api/v1/finance/development-goals', 'institutionId: b.id,'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/development-goals/:goalId',
+          '`${GOALS}/${String(goalB.id)}`, a.admin',
+        ],
+        ['kayıt', 'PATCH /api/v1/finance/development-goals/:goalId', 'patchGoal(a.admin, goalB'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/development-goals/:goalId/follow-ups',
+          'followUp(a.admin, goalB',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-observation-debriefs.test.ts',
+        'DOM-FIN-133: başka kurumun görüşmesi ve hedefi 404 ve değişmez; gövdedeki institutionId 400',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: çok kaynaklı geri bildirim (ON-212; DOM-FIN-134, K-459).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/staff-feedback-settings', 'settings(a.admin)'],
+        [
+          'gövde',
+          'PATCH /api/v1/finance/staff-feedback-settings',
+          'peerAnonymityThreshold: 4, institutionId: b.id',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/performance-periods/:periodId/staff-feedback',
+          'overview(a.admin, pb)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/performance-periods/:periodId/staff-feedback-template',
+          'createTemplate(a.admin, pb)',
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/staff-feedback-templates/:templateId',
+          'editTemplate(a.admin, template)',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/performance-periods/:periodId/staff-feedback-subjects',
+          'subjects(a.admin, pb)',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/performance-periods/:periodId/staff-feedback-assignments',
+          'assignments(a.admin, pb)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/performance-periods/:periodId/staff-feedback-assignments',
+          'assign(a.admin, pb, selin',
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/staff-feedback-assignments/:assignmentId',
+          'remove(a.admin, assignment)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-feedback-assignments/:assignmentId/response',
+          'respond(a.admin, assignment',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-feedback-assignments/:assignmentId/withdraw',
+          'withdraw(a.admin, done',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/performance-periods/:periodId/staff-feedback-results/:membershipId',
+          'result(a.admin, pb, selin)',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-staff-feedback.test.ts',
+        'DOM-FIN-134: başka kurumun dönemi, şablonu, ataması ve sonucu 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: performans raporu (ON-220; DOM-FIN-137, K-468).
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'kayıt',
+          'GET /api/v1/finance/performance-periods/:periodId/report-summary',
+          'summary(b.admin, p)',
+        ],
+        ['kayıt', 'GET /api/v1/finance/performance-periods/:periodId/reports', 'rows(b.admin, p)'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/performance-reviews/:reviewId/report',
+          'report(b.admin, review)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/performance-reviews/:reviewId/report/finalize',
+          'finalize(b.admin, review)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/performance-reviews/:reviewId/report/acknowledge',
+          'acknowledge(b.admin, review)',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-performance-reports.test.ts',
+        'DOM-FIN-137: başka kurumun dönemi ve raporu 404; A değişmez',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: yeni öğretmen mentorluğu (ON-219; DOM-FIN-136, K-465).
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'liste',
+          'GET /api/v1/finance/teacher-mentorship-settings',
+          "call('GET', SETTINGS, a.admin)",
+        ],
+        [
+          'gövde',
+          'PATCH /api/v1/finance/teacher-mentorship-settings',
+          "call('PATCH', SETTINGS, a.admin, {",
+        ],
+        [
+          'liste',
+          'GET /api/v1/finance/teacher-mentorship-summary',
+          "call('GET', SUMMARY, a.admin)",
+        ],
+        [
+          'liste',
+          'GET /api/v1/finance/teacher-mentorship-onboarding-options',
+          "call('GET', ONBOARDING, a.admin)",
+        ],
+        ['liste', 'GET /api/v1/finance/teacher-mentorships', "call('GET', MENTORSHIPS, a.admin)"],
+        ['gövde', 'POST /api/v1/finance/teacher-mentorships', 'institutionId: b.id,'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/teacher-mentorships/:mentorshipId',
+          '`${MENTORSHIPS}/${String(rowB.id)}`, a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/teacher-mentorships/:mentorshipId/meetings',
+          'meet(a.admin, withMeeting)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/teacher-mentorships/:mentorshipId/meetings/:meetingId/archive',
+          'archiveB, a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/teacher-mentorships/:mentorshipId/checklist/:itemId/complete',
+          'tick(a.admin, withMeeting, itemB)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/teacher-mentorships/:mentorshipId/checklist/:itemId/reopen',
+          "tick(a.admin, withMeeting, itemB, 'reopen')",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/teacher-mentorships/:mentorshipId/complete',
+          'finish(a.admin, withMeeting)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/teacher-mentorships/:mentorshipId/end',
+          'endEarly(a.admin, withMeeting',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-teacher-mentorships.test.ts',
+        'DOM-FIN-136: başka kurumun eşleşmesi, görüşmesi ve maddesi 404 ve değişmez; gövdedeki institutionId 400',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

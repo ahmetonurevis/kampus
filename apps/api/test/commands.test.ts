@@ -231,6 +231,18 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // (routes/finance-lesson-observations.ts; DOM-FIN-130, ON-206).
   'POST /api/v1/finance/lesson-observation-templates',
   'POST /api/v1/finance/lesson-observations',
+  // Gözlem sonrası görüşme ve gelişim hedefi açma; çift tıklama ikinci kaydı açmaz
+  // (routes/finance-observation-debriefs.ts; DOM-FIN-133, ON-209).
+  'POST /api/v1/finance/lesson-observations/{observationId}/debrief',
+  'POST /api/v1/finance/development-goals',
+  // Geri bildirim şablonu ve değerlendiren ataması; çift tıklama ikinci şablonu ya da atamayı
+  // açmaz (routes/finance-staff-feedback.ts; DOM-FIN-134, ON-212).
+  'POST /api/v1/finance/performance-periods/{periodId}/staff-feedback-template',
+  'POST /api/v1/finance/performance-periods/{periodId}/staff-feedback-assignments',
+  // Performans raporu kesinleştirme ve personel adına "okudum" kaydı; çift tıklama ikinci kaydı
+  // açmaz (routes/finance-performance-reports.ts; DOM-FIN-137, ON-220).
+  'POST /api/v1/finance/performance-reviews/{reviewId}/report/finalize',
+  'POST /api/v1/finance/performance-reviews/{reviewId}/report/acknowledge',
   // Mentorluk eşleşmesi ve görüşme kaydı; çift tıklama ikinci eşleşmeyi ya da görüşmeyi yazmaz
   // (routes/finance-teacher-mentorships.ts; DOM-FIN-136, ON-219).
   'POST /api/v1/finance/teacher-mentorships',

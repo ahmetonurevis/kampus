@@ -1172,7 +1172,7 @@ Kullanıcı kararları (2026-11-07, K-33…K-39; yedisinde de öneri kabul edild
 - **Gerekçe:** Zümre kararları (ortak sınav, plan, ölçme) dağınık tutulunca sorumlusu ve termini kaybolur; kesinleşen tutanağın değişmemesi imzalı nüshayla tutarlılığı korur.
 - **Kaynak:** MEB Ortaöğretim Kurumları Yönetmeliği ve Okul Öncesi Eğitim ve İlköğretim Kurumları Yönetmeliği (zümre öğretmenler kurulu); 5580 sayılı Kanun ve Özel Öğretim Kurumları Yönetmeliği. Toplantı zamanları, başkanın kim olduğu, imza ve saklama biçimi ile özel okul ve kursta zorunluluk **doğrulanmalı** (H-98). Ürün kararları öneriyle uygulanmıştır (K-451…K-453, 2026-11-19).
 - **Kurum türü:** ikisi
-- **Kodda:** var (core, API) — kural `packages/school-core/src/lib/finance-department-meetings.ts`; tablolar `department_meetings`, `department_meeting_attendees`, `department_meeting_decisions` (migration `create_department_meetings`, dalda 0139); uçlar `apps/api/src/routes/finance-department-meetings.ts`. Web sekmesi ve PDF devam ediyor.
+- **Kodda:** var (core, API, web) — kural `packages/school-core/src/lib/finance-department-meetings.ts`; tablolar `department_meetings`, `department_meeting_attendees`, `department_meeting_decisions` (migration `create_department_meetings`, dalda 0139); uçlar `apps/api/src/routes/finance-department-meetings.ts`; web Finans "Zümre toplantıları" sekmesi `apps/web-react/src/pages/finance/FinanceDepartmentMeetingsSection.tsx`, tutanak PDF'i `apps/web-react/src/lib/pdf/templates/finance-department-meeting-minutes.ts`.
 
 ## Etkinlik bileti
 

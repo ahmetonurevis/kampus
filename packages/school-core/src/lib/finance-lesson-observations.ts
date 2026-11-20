@@ -401,8 +401,14 @@ function assertDay(observedDate: string, today: string): void {
     ])
 }
 
-/** Sınıf ve ders bağı: `null` istenmedi, `false` kurumda yok ya da arşivli. */
-function assertRecords(checks: { classFound: boolean | null; subjectFound: boolean | null }) {
+/**
+ * Sınıf ve ders bağı: `null` istenmedi, `false` kurumda yok ya da arşivli. Gözlem planı
+ * (DOM-FIN-139) aynı kuralı kullanır.
+ */
+export function assertObservationRecords(checks: {
+  classFound: boolean | null
+  subjectFound: boolean | null
+}) {
   if (checks.classFound === false)
     throw ruleError('observation_class_not_found', 'Sınıf bulunamadı.', ['classId'])
   if (checks.subjectFound === false)
@@ -430,10 +436,29 @@ export function planLessonObservation(
   input: { observedDate: string },
   checks: LessonObservationChecks,
 ): ObservationRating[] {
-  const { template, teacher, observer } = checks
+  const { template } = checks
   if (template === null)
     throw ruleError('observation_template_not_found', 'Gözlem formu bulunamadı.', ['templateId'])
   if (template.archived) throw archivedError()
+  assertObservationPeople(checks.teacher, checks.observer)
+  assertObservationRecords(checks)
+  assertDay(input.observedDate, checks.today)
+  assertPeriod(checks.period, input.observedDate)
+  return template.criteria.map((criterion) => ({
+    criterionId: criterion.id,
+    level: null,
+    note: null,
+  }))
+}
+
+/**
+ * Gözlenen ve gözlemci (K-446): gözlenen kurumun etkin öğretmeni, gözlemci etkin yönetici ya da
+ * öğretmen ve gözlenenden başka kişidir. Gözlem planı (DOM-FIN-139) aynı kuralı kullanır.
+ */
+export function assertObservationPeople(
+  teacher: ObservationMember | null,
+  observer: ObservationMember | null,
+): void {
   if (teacher === null)
     throw ruleError('observation_teacher_not_found', 'Öğretmen bulunamadı.', [
       'teacherMembershipId',
@@ -462,14 +487,6 @@ export function planLessonObservation(
     throw ruleError('observation_self', 'Öğretmen kendi dersinin gözlemcisi olamaz.', [
       'observerMembershipId',
     ])
-  assertRecords(checks)
-  assertDay(input.observedDate, checks.today)
-  assertPeriod(checks.period, input.observedDate)
-  return template.criteria.map((criterion) => ({
-    criterionId: criterion.id,
-    level: null,
-    note: null,
-  }))
 }
 
 const completedError = () =>
@@ -514,7 +531,7 @@ export function planLessonObservationUpdate(
   if (input.observedDate !== undefined || input.performancePeriodId !== undefined)
     assertPeriod(checks.period, observedDate)
   if (input.performancePeriodId !== undefined) patch.performancePeriodId = input.performancePeriodId
-  assertRecords(checks)
+  assertObservationRecords(checks)
   if (input.classId !== undefined) patch.classId = input.classId
   if (input.subjectId !== undefined) patch.subjectId = input.subjectId
   if (input.ratings !== undefined) {

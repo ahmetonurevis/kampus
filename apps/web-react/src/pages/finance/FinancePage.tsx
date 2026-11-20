@@ -209,6 +209,16 @@ const FinanceProfessionalDevelopmentSection = lazy(async () => ({
   default: (await import('./FinanceProfessionalDevelopmentSection.tsx'))
     .FinanceProfessionalDevelopmentSection,
 }))
+const FinanceOrgChartSection = lazy(async () => ({
+  default: (await import('./FinanceOrgChartSection.tsx')).FinanceOrgChartSection,
+}))
+const FinanceJobPostingsSection = lazy(async () => ({
+  default: (await import('./FinanceJobPostingsSection.tsx')).FinanceJobPostingsSection,
+}))
+const FinanceDepartmentMeetingsSection = lazy(async () => ({
+  default: (await import('./FinanceDepartmentMeetingsSection.tsx'))
+    .FinanceDepartmentMeetingsSection,
+}))
 const FinanceLessonObservationsSection = lazy(async () => ({
   default: (await import('./FinanceLessonObservationsSection.tsx'))
     .FinanceLessonObservationsSection,
@@ -281,6 +291,9 @@ const VIEWS = {
   policyAcknowledgements: { label: 'Politika onayları', param: 'politika-onaylari' },
   staffingPlan: { label: 'Kadro planı', param: 'kadro-plani' },
   professionalDevelopment: { label: 'Mesleki gelişim', param: 'mesleki-gelisim' },
+  orgChart: { label: 'Organizasyon', param: 'organizasyon' },
+  jobPostings: { label: 'İş ilanları', param: 'is-ilanlari' },
+  departmentMeetings: { label: 'Zümre toplantıları', param: 'zumre-toplantilari' },
   lessonObservations: { label: 'Ders gözlemleri', param: 'ders-gozlemleri' },
 } as const
 type FinanceView = keyof typeof VIEWS
@@ -338,6 +351,10 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Politika onayları (DOM-FIN-127) ikisine açıktır; ön büro personel adına onay kaydeder, belgeyi
  * yönetici yayımlar (K-437).
  * Kadro planı (DOM-FIN-126) yalnız yöneticidedir; ücret türünden kapasite hesaplar (K-434).
+ * Organizasyon şeması (DOM-FIN-129) yalnız yöneticidedir; atama personel verisidir (K-444).
+ * İş ilanları (DOM-FIN-128) yalnız yöneticidedir; aday verisi kişiseldir, ön büro başvuruyu
+ * yalnız API'den girer (K-440).
+ * Zümre toplantıları (DOM-FIN-132) yalnız yöneticidedir (K-451).
  * Ders gözlemleri (DOM-FIN-130) yalnız yöneticidedir; gözlem kişisel veridir (K-447).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
@@ -353,10 +370,13 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'fixedAssets' ||
       value === 'severance' ||
       value === 'freeTuition' ||
+      value === 'lessonObservations' ||
+      value === 'departmentMeetings' ||
+      value === 'jobPostings' ||
       value === 'staffingPlan' ||
+      value === 'orgChart' ||
       value === 'staffOnboarding' ||
       value === 'performance' ||
-      value === 'lessonObservations' ||
       value === 'staffRetention' ||
       value === 'staffSeparations' ||
       value === 'hrReports' ||
@@ -588,6 +608,9 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'professionalDevelopment' ? (
           <FinanceProfessionalDevelopmentSection canManage={isManager} />
         ) : null}
+        {tab === 'orgChart' ? <FinanceOrgChartSection /> : null}
+        {tab === 'jobPostings' ? <FinanceJobPostingsSection /> : null}
+        {tab === 'departmentMeetings' ? <FinanceDepartmentMeetingsSection /> : null}
         {tab === 'lessonObservations' ? <FinanceLessonObservationsSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel

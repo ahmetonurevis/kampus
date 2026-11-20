@@ -1,5 +1,5 @@
 {
-  "id": "c7ac7e82-c3bf-4ffe-9b7b-18d6019dbe51",
+  "id": "ad5611b8-cf63-411f-9d02-368e3a4802df",
   "prevId": "2ffa6968-e49d-482d-a92d-e8cb261e9c7b",
   "version": "7",
   "dialect": "postgresql",
@@ -15245,694 +15245,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.lesson_observation_template_versions": {
-      "name": "lesson_observation_template_versions",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "template_id": {
-          "name": "template_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "version_number": {
-          "name": "version_number",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "criteria": {
-          "name": "criteria",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "lesson_observation_template_versions_number_key": {
-          "name": "lesson_observation_template_versions_number_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "template_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "version_number",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "lesson_observation_template_versions_institution_id_institutions_id_fk": {
-          "name": "lesson_observation_template_versions_institution_id_institutions_id_fk",
-          "tableFrom": "lesson_observation_template_versions",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "lesson_observation_template_versions_template_fkey": {
-          "name": "lesson_observation_template_versions_template_fkey",
-          "tableFrom": "lesson_observation_template_versions",
-          "tableTo": "lesson_observation_templates",
-          "columnsFrom": [
-            "institution_id",
-            "template_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "lesson_observation_template_versions_pkey": {
-          "name": "lesson_observation_template_versions_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "lesson_observation_template_versions_name_check": {
-          "name": "lesson_observation_template_versions_name_check",
-          "value": "char_length(\"lesson_observation_template_versions\".\"name\") between 2 and 120"
-        },
-        "lesson_observation_template_versions_criteria_check": {
-          "name": "lesson_observation_template_versions_criteria_check",
-          "value": "jsonb_typeof(\"lesson_observation_template_versions\".\"criteria\") = 'array'\n        and jsonb_array_length(\"lesson_observation_template_versions\".\"criteria\") between 1 and 10"
-        },
-        "lesson_observation_template_versions_number_check": {
-          "name": "lesson_observation_template_versions_number_check",
-          "value": "\"lesson_observation_template_versions\".\"version_number\" >= 1"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.lesson_observation_templates": {
-      "name": "lesson_observation_templates",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "latest_version_number": {
-          "name": "latest_version_number",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "lesson_observation_templates_institution_id_institutions_id_fk": {
-          "name": "lesson_observation_templates_institution_id_institutions_id_fk",
-          "tableFrom": "lesson_observation_templates",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "lesson_observation_templates_pkey": {
-          "name": "lesson_observation_templates_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "lesson_observation_templates_latest_check": {
-          "name": "lesson_observation_templates_latest_check",
-          "value": "\"lesson_observation_templates\".\"latest_version_number\" >= 1"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.lesson_observations": {
-      "name": "lesson_observations",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "template_version_id": {
-          "name": "template_version_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "teacher_membership_id": {
-          "name": "teacher_membership_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "observer_membership_id": {
-          "name": "observer_membership_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "observed_date": {
-          "name": "observed_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "class_id": {
-          "name": "class_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "class_collection": {
-          "name": "class_collection",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "generated": {
-            "as": "'classes'",
-            "type": "stored"
-          }
-        },
-        "subject_id": {
-          "name": "subject_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "subject_collection": {
-          "name": "subject_collection",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "generated": {
-            "as": "'subjects'",
-            "type": "stored"
-          }
-        },
-        "performance_period_id": {
-          "name": "performance_period_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "ratings": {
-          "name": "ratings",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "general_note": {
-          "name": "general_note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'draft'"
-        },
-        "completed_at": {
-          "name": "completed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "completed_by_user_id": {
-          "name": "completed_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "lesson_observations_date_idx": {
-          "name": "lesson_observations_date_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "observed_date",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "lesson_observations_template_version_idx": {
-          "name": "lesson_observations_template_version_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "template_version_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "lesson_observations_teacher_idx": {
-          "name": "lesson_observations_teacher_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "teacher_membership_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "lesson_observations_observer_idx": {
-          "name": "lesson_observations_observer_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "observer_membership_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "lesson_observations_class_idx": {
-          "name": "lesson_observations_class_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "class_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "lesson_observations_subject_idx": {
-          "name": "lesson_observations_subject_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "subject_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "lesson_observations_period_idx": {
-          "name": "lesson_observations_period_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "performance_period_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "lesson_observations_institution_id_institutions_id_fk": {
-          "name": "lesson_observations_institution_id_institutions_id_fk",
-          "tableFrom": "lesson_observations",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "lesson_observations_template_version_fkey": {
-          "name": "lesson_observations_template_version_fkey",
-          "tableFrom": "lesson_observations",
-          "tableTo": "lesson_observation_template_versions",
-          "columnsFrom": [
-            "institution_id",
-            "template_version_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "lesson_observations_teacher_fkey": {
-          "name": "lesson_observations_teacher_fkey",
-          "tableFrom": "lesson_observations",
-          "tableTo": "memberships",
-          "columnsFrom": [
-            "institution_id",
-            "teacher_membership_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "lesson_observations_observer_fkey": {
-          "name": "lesson_observations_observer_fkey",
-          "tableFrom": "lesson_observations",
-          "tableTo": "memberships",
-          "columnsFrom": [
-            "institution_id",
-            "observer_membership_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "lesson_observations_class_fkey": {
-          "name": "lesson_observations_class_fkey",
-          "tableFrom": "lesson_observations",
-          "tableTo": "records",
-          "columnsFrom": [
-            "institution_id",
-            "class_collection",
-            "class_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "collection",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "lesson_observations_subject_fkey": {
-          "name": "lesson_observations_subject_fkey",
-          "tableFrom": "lesson_observations",
-          "tableTo": "records",
-          "columnsFrom": [
-            "institution_id",
-            "subject_collection",
-            "subject_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "collection",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "lesson_observations_period_fkey": {
-          "name": "lesson_observations_period_fkey",
-          "tableFrom": "lesson_observations",
-          "tableTo": "performance_periods",
-          "columnsFrom": [
-            "institution_id",
-            "performance_period_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "lesson_observations_pkey": {
-          "name": "lesson_observations_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "lesson_observations_status_check": {
-          "name": "lesson_observations_status_check",
-          "value": "\"lesson_observations\".\"status\" in ('draft', 'completed')"
-        },
-        "lesson_observations_ratings_check": {
-          "name": "lesson_observations_ratings_check",
-          "value": "jsonb_typeof(\"lesson_observations\".\"ratings\") = 'array'\n        and jsonb_array_length(\"lesson_observations\".\"ratings\") between 1 and 10"
-        },
-        "lesson_observations_note_check": {
-          "name": "lesson_observations_note_check",
-          "value": "\"lesson_observations\".\"general_note\" is null\n        or char_length(\"lesson_observations\".\"general_note\") between 1 and 4000"
-        },
-        "lesson_observations_completed_check": {
-          "name": "lesson_observations_completed_check",
-          "value": "((\"lesson_observations\".\"status\" = 'completed') = (\"lesson_observations\".\"completed_at\" is not null))\n        and ((\"lesson_observations\".\"completed_at\" is null) = (\"lesson_observations\".\"completed_by_user_id\" is null))\n        and (\"lesson_observations\".\"status\" = 'draft' or \"lesson_observations\".\"general_note\" is not null)"
-        },
-        "lesson_observations_people_check": {
-          "name": "lesson_observations_people_check",
-          "value": "\"lesson_observations\".\"teacher_membership_id\" <> \"lesson_observations\".\"observer_membership_id\""
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.maintenance_inspections": {
       "name": "maintenance_inspections",
       "schema": "",
@@ -28072,6 +27384,469 @@
         "scholarship_terminations_clawback_check": {
           "name": "scholarship_terminations_clawback_check",
           "value": "(\"scholarship_terminations\".\"kind\" = 'revoke') or (\"scholarship_terminations\".\"principal_cents\" = 0 and \"scholarship_terminations\".\"interest_cents\" = 0 and \"scholarship_terminations\".\"clawback_due_date\" is null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.self_evaluation_responses": {
+      "name": "self_evaluation_responses",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_id": {
+          "name": "period_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "template_id": {
+          "name": "template_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "membership_id": {
+          "name": "membership_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "answers": {
+          "name": "answers",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "channel": {
+          "name": "channel",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "submitted_at": {
+          "name": "submitted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "submitted_by_user_id": {
+          "name": "submitted_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "manager_comment": {
+          "name": "manager_comment",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "manager_comment_by_name": {
+          "name": "manager_comment_by_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "manager_comment_at": {
+          "name": "manager_comment_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reopen_count": {
+          "name": "reopen_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "reopened_at": {
+          "name": "reopened_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reopened_by_user_id": {
+          "name": "reopened_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reopen_reason": {
+          "name": "reopen_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "self_evaluation_responses_member_key": {
+          "name": "self_evaluation_responses_member_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "period_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "self_evaluation_responses_template_idx": {
+          "name": "self_evaluation_responses_template_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "template_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "self_evaluation_responses_membership_idx": {
+          "name": "self_evaluation_responses_membership_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "self_evaluation_responses_institution_id_institutions_id_fk": {
+          "name": "self_evaluation_responses_institution_id_institutions_id_fk",
+          "tableFrom": "self_evaluation_responses",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "self_evaluation_responses_period_fkey": {
+          "name": "self_evaluation_responses_period_fkey",
+          "tableFrom": "self_evaluation_responses",
+          "tableTo": "performance_periods",
+          "columnsFrom": [
+            "institution_id",
+            "period_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "self_evaluation_responses_template_fkey": {
+          "name": "self_evaluation_responses_template_fkey",
+          "tableFrom": "self_evaluation_responses",
+          "tableTo": "self_evaluation_templates",
+          "columnsFrom": [
+            "institution_id",
+            "template_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "self_evaluation_responses_membership_fkey": {
+          "name": "self_evaluation_responses_membership_fkey",
+          "tableFrom": "self_evaluation_responses",
+          "tableTo": "memberships",
+          "columnsFrom": [
+            "institution_id",
+            "membership_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "self_evaluation_responses_review_fkey": {
+          "name": "self_evaluation_responses_review_fkey",
+          "tableFrom": "self_evaluation_responses",
+          "tableTo": "performance_reviews",
+          "columnsFrom": [
+            "institution_id",
+            "period_id",
+            "membership_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "period_id",
+            "membership_id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "self_evaluation_responses_pkey": {
+          "name": "self_evaluation_responses_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "self_evaluation_responses_status_check": {
+          "name": "self_evaluation_responses_status_check",
+          "value": "\"self_evaluation_responses\".\"status\" in ('draft', 'submitted')"
+        },
+        "self_evaluation_responses_channel_check": {
+          "name": "self_evaluation_responses_channel_check",
+          "value": "\"self_evaluation_responses\".\"channel\" in ('paper', 'email')"
+        },
+        "self_evaluation_responses_answers_check": {
+          "name": "self_evaluation_responses_answers_check",
+          "value": "jsonb_typeof(\"self_evaluation_responses\".\"answers\") = 'array' and jsonb_array_length(\"self_evaluation_responses\".\"answers\") between 1 and 20"
+        },
+        "self_evaluation_responses_submitted_check": {
+          "name": "self_evaluation_responses_submitted_check",
+          "value": "((\"self_evaluation_responses\".\"status\" = 'submitted') = (\"self_evaluation_responses\".\"submitted_at\" is not null))\n        and ((\"self_evaluation_responses\".\"submitted_at\" is null) = (\"self_evaluation_responses\".\"submitted_by_user_id\" is null))"
+        },
+        "self_evaluation_responses_comment_check": {
+          "name": "self_evaluation_responses_comment_check",
+          "value": "(\"self_evaluation_responses\".\"manager_comment\" is null or char_length(\"self_evaluation_responses\".\"manager_comment\") between 1 and 2000)\n        and ((\"self_evaluation_responses\".\"manager_comment\" is null) = (\"self_evaluation_responses\".\"manager_comment_by_name\" is null))\n        and ((\"self_evaluation_responses\".\"manager_comment\" is null) = (\"self_evaluation_responses\".\"manager_comment_at\" is null))"
+        },
+        "self_evaluation_responses_reopen_check": {
+          "name": "self_evaluation_responses_reopen_check",
+          "value": "\"self_evaluation_responses\".\"reopen_count\" >= 0\n        and ((\"self_evaluation_responses\".\"reopen_count\" = 0) = (\"self_evaluation_responses\".\"reopened_at\" is null))\n        and ((\"self_evaluation_responses\".\"reopened_at\" is null) = (\"self_evaluation_responses\".\"reopened_by_user_id\" is null))\n        and ((\"self_evaluation_responses\".\"reopened_at\" is null) = (\"self_evaluation_responses\".\"reopen_reason\" is null))\n        and (\"self_evaluation_responses\".\"reopen_reason\" is null or char_length(\"self_evaluation_responses\".\"reopen_reason\") between 5 and 500)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.self_evaluation_templates": {
+      "name": "self_evaluation_templates",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_id": {
+          "name": "period_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "questions": {
+          "name": "questions",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "self_evaluation_templates_period_key": {
+          "name": "self_evaluation_templates_period_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "period_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "self_evaluation_templates_institution_id_institutions_id_fk": {
+          "name": "self_evaluation_templates_institution_id_institutions_id_fk",
+          "tableFrom": "self_evaluation_templates",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "self_evaluation_templates_period_fkey": {
+          "name": "self_evaluation_templates_period_fkey",
+          "tableFrom": "self_evaluation_templates",
+          "tableTo": "performance_periods",
+          "columnsFrom": [
+            "institution_id",
+            "period_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "self_evaluation_templates_pkey": {
+          "name": "self_evaluation_templates_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "self_evaluation_templates_questions_check": {
+          "name": "self_evaluation_templates_questions_check",
+          "value": "jsonb_typeof(\"self_evaluation_templates\".\"questions\") = 'array' and jsonb_array_length(\"self_evaluation_templates\".\"questions\") between 1 and 20"
         }
       },
       "isRLSEnabled": false

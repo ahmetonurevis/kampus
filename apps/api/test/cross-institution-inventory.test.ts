@@ -3441,6 +3441,59 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: zümre toplantısı tutanağı (ON-217; DOM-FIN-132).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/department-meetings', 'listOf(a.admin)'],
+        ['gövde', 'POST /api/v1/finance/department-meetings', 'institutionId: b.id'],
+        ['liste', 'GET /api/v1/finance/department-meeting-subjects', 'get(SUBJECTS_URL, a.admin)'],
+        [
+          'liste',
+          'GET /api/v1/finance/department-meeting-decisions',
+          'listOf(a.admin, `${DECISIONS_URL}?overdue=true`)',
+        ],
+        ['kayıt', 'GET /api/v1/finance/department-meetings/:meetingId', 'get(bUrl, a.admin)'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/department-meetings/:meetingId',
+          'patch(a.admin, bMeeting',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/department-meetings/:meetingId/finalize',
+          'finalize(a.admin, bMeeting',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/department-meetings/:meetingId/decisions',
+          'decide(a.admin, bMeeting',
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/department-meetings/:meetingId/decisions/:decisionId',
+          'editDecision(a.admin, bMeeting, bDecision',
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/department-meetings/:meetingId/decisions/:decisionId',
+          'removeDecision(a.admin, bMeeting, bDecision',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/department-meetings/:meetingId/decisions/:decisionId/follow-up',
+          'followUp(a.admin, bMeeting, bDecision',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-department-meetings.test.ts',
+        'DOM-FIN-132: başka kurumun tutanağı ve personeli 404/422, B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

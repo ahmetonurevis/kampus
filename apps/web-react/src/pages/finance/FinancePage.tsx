@@ -215,6 +215,10 @@ const FinanceOrgChartSection = lazy(async () => ({
 const FinanceJobPostingsSection = lazy(async () => ({
   default: (await import('./FinanceJobPostingsSection.tsx')).FinanceJobPostingsSection,
 }))
+const FinanceDepartmentMeetingsSection = lazy(async () => ({
+  default: (await import('./FinanceDepartmentMeetingsSection.tsx'))
+    .FinanceDepartmentMeetingsSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -285,6 +289,7 @@ const VIEWS = {
   professionalDevelopment: { label: 'Mesleki gelişim', param: 'mesleki-gelisim' },
   orgChart: { label: 'Organizasyon', param: 'organizasyon' },
   jobPostings: { label: 'İş ilanları', param: 'is-ilanlari' },
+  departmentMeetings: { label: 'Zümre toplantıları', param: 'zumre-toplantilari' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -344,6 +349,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Organizasyon şeması (DOM-FIN-129) yalnız yöneticidedir; atama personel verisidir (K-444).
  * İş ilanları (DOM-FIN-128) yalnız yöneticidedir; aday verisi kişiseldir, ön büro başvuruyu
  * yalnız API'den girer (K-440).
+ * Zümre toplantıları (DOM-FIN-132) yalnız yöneticidedir (K-451).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -358,6 +364,7 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'fixedAssets' ||
       value === 'severance' ||
       value === 'freeTuition' ||
+      value === 'departmentMeetings' ||
       value === 'jobPostings' ||
       value === 'staffingPlan' ||
       value === 'orgChart' ||
@@ -596,6 +603,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         ) : null}
         {tab === 'orgChart' ? <FinanceOrgChartSection /> : null}
         {tab === 'jobPostings' ? <FinanceJobPostingsSection /> : null}
+        {tab === 'departmentMeetings' ? <FinanceDepartmentMeetingsSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

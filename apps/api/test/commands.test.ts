@@ -223,6 +223,10 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/job-postings',
   'POST /api/v1/finance/job-applications',
   'POST /api/v1/finance/job-application-anonymizations',
+  // Zümre toplantısı tutanağı ve karar ekleme; çift tıklama ikinci tutanağı ya da ikinci kararı
+  // açmaz (routes/finance-department-meetings.ts; DOM-FIN-132, ON-217).
+  'POST /api/v1/finance/department-meetings',
+  'POST /api/v1/finance/department-meetings/{meetingId}/decisions',
 ]
 // Onur: kayıt ve finans sonu
 

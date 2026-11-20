@@ -1,5 +1,5 @@
 {
-  "id": "29203692-2627-4b06-ae93-87610e8cbf6b",
+  "id": "ad5611b8-cf63-411f-9d02-368e3a4802df",
   "prevId": "2ffa6968-e49d-482d-a92d-e8cb261e9c7b",
   "version": "7",
   "dialect": "postgresql",
@@ -14341,781 +14341,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.job_application_settings": {
-      "name": "job_application_settings",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "retention_months": {
-          "name": "retention_months",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 12
-        },
-        "privacy_notice_version": {
-          "name": "privacy_notice_version",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "job_application_settings_institution_id_institutions_id_fk": {
-          "name": "job_application_settings_institution_id_institutions_id_fk",
-          "tableFrom": "job_application_settings",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "job_application_settings_retention_check": {
-          "name": "job_application_settings_retention_check",
-          "value": "\"job_application_settings\".\"retention_months\" between 1 and 60"
-        },
-        "job_application_settings_notice_check": {
-          "name": "job_application_settings_notice_check",
-          "value": "\"job_application_settings\".\"privacy_notice_version\" is null or char_length(\"job_application_settings\".\"privacy_notice_version\") between 1 and 40"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.job_application_stage_changes": {
-      "name": "job_application_stage_changes",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "job_application_id": {
-          "name": "job_application_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "from_stage": {
-          "name": "from_stage",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "to_stage": {
-          "name": "to_stage",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "changed_on": {
-          "name": "changed_on",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "changed_by_user_id": {
-          "name": "changed_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "job_application_stage_changes_application_idx": {
-          "name": "job_application_stage_changes_application_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "job_application_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "job_application_stage_changes_institution_id_institutions_id_fk": {
-          "name": "job_application_stage_changes_institution_id_institutions_id_fk",
-          "tableFrom": "job_application_stage_changes",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "job_application_stage_changes_application_fkey": {
-          "name": "job_application_stage_changes_application_fkey",
-          "tableFrom": "job_application_stage_changes",
-          "tableTo": "job_applications",
-          "columnsFrom": [
-            "institution_id",
-            "job_application_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "job_application_stage_changes_pkey": {
-          "name": "job_application_stage_changes_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "job_application_stage_changes_to_check": {
-          "name": "job_application_stage_changes_to_check",
-          "value": "\"job_application_stage_changes\".\"to_stage\" in ('new', 'screening', 'interview', 'offer', 'hired', 'rejected')"
-        },
-        "job_application_stage_changes_from_check": {
-          "name": "job_application_stage_changes_from_check",
-          "value": "\"job_application_stage_changes\".\"from_stage\" is null or \"job_application_stage_changes\".\"from_stage\" in ('new', 'screening', 'interview', 'offer', 'hired', 'rejected')"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.job_applications": {
-      "name": "job_applications",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "job_posting_id": {
-          "name": "job_posting_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "candidate_name": {
-          "name": "candidate_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "email": {
-          "name": "email",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "phone": {
-          "name": "phone",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "channel": {
-          "name": "channel",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "received_on": {
-          "name": "received_on",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "cv_file_id": {
-          "name": "cv_file_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "privacy_notice_version": {
-          "name": "privacy_notice_version",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "privacy_notice_shown_on": {
-          "name": "privacy_notice_shown_on",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "note": {
-          "name": "note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "stage": {
-          "name": "stage",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'new'"
-        },
-        "stage_changed_on": {
-          "name": "stage_changed_on",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "anonymized_at": {
-          "name": "anonymized_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "anonymization_reason": {
-          "name": "anonymization_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "recorded_by_user_id": {
-          "name": "recorded_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "job_applications_posting_idx": {
-          "name": "job_applications_posting_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "job_posting_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "job_applications_stage_idx": {
-          "name": "job_applications_stage_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "stage",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "job_applications_email_key": {
-          "name": "job_applications_email_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "job_posting_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "email",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"job_applications\".\"email\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "job_applications_phone_key": {
-          "name": "job_applications_phone_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "job_posting_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "phone",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"job_applications\".\"phone\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "job_applications_cv_file_key": {
-          "name": "job_applications_cv_file_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "cv_file_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"job_applications\".\"cv_file_id\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "job_applications_institution_id_institutions_id_fk": {
-          "name": "job_applications_institution_id_institutions_id_fk",
-          "tableFrom": "job_applications",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "job_applications_posting_fkey": {
-          "name": "job_applications_posting_fkey",
-          "tableFrom": "job_applications",
-          "tableTo": "job_postings",
-          "columnsFrom": [
-            "institution_id",
-            "job_posting_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "job_applications_cv_file_fkey": {
-          "name": "job_applications_cv_file_fkey",
-          "tableFrom": "job_applications",
-          "tableTo": "files",
-          "columnsFrom": [
-            "institution_id",
-            "cv_file_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "job_applications_pkey": {
-          "name": "job_applications_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "job_applications_channel_check": {
-          "name": "job_applications_channel_check",
-          "value": "\"job_applications\".\"channel\" in ('website', 'email', 'in_person', 'referral')"
-        },
-        "job_applications_stage_check": {
-          "name": "job_applications_stage_check",
-          "value": "\"job_applications\".\"stage\" in ('new', 'screening', 'interview', 'offer', 'hired', 'rejected')"
-        },
-        "job_applications_reason_check": {
-          "name": "job_applications_reason_check",
-          "value": "\"job_applications\".\"anonymization_reason\" is null or \"job_applications\".\"anonymization_reason\" in ('retention_expired', 'data_subject_request')"
-        },
-        "job_applications_name_check": {
-          "name": "job_applications_name_check",
-          "value": "char_length(\"job_applications\".\"candidate_name\") between 2 and 120"
-        },
-        "job_applications_notice_check": {
-          "name": "job_applications_notice_check",
-          "value": "char_length(\"job_applications\".\"privacy_notice_version\") between 1 and 40"
-        },
-        "job_applications_note_check": {
-          "name": "job_applications_note_check",
-          "value": "\"job_applications\".\"note\" is null or char_length(\"job_applications\".\"note\") between 1 and 1000"
-        },
-        "job_applications_contact_check": {
-          "name": "job_applications_contact_check",
-          "value": "\"job_applications\".\"anonymized_at\" is not null or \"job_applications\".\"email\" is not null or \"job_applications\".\"phone\" is not null"
-        },
-        "job_applications_anonymized_check": {
-          "name": "job_applications_anonymized_check",
-          "value": "(\"job_applications\".\"anonymized_at\" is null) = (\"job_applications\".\"anonymization_reason\" is null) and (\"job_applications\".\"anonymized_at\" is null or (\"job_applications\".\"email\" is null and \"job_applications\".\"phone\" is null and \"job_applications\".\"note\" is null and \"job_applications\".\"cv_file_id\" is null))"
-        },
-        "job_applications_stage_day_check": {
-          "name": "job_applications_stage_day_check",
-          "value": "\"job_applications\".\"stage_changed_on\" >= \"job_applications\".\"received_on\""
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.job_postings": {
-      "name": "job_postings",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "title": {
-          "name": "title",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "position": {
-          "name": "position",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "employment_type": {
-          "name": "employment_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "requirements": {
-          "name": "requirements",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "publish_on": {
-          "name": "publish_on",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "deadline_on": {
-          "name": "deadline_on",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'draft'"
-        },
-        "closed_on": {
-          "name": "closed_on",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "job_postings_status_idx": {
-          "name": "job_postings_status_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "job_postings_institution_id_institutions_id_fk": {
-          "name": "job_postings_institution_id_institutions_id_fk",
-          "tableFrom": "job_postings",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "job_postings_pkey": {
-          "name": "job_postings_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "job_postings_status_check": {
-          "name": "job_postings_status_check",
-          "value": "\"job_postings\".\"status\" in ('draft', 'published', 'closed')"
-        },
-        "job_postings_employment_type_check": {
-          "name": "job_postings_employment_type_check",
-          "value": "\"job_postings\".\"employment_type\" in ('full_time', 'part_time', 'extra_lessons')"
-        },
-        "job_postings_title_check": {
-          "name": "job_postings_title_check",
-          "value": "char_length(\"job_postings\".\"title\") between 2 and 160"
-        },
-        "job_postings_position_check": {
-          "name": "job_postings_position_check",
-          "value": "char_length(\"job_postings\".\"position\") between 2 and 120"
-        },
-        "job_postings_description_check": {
-          "name": "job_postings_description_check",
-          "value": "char_length(\"job_postings\".\"description\") between 10 and 4000"
-        },
-        "job_postings_requirements_check": {
-          "name": "job_postings_requirements_check",
-          "value": "\"job_postings\".\"requirements\" is null or char_length(\"job_postings\".\"requirements\") between 1 and 4000"
-        },
-        "job_postings_deadline_check": {
-          "name": "job_postings_deadline_check",
-          "value": "\"job_postings\".\"deadline_on\" >= \"job_postings\".\"publish_on\""
-        },
-        "job_postings_closed_check": {
-          "name": "job_postings_closed_check",
-          "value": "(\"job_postings\".\"status\" = 'closed') = (\"job_postings\".\"closed_on\" is not null)"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.leave_calendar_settings": {
       "name": "leave_calendar_settings",
       "schema": "",
@@ -28159,6 +27384,469 @@
         "scholarship_terminations_clawback_check": {
           "name": "scholarship_terminations_clawback_check",
           "value": "(\"scholarship_terminations\".\"kind\" = 'revoke') or (\"scholarship_terminations\".\"principal_cents\" = 0 and \"scholarship_terminations\".\"interest_cents\" = 0 and \"scholarship_terminations\".\"clawback_due_date\" is null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.self_evaluation_responses": {
+      "name": "self_evaluation_responses",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_id": {
+          "name": "period_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "template_id": {
+          "name": "template_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "membership_id": {
+          "name": "membership_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "answers": {
+          "name": "answers",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "channel": {
+          "name": "channel",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "submitted_at": {
+          "name": "submitted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "submitted_by_user_id": {
+          "name": "submitted_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "manager_comment": {
+          "name": "manager_comment",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "manager_comment_by_name": {
+          "name": "manager_comment_by_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "manager_comment_at": {
+          "name": "manager_comment_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reopen_count": {
+          "name": "reopen_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "reopened_at": {
+          "name": "reopened_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reopened_by_user_id": {
+          "name": "reopened_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reopen_reason": {
+          "name": "reopen_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "self_evaluation_responses_member_key": {
+          "name": "self_evaluation_responses_member_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "period_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "self_evaluation_responses_template_idx": {
+          "name": "self_evaluation_responses_template_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "template_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "self_evaluation_responses_membership_idx": {
+          "name": "self_evaluation_responses_membership_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "self_evaluation_responses_institution_id_institutions_id_fk": {
+          "name": "self_evaluation_responses_institution_id_institutions_id_fk",
+          "tableFrom": "self_evaluation_responses",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "self_evaluation_responses_period_fkey": {
+          "name": "self_evaluation_responses_period_fkey",
+          "tableFrom": "self_evaluation_responses",
+          "tableTo": "performance_periods",
+          "columnsFrom": [
+            "institution_id",
+            "period_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "self_evaluation_responses_template_fkey": {
+          "name": "self_evaluation_responses_template_fkey",
+          "tableFrom": "self_evaluation_responses",
+          "tableTo": "self_evaluation_templates",
+          "columnsFrom": [
+            "institution_id",
+            "template_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "self_evaluation_responses_membership_fkey": {
+          "name": "self_evaluation_responses_membership_fkey",
+          "tableFrom": "self_evaluation_responses",
+          "tableTo": "memberships",
+          "columnsFrom": [
+            "institution_id",
+            "membership_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "self_evaluation_responses_review_fkey": {
+          "name": "self_evaluation_responses_review_fkey",
+          "tableFrom": "self_evaluation_responses",
+          "tableTo": "performance_reviews",
+          "columnsFrom": [
+            "institution_id",
+            "period_id",
+            "membership_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "period_id",
+            "membership_id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "self_evaluation_responses_pkey": {
+          "name": "self_evaluation_responses_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "self_evaluation_responses_status_check": {
+          "name": "self_evaluation_responses_status_check",
+          "value": "\"self_evaluation_responses\".\"status\" in ('draft', 'submitted')"
+        },
+        "self_evaluation_responses_channel_check": {
+          "name": "self_evaluation_responses_channel_check",
+          "value": "\"self_evaluation_responses\".\"channel\" in ('paper', 'email')"
+        },
+        "self_evaluation_responses_answers_check": {
+          "name": "self_evaluation_responses_answers_check",
+          "value": "jsonb_typeof(\"self_evaluation_responses\".\"answers\") = 'array' and jsonb_array_length(\"self_evaluation_responses\".\"answers\") between 1 and 20"
+        },
+        "self_evaluation_responses_submitted_check": {
+          "name": "self_evaluation_responses_submitted_check",
+          "value": "((\"self_evaluation_responses\".\"status\" = 'submitted') = (\"self_evaluation_responses\".\"submitted_at\" is not null))\n        and ((\"self_evaluation_responses\".\"submitted_at\" is null) = (\"self_evaluation_responses\".\"submitted_by_user_id\" is null))"
+        },
+        "self_evaluation_responses_comment_check": {
+          "name": "self_evaluation_responses_comment_check",
+          "value": "(\"self_evaluation_responses\".\"manager_comment\" is null or char_length(\"self_evaluation_responses\".\"manager_comment\") between 1 and 2000)\n        and ((\"self_evaluation_responses\".\"manager_comment\" is null) = (\"self_evaluation_responses\".\"manager_comment_by_name\" is null))\n        and ((\"self_evaluation_responses\".\"manager_comment\" is null) = (\"self_evaluation_responses\".\"manager_comment_at\" is null))"
+        },
+        "self_evaluation_responses_reopen_check": {
+          "name": "self_evaluation_responses_reopen_check",
+          "value": "\"self_evaluation_responses\".\"reopen_count\" >= 0\n        and ((\"self_evaluation_responses\".\"reopen_count\" = 0) = (\"self_evaluation_responses\".\"reopened_at\" is null))\n        and ((\"self_evaluation_responses\".\"reopened_at\" is null) = (\"self_evaluation_responses\".\"reopened_by_user_id\" is null))\n        and ((\"self_evaluation_responses\".\"reopened_at\" is null) = (\"self_evaluation_responses\".\"reopen_reason\" is null))\n        and (\"self_evaluation_responses\".\"reopen_reason\" is null or char_length(\"self_evaluation_responses\".\"reopen_reason\") between 5 and 500)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.self_evaluation_templates": {
+      "name": "self_evaluation_templates",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_id": {
+          "name": "period_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "questions": {
+          "name": "questions",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_by_user_id": {
+          "name": "created_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "self_evaluation_templates_period_key": {
+          "name": "self_evaluation_templates_period_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "period_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "self_evaluation_templates_institution_id_institutions_id_fk": {
+          "name": "self_evaluation_templates_institution_id_institutions_id_fk",
+          "tableFrom": "self_evaluation_templates",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "self_evaluation_templates_period_fkey": {
+          "name": "self_evaluation_templates_period_fkey",
+          "tableFrom": "self_evaluation_templates",
+          "tableTo": "performance_periods",
+          "columnsFrom": [
+            "institution_id",
+            "period_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "self_evaluation_templates_pkey": {
+          "name": "self_evaluation_templates_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "self_evaluation_templates_questions_check": {
+          "name": "self_evaluation_templates_questions_check",
+          "value": "jsonb_typeof(\"self_evaluation_templates\".\"questions\") = 'array' and jsonb_array_length(\"self_evaluation_templates\".\"questions\") between 1 and 20"
         }
       },
       "isRLSEnabled": false

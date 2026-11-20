@@ -209,6 +209,9 @@ const FinanceProfessionalDevelopmentSection = lazy(async () => ({
   default: (await import('./FinanceProfessionalDevelopmentSection.tsx'))
     .FinanceProfessionalDevelopmentSection,
 }))
+const FinanceOrgChartSection = lazy(async () => ({
+  default: (await import('./FinanceOrgChartSection.tsx')).FinanceOrgChartSection,
+}))
 const FinanceJobPostingsSection = lazy(async () => ({
   default: (await import('./FinanceJobPostingsSection.tsx')).FinanceJobPostingsSection,
 }))
@@ -280,6 +283,7 @@ const VIEWS = {
   policyAcknowledgements: { label: 'Politika onayları', param: 'politika-onaylari' },
   staffingPlan: { label: 'Kadro planı', param: 'kadro-plani' },
   professionalDevelopment: { label: 'Mesleki gelişim', param: 'mesleki-gelisim' },
+  orgChart: { label: 'Organizasyon', param: 'organizasyon' },
   jobPostings: { label: 'İş ilanları', param: 'is-ilanlari' },
 } as const
 type FinanceView = keyof typeof VIEWS
@@ -337,6 +341,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Politika onayları (DOM-FIN-127) ikisine açıktır; ön büro personel adına onay kaydeder, belgeyi
  * yönetici yayımlar (K-437).
  * Kadro planı (DOM-FIN-126) yalnız yöneticidedir; ücret türünden kapasite hesaplar (K-434).
+ * Organizasyon şeması (DOM-FIN-129) yalnız yöneticidedir; atama personel verisidir (K-444).
  * İş ilanları (DOM-FIN-128) yalnız yöneticidedir; aday verisi kişiseldir, ön büro başvuruyu
  * yalnız API'den girer (K-440).
  */
@@ -353,8 +358,9 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'fixedAssets' ||
       value === 'severance' ||
       value === 'freeTuition' ||
-      value === 'staffingPlan' ||
       value === 'jobPostings' ||
+      value === 'staffingPlan' ||
+      value === 'orgChart' ||
       value === 'staffOnboarding' ||
       value === 'performance' ||
       value === 'staffRetention' ||
@@ -588,6 +594,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'professionalDevelopment' ? (
           <FinanceProfessionalDevelopmentSection canManage={isManager} />
         ) : null}
+        {tab === 'orgChart' ? <FinanceOrgChartSection /> : null}
         {tab === 'jobPostings' ? <FinanceJobPostingsSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel

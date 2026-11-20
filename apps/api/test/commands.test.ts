@@ -208,6 +208,15 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // ikinci atamayı açmaz (routes/finance-professional-development.ts; DOM-FIN-125, ON-214).
   'POST /api/v1/finance/professional-development',
   'POST /api/v1/finance/professional-development/{programId}/enrollments',
+  // Öz değerlendirme şablonu ve personel adına yanıt açma; çift tıklama ikinci şablonu ya da
+  // yanıtı açmaz (routes/finance-self-evaluations.ts; DOM-FIN-131, ON-210).
+  'POST /api/v1/finance/performance-periods/{periodId}/self-evaluation-template',
+  'POST /api/v1/finance/performance-periods/{periodId}/self-evaluations',
+  // Organizasyon birimi, pozisyonu ve ataması; çift tıklama ikinci birimi, pozisyonu ya da atamayı
+  // açmaz (routes/finance-org-chart.ts; DOM-FIN-129, ON-187).
+  'POST /api/v1/finance/org-units',
+  'POST /api/v1/finance/org-positions',
+  'POST /api/v1/finance/org-assignments',
   // İş ilanı açılışı, başvuru kaydı ve toplu anonimleştirme; çift tıklama ikinci ilanı ya da
   // başvuruyu açmaz, anonimleştirme geri alınamaz (routes/finance-job-postings.ts; DOM-FIN-128,
   // ON-177).

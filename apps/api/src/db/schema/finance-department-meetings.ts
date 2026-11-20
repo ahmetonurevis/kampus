@@ -20,27 +20,76 @@ import {
   DEPARTMENT_DECISION_TEXT_MIN,
   DEPARTMENT_MEETING_AGENDA_MAX,
   DEPARTMENT_MEETING_ATTENDANCE,
+  DEPARTMENT_MEETING_CLASS_MAX,
   DEPARTMENT_MEETING_KINDS,
   DEPARTMENT_MEETING_LOCATION_MAX,
   DEPARTMENT_MEETING_LOCATION_MIN,
   DEPARTMENT_MEETING_STATUSES,
   DEPARTMENT_MEETING_SUBJECT_MAX,
+  MEETING_BOARDS,
+  MEETING_TEMPLATE_NAME_MAX,
+  MEETING_TEMPLATE_NAME_MIN,
   type DepartmentDecisionStatus,
   type DepartmentMeetingAttendance,
   type DepartmentMeetingKind,
   type DepartmentMeetingStatus,
+  type MeetingBoard,
   type StoredAgendaItem,
 } from '@kampus/school-core/lib/finance-department-meetings.ts'
 
 import { institutions, memberships } from './auth.ts'
 import { oneOf, requiredColumns } from './columns.ts'
+import { records } from './records.ts'
 
 const n = (value: number) => sql.raw(String(value))
 
 /**
- * Zümre toplantısı tutanağı (DOM-FIN-132; ON-217). Ders (zümre), tür, gün, yer, başkan ve sıralı
- * gündem (jsonb; maddenin kimliği kararın bağıdır). İmza günüyle kesinleşir (K-453): kesinleşmiş
- * satır değişmez (migration'daki tetikleyici). Satır silinmez.
+ * Kurul ve zümre toplantısının gündem şablonu (DOM-FIN-135; ON-218; K-461). Kurul türü başına
+ * kurumun adlı şablonları; maddeler sıralı jsonb (`{ title }`). Toplantı açılırken gündem
+ * şablondan kopyalanır, toplantı şablona yalnız iz olarak bağlanır. Silinmez, arşivlenir.
+ */
+export const departmentMeetingTemplates = pgTable(
+  'department_meeting_templates',
+  {
+    institutionId: text('institution_id')
+      .notNull()
+      .references(() => institutions.id),
+    id: uuid('id').notNull(),
+    board: text('board').$type<MeetingBoard>().notNull(),
+    name: text('name').notNull(),
+    items: jsonb('items').$type<{ title: string }[]>().notNull(),
+    // kvkk: K
+    createdByUserId: text('created_by_user_id').notNull(),
+    ...requiredColumns(),
+  },
+  (table) => [
+    primaryKey({
+      name: 'department_meeting_templates_pkey',
+      columns: [table.institutionId, table.id],
+    }),
+    check('department_meeting_templates_board_check', oneOf(table.board, MEETING_BOARDS)),
+    check(
+      'department_meeting_templates_name_check',
+      sql`char_length(${table.name}) between ${n(MEETING_TEMPLATE_NAME_MIN)} and ${n(MEETING_TEMPLATE_NAME_MAX)}`,
+    ),
+    check(
+      'department_meeting_templates_items_check',
+      sql`jsonb_typeof(${table.items}) = 'array'
+        and jsonb_array_length(${table.items}) between 1 and ${n(DEPARTMENT_MEETING_AGENDA_MAX)}`,
+    ),
+    uniqueIndex('department_meeting_templates_name_key')
+      .on(table.institutionId, table.board, table.name)
+      .where(sql`${table.archivedAt} is null`),
+    index('department_meeting_templates_board_idx').on(table.institutionId, table.board),
+  ],
+)
+
+/**
+ * Kurul ve zümre toplantısı tutanağı (DOM-FIN-132, DOM-FIN-135; ON-217, ON-218). Kurul türü
+ * (zümre, öğretmenler kurulu, şube öğretmenler kurulu) ve hedefi (zümrede ders, şube kurulunda
+ * sınıf; adları toplantı anında kopyalanır), zaman, gün, yer, başkan ve sıralı gündem (jsonb;
+ * maddenin kimliği kararın bağıdır). İmza günüyle kesinleşir (K-453): kesinleşmiş satır değişmez
+ * (migration'daki tetikleyici). Satır silinmez.
  */
 export const departmentMeetings = pgTable(
   'department_meetings',
@@ -49,8 +98,16 @@ export const departmentMeetings = pgTable(
       .notNull()
       .references(() => institutions.id),
     id: uuid('id').notNull(),
-    subjectId: text('subject_id').notNull(),
-    subjectName: text('subject_name').notNull(),
+    board: text('board').$type<MeetingBoard>().notNull(),
+    subjectId: text('subject_id'),
+    subjectName: text('subject_name'),
+    classId: text('class_id'),
+    /** Yabancı anahtarın koleksiyon parçası; hep `classes`. */
+    classCollection: text('class_collection')
+      .notNull()
+      .generatedAlwaysAs(sql`'classes'`),
+    className: text('class_name'),
+    agendaTemplateId: uuid('agenda_template_id'),
     kind: text('kind').$type<DepartmentMeetingKind>().notNull(),
     meetingDate: date('meeting_date', { mode: 'string' }).notNull(),
     location: text('location').notNull(),
@@ -73,13 +130,36 @@ export const departmentMeetings = pgTable(
       columns: [table.institutionId, table.chairMembershipId],
       foreignColumns: [memberships.institutionId, memberships.id],
     }).onDelete('restrict'),
+    foreignKey({
+      name: 'department_meetings_class_fkey',
+      columns: [table.institutionId, table.classCollection, table.classId],
+      foreignColumns: [records.institutionId, records.collection, records.id],
+    }).onDelete('restrict'),
+    foreignKey({
+      name: 'department_meetings_template_fkey',
+      columns: [table.institutionId, table.agendaTemplateId],
+      foreignColumns: [departmentMeetingTemplates.institutionId, departmentMeetingTemplates.id],
+    }).onDelete('restrict'),
+    check('department_meetings_board_check', oneOf(table.board, MEETING_BOARDS)),
+    // Kurul türünün hedefi (K-460, K-462): zümrede ders, şube kurulunda sınıf, kurulda hiçbiri.
+    check(
+      'department_meetings_board_target_check',
+      sql`(${table.board} = 'department' and ${table.subjectId} is not null and ${table.subjectName} is not null
+          and ${table.classId} is null and ${table.className} is null)
+        or (${table.board} = 'class' and ${table.classId} is not null and ${table.className} is not null
+          and ${table.subjectId} is null and ${table.subjectName} is null)
+        or (${table.board} = 'teachers' and ${table.subjectId} is null and ${table.subjectName} is null
+          and ${table.classId} is null and ${table.className} is null)`,
+    ),
     check('department_meetings_kind_check', oneOf(table.kind, DEPARTMENT_MEETING_KINDS)),
     check('department_meetings_status_check', oneOf(table.status, DEPARTMENT_MEETING_STATUSES)),
     check(
       'department_meetings_text_check',
-      sql`char_length(${table.subjectId}) between 1 and ${n(DEPARTMENT_MEETING_SUBJECT_MAX)}
-        and char_length(${table.subjectName}) between 1 and 120
-        and char_length(${table.location}) between ${n(DEPARTMENT_MEETING_LOCATION_MIN)} and ${n(DEPARTMENT_MEETING_LOCATION_MAX)}`,
+      sql`(${table.subjectId} is null or char_length(${table.subjectId}) between 1 and ${n(DEPARTMENT_MEETING_SUBJECT_MAX)})
+        and (${table.subjectName} is null or char_length(${table.subjectName}) between 1 and 120)
+        and char_length(${table.location}) between ${n(DEPARTMENT_MEETING_LOCATION_MIN)} and ${n(DEPARTMENT_MEETING_LOCATION_MAX)}
+        and (${table.classId} is null or char_length(${table.classId}) between 1 and ${n(DEPARTMENT_MEETING_CLASS_MAX)})
+        and (${table.className} is null or char_length(${table.className}) between 1 and 120)`,
     ),
     check(
       'department_meetings_agenda_check',
@@ -100,6 +180,9 @@ export const departmentMeetings = pgTable(
       table.meetingDate,
     ),
     index('department_meetings_chair_idx').on(table.institutionId, table.chairMembershipId),
+    index('department_meetings_board_idx').on(table.institutionId, table.board, table.meetingDate),
+    index('department_meetings_class_idx').on(table.institutionId, table.classId),
+    index('department_meetings_template_idx').on(table.institutionId, table.agendaTemplateId),
   ],
 )
 

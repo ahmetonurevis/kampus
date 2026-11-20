@@ -12136,14 +12136,14 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Zümre toplantılarını listele
-         * @description Zümre toplantısı tutanakları, yeniden eskiye (DOM-FIN-132). Ders adında ya da yerde aranır; zümre, tür, durum ve gün aralığıyla süzülür. Satır katılım ve açık karar sayılarını taşır. Rol: yalnız `yonetici` (K-451). Modül `finance`.
+         * Kurul ve zümre toplantılarını listele
+         * @description Kurul ve zümre toplantısı tutanakları, yeniden eskiye (DOM-FIN-132, DOM-FIN-135). Ders ya da sınıf adında ya da yerde aranır; kurul türü, zümre, sınıf, zaman, durum ve gün aralığıyla süzülür. Satır katılım ve açık karar sayılarını taşır. Rol: yalnız `yonetici` (K-451). Modül `finance`.
          */
         get: operations["listDepartmentMeetings"];
         put?: never;
         /**
-         * Zümre toplantısı tutanağı aç
-         * @description Tutanak taslak açılır (K-452). Zümre kurumun dersi (yoksa 422 `department_meeting_subject_not_found`); başkan ve katılımcılar kurumun etkin öğretmen ya da yönetici üyeliği (olmayan ya da başka kurumun üyeliği 422 `department_meeting_staff_not_found`, diğer roller 422 `department_meeting_not_staff`, ayrılmış 422 `department_meeting_staff_inactive`); başkan katılımcılar arasında "katıldı" olmalı. Gündem 1–30 madde, sıra gövdedeki sıradır. Denetim kaydına alan adları yazılır. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (K-451). Modül `finance`.
+         * Kurul ya da zümre toplantısı tutanağı aç
+         * @description Tutanak taslak açılır (K-452). Kurul türü (`board`, K-460): `department` zümre toplantısı (varsayılan; `subjectId` zorunlu), `teachers` öğretmenler kurulu (ders ve sınıf yok), `class` şube öğretmenler kurulu (`classId` zorunlu; kurumun etkin sınıf kaydı, yoksa 422 `department_meeting_class_not_found`). Türe uymayan hedef 400. İsteğe bağlı `agendaTemplateId` gündemin kopyalandığı şablondur (iz): olmayan 422 `department_meeting_template_not_found`, başka kurul türünün 422 `department_meeting_template_board_mismatch`, arşivli 422 `department_meeting_template_archived` (K-461). Zümre kurumun dersi (yoksa 422 `department_meeting_subject_not_found`); başkan ve katılımcılar kurumun etkin öğretmen ya da yönetici üyeliği (olmayan ya da başka kurumun üyeliği 422 `department_meeting_staff_not_found`, diğer roller 422 `department_meeting_not_staff`, ayrılmış 422 `department_meeting_staff_inactive`); başkan katılımcılar arasında "katıldı" olmalı. Gündem 1–30 madde, sıra gövdedeki sıradır. Denetim kaydına alan adları yazılır. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (K-451). Modül `finance`.
          */
         post: operations["createDepartmentMeeting"];
         delete?: never;
@@ -12180,8 +12180,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Zümre kararlarının takip listesi
-         * @description Kesinleşmiş tutanakların kararları; termine göre (terminsiz sonda). `overdue=true` termini İstanbul gününe göre geçmiş açık kararları verir (K-453). Durum, sorumlu ve zümreyle süzülür. Rol: yalnız `yonetici` (K-451). Modül `finance`.
+         * Kurul ve zümre kararlarının takip listesi
+         * @description Kesinleşmiş tutanakların kararları; termine göre (terminsiz sonda). `overdue=true` termini İstanbul gününe göre geçmiş açık kararları verir (K-453). Durum, sorumlu, zümre ve kurul türüyle süzülür (K-462). Rol: yalnız `yonetici` (K-451). Modül `finance`.
          */
         get: operations["listDepartmentMeetingDecisions"];
         put?: never;
@@ -12200,7 +12200,7 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Zümre toplantısı tutanağı
+         * Kurul ya da zümre toplantısı tutanağı
          * @description Gündem, katılım ve numaralı kararlar; tutanak PDF'i bu yanıttan üretilir. Olmayan ya da başka kurumun tutanağı 404. Rol: yalnız `yonetici` (K-451). Modül `finance`.
          */
         get: operations["getDepartmentMeeting"];
@@ -12211,7 +12211,7 @@ export interface paths {
         head?: never;
         /**
          * Tutanak taslağını düzelt
-         * @description Tam gövde (oluşturma kurallarıyla). Var olan gündem maddesi kimliğiyle gönderilir; bilinmeyen kimlik 422 `department_meeting_agenda_unknown`, kararı olan maddeyi silmek 422 `department_meeting_agenda_in_use`. Toplantı günü açık kararların termininden sonraya alınamaz (422 `department_meeting_due_before_meeting`). Tutanakta zaten olan ayrılmış personel kalabilir. Kesinleşmiş tutanak 409 `department_meeting_finalized`. `If-Match` zorunlu. Başka kurumun tutanağı 404. Rol: yalnız `yonetici` (K-451). Modül `finance`.
+         * @description Tam gövde (oluşturma kurallarıyla; kurul türü taslakta değişebilir). Tutanakta zaten olan ders, sınıf ya da arşivlenmiş şablon kalabilir. Var olan gündem maddesi kimliğiyle gönderilir; bilinmeyen kimlik 422 `department_meeting_agenda_unknown`, kararı olan maddeyi silmek 422 `department_meeting_agenda_in_use`. Toplantı günü açık kararların termininden sonraya alınamaz (422 `department_meeting_due_before_meeting`). Tutanakta zaten olan ayrılmış personel kalabilir. Kesinleşmiş tutanak 409 `department_meeting_finalized`. `If-Match` zorunlu. Başka kurumun tutanağı 404. Rol: yalnız `yonetici` (K-451). Modül `finance`.
          */
         patch: operations["updateDepartmentMeeting"];
         trace?: never;
@@ -12298,6 +12298,54 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/department-meeting-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Gündem şablonlarını listele
+         * @description Kurumun kurul ve zümre toplantısı gündem şablonları (DOM-FIN-135, K-461), kurul türü sonra ada göre. Varsayılan yalnız etkinler; `archived=true` arşivlenmişler. Kurul türüyle süzülür. Rol: yalnız `yonetici` (K-451). Modül `finance`.
+         */
+        get: operations["listDepartmentMeetingTemplates"];
+        put?: never;
+        /**
+         * Gündem şablonu aç
+         * @description Kurul türü, ad (2–120) ve 1–30 sıralı madde (K-461). Kurul türünde aynı adlı etkin şablon 409 `department_meeting_template_name_taken`. Toplantı açılırken gündem şablondan kopyalanır, sonra toplantıda düzenlenir. Denetim kaydına alan adları yazılır. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (K-451). Modül `finance`.
+         */
+        post: operations["createDepartmentMeetingTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/department-meeting-templates/{templateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Gündem şablonunu arşivle
+         * @description Şablon silinmez, arşivlenir (K-461): yeni toplantıya bağlanmaz, bağlı toplantılar etkilenmez. Arşivli şablon 409 `department_meeting_template_archived`. `If-Match` zorunlu. Başka kurumun şablonu 404. Rol: yalnız `yonetici` (K-451). Modül `finance`.
+         */
+        delete: operations["archiveDepartmentMeetingTemplate"];
+        options?: never;
+        head?: never;
+        /**
+         * Gündem şablonunu düzelt
+         * @description Ad ve maddeler (tam gövde); kurul türü değişmez (gövdede 400). Bu şablondan açılmış toplantıların gündemi değişmez (kopya, K-461). Aynı adlı etkin şablon 409 `department_meeting_template_name_taken`, arşivli şablon 409 `department_meeting_template_archived`. `If-Match` zorunlu. Başka kurumun şablonu 404. Rol: yalnız `yonetici` (K-451). Modül `finance`.
+         */
+        patch: operations["updateDepartmentMeetingTemplate"];
         trace?: never;
     };
     "/api/v1/finance/lesson-observation-templates": {
@@ -128292,11 +128340,15 @@ export interface operations {
                 page?: number;
                 /** @description Sayfa boyutu (≤ 100) */
                 pageSize?: number;
-                /** @description Ders adında ya da yerde arama */
+                /** @description Ders ya da sınıf adında ya da yerde arama */
                 q?: string;
+                /** @description Kurul türü */
+                board?: "department" | "teachers" | "class";
                 /** @description Zümre (ders) */
                 subjectId?: string;
-                /** @description Toplantı türü */
+                /** @description Şube kurulunun sınıfı */
+                classId?: string;
+                /** @description Toplantı zamanı */
                 kind?: "term_start" | "term_end" | "interim";
                 /** @description Tutanak durumu */
                 status?: "draft" | "finalized";
@@ -128320,11 +128372,25 @@ export interface operations {
                     "application/json": {
                         data: {
                             id: string;
-                            /** @description Zümrenin dersi */
-                            subjectId: string;
-                            /** @description Ders adı (toplantı anındaki kopya) */
-                            subjectName: string;
-                            /** @enum {string} */
+                            /**
+                             * @description Kurul türü: `department` zümre, `teachers` öğretmenler kurulu, `class` şube kurulu
+                             * @enum {string}
+                             */
+                            board: "department" | "teachers" | "class";
+                            /** @description Zümrenin dersi; yalnız zümre toplantısında */
+                            subjectId: string | null;
+                            /** @description Ders adı (toplantı anındaki kopya); yalnız zümre toplantısında */
+                            subjectName: string | null;
+                            /** @description Şube kurulunun sınıfı; yalnız şube kurulunda */
+                            classId: string | null;
+                            /** @description Sınıf adı (toplantı anındaki kopya); yalnız şube kurulunda */
+                            className: string | null;
+                            /** @description Gündemin kopyalandığı şablon (iz) */
+                            agendaTemplateId: string | null;
+                            /**
+                             * @description Toplantı zamanı
+                             * @enum {string}
+                             */
                             kind: "term_start" | "term_end" | "interim";
                             /** @description Toplantı günü (YYYY-MM-DD) */
                             meetingDate: string;
@@ -128442,8 +128508,27 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    /** @description Zümrenin dersi (kurum ders kaydı ya da müfredat ders kimliği) */
-                    subjectId: string;
+                    /**
+                     * @description `department` zümre toplantısı (varsayılan), `teachers` öğretmenler kurulu, `class` şube öğretmenler kurulu
+                     * @default department
+                     * @enum {string}
+                     */
+                    board?: "department" | "teachers" | "class";
+                    /**
+                     * @description Zümrenin dersi (kurum ders kaydı ya da müfredat ders kimliği); yalnız zümre toplantısında ve orada zorunlu
+                     * @default null
+                     */
+                    subjectId?: string | null;
+                    /**
+                     * @description Şubenin sınıf kaydı; yalnız şube öğretmenler kurulunda ve orada zorunlu
+                     * @default null
+                     */
+                    classId?: string | null;
+                    /**
+                     * @description Gündemin kopyalandığı kurum şablonu (iz; isteğe bağlı, kurul türüyle aynı olmalı)
+                     * @default null
+                     */
+                    agendaTemplateId?: string | null;
                     /**
                      * @description `term_start` dönem başı, `term_end` dönem sonu, `interim` ara toplantı
                      * @enum {string}
@@ -128467,7 +128552,7 @@ export interface operations {
                         /** @description Maddede yapılan görüşmelerin özeti (isteğe bağlı) */
                         discussion?: string | null;
                     }[];
-                    /** @description Zümre öğretmenleri ve katılım durumları */
+                    /** @description Kurul ya da zümre öğretmenleri ve katılım durumları */
                     attendees: {
                         /** @description Katılımcının kurum üyeliği */
                         membershipId: string;
@@ -128490,11 +128575,25 @@ export interface operations {
                     "application/json": {
                         data: {
                             id: string;
-                            /** @description Zümrenin dersi */
-                            subjectId: string;
-                            /** @description Ders adı (toplantı anındaki kopya) */
-                            subjectName: string;
-                            /** @enum {string} */
+                            /**
+                             * @description Kurul türü: `department` zümre, `teachers` öğretmenler kurulu, `class` şube kurulu
+                             * @enum {string}
+                             */
+                            board: "department" | "teachers" | "class";
+                            /** @description Zümrenin dersi; yalnız zümre toplantısında */
+                            subjectId: string | null;
+                            /** @description Ders adı (toplantı anındaki kopya); yalnız zümre toplantısında */
+                            subjectName: string | null;
+                            /** @description Şube kurulunun sınıfı; yalnız şube kurulunda */
+                            classId: string | null;
+                            /** @description Sınıf adı (toplantı anındaki kopya); yalnız şube kurulunda */
+                            className: string | null;
+                            /** @description Gündemin kopyalandığı şablon (iz) */
+                            agendaTemplateId: string | null;
+                            /**
+                             * @description Toplantı zamanı
+                             * @enum {string}
+                             */
                             kind: "term_start" | "term_end" | "interim";
                             /** @description Toplantı günü (YYYY-MM-DD) */
                             meetingDate: string;
@@ -128749,6 +128848,8 @@ export interface operations {
                 responsibleMembershipId?: string;
                 /** @description Zümre (ders) */
                 subjectId?: string;
+                /** @description Kurul türü (K-462) */
+                board?: "department" | "teachers" | "class";
             };
             header?: never;
             path?: never;
@@ -128766,7 +128867,15 @@ export interface operations {
                         data: {
                             id: string;
                             meetingId: string;
-                            subjectName: string;
+                            /**
+                             * @description Kurul türü: `department` zümre, `teachers` öğretmenler kurulu, `class` şube kurulu
+                             * @enum {string}
+                             */
+                            board: "department" | "teachers" | "class";
+                            /** @description Zümre toplantısında ders adı */
+                            subjectName: string | null;
+                            /** @description Şube kurulunda sınıf adı */
+                            className: string | null;
                             meetingDate: string;
                             /** @enum {string} */
                             meetingKind: "term_start" | "term_end" | "interim";
@@ -128883,11 +128992,25 @@ export interface operations {
                     "application/json": {
                         data: {
                             id: string;
-                            /** @description Zümrenin dersi */
-                            subjectId: string;
-                            /** @description Ders adı (toplantı anındaki kopya) */
-                            subjectName: string;
-                            /** @enum {string} */
+                            /**
+                             * @description Kurul türü: `department` zümre, `teachers` öğretmenler kurulu, `class` şube kurulu
+                             * @enum {string}
+                             */
+                            board: "department" | "teachers" | "class";
+                            /** @description Zümrenin dersi; yalnız zümre toplantısında */
+                            subjectId: string | null;
+                            /** @description Ders adı (toplantı anındaki kopya); yalnız zümre toplantısında */
+                            subjectName: string | null;
+                            /** @description Şube kurulunun sınıfı; yalnız şube kurulunda */
+                            classId: string | null;
+                            /** @description Sınıf adı (toplantı anındaki kopya); yalnız şube kurulunda */
+                            className: string | null;
+                            /** @description Gündemin kopyalandığı şablon (iz) */
+                            agendaTemplateId: string | null;
+                            /**
+                             * @description Toplantı zamanı
+                             * @enum {string}
+                             */
                             kind: "term_start" | "term_end" | "interim";
                             /** @description Toplantı günü (YYYY-MM-DD) */
                             meetingDate: string;
@@ -129046,8 +129169,27 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    /** @description Zümrenin dersi (kurum ders kaydı ya da müfredat ders kimliği) */
-                    subjectId: string;
+                    /**
+                     * @description `department` zümre toplantısı (varsayılan), `teachers` öğretmenler kurulu, `class` şube öğretmenler kurulu
+                     * @default department
+                     * @enum {string}
+                     */
+                    board?: "department" | "teachers" | "class";
+                    /**
+                     * @description Zümrenin dersi (kurum ders kaydı ya da müfredat ders kimliği); yalnız zümre toplantısında ve orada zorunlu
+                     * @default null
+                     */
+                    subjectId?: string | null;
+                    /**
+                     * @description Şubenin sınıf kaydı; yalnız şube öğretmenler kurulunda ve orada zorunlu
+                     * @default null
+                     */
+                    classId?: string | null;
+                    /**
+                     * @description Gündemin kopyalandığı kurum şablonu (iz; isteğe bağlı, kurul türüyle aynı olmalı)
+                     * @default null
+                     */
+                    agendaTemplateId?: string | null;
                     /**
                      * @description `term_start` dönem başı, `term_end` dönem sonu, `interim` ara toplantı
                      * @enum {string}
@@ -129071,7 +129213,7 @@ export interface operations {
                         /** @description Maddede yapılan görüşmelerin özeti (isteğe bağlı) */
                         discussion?: string | null;
                     }[];
-                    /** @description Zümre öğretmenleri ve katılım durumları */
+                    /** @description Kurul ya da zümre öğretmenleri ve katılım durumları */
                     attendees: {
                         /** @description Katılımcının kurum üyeliği */
                         membershipId: string;
@@ -129094,11 +129236,25 @@ export interface operations {
                     "application/json": {
                         data: {
                             id: string;
-                            /** @description Zümrenin dersi */
-                            subjectId: string;
-                            /** @description Ders adı (toplantı anındaki kopya) */
-                            subjectName: string;
-                            /** @enum {string} */
+                            /**
+                             * @description Kurul türü: `department` zümre, `teachers` öğretmenler kurulu, `class` şube kurulu
+                             * @enum {string}
+                             */
+                            board: "department" | "teachers" | "class";
+                            /** @description Zümrenin dersi; yalnız zümre toplantısında */
+                            subjectId: string | null;
+                            /** @description Ders adı (toplantı anındaki kopya); yalnız zümre toplantısında */
+                            subjectName: string | null;
+                            /** @description Şube kurulunun sınıfı; yalnız şube kurulunda */
+                            classId: string | null;
+                            /** @description Sınıf adı (toplantı anındaki kopya); yalnız şube kurulunda */
+                            className: string | null;
+                            /** @description Gündemin kopyalandığı şablon (iz) */
+                            agendaTemplateId: string | null;
+                            /**
+                             * @description Toplantı zamanı
+                             * @enum {string}
+                             */
                             kind: "term_start" | "term_end" | "interim";
                             /** @description Toplantı günü (YYYY-MM-DD) */
                             meetingDate: string;
@@ -129272,11 +129428,25 @@ export interface operations {
                     "application/json": {
                         data: {
                             id: string;
-                            /** @description Zümrenin dersi */
-                            subjectId: string;
-                            /** @description Ders adı (toplantı anındaki kopya) */
-                            subjectName: string;
-                            /** @enum {string} */
+                            /**
+                             * @description Kurul türü: `department` zümre, `teachers` öğretmenler kurulu, `class` şube kurulu
+                             * @enum {string}
+                             */
+                            board: "department" | "teachers" | "class";
+                            /** @description Zümrenin dersi; yalnız zümre toplantısında */
+                            subjectId: string | null;
+                            /** @description Ders adı (toplantı anındaki kopya); yalnız zümre toplantısında */
+                            subjectName: string | null;
+                            /** @description Şube kurulunun sınıfı; yalnız şube kurulunda */
+                            classId: string | null;
+                            /** @description Sınıf adı (toplantı anındaki kopya); yalnız şube kurulunda */
+                            className: string | null;
+                            /** @description Gündemin kopyalandığı şablon (iz) */
+                            agendaTemplateId: string | null;
+                            /**
+                             * @description Toplantı zamanı
+                             * @enum {string}
+                             */
                             kind: "term_start" | "term_end" | "interim";
                             /** @description Toplantı günü (YYYY-MM-DD) */
                             meetingDate: string;
@@ -129855,6 +130025,518 @@ export interface operations {
                             overdue: boolean;
                             statusChangedAt: string;
                             createdAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listDepartmentMeetingTemplates: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Kurul türü */
+                board?: "department" | "teachers" | "class";
+                /** @description `true`: yalnız arşivlenmiş şablonlar; yoksa yalnız etkinler */
+                archived?: "true";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description Kurul türü: `department` zümre, `teachers` öğretmenler kurulu, `class` şube kurulu
+                             * @enum {string}
+                             */
+                            board: "department" | "teachers" | "class";
+                            name: string;
+                            /** @description Gündem maddeleri, sırasıyla */
+                            items: {
+                                title: string;
+                            }[];
+                            /** @description Arşivlenme anı; etkin şablonda boş */
+                            archivedAt: string | null;
+                            /** @description Bu şablondan açılmış toplantı sayısı */
+                            meetingCount: number;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createDepartmentMeetingTemplate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Şablonun adı; kurul türünde etkin şablonlar arasında tekil */
+                    name: string;
+                    /** @description Gündem maddeleri, görüşülme sırasıyla */
+                    items: {
+                        /** @description Gündem maddesinin başlığı */
+                        title: string;
+                    }[];
+                    /**
+                     * @description `department` zümre, `teachers` öğretmenler kurulu, `class` şube öğretmenler kurulu
+                     * @enum {string}
+                     */
+                    board: "department" | "teachers" | "class";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description Kurul türü: `department` zümre, `teachers` öğretmenler kurulu, `class` şube kurulu
+                             * @enum {string}
+                             */
+                            board: "department" | "teachers" | "class";
+                            name: string;
+                            /** @description Gündem maddeleri, sırasıyla */
+                            items: {
+                                title: string;
+                            }[];
+                            /** @description Arşivlenme anı; etkin şablonda boş */
+                            archivedAt: string | null;
+                            /** @description Bu şablondan açılmış toplantı sayısı */
+                            meetingCount: number;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveDepartmentMeetingTemplate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description Kurul türü: `department` zümre, `teachers` öğretmenler kurulu, `class` şube kurulu
+                             * @enum {string}
+                             */
+                            board: "department" | "teachers" | "class";
+                            name: string;
+                            /** @description Gündem maddeleri, sırasıyla */
+                            items: {
+                                title: string;
+                            }[];
+                            /** @description Arşivlenme anı; etkin şablonda boş */
+                            archivedAt: string | null;
+                            /** @description Bu şablondan açılmış toplantı sayısı */
+                            meetingCount: number;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateDepartmentMeetingTemplate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Şablonun adı; kurul türünde etkin şablonlar arasında tekil */
+                    name: string;
+                    /** @description Gündem maddeleri, görüşülme sırasıyla */
+                    items: {
+                        /** @description Gündem maddesinin başlığı */
+                        title: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description Kurul türü: `department` zümre, `teachers` öğretmenler kurulu, `class` şube kurulu
+                             * @enum {string}
+                             */
+                            board: "department" | "teachers" | "class";
+                            name: string;
+                            /** @description Gündem maddeleri, sırasıyla */
+                            items: {
+                                title: string;
+                            }[];
+                            /** @description Arşivlenme anı; etkin şablonda boş */
+                            archivedAt: string | null;
+                            /** @description Bu şablondan açılmış toplantı sayısı */
+                            meetingCount: number;
+                            createdAt: string;
+                            updatedAt: string;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
                         };

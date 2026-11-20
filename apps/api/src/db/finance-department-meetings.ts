@@ -19,6 +19,7 @@ import type {
   DepartmentMeetingAttendance,
   DepartmentMeetingKind,
   DepartmentMeetingStatus,
+  MeetingBoard,
   StoredAgendaItem,
 } from '@kampus/school-core/lib/finance-department-meetings.ts'
 
@@ -28,11 +29,12 @@ import {
   departmentMeetingAttendees as attendees,
   departmentMeetingDecisions as decisions,
   departmentMeetings as meetings,
+  departmentMeetingTemplates as templates,
 } from './schema/finance-department-meetings.ts'
 import { foldSearch, foldSql } from './text-search.ts'
 
 /**
- * Zümre toplantısı tutanağı deposu (DOM-FIN-132; ON-217). Kurum kapsamlıdır: ilk parametre
+ * Kurul ve zümre toplantısı tutanağı deposu (DOM-FIN-132, DOM-FIN-135; ON-217, ON-218). Kurum kapsamlıdır: ilk parametre
  * `institutionId`. Kural core `lib/finance-department-meetings.ts`'tedir; depo yalnız okur ve
  * yazar. Arşivli katılım ve karar satırları okunmaz. Personel üyelikten yalnız okunur.
  */
@@ -42,8 +44,12 @@ const chairUsers = alias(users, 'chair_users')
 
 export interface StoredMeeting {
   id: string
-  subjectId: string
-  subjectName: string
+  board: MeetingBoard
+  subjectId: string | null
+  subjectName: string | null
+  classId: string | null
+  className: string | null
+  agendaTemplateId: string | null
   kind: DepartmentMeetingKind
   meetingDate: string
   location: string
@@ -63,8 +69,12 @@ export interface StoredMeeting {
 }
 
 export interface MeetingWrite {
-  subjectId: string
-  subjectName: string
+  board: MeetingBoard
+  subjectId: string | null
+  subjectName: string | null
+  classId: string | null
+  className: string | null
+  agendaTemplateId: string | null
   kind: DepartmentMeetingKind
   meetingDate: string
   location: string
@@ -81,8 +91,12 @@ const childCount = (table: string, extra = '') =>
 
 const MEETING_COLUMNS = {
   id: meetings.id,
+  board: meetings.board,
   subjectId: meetings.subjectId,
   subjectName: meetings.subjectName,
+  classId: meetings.classId,
+  className: meetings.className,
+  agendaTemplateId: meetings.agendaTemplateId,
   kind: meetings.kind,
   meetingDate: meetings.meetingDate,
   location: meetings.location,
@@ -148,14 +162,16 @@ export interface MeetingQuery {
   page: number
   pageSize: number
   q?: string | undefined
+  board?: MeetingBoard | undefined
   subjectId?: string | undefined
+  classId?: string | undefined
   kind?: DepartmentMeetingKind | undefined
   status?: DepartmentMeetingStatus | undefined
   from?: string | undefined
   to?: string | undefined
 }
 
-/** Toplantılar, yeniden eskiye; ders adında ya da yerde aranır. */
+/** Toplantılar, yeniden eskiye; ders ya da sınıf adında ya da yerde aranır. */
 export async function listMeetings(
   db: Database,
   institutionId: string,
@@ -166,8 +182,12 @@ export async function listMeetings(
     meetingOf(institutionId),
     search === undefined
       ? undefined
-      : sql`(strpos(${foldSql(meetings.subjectName)}, ${search}) > 0 or strpos(${foldSql(meetings.location)}, ${search}) > 0)`,
+      : sql`(strpos(${foldSql(sql`coalesce(${meetings.subjectName}, '')`)}, ${search}) > 0
+          or strpos(${foldSql(sql`coalesce(${meetings.className}, '')`)}, ${search}) > 0
+          or strpos(${foldSql(meetings.location)}, ${search}) > 0)`,
+    query.board === undefined ? undefined : eq(meetings.board, query.board),
     query.subjectId === undefined ? undefined : eq(meetings.subjectId, query.subjectId),
+    query.classId === undefined ? undefined : eq(meetings.classId, query.classId),
     query.kind === undefined ? undefined : eq(meetings.kind, query.kind),
     query.status === undefined ? undefined : eq(meetings.status, query.status),
     query.from === undefined ? undefined : gte(meetings.meetingDate, query.from),
@@ -427,10 +447,13 @@ export interface DecisionQuery {
   today: string
   responsibleMembershipId?: string | undefined
   subjectId?: string | undefined
+  board?: MeetingBoard | undefined
 }
 
 export interface StoredDecisionWithMeeting extends StoredDecision {
-  subjectName: string
+  board: MeetingBoard
+  subjectName: string | null
+  className: string | null
   meetingDate: string
   meetingKind: DepartmentMeetingKind
   /** Bağlı gündem maddesinin başlığı (toplantının gündeminden). */
@@ -458,6 +481,7 @@ export async function listDecisions(
       ? undefined
       : eq(decisions.responsibleMembershipId, query.responsibleMembershipId),
     query.subjectId === undefined ? undefined : eq(meetings.subjectId, query.subjectId),
+    query.board === undefined ? undefined : eq(meetings.board, query.board),
   )
   const meetingJoin = and(
     eq(meetings.institutionId, decisions.institutionId),
@@ -471,7 +495,9 @@ export async function listDecisions(
   const rows = await db
     .select({
       ...DECISION_COLUMNS,
+      board: meetings.board,
       subjectName: meetings.subjectName,
+      className: meetings.className,
       meetingDate: meetings.meetingDate,
       meetingKind: meetings.kind,
       agenda: meetings.agenda,
@@ -490,13 +516,17 @@ export async function listDecisions(
     .limit(query.pageSize)
     .offset((query.page - 1) * query.pageSize)
   return {
-    items: rows.map(({ subjectName, meetingDate, meetingKind, agenda, ...row }) => ({
-      ...toDecision(row),
-      subjectName,
-      meetingDate,
-      meetingKind,
-      agendaTitle: agenda.find((item) => item.id === row.agendaItemId)?.title ?? '',
-    })),
+    items: rows.map(
+      ({ board, subjectName, className, meetingDate, meetingKind, agenda, ...row }) => ({
+        ...toDecision(row),
+        board,
+        subjectName,
+        className,
+        meetingDate,
+        meetingKind,
+        agendaTitle: agenda.find((item) => item.id === row.agendaItemId)?.title ?? '',
+      }),
+    ),
     total: totalRow?.total ?? 0,
   }
 }
@@ -585,4 +615,154 @@ export async function findMeetingStaff(
   return new Map(
     rows.map((row) => [row.id, { role: row.role, active: row.deactivatedAt === null }]),
   )
+}
+
+// --- Gündem şablonları (DOM-FIN-135; K-461) ------------------------------------------------------
+
+export interface StoredTemplate {
+  id: string
+  board: MeetingBoard
+  name: string
+  items: { title: string }[]
+  archivedAt: string | null
+  /** Bu şablondan açılmış toplantı sayısı (arşivli dahil değil; toplantı arşivlenmez). */
+  meetingCount: number
+  createdAt: string
+  updatedAt: string
+  version: number
+}
+
+const TEMPLATE_COLUMNS = {
+  id: templates.id,
+  board: templates.board,
+  name: templates.name,
+  items: templates.items,
+  archivedAt: templates.archivedAt,
+  meetingCount: sql<number>`(select count(*)::int from "department_meetings" m
+    where m.institution_id = "department_meeting_templates"."institution_id"
+      and m.agenda_template_id = "department_meeting_templates"."id")`,
+  createdAt: templates.createdAt,
+  updatedAt: templates.updatedAt,
+  version: templates.version,
+}
+type TemplateRow = Omit<StoredTemplate, 'archivedAt' | 'createdAt' | 'updatedAt'> & {
+  archivedAt: Date | null
+  createdAt: Date
+  updatedAt: Date
+}
+const toTemplate = (row: TemplateRow): StoredTemplate => ({
+  ...row,
+  meetingCount: Number(row.meetingCount),
+  archivedAt: row.archivedAt === null ? null : row.archivedAt.toISOString(),
+  createdAt: row.createdAt.toISOString(),
+  updatedAt: row.updatedAt.toISOString(),
+})
+
+export async function findTemplate(
+  db: Database,
+  institutionId: string,
+  id: string,
+): Promise<StoredTemplate | null> {
+  const [row] = await db
+    .select(TEMPLATE_COLUMNS)
+    .from(templates)
+    .where(and(eq(templates.institutionId, institutionId), eq(templates.id, id)))
+    .limit(1)
+  return row === undefined ? null : toTemplate(row)
+}
+
+export interface TemplateQuery {
+  page: number
+  pageSize: number
+  board?: MeetingBoard | undefined
+  /** `true`: yalnız arşivliler; yoksa yalnız etkinler. */
+  archived?: boolean | undefined
+}
+
+/** Şablonlar kurul türü sonra ada göre. */
+export async function listTemplates(
+  db: Database,
+  institutionId: string,
+  query: TemplateQuery,
+): Promise<{ items: StoredTemplate[]; total: number }> {
+  const where = and(
+    eq(templates.institutionId, institutionId),
+    query.archived === true
+      ? sql`${templates.archivedAt} is not null`
+      : isNull(templates.archivedAt),
+    query.board === undefined ? undefined : eq(templates.board, query.board),
+  )
+  const [totalRow] = await db.select({ total: count() }).from(templates).where(where)
+  const rows = await db
+    .select(TEMPLATE_COLUMNS)
+    .from(templates)
+    .where(where)
+    .orderBy(asc(templates.board), asc(foldSql(templates.name)), asc(templates.id))
+    .limit(query.pageSize)
+    .offset((query.page - 1) * query.pageSize)
+  return { items: rows.map(toTemplate), total: totalRow?.total ?? 0 }
+}
+
+/** Kurul türünde aynı adlı etkin şablon var mı (kendisi hariç). */
+export async function templateNameTaken(
+  db: Database,
+  institutionId: string,
+  input: { board: MeetingBoard; name: string; exceptId: string | null },
+): Promise<boolean> {
+  const [row] = await db
+    .select({ id: templates.id })
+    .from(templates)
+    .where(
+      and(
+        eq(templates.institutionId, institutionId),
+        eq(templates.board, input.board),
+        eq(templates.name, input.name),
+        isNull(templates.archivedAt),
+        input.exceptId === null ? undefined : sql`${templates.id} <> ${input.exceptId}`,
+      ),
+    )
+    .limit(1)
+  return row !== undefined
+}
+
+export async function insertTemplate(
+  tx: Database,
+  institutionId: string,
+  input: {
+    id: string
+    board: MeetingBoard
+    name: string
+    items: { title: string }[]
+    createdByUserId: string
+    now: Date
+  },
+): Promise<void> {
+  const { now, ...rest } = input
+  await tx.insert(templates).values({ institutionId, ...rest, createdAt: now, updatedAt: now })
+}
+
+/** Şablon düzeltmesi ya da arşivi; sürüm tutmazsa `false` (409). */
+export async function updateTemplate(
+  tx: Database,
+  institutionId: string,
+  input: {
+    id: string
+    expectedVersion: number
+    now: Date
+    values: { name?: string; items?: { title: string }[]; archivedAt?: Date }
+  },
+): Promise<boolean> {
+  const rows = await tx
+    .update(templates)
+    .set({ ...input.values, updatedAt: input.now, version: input.expectedVersion + 1 })
+    .where(
+      and(
+        eq(templates.institutionId, institutionId),
+        eq(templates.id, input.id),
+        eq(templates.version, input.expectedVersion),
+        isNull(templates.archivedAt),
+      ),
+    )
+    .returning({ id: templates.id })
+  return rows.length === 1
 }

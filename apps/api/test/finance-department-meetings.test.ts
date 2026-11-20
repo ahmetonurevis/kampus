@@ -14,7 +14,9 @@ import {
   departmentMeetingAttendees,
   departmentMeetingDecisions,
   departmentMeetings,
+  departmentMeetingTemplates,
 } from '../src/db/schema/finance-department-meetings.ts'
+import { records } from '../src/db/schema/records.ts'
 import { ensureMember } from '../src/services/identity.ts'
 import {
   buildTestApp,
@@ -29,13 +31,22 @@ import {
 } from './support/app.ts'
 
 /**
- * Zümre toplantısı tutanağı uçları (DOM-FIN-132; ON-217; K-451…K-453). Her test kendi kurumunu
- * kurar. Bugün (İstanbul) `FIXED_NOW` günü: 2026-10-06.
+ * Kurul ve zümre toplantısı tutanağı uçları (DOM-FIN-132, DOM-FIN-135; ON-217, ON-218;
+ * K-451…K-453, K-460…K-462). Her test kendi kurumunu kurar. Bugün (İstanbul) `FIXED_NOW` günü:
+ * 2026-10-06.
  */
 
 const URL = '/api/v1/finance/department-meetings'
 const DECISIONS_URL = '/api/v1/finance/department-meeting-decisions'
 const SUBJECTS_URL = '/api/v1/finance/department-meeting-subjects'
+const TEMPLATES_URL = '/api/v1/finance/department-meeting-templates'
+
+/** Şube kurulu sınıfı (kurumun `classes` kaydı). */
+const classRecord = (id: string, name: string) => ({
+  collection: 'classes' as const,
+  id,
+  data: { id, name, grade: 9, section: 'A', branchId: 'b1', teacherId: 't1', capacity: 30 },
+})
 
 /** Yalnız B kurumunda bulunan ders kaydı (zümre seçeneği kapsamı). */
 const B_SUBJECT = {
@@ -56,6 +67,7 @@ type Meeting = Json & {
   attendees: Attendee[]
   decisions: Decision[]
 }
+type Template = Json & { id: string; version: number; board: string; archivedAt: string | null }
 type Response = Awaited<ReturnType<App['inject']>>
 type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE'
 
@@ -201,6 +213,27 @@ describe('DOM-FIN-132: zümre toplantısı tutanağı uçları', () => {
       .select()
       .from(departmentMeetingDecisions)
       .where(eq(departmentMeetingDecisions.institutionId, institutionId))
+  const templateRows = (institutionId: string) =>
+    db
+      .select()
+      .from(departmentMeetingTemplates)
+      .where(eq(departmentMeetingTemplates.institutionId, institutionId))
+  const templateBody = (extra: Json = {}) => ({
+    board: 'teachers',
+    name: 'Dönem başı öğretmenler kurulu',
+    items: [{ title: 'Açılış ve yoklama' }, { title: 'Çalışma takvimi' }],
+    ...extra,
+  })
+  const createTemplate = (cookie: string, body: Json, headers: Record<string, string> = key()) =>
+    call('POST', TEMPLATES_URL, cookie, body, headers)
+  const templateUrl = (template: { id: string }) => `${TEMPLATES_URL}/${template.id}`
+  const editTemplate = (cookie: string, template: Template, body: Json) =>
+    call('PATCH', templateUrl(template), cookie, body, ifMatch(template.version))
+  const archiveTemplate = (cookie: string, template: Template) =>
+    call('DELETE', templateUrl(template), cookie, undefined, ifMatch(template.version))
+  /** Öğretmenler kurulu gövdesi (ders ve sınıf yok). */
+  const boardBody = (t: Tenant, extra: Json = {}) =>
+    bodyFor(t, { board: 'teachers', subjectId: null, ...extra })
   const auditOf = (institutionId: string, action: string) =>
     db
       .select({ changes: auditLog.changes })
@@ -226,6 +259,11 @@ describe('DOM-FIN-132: zümre toplantısı tutanağı uçları', () => {
     assertError(await call('PATCH', decision, null, {}, ifMatch(1)), 401)
     assertError(await call('DELETE', decision, null, undefined, ifMatch(1)), 401)
     assertError(await call('POST', `${decision}/follow-up`, null, {}, ifMatch(1)), 401)
+    const template = `${TEMPLATES_URL}/${randomUUID()}`
+    assertError(await get(TEMPLATES_URL, null), 401)
+    assertError(await call('POST', TEMPLATES_URL, null, {}, key()), 401)
+    assertError(await call('PATCH', template, null, {}, ifMatch(1)), 401)
+    assertError(await call('DELETE', template, null, undefined, ifMatch(1)), 401)
   })
 
   test('DOM-FIN-132: K-451 yalnız yönetici; ön büro, öğretmen, veli ve öğrenci 403, kayıt açılmaz', async () => {
@@ -240,7 +278,10 @@ describe('DOM-FIN-132: zümre toplantısı tutanağı uçları', () => {
       assertError(await create(cookie, bodyFor(t)), 403)
       assertError(await patch(cookie, meeting, bodyOf(t, meeting)), 403)
       assertError(await decide(cookie, meeting, decisionBody(t, meeting)), 403)
+      assertError(await get(TEMPLATES_URL, cookie), 403)
+      assertError(await createTemplate(cookie, templateBody()), 403)
     }
+    assert.equal((await templateRows(t.id)).length, 0)
     assert.equal((await meetingRows(t.id)).length, 1)
     assert.equal((await decisionRows(t.id)).length, 0)
   })
@@ -639,5 +680,303 @@ describe('DOM-FIN-132: zümre toplantısı tutanağı uçları', () => {
     assert.equal(decisionRow?.status, 'open')
     assert.equal(decisionRow?.archivedAt, null)
     assert.equal((await meetingRows(a.id)).length, 1)
+  })
+
+  test('DOM-FIN-135: K-461 gündem şablonu; Idempotency-Key, tekil ad, kurul türü sabit, arşiv, denetim', async () => {
+    const t = await institution()
+    assertError(await createTemplate(t.admin, templateBody(), {}), 400)
+    assertError(await createTemplate(t.admin, templateBody({ items: [] })), 400)
+    assertError(await createTemplate(t.admin, templateBody({ board: 'weekly' })), 400)
+    assertError(await createTemplate(t.admin, templateBody({ name: 'x' })), 400)
+    assert.equal((await templateRows(t.id)).length, 0)
+
+    const headers = key()
+    const template = ok<Template>(await createTemplate(t.admin, templateBody(), headers), 201)
+    const replay = await createTemplate(t.admin, templateBody(), headers)
+    assert.equal(replay.headers['idempotent-replayed'], 'true')
+    assert.equal((await templateRows(t.id)).length, 1)
+    assert.equal(template.board, 'teachers')
+    assert.deepEqual(template.items, [{ title: 'Açılış ve yoklama' }, { title: 'Çalışma takvimi' }])
+    assert.equal(template.meetingCount, 0)
+    assertError(
+      await createTemplate(t.admin, templateBody()),
+      409,
+      'department_meeting_template_name_taken',
+    )
+    // Aynı ad başka kurul türünde serbesttir.
+    const department = ok<Template>(
+      await createTemplate(t.admin, templateBody({ board: 'department' })),
+      201,
+    )
+
+    assertError(await editTemplate(t.admin, template, { ...templateBody(), board: 'class' }), 400)
+    const edited = ok<Template>(
+      await editTemplate(t.admin, template, {
+        name: 'Dönem sonu öğretmenler kurulu',
+        items: [{ title: 'Başarı durumu' }],
+      }),
+    )
+    assert.equal(edited.version, template.version + 1)
+    assert.equal(edited.board, 'teachers')
+    assertError(await editTemplate(t.admin, template, { name: 'Eski', items: [] }), 400)
+    assertError(
+      await editTemplate(t.admin, template, { name: 'Eski sürüm', items: [{ title: 'Madde' }] }),
+      409,
+    )
+
+    const list = await listOf(t.admin, `${TEMPLATES_URL}?board=teachers`)
+    assert.deepEqual(
+      list.data.map((row) => row.id),
+      [template.id],
+    )
+    assert.equal((await listOf(t.admin, TEMPLATES_URL)).meta.total, 2)
+
+    const archived = ok<Template>(await archiveTemplate(t.admin, edited))
+    assert.notEqual(archived.archivedAt, null)
+    assertError(
+      await archiveTemplate(t.admin, archived),
+      409,
+      'department_meeting_template_archived',
+    )
+    const update = { name: 'Dönem başı öğretmenler kurulu', items: [{ title: 'Açılış' }] }
+    assertError(
+      await editTemplate(t.admin, archived, update),
+      409,
+      'department_meeting_template_archived',
+    )
+    assert.equal((await listOf(t.admin, TEMPLATES_URL)).meta.total, 1)
+    assert.deepEqual(
+      (await listOf(t.admin, `${TEMPLATES_URL}?archived=true`)).data.map((row) => row.id),
+      [template.id],
+    )
+    // Arşivlenen adla yeni şablon açılabilir.
+    ok<Template>(
+      await createTemplate(t.admin, templateBody({ name: archived.name as string })),
+      201,
+    )
+    assertError(await get(`${TEMPLATES_URL}?status=active`, t.admin), 400)
+
+    const [audit] = await auditOf(t.id, 'finance.department_meeting_template.create')
+    assert.deepEqual(audit?.changes?.fields, ['board', 'name', 'items'])
+    assert.ok(!JSON.stringify(audit?.changes).includes('Çalışma takvimi'))
+    assert.equal((await auditOf(t.id, 'finance.department_meeting_template.archive')).length, 1)
+    assert.equal(department.board, 'department')
+  })
+
+  test('DOM-FIN-135: K-460 öğretmenler kurulu ve şube kurulu; hedef türe göre zorunlu, sınıf adı kopyalanır', async () => {
+    const t = await institution()
+    await insertMissingRecords(
+      db,
+      t.id,
+      [classRecord('c-9a', '9-A'), classRecord('c-10b', '10-B')],
+      FIXED_NOW,
+    )
+    // Gövde kurul türünün hedefini ister: zümrede ders, şubede sınıf, kurulda hiçbiri.
+    assertError(await create(t.admin, boardBody(t, { subjectId: 'math' })), 400)
+    assertError(await create(t.admin, boardBody(t, { classId: 'c-9a' })), 400)
+    assertError(await create(t.admin, boardBody(t, { board: 'class' })), 400)
+    assertError(await create(t.admin, bodyFor(t, { subjectId: null })), 400)
+    assertError(await create(t.admin, boardBody(t, { board: 'senate' })), 400)
+    assertError(
+      await create(t.admin, boardBody(t, { board: 'class', classId: 'c-yok' })),
+      422,
+      'department_meeting_class_not_found',
+    )
+    await db
+      .update(records)
+      .set({ archivedAt: FIXED_NOW })
+      .where(and(eq(records.institutionId, t.id), eq(records.id, 'c-10b')))
+    assertError(
+      await create(t.admin, boardBody(t, { board: 'class', classId: 'c-10b' })),
+      422,
+      'department_meeting_class_not_found',
+    )
+    assert.equal((await meetingRows(t.id)).length, 0)
+
+    const board = ok<Meeting>(await create(t.admin, boardBody(t)), 201)
+    assert.equal(board.board, 'teachers')
+    assert.equal(board.subjectId, null)
+    assert.equal(board.subjectName, null)
+    assert.equal(board.classId, null)
+    const section = ok<Meeting>(
+      await create(t.admin, boardBody(t, { board: 'class', classId: 'c-9a', kind: 'term_end' })),
+      201,
+    )
+    assert.equal(section.board, 'class')
+    assert.equal(section.className, '9-A')
+    const zumre = await draft(t)
+    assert.equal(zumre.board, 'department')
+    assert.equal(zumre.className, null)
+    const [audit] = await auditOf(t.id, 'finance.department_meeting.create')
+    assert.ok(audit?.changes?.fields?.includes('board'))
+
+    // Taslakta kurul türü değişir; sınıf adı sonradan değişse de tutanaktaki kopya kalır.
+    await db
+      .update(records)
+      .set({ data: { ...classRecord('c-9a', '9-A Fen').data } })
+      .where(and(eq(records.institutionId, t.id), eq(records.id, 'c-9a')))
+    const kept = ok<Meeting>(
+      await patch(
+        t.admin,
+        section,
+        bodyOf(t, section, { subjectId: null, board: 'class', classId: 'c-9a' }),
+      ),
+    )
+    assert.equal(kept.className, '9-A')
+    const moved = ok<Meeting>(
+      await patch(t.admin, kept, bodyOf(t, kept, { subjectId: null, board: 'teachers' })),
+    )
+    assert.equal(moved.board, 'teachers')
+    assert.equal(moved.className, null)
+    assert.equal(moved.classId, null)
+
+    // Liste kurul türü, sınıf ve aramayla süzülür.
+    const boards = await listOf(t.admin, `${URL}?board=teachers`)
+    assert.deepEqual(boards.data.map((row) => row.id).sort(), [board.id, section.id].sort())
+    assert.equal((await listOf(t.admin, `${URL}?board=department`)).meta.total, 1)
+    assertError(await get(`${URL}?board=senate`, t.admin), 400)
+    const third = ok<Meeting>(
+      await create(t.admin, boardBody(t, { board: 'class', classId: 'c-9a' })),
+      201,
+    )
+    assert.equal(third.className, '9-A Fen')
+    assert.deepEqual(
+      (await listOf(t.admin, `${URL}?classId=c-9a`)).data.map((row) => row.id),
+      [third.id],
+    )
+    assert.deepEqual(
+      (await listOf(t.admin, `${URL}?q=9-a fen`)).data.map((row) => row.id),
+      [third.id],
+    )
+
+    // Veritabanı güvencesi: kurul türüne uymayan hedef reddedilir.
+    await assert.rejects(
+      db
+        .update(departmentMeetings)
+        .set({ subjectId: 'math', subjectName: 'Matematik' })
+        .where(eq(departmentMeetings.id, board.id)),
+    )
+  })
+
+  test('DOM-FIN-135: K-461 şablon bağı; tür uyuşmazlığı ve arşivli şablon 422; gündem kopyadır', async () => {
+    const t = await institution()
+    const template = ok<Template>(await createTemplate(t.admin, templateBody()), 201)
+    const other = ok<Template>(
+      await createTemplate(t.admin, templateBody({ board: 'department', name: 'Zümre' })),
+      201,
+    )
+    assertError(
+      await create(t.admin, bodyFor(t, { agendaTemplateId: template.id })),
+      422,
+      'department_meeting_template_board_mismatch',
+    )
+    assertError(
+      await create(t.admin, boardBody(t, { agendaTemplateId: randomUUID() })),
+      422,
+      'department_meeting_template_not_found',
+    )
+    assertError(await create(t.admin, boardBody(t, { agendaTemplateId: 'sablon' })), 400)
+    assert.equal((await meetingRows(t.id)).length, 0)
+
+    const linked = ok<Meeting>(
+      await create(
+        t.admin,
+        boardBody(t, {
+          agendaTemplateId: template.id,
+          agenda: [{ title: 'Açılış ve yoklama' }, { title: 'Çalışma takvimi (düzenlendi)' }],
+        }),
+      ),
+      201,
+    )
+    assert.equal(linked.agendaTemplateId, template.id)
+    const [audit] = await auditOf(t.id, 'finance.department_meeting.create')
+    assert.ok(audit?.changes?.fields?.includes('agendaTemplateId'))
+    const counted = await listOf(t.admin, `${TEMPLATES_URL}?board=teachers`)
+    assert.equal(counted.data[0]?.meetingCount, 1)
+
+    // Şablon değişir ya da arşivlenir; toplantının gündemi değişmez, bağ kalır.
+    const edited = ok<Template>(
+      await editTemplate(t.admin, template, { name: 'Yeni ad', items: [{ title: 'Tek madde' }] }),
+    )
+    const archived = ok<Template>(await archiveTemplate(t.admin, edited))
+    const detail = ok<Meeting>(await get(urlOf(linked), t.admin))
+    assert.deepEqual(
+      detail.agenda.map((item) => item.title),
+      ['Açılış ve yoklama', 'Çalışma takvimi (düzenlendi)'],
+    )
+    const kept = ok<Meeting>(
+      await patch(
+        t.admin,
+        detail,
+        bodyOf(t, detail, { subjectId: null, board: 'teachers', agendaTemplateId: archived.id }),
+      ),
+    )
+    assert.equal(kept.agendaTemplateId, template.id)
+    assertError(
+      await create(t.admin, boardBody(t, { agendaTemplateId: archived.id })),
+      422,
+      'department_meeting_template_archived',
+    )
+    const zumre = ok<Meeting>(
+      await create(t.admin, bodyFor(t, { agendaTemplateId: other.id })),
+      201,
+    )
+    assert.equal(zumre.agendaTemplateId, other.id)
+  })
+
+  test('DOM-FIN-135: K-462 karar takip listesi kurul türüne göre süzülür', async () => {
+    const t = await institution()
+    const zumre = await draft(t)
+    const board = ok<Meeting>(await create(t.admin, boardBody(t)), 201)
+    const zumreDecision = ok<Decision>(await decide(t.admin, zumre, decisionBody(t, zumre)), 201)
+    const boardDecision = ok<Decision>(await decide(t.admin, board, decisionBody(t, board)), 201)
+    ok(await finalize(t.admin, zumre))
+    ok(await finalize(t.admin, board))
+
+    const all = await listOf(t.admin, `${DECISIONS_URL}?overdue=true`)
+    assert.equal(all.meta.total, 2)
+    const teachers = await listOf(t.admin, `${DECISIONS_URL}?overdue=true&board=teachers`)
+    assert.deepEqual(
+      teachers.data.map((row) => [row.id, row.board, row.subjectName, row.className]),
+      [[boardDecision.id, 'teachers', null, null]],
+    )
+    const department = await listOf(t.admin, `${DECISIONS_URL}?board=department`)
+    assert.deepEqual(
+      department.data.map((row) => [row.id, row.subjectName]),
+      [[zumreDecision.id, 'Matematik']],
+    )
+    assertError(await get(`${DECISIONS_URL}?board=senate`, t.admin), 400)
+  })
+
+  test('DOM-FIN-135: başka kurumun şablonu ve sınıfı 404/422, B değişmez; listede yok; institutionId etkisiz', async () => {
+    const a = await institution()
+    const b = await institution()
+    await insertMissingRecords(db, b.id, [classRecord('b-9a', 'B 9-A')], FIXED_NOW)
+    const bTemplate = ok<Template>(await createTemplate(b.admin, templateBody()), 201)
+
+    assert.equal((await listOf(a.admin, TEMPLATES_URL)).meta.total, 0)
+    assertError(
+      await editTemplate(a.admin, bTemplate, { name: 'Ele geçir', items: [{ title: 'Madde' }] }),
+      404,
+    )
+    assertError(await archiveTemplate(a.admin, bTemplate), 404)
+    assertError(
+      await create(a.admin, boardBody(a, { agendaTemplateId: bTemplate.id })),
+      422,
+      'department_meeting_template_not_found',
+    )
+    assertError(
+      await create(a.admin, boardBody(a, { board: 'class', classId: 'b-9a' })),
+      422,
+      'department_meeting_class_not_found',
+    )
+    assertError(await createTemplate(a.admin, { ...templateBody(), institutionId: b.id }), 400)
+    assert.equal((await meetingRows(a.id)).length, 0)
+    assert.equal((await templateRows(a.id)).length, 0)
+
+    const [row] = await templateRows(b.id)
+    assert.equal(row?.name, 'Dönem başı öğretmenler kurulu')
+    assert.equal(row?.archivedAt, null)
+    assert.equal(row?.version, bTemplate.version)
   })
 })

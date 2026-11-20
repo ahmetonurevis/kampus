@@ -3,22 +3,27 @@ import { randomUUID } from 'node:crypto'
 import { subjects as curriculumSubjects } from '@kampus/school-core/data/curriculum.ts'
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
 import {
+  assertAgendaTemplate,
   assertDecision,
   assertFinalize,
   assertFollowUp,
   assertMeetingDateFitsDecisions,
   assertMeetingEditable,
   assertMeetingPerson,
+  assertTemplateEditable,
   departmentDecisionFollowUpSchema,
   departmentDecisionInputSchema,
   departmentMeetingFinalizeSchema,
   departmentMeetingInputSchema,
   isDecisionOverdue,
+  meetingAgendaTemplateInputSchema,
+  meetingAgendaTemplateUpdateSchema,
   mergeAgenda,
   numberDecisions,
   overdueDays,
   type DepartmentDecisionStatus,
   type DepartmentMeetingInput,
+  type MeetingBoard,
   type StoredAgendaItem,
 } from '@kampus/school-core/lib/finance-department-meetings.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
@@ -28,43 +33,57 @@ import {
   findDecision,
   findMeeting,
   findMeetingStaff,
+  findTemplate,
   insertDecision,
   insertMeeting,
+  insertTemplate,
   listAttendees,
   listDecisions,
   listMeetingDecisions,
   listMeetings,
+  listTemplates,
   syncAttendees,
+  templateNameTaken,
   updateDecision,
   updateMeeting,
+  updateTemplate,
   type MeetingQuery,
   type StoredAttendee,
   type StoredDecision,
   type StoredMeeting,
+  type StoredTemplate,
+  type TemplateQuery,
 } from '../db/finance-department-meetings.ts'
 import { loadBranchData } from '../db/finance-leave-calendar.ts'
+import { loadRecordsByIds } from '../db/records.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
 import { auditWork } from './task-work.ts'
 
 /**
- * Zümre toplantısı tutanağı (DOM-FIN-132; ON-217; K-451…K-453). Kural core
- * `lib/finance-department-meetings.ts`'tedir; servis kurum kilidi altında toplantıyı, kararları
- * ve kişilerin üyeliğini yükler, tek transaction'da yazar ve denetime alan adlarını düşer. Zümre
- * dersi izin takvimiyle aynı kaynaktan okunur (K-421 `loadBranchData`). Rol ve modül denetimi
- * rotadadır.
+ * Kurul ve zümre toplantısı tutanağı (DOM-FIN-132, DOM-FIN-135; ON-217, ON-218; K-451…K-453,
+ * K-460…K-462). Kural core `lib/finance-department-meetings.ts`'tedir; servis kurum kilidi
+ * altında toplantıyı, kararları, kişilerin üyeliğini, şube sınıfını ve gündem şablonunu yükler,
+ * tek transaction'da yazar ve denetime alan adlarını düşer. Zümre dersi izin takvimiyle aynı
+ * kaynaktan okunur (K-421 `loadBranchData`). Rol ve modül denetimi rotadadır.
  */
 
 const MEETING = 'department_meetings'
 const DECISION = 'department_meeting_decisions'
+const TEMPLATE = 'department_meeting_templates'
+const CLASS_NAME_MAX = 120
 const SUBJECT_NAME_MAX = 120
 
 export function meetingView(meeting: StoredMeeting) {
   return {
     id: meeting.id,
+    board: meeting.board,
     subjectId: meeting.subjectId,
     subjectName: meeting.subjectName,
+    classId: meeting.classId,
+    className: meeting.className,
+    agendaTemplateId: meeting.agendaTemplateId,
     kind: meeting.kind,
     meetingDate: meeting.meetingDate,
     location: meeting.location,
@@ -150,6 +169,7 @@ export async function listDecisionsFor(
     overdue?: boolean | undefined
     responsibleMembershipId?: string | undefined
     subjectId?: string | undefined
+    board?: MeetingBoard | undefined
   },
 ) {
   const today = todayOf(ctx)
@@ -158,7 +178,9 @@ export async function listDecisionsFor(
     items: items.map((item) => ({
       id: item.id,
       meetingId: item.meetingId,
+      board: item.board,
       subjectName: item.subjectName,
+      className: item.className,
       meetingDate: item.meetingDate,
       meetingKind: item.meetingKind,
       agendaTitle: item.agendaTitle,
@@ -203,6 +225,84 @@ const subjectNotFound = () =>
   new DomainError('department_meeting_subject_not_found', 'Zümre (ders) bu kurumda bulunamadı.', {
     path: ['subjectId'],
   })
+const classNotFound = () =>
+  new DomainError('department_meeting_class_not_found', 'Sınıf (şube) bu kurumda bulunamadı.', {
+    path: ['classId'],
+  })
+
+/** Sınıf kaydı (arşivli dahil): kimlik → ad ve arşiv; kurumda yoksa `null`. */
+async function classOf(db: Database, institutionId: string, classId: string | null) {
+  if (classId === null) return null
+  const [row] = await loadRecordsByIds(db, institutionId, 'classes', [classId], {
+    includeArchived: true,
+  })
+  if (row === undefined) return null
+  const name =
+    typeof row.data.name === 'string' && row.data.name.trim() !== '' ? row.data.name : row.id
+  return { name: name.slice(0, CLASS_NAME_MAX), archived: row.archivedAt !== null }
+}
+
+type ClassRecord = Awaited<ReturnType<typeof classOf>>
+
+/**
+ * Kurul türünün hedefi (K-460, K-462): zümrede ders adı, şube kurulunda sınıf adı kopyalanır.
+ * Tutanakta zaten olan ders ya da sınıf (sonradan arşivlenmiş olsa da) kalır.
+ */
+function targetOf(
+  parsed: DepartmentMeetingInput,
+  sources: {
+    subjects: ReadonlyMap<string, string>
+    classRecord: ClassRecord
+    previous: StoredMeeting | null
+  },
+) {
+  const { previous } = sources
+  if (parsed.board === 'department' && parsed.subjectId !== null) {
+    const subjectName =
+      previous !== null && previous.subjectId === parsed.subjectId && previous.subjectName !== null
+        ? previous.subjectName
+        : sources.subjects.get(parsed.subjectId)
+    if (subjectName === undefined) throw subjectNotFound()
+    return { subjectId: parsed.subjectId, subjectName, classId: null, className: null }
+  }
+  if (parsed.board === 'class' && parsed.classId !== null) {
+    const kept = previous !== null && previous.classId === parsed.classId
+    const record = sources.classRecord
+    if (record === null || (record.archived && !kept)) throw classNotFound()
+    const className = kept && previous.className !== null ? previous.className : record.name
+    return { subjectId: null, subjectName: null, classId: parsed.classId, className }
+  }
+  return { subjectId: null, subjectName: null, classId: null, className: null }
+}
+
+/** Gündem şablonu bağı (K-461); şablon yoksa denetim yok. */
+function checkTemplate(
+  parsed: DepartmentMeetingInput,
+  template: StoredTemplate | null,
+  previous: StoredMeeting | null,
+) {
+  if (parsed.agendaTemplateId === null) return
+  assertAgendaTemplate({
+    template:
+      template === null ? null : { board: template.board, archived: template.archivedAt !== null },
+    board: parsed.board,
+    alreadyLinked: previous?.agendaTemplateId === parsed.agendaTemplateId,
+  })
+}
+
+async function meetingSources(tx: Database, ctx: ServiceContext, parsed: DepartmentMeetingInput) {
+  const [subjects, classRecord, template, staff] = await Promise.all([
+    parsed.board === 'department'
+      ? subjectOptions(tx, ctx.institutionId)
+      : Promise.resolve(new Map<string, string>()),
+    classOf(tx, ctx.institutionId, parsed.board === 'class' ? parsed.classId : null),
+    parsed.agendaTemplateId === null
+      ? Promise.resolve(null)
+      : findTemplate(tx, ctx.institutionId, parsed.agendaTemplateId),
+    findMeetingStaff(tx, ctx.institutionId, peopleOf(parsed)),
+  ])
+  return { subjects, classRecord, template, staff }
+}
 
 /** Başkan ve katılımcılar (K-452); daha önce tutanakta olan kişi ayrılmış olsa da kalır. */
 function assertPeople(
@@ -229,9 +329,12 @@ const peopleOf = (input: DepartmentMeetingInput) => [
   ...input.attendees.map((attendee) => attendee.membershipId),
 ]
 
-/** Yazılan alanlar (denetim kaydı; değer değil ad). */
-const MEETING_FIELDS = [
-  'subjectId',
+/** Yazılan alanlar (denetim kaydı; değer değil ad). Boş hedef ve şablon yazılmaz. */
+const meetingFields = (parsed: DepartmentMeetingInput) => [
+  'board',
+  ...(parsed.subjectId === null ? [] : ['subjectId']),
+  ...(parsed.classId === null ? [] : ['classId']),
+  ...(parsed.agendaTemplateId === null ? [] : ['agendaTemplateId']),
   'kind',
   'meetingDate',
   'location',
@@ -261,30 +364,28 @@ export function createMeetingCommand(
       entity,
       load: async (tx) => {
         const parsed = departmentMeetingInputSchema.parse(input)
-        const [subjects, staff] = await Promise.all([
-          subjectOptions(tx, ctx.institutionId),
-          findMeetingStaff(tx, ctx.institutionId, peopleOf(parsed)),
-        ])
+        const sources = await meetingSources(tx, ctx, parsed)
         return {
           run: () => {
-            const subjectName = subjects.get(parsed.subjectId)
-            if (subjectName === undefined) throw subjectNotFound()
-            assertPeople(parsed, staff, new Set())
+            const target = targetOf(parsed, { ...sources, previous: null })
+            checkTemplate(parsed, sources.template, null)
+            assertPeople(parsed, sources.staff, new Set())
             const agenda = mergeAgenda({
               previous: [],
               next: parsed.agenda,
               usedIds: new Set(),
               newId: randomUUID,
             })
-            return { parsed, subjectName, agenda }
+            return { parsed, target, agenda }
           },
         }
       },
-      after: async (tx, { parsed, subjectName, agenda }) => {
+      after: async (tx, { parsed, target, agenda }) => {
         await insertMeeting(tx, ctx.institutionId, {
           id,
-          subjectId: parsed.subjectId,
-          subjectName,
+          board: parsed.board,
+          ...target,
+          agendaTemplateId: parsed.agendaTemplateId,
           kind: parsed.kind,
           meetingDate: parsed.meetingDate,
           location: parsed.location,
@@ -301,7 +402,7 @@ export function createMeetingCommand(
           now: ctx.now,
         })
         await auditWork(tx, ctx, 'finance.department_meeting.create', entity, [
-          ...MEETING_FIELDS,
+          ...meetingFields(parsed),
           'status',
         ])
         body = await meetingResponse(tx, ctx, id)
@@ -333,23 +434,19 @@ export function updateMeetingCommand(
         if (meeting === null) throw new NotFoundError()
         if (meeting.version !== expectedVersion) throw new ConflictError()
         const parsed = departmentMeetingInputSchema.parse(input)
-        const [subjects, staff, attendees, decisions] = await Promise.all([
-          subjectOptions(tx, ctx.institutionId),
-          findMeetingStaff(tx, ctx.institutionId, peopleOf(parsed)),
+        const [sources, attendees, decisions] = await Promise.all([
+          meetingSources(tx, ctx, parsed),
           listAttendees(tx, ctx.institutionId, id),
           listMeetingDecisions(tx, ctx.institutionId, id),
         ])
         return {
           run: () => {
             assertMeetingEditable(meeting.status)
-            const subjectName =
-              parsed.subjectId === meeting.subjectId
-                ? meeting.subjectName
-                : subjects.get(parsed.subjectId)
-            if (subjectName === undefined) throw subjectNotFound()
+            const target = targetOf(parsed, { ...sources, previous: meeting })
+            checkTemplate(parsed, sources.template, meeting)
             assertPeople(
               parsed,
-              staff,
+              sources.staff,
               new Set([meeting.chairMembershipId, ...attendees.map((row) => row.membershipId)]),
             )
             const agenda = mergeAgenda({
@@ -363,18 +460,19 @@ export function updateMeetingCommand(
               .filter((day): day is string => day !== null)
               .sort()
             assertMeetingDateFitsDecisions(parsed.meetingDate, dueDates[0] ?? null)
-            return { parsed, subjectName, agenda, attendees }
+            return { parsed, target, agenda, attendees }
           },
         }
       },
-      after: async (tx, { parsed, subjectName, agenda, attendees }) => {
+      after: async (tx, { parsed, target, agenda, attendees }) => {
         const saved = await updateMeeting(tx, ctx.institutionId, {
           id,
           expectedVersion,
           now: ctx.now,
           values: {
-            subjectId: parsed.subjectId,
-            subjectName,
+            board: parsed.board,
+            ...target,
+            agendaTemplateId: parsed.agendaTemplateId,
             kind: parsed.kind,
             meetingDate: parsed.meetingDate,
             location: parsed.location,
@@ -390,7 +488,7 @@ export function updateMeetingCommand(
           newId: randomUUID,
           now: ctx.now,
         })
-        await auditWork(tx, ctx, 'finance.department_meeting.update', entity, MEETING_FIELDS)
+        await auditWork(tx, ctx, 'finance.department_meeting.update', entity, meetingFields(parsed))
         body = await meetingResponse(tx, ctx, id)
       },
     },
@@ -689,6 +787,187 @@ export function followUpDecisionCommand(
           ...(parsed.followUpNote === null ? [] : ['followUpNote']),
         ])
         body = await decisionResponse(tx, ctx, meetingId, id)
+      },
+    },
+    () => ({ statusCode: 200, body }),
+    idempotency,
+  )
+}
+
+// --- Gündem şablonları (DOM-FIN-135; K-461) ------------------------------------------------------
+
+const templateView = (template: StoredTemplate) => ({
+  id: template.id,
+  board: template.board,
+  name: template.name,
+  items: template.items,
+  archivedAt: template.archivedAt,
+  meetingCount: template.meetingCount,
+  createdAt: template.createdAt,
+  updatedAt: template.updatedAt,
+  version: template.version,
+})
+
+export async function listTemplatesFor(ctx: ServiceContext, query: TemplateQuery) {
+  const { items, total } = await listTemplates(ctx.db, ctx.institutionId, query)
+  return { items: items.map(templateView), total }
+}
+
+const nameTaken = () =>
+  new DomainError(
+    'department_meeting_template_name_taken',
+    'Bu kurul türünde aynı adlı şablon var.',
+    { kind: 'conflict', path: ['name'] },
+  )
+
+async function templateBody(tx: Database, ctx: ServiceContext, id: string) {
+  const template = await findTemplate(tx, ctx.institutionId, id)
+  if (template === null) throw new Error('department meeting template was not written')
+  return { data: templateView(template) }
+}
+
+/** Yeni gündem şablonu (K-461). `Idempotency-Key` rotada zorunlu. 201. */
+export function createTemplateCommand(
+  ctx: ServiceContext,
+  input: unknown,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  const id = randomUUID()
+  const entity = { type: TEMPLATE, id }
+  let body: unknown
+  return runCommand(
+    ctx,
+    {
+      action: 'finance.department_meeting_template.create',
+      collections: [],
+      entity,
+      load: async (tx) => {
+        const parsed = meetingAgendaTemplateInputSchema.parse(input)
+        const taken = await templateNameTaken(tx, ctx.institutionId, {
+          board: parsed.board,
+          name: parsed.name,
+          exceptId: null,
+        })
+        return {
+          run: () => {
+            if (taken) throw nameTaken()
+            return parsed
+          },
+        }
+      },
+      after: async (tx, parsed) => {
+        await insertTemplate(tx, ctx.institutionId, {
+          id,
+          ...parsed,
+          createdByUserId: ctx.actor.userId,
+          now: ctx.now,
+        })
+        await auditWork(tx, ctx, 'finance.department_meeting_template.create', entity, [
+          'board',
+          'name',
+          'items',
+        ])
+        body = await templateBody(tx, ctx, id)
+      },
+    },
+    () => ({ statusCode: 201, body }),
+    idempotency,
+  )
+}
+
+async function loadTemplate(tx: Database, ctx: ServiceContext, id: string, expected: number) {
+  const template = await findTemplate(tx, ctx.institutionId, id)
+  if (template === null) throw new NotFoundError()
+  if (template.version !== expected) throw new ConflictError()
+  return template
+}
+
+/**
+ * Şablon düzeltmesi (K-461): ad ve maddeler; kurul türü değişmez. Bu şablondan açılmış
+ * toplantıların gündemi değişmez (kopya). Arşivli şablon 409.
+ */
+export function updateTemplateCommand(
+  ctx: ServiceContext,
+  id: string,
+  input: unknown,
+  expectedVersion: number,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  const entity = { type: TEMPLATE, id }
+  let body: unknown
+  return runCommand(
+    ctx,
+    {
+      action: 'finance.department_meeting_template.update',
+      collections: [],
+      entity,
+      load: async (tx) => {
+        const template = await loadTemplate(tx, ctx, id, expectedVersion)
+        const parsed = meetingAgendaTemplateUpdateSchema.parse(input)
+        const taken = await templateNameTaken(tx, ctx.institutionId, {
+          board: template.board,
+          name: parsed.name,
+          exceptId: id,
+        })
+        return {
+          run: () => {
+            assertTemplateEditable(template.archivedAt !== null)
+            if (taken) throw nameTaken()
+            return parsed
+          },
+        }
+      },
+      after: async (tx, parsed) => {
+        const saved = await updateTemplate(tx, ctx.institutionId, {
+          id,
+          expectedVersion,
+          now: ctx.now,
+          values: parsed,
+        })
+        if (!saved) throw new ConflictError()
+        await auditWork(tx, ctx, 'finance.department_meeting_template.update', entity, [
+          'name',
+          'items',
+        ])
+        body = await templateBody(tx, ctx, id)
+      },
+    },
+    () => ({ statusCode: 200, body }),
+    idempotency,
+  )
+}
+
+/** Şablonu arşivler (K-461): yeni toplantıya bağlanmaz; bağlı toplantılar etkilenmez. */
+export function archiveTemplateCommand(
+  ctx: ServiceContext,
+  id: string,
+  expectedVersion: number,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  const entity = { type: TEMPLATE, id }
+  let body: unknown
+  return runCommand(
+    ctx,
+    {
+      action: 'finance.department_meeting_template.archive',
+      collections: [],
+      entity,
+      load: async (tx) => {
+        const template = await loadTemplate(tx, ctx, id, expectedVersion)
+        return { run: () => assertTemplateEditable(template.archivedAt !== null) }
+      },
+      after: async (tx) => {
+        const saved = await updateTemplate(tx, ctx.institutionId, {
+          id,
+          expectedVersion,
+          now: ctx.now,
+          values: { archivedAt: ctx.now },
+        })
+        if (!saved) throw new ConflictError()
+        await auditWork(tx, ctx, 'finance.department_meeting_template.archive', entity, [
+          'archivedAt',
+        ])
+        body = await templateBody(tx, ctx, id)
       },
     },
     () => ({ statusCode: 200, body }),

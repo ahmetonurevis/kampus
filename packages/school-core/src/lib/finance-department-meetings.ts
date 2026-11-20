@@ -5,11 +5,14 @@ import { daySchema } from './domain.ts'
 import { DomainError } from './errors.ts'
 
 /**
- * Zümre toplantısı tutanağı (docs/domain/finans.md DOM-FIN-132; ON-217). Bir branşın (ders)
- * öğretmenlerinin dönem başı, dönem sonu ya da ara toplantısının gündemi, katılımı ve kararları;
- * kararın sorumlusu, termini ve takibi. Personel kaydı ayrı tablo değildir: başkan, katılımcı ve
- * sorumlu kurum üyeliğidir. Tutanak imza günüyle kesinleşir; sonra toplantı ve karar metni
- * değişmez, yalnız kararın durumu ve takip notu yazılır (K-453). Fonksiyonlar saftır.
+ * Kurul ve zümre toplantısı tutanağı (docs/domain/finans.md DOM-FIN-132, DOM-FIN-135; ON-217,
+ * ON-218). Zümre toplantısı (bir dersin öğretmenleri), öğretmenler kurulu (kurumun bütün
+ * öğretmenleri) ve şube öğretmenler kurulu (bir sınıfta ders okutanlar) aynı modüldür: kurul türü
+ * (`board`) hedefi belirler; dönem başı, dönem sonu ya da ara toplantının gündemi, katılımı ve
+ * kararları; kararın sorumlusu, termini ve takibi. Gündem kurumun kurul türüne göre şablonundan
+ * kopyalanabilir (K-461). Personel kaydı ayrı tablo değildir: başkan, katılımcı ve sorumlu kurum
+ * üyeliğidir. Tutanak imza günüyle kesinleşir; sonra toplantı ve karar metni değişmez, yalnız
+ * kararın durumu ve takip notu yazılır (K-453). Fonksiyonlar saftır.
  */
 
 /** Tutanakları yalnız yönetici okur ve yazar (K-451). */
@@ -21,6 +24,55 @@ export const DEPARTMENT_MEETING_MEMBER_ROLES = [
   'ogretmen',
 ] as const satisfies readonly Role[]
 
+/**
+ * Kurul türü (K-460): `department` zümre toplantısı (ders zorunlu), `teachers` öğretmenler kurulu
+ * (ders ve sınıf yok), `class` şube öğretmenler kurulu (sınıf zorunlu). Mevcut tutanaklar zümredir.
+ */
+export const MEETING_BOARDS = ['department', 'teachers', 'class'] as const
+export type MeetingBoard = (typeof MEETING_BOARDS)[number]
+export const MEETING_BOARD_LABELS = {
+  department: 'Zümre toplantısı',
+  teachers: 'Öğretmenler kurulu',
+  class: 'Şube öğretmenler kurulu',
+} as const satisfies Record<MeetingBoard, string>
+/** Tutanak belgesinin başlığı (K-462). */
+export const MEETING_BOARD_MINUTES_TITLES = {
+  department: 'Zümre toplantısı tutanağı',
+  teachers: 'Öğretmenler kurulu tutanağı',
+  class: 'Şube öğretmenler kurulu tutanağı',
+} as const satisfies Record<MeetingBoard, string>
+
+/**
+ * Önerilen gündem (H-101 doğrulanmalı): şablon formunu ilk açışta doldurur; kurum düzenler.
+ * Toplantıya doğrudan kopyalanmaz, kopya yalnız kurumun kaydettiği şablondan yapılır (K-461).
+ */
+export const SUGGESTED_AGENDAS = {
+  department: [
+    'Açılış ve yoklama',
+    'Önceki toplantı kararlarının değerlendirilmesi',
+    'Yıllık planların ve kazanımların incelenmesi',
+    'Ortak sınavların ve ölçme değerlendirmenin planlanması',
+    'Öğrenci başarısının değerlendirilmesi',
+    'Dilek ve temenniler',
+  ],
+  teachers: [
+    'Açılış ve yoklama',
+    'Önceki kurul kararlarının değerlendirilmesi',
+    'Eğitim öğretim yılının çalışma takvimi',
+    'Öğrenci başarı durumu ve alınacak önlemler',
+    'Rehberlik, sosyal etkinlik ve kulüp çalışmaları',
+    'Dilek ve temenniler',
+  ],
+  class: [
+    'Açılış ve yoklama',
+    'Şube öğrencilerinin başarı durumu',
+    'Devam ve davranış durumu',
+    'Desteğe ihtiyacı olan öğrenciler için ortak önlemler',
+    'Dilek ve temenniler',
+  ],
+} as const satisfies Record<MeetingBoard, readonly string[]>
+
+/** Toplantının zamanı (dönem başı, dönem sonu, ara); her kurul türünde aynıdır. */
 export const DEPARTMENT_MEETING_KINDS = ['term_start', 'term_end', 'interim'] as const
 export type DepartmentMeetingKind = (typeof DEPARTMENT_MEETING_KINDS)[number]
 export const DEPARTMENT_MEETING_KIND_LABELS = {
@@ -53,6 +105,9 @@ export const DEPARTMENT_DECISION_STATUS_LABELS = {
 } as const satisfies Record<DepartmentDecisionStatus, string>
 
 export const DEPARTMENT_MEETING_SUBJECT_MAX = 60
+export const DEPARTMENT_MEETING_CLASS_MAX = 100
+export const MEETING_TEMPLATE_NAME_MIN = 2
+export const MEETING_TEMPLATE_NAME_MAX = 120
 export const DEPARTMENT_MEETING_LOCATION_MIN = 2
 export const DEPARTMENT_MEETING_LOCATION_MAX = 200
 export const DEPARTMENT_MEETING_AGENDA_MAX = 30
@@ -76,18 +131,19 @@ const optionalText = (max: number, label: string) =>
     .nullable()
     .default(null)
 
+const agendaTitleSchema = z
+  .string('Gündem maddesini yazın.')
+  .trim()
+  .min(DEPARTMENT_MEETING_AGENDA_TITLE_MIN, 'Gündem maddesini en az 2 karakterle yazın.')
+  .max(DEPARTMENT_MEETING_AGENDA_TITLE_MAX, 'Gündem maddesi en fazla 300 karakter olabilir.')
+
 export const departmentMeetingAgendaItemSchema = z.strictObject({
   id: z
     .uuid('Gündem maddesi geçersiz.')
     .nullable()
     .default(null)
     .describe('Var olan gündem maddesinin kimliği; yeni maddede boş'),
-  title: z
-    .string('Gündem maddesini yazın.')
-    .trim()
-    .min(DEPARTMENT_MEETING_AGENDA_TITLE_MIN, 'Gündem maddesini en az 2 karakterle yazın.')
-    .max(DEPARTMENT_MEETING_AGENDA_TITLE_MAX, 'Gündem maddesi en fazla 300 karakter olabilir.')
-    .describe('Gündem maddesinin başlığı'),
+  title: agendaTitleSchema.describe('Gündem maddesinin başlığı'),
   discussion: optionalText(DEPARTMENT_MEETING_DISCUSSION_MAX, 'Görüşme özeti').describe(
     'Maddede yapılan görüşmelerin özeti (isteğe bağlı)',
   ),
@@ -104,12 +160,37 @@ export const departmentMeetingAttendeeSchema = z.strictObject({
 /** Toplantı gövdesi (oluşturma ve taslak düzeltmesi tam gövdedir). */
 export const departmentMeetingInputSchema = z
   .strictObject({
+    board: z
+      .enum(MEETING_BOARDS, 'Kurul türünü seçin.')
+      .default('department')
+      .describe(
+        '`department` zümre toplantısı (varsayılan), `teachers` öğretmenler kurulu, `class` şube öğretmenler kurulu',
+      ),
     subjectId: z
       .string('Zümreyi (dersi) seçin.')
       .trim()
       .min(1, 'Zümreyi (dersi) seçin.')
       .max(DEPARTMENT_MEETING_SUBJECT_MAX, 'Zümre geçersiz.')
-      .describe('Zümrenin dersi (kurum ders kaydı ya da müfredat ders kimliği)'),
+      .nullable()
+      .default(null)
+      .describe(
+        'Zümrenin dersi (kurum ders kaydı ya da müfredat ders kimliği); yalnız zümre toplantısında ve orada zorunlu',
+      ),
+    classId: z
+      .string('Sınıfı (şubeyi) seçin.')
+      .trim()
+      .min(1, 'Sınıfı (şubeyi) seçin.')
+      .max(DEPARTMENT_MEETING_CLASS_MAX, 'Sınıf geçersiz.')
+      .nullable()
+      .default(null)
+      .describe('Şubenin sınıf kaydı; yalnız şube öğretmenler kurulunda ve orada zorunlu'),
+    agendaTemplateId: z
+      .uuid('Gündem şablonu geçersiz.')
+      .nullable()
+      .default(null)
+      .describe(
+        'Gündemin kopyalandığı kurum şablonu (iz; isteğe bağlı, kurul türüyle aynı olmalı)',
+      ),
     kind: z
       .enum(DEPARTMENT_MEETING_KINDS, 'Toplantı türünü seçin.')
       .describe('`term_start` dönem başı, `term_end` dönem sonu, `interim` ara toplantı'),
@@ -133,9 +214,26 @@ export const departmentMeetingInputSchema = z
       .array(departmentMeetingAttendeeSchema)
       .min(1, 'En az bir katılımcı ekleyin.')
       .max(DEPARTMENT_MEETING_ATTENDEES_MAX, 'En fazla 100 katılımcı eklenebilir.')
-      .describe('Zümre öğretmenleri ve katılım durumları'),
+      .describe('Kurul ya da zümre öğretmenleri ve katılım durumları'),
   })
   .superRefine((value, ctx) => {
+    // Kurul türünün hedefi (K-460, K-462): zümrede ders, şube kurulunda sınıf; başka hedef yok.
+    if (value.board === 'department' && value.subjectId === null)
+      ctx.addIssue({ code: 'custom', path: ['subjectId'], message: 'Zümreyi (dersi) seçin.' })
+    if (value.board !== 'department' && value.subjectId !== null)
+      ctx.addIssue({
+        code: 'custom',
+        path: ['subjectId'],
+        message: 'Ders yalnız zümre toplantısında seçilir.',
+      })
+    if (value.board === 'class' && value.classId === null)
+      ctx.addIssue({ code: 'custom', path: ['classId'], message: 'Sınıfı (şubeyi) seçin.' })
+    if (value.board !== 'class' && value.classId !== null)
+      ctx.addIssue({
+        code: 'custom',
+        path: ['classId'],
+        message: 'Sınıf yalnız şube öğretmenler kurulunda seçilir.',
+      })
     const ids = new Set<string>()
     value.agenda.forEach((item, index) => {
       if (item.id === null) return
@@ -208,6 +306,30 @@ export const departmentDecisionFollowUpSchema = z
       })
   })
 export type DepartmentDecisionFollowUp = z.output<typeof departmentDecisionFollowUpSchema>
+
+/** Gündem şablonu düzeltmesi (K-461): ad ve sıralı maddeler; kurul türü değişmez. */
+export const meetingAgendaTemplateUpdateSchema = z.strictObject({
+  name: z
+    .string('Şablon adını yazın.')
+    .trim()
+    .min(MEETING_TEMPLATE_NAME_MIN, 'Şablon adını en az 2 karakterle yazın.')
+    .max(MEETING_TEMPLATE_NAME_MAX, 'Şablon adı en fazla 120 karakter olabilir.')
+    .describe('Şablonun adı; kurul türünde etkin şablonlar arasında tekil'),
+  items: z
+    .array(z.strictObject({ title: agendaTitleSchema.describe('Gündem maddesinin başlığı') }))
+    .min(1, 'En az bir gündem maddesi yazın.')
+    .max(DEPARTMENT_MEETING_AGENDA_MAX, 'En fazla 30 gündem maddesi yazılabilir.')
+    .describe('Gündem maddeleri, görüşülme sırasıyla'),
+})
+export type MeetingAgendaTemplateUpdate = z.output<typeof meetingAgendaTemplateUpdateSchema>
+
+/** Yeni gündem şablonu (K-461): kurul türü, ad ve sıralı maddeler. */
+export const meetingAgendaTemplateInputSchema = meetingAgendaTemplateUpdateSchema.extend({
+  board: z
+    .enum(MEETING_BOARDS, 'Kurul türünü seçin.')
+    .describe('`department` zümre, `teachers` öğretmenler kurulu, `class` şube öğretmenler kurulu'),
+})
+export type MeetingAgendaTemplateInput = z.output<typeof meetingAgendaTemplateInputSchema>
 
 // --- Kurallar -----------------------------------------------------------------------------------
 
@@ -413,4 +535,74 @@ export function attendanceCounts(
   const counts = { attended: 0, absent: 0, excused: 0 }
   for (const attendee of attendees) counts[attendee.status] += 1
   return counts
+}
+
+// --- Kurul türü ve gündem şablonu (DOM-FIN-135) ------------------------------------------------
+
+/**
+ * Toplantının adı (K-462): "Matematik zümresi", "Öğretmenler kurulu", "9-A şube öğretmenler
+ * kurulu". Kopya ad yoksa (eski kayıt) kurul türünün adı.
+ */
+export function meetingTitle(meeting: {
+  board: MeetingBoard
+  subjectName: string | null
+  className: string | null
+}): string {
+  if (meeting.board === 'department' && meeting.subjectName !== null)
+    return `${meeting.subjectName} zümresi`
+  if (meeting.board === 'class' && meeting.className !== null)
+    return `${meeting.className} şube öğretmenler kurulu`
+  return MEETING_BOARD_LABELS[meeting.board]
+}
+
+export interface StoredAgendaTemplate {
+  board: MeetingBoard
+  archived: boolean
+}
+
+/**
+ * Gündem şablonu bağı (K-461): şablon kurumun olmalı ve kurul türü toplantınınkiyle aynı olmalı;
+ * arşivli şablon yeni bağlanamaz (tutanakta zaten bağlıysa kalır). Şablon yalnız izdir: gündem
+ * gövdeden yazılır, şablon sonradan değişse de toplantı değişmez.
+ */
+export function assertAgendaTemplate(input: {
+  template: StoredAgendaTemplate | null
+  board: MeetingBoard
+  alreadyLinked: boolean
+}): void {
+  const path = ['agendaTemplateId']
+  if (input.template === null)
+    throw rule(
+      'department_meeting_template_not_found',
+      'Gündem şablonu bu kurumda bulunamadı.',
+      path,
+    )
+  if (input.template.board !== input.board)
+    throw rule(
+      'department_meeting_template_board_mismatch',
+      'Gündem şablonu bu kurul türüne ait değil.',
+      path,
+    )
+  if (input.template.archived && !input.alreadyLinked)
+    throw rule(
+      'department_meeting_template_archived',
+      'Arşivlenmiş gündem şablonu kullanılamaz.',
+      path,
+    )
+}
+
+/** Arşivli şablon düzeltilmez ve yeniden arşivlenmez (K-461). */
+export function assertTemplateEditable(archived: boolean): void {
+  if (archived)
+    throw conflict(
+      'department_meeting_template_archived',
+      'Arşivlenmiş gündem şablonu değiştirilemez.',
+    )
+}
+
+/** Şablondan gündem (K-461): yeni maddeler, görüşme özeti boş; sonra düzenlenir. */
+export function agendaFromTemplate(
+  items: readonly { title: string }[],
+): { id: null; title: string; discussion: null }[] {
+  return items.map((item) => ({ id: null, title: item.title, discussion: null }))
 }

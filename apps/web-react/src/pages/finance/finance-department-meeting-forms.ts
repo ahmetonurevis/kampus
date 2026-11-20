@@ -73,7 +73,7 @@ export const emptyMeetingForm = (meetingDate: string): MeetingFormValues => ({
 
 export function meetingFormFrom(meeting: DepartmentMeeting): MeetingFormValues {
   return {
-    subjectId: meeting.subjectId,
+    subjectId: meeting.subjectId ?? '',
     kind: meeting.kind,
     meetingDate: meeting.meetingDate,
     location: meeting.location,

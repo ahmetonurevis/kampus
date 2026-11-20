@@ -29,7 +29,7 @@ const DECISION_COLUMNS = [
 export function departmentMeetingMinutesFilename(
   meeting: Pick<DepartmentMeeting, 'meetingDate' | 'subjectName'>,
 ) {
-  const slug = meeting.subjectName
+  const slug = (meeting.subjectName ?? '')
     .toLocaleLowerCase('tr-TR')
     .replaceAll('ı', 'i')
     .normalize('NFD')
@@ -70,12 +70,12 @@ export function departmentMeetingMinutesDocument(
       : 'Kurum içi tutanaktır; imzalı nüshası kurumda saklanır.',
   })
   doc.heading(
-    `${meeting.subjectName} ${DEPARTMENT_MEETING_MINUTES_TITLE.toLocaleLowerCase('tr-TR')}`,
+    `${meeting.subjectName ?? ''} ${DEPARTMENT_MEETING_MINUTES_TITLE.toLocaleLowerCase('tr-TR')}`,
     `${DEPARTMENT_MEETING_KIND_LABELS[meeting.kind]} · ${dayText(meeting.meetingDate)}`,
   )
   const counts = attendanceCounts(meeting.attendees)
   doc.fields([
-    ['Zümre', meeting.subjectName],
+    ['Zümre', meeting.subjectName ?? '—'],
     ['Toplantı türü', DEPARTMENT_MEETING_KIND_LABELS[meeting.kind]],
     ['Toplantı günü', dayText(meeting.meetingDate)],
     ['Yer', meeting.location],

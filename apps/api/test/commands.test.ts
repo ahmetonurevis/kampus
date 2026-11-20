@@ -227,6 +227,8 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // açmaz (routes/finance-department-meetings.ts; DOM-FIN-132, ON-217).
   'POST /api/v1/finance/department-meetings',
   'POST /api/v1/finance/department-meetings/{meetingId}/decisions',
+  // Kurul ve zümre gündem şablonu; çift tıklama ikinci şablonu açmaz (DOM-FIN-135, ON-218).
+  'POST /api/v1/finance/department-meeting-templates',
   // Ders gözlem formu ve gözlem açma; çift tıklama ikinci formu ya da gözlemi açmaz
   // (routes/finance-lesson-observations.ts; DOM-FIN-130, ON-206).
   'POST /api/v1/finance/lesson-observation-templates',

@@ -216,7 +216,7 @@ function MeetingList({ onOpen }: { onOpen: (id: string) => void }) {
       meetings.data?.data.map((item): Row => ({
         id: item.id,
         date: dayText(item.meetingDate),
-        subject: item.subjectName,
+        subject: item.subjectName ?? '',
         kind: DEPARTMENT_MEETING_KIND_LABELS[item.kind],
         chair: item.chairName,
         attendance: attendanceText(item),

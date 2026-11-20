@@ -227,6 +227,10 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // açmaz (routes/finance-department-meetings.ts; DOM-FIN-132, ON-217).
   'POST /api/v1/finance/department-meetings',
   'POST /api/v1/finance/department-meetings/{meetingId}/decisions',
+  // Ders gözlem formu ve gözlem açma; çift tıklama ikinci formu ya da gözlemi açmaz
+  // (routes/finance-lesson-observations.ts; DOM-FIN-130, ON-206).
+  'POST /api/v1/finance/lesson-observation-templates',
+  'POST /api/v1/finance/lesson-observations',
 ]
 // Onur: kayıt ve finans sonu
 

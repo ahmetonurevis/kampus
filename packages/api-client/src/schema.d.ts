@@ -12300,6 +12300,178 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/lesson-observation-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ders gözlem formlarını listele
+         * @description Formlar son sürümleriyle, ada göre (DOM-FIN-130): ad, ölçütler (seviye tanımları ve ağırlık), son sürümle açılmış gözlem sayısı ve kullanıldı mı. Arşivli formlar `includeArchived=true` ile gelir. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        get: operations["listLessonObservationTemplates"];
+        put?: never;
+        /**
+         * Ders gözlem formu oluştur
+         * @description Ad (2–120) ve 1–10 ölçüt: ad (2–120, formda tekil), isteğe bağlı açıklama, ağırlık (1–10, varsayılan 1) ve 0–5 seviyelerinin altı tanımı (rubrik bantları). Ölçüt kimliğini sunucu verir (k1, k2, …). Sürüm 1 olarak açılır (K-445). `Idempotency-Key` zorunlu. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        post: operations["createLessonObservationTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/lesson-observation-templates/{templateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Kullanılmamış gözlem formunu düzelt
+         * @description Son sürümün adı ve ölçütleri yerinde düzeltilir; yalnız sürüm henüz gözlemde kullanılmadıysa. Kullanılmış sürüm 409 `observation_template_used` (yeni sürüm açın), arşivli form 409 `observation_template_archived` (K-445). `If-Match` şablon sürümü. Başka kurumun formu 404. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        patch: operations["updateLessonObservationTemplate"];
+        trace?: never;
+    };
+    "/api/v1/finance/lesson-observation-templates/{templateId}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Gözlem formunun yeni sürümünü aç
+         * @description Ad ve ölçütlerin tamamıyla yeni sürüm açılır; önceki sürümler ve onlarla yapılmış gözlemler değişmez, yeni gözlem yeni sürümü kullanır (K-445). Arşivli form 409 `observation_template_archived`. `If-Match` şablon sürümü. Başka kurumun formu 404. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        post: operations["createLessonObservationTemplateVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/lesson-observation-templates/{templateId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Gözlem formunu arşivle
+         * @description Arşivli form yeni gözlemde seçilmez ve değiştirilmez; eski gözlemler kendi sürümüyle okunur (K-445). Zaten arşivliyse 409 `observation_template_archived`. Gövde boş nesne. `If-Match` şablon sürümü. Başka kurumun formu 404. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        post: operations["archiveLessonObservationTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/lesson-observations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ders gözlemlerini listele
+         * @description Gözlemler, yeni gün önce: öğretmen, gözlemci, gün, sınıf/ders, form ve sürümü, durum, ölçüt seviyeleri ve sunucunun rubrik kuralıyla hesapladığı puan (ağırlıklı toplam, azami, 100'lük; seviyesi eksikse boş). Öğretmen adında aranır, durum ve performans dönemiyle süzülür. Okuma aynı transaction'da denetime yazılır (`finance.lesson_observation.read`; alan adları ve kayıt sayısı). Rol: `yonetici` hepsini; `ogretmen` yalnız gözlemcisi olduğu ve gözlendiği tamamlanmış gözlemleri görür (K-447). Modül `finance`.
+         */
+        get: operations["listLessonObservations"];
+        put?: never;
+        /**
+         * Ders gözlemi aç
+         * @description Taslak açılır (K-446): form (son sürümü kullanılır), gözlenen öğretmen (etkin öğretmen üyeliği), gözlemci (etkin yönetici ya da öğretmen; boşsa isteği yapan), gün (bugünden sonra değil) ve isteğe bağlı sınıf, ders ve performans dönemi. Ölçüt seviyeleri boş başlar. Ret: form yok 422 `observation_template_not_found`, arşivli 409 `observation_template_archived`; öğretmen yok/öğretmen değil/ayrılmış 422 `observation_teacher_not_found`/`observation_not_teacher`/`observation_teacher_inactive`; gözlemci yok/uygun değil 422 `observation_observer_not_found`/`observation_observer_invalid`, kendisi 422 `observation_self`; sınıf/ders yok 422 `observation_class_not_found`/`observation_subject_not_found`; gün 422 `observation_date_future`; dönem yok/kapalı/gün dışında 422 `observation_period_not_found`/`observation_period_closed`/`observation_date_outside_period`. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        post: operations["createLessonObservation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/lesson-observations/{observationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ders gözlemini getir
+         * @description Gözlem ve kullanılan form sürümünün ölçütleri (seviye tanımları, ağırlık). Okuma denetime yazılır. Görülemeyen (öğretmende başkasının gözlemi ya da taslak hâlindeki kendi gözlemi) ve başka kurumun gözlemi 404. Rol: `yonetici` hepsini; `ogretmen` yalnız gözlemcisi olduğu ve gözlendiği tamamlanmış gözlemleri görür (K-447). Modül `finance`.
+         */
+        get: operations["getLessonObservation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Gözlem taslağını düzelt
+         * @description Kısmi düzeltme (K-446): gün, sınıf, ders, performans dönemi, ölçüt seviyeleri (0–5, boş = verilmedi) ve notları, genel değerlendirme. Gönderilen ölçütler yazılır, diğerleri korunur; bilinmeyen ya da yinelenen ölçüt 422 `observation_criterion_invalid`. Puan gövdede alınmaz, sunucu hesaplar. Tamamlanan gözlem 409 `observation_completed`, sürüm tutmazsa 409. Not metinleri denetime yazılmaz. `If-Match` zorunlu. Başka kurumun gözlemi 404. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        patch: operations["updateLessonObservation"];
+        trace?: never;
+    };
+    "/api/v1/finance/lesson-observations/{observationId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ders gözlemini tamamla
+         * @description Tamamlama (K-446): her ölçüte seviye verilmiş (422 `observation_unrated`), hedefin altındaki (0–2) seviyeye not yazılmış (422 `observation_note_required`, rubrik kriter yorumu kuralı) ve genel değerlendirme yazılmış (422 `observation_general_note_required`) olmalı. Tamamlanan gözlem değişmez; yeniden tamamlama 409 `observation_completed`. Gövde boş nesne. `If-Match` zorunlu. Başka kurumun gözlemi 404. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        post: operations["completeLessonObservation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/lesson-observations/{observationId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Gözlem taslağını arşivle
+         * @description Yanlış açılmış taslak arşivlenir; listede ve okumada görünmez, düzeltilemez (K-446). Tamamlanan gözlem arşivlenmez: 409 `observation_completed`. Gövde boş nesne. `If-Match` zorunlu. Başka kurumun ya da arşivli gözlem 404. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        post: operations["archiveLessonObservation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -129685,6 +129857,1744 @@ export interface operations {
                             createdAt: string;
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listLessonObservationTemplates: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Form adında arama */
+                q?: string;
+                /** @description Arşivli formları da listele */
+                includeArchived?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Son sürümün kimliği; yeni gözlem bunu kullanır */
+                            versionId: string;
+                            /** @description Son sürüm numarası */
+                            versionNumber: number;
+                            /** @description Form adı (son sürüm) */
+                            name: string;
+                            /** @description Son sürümün ölçütleri */
+                            criteria: {
+                                /** @description Ölçüt kimliği (sürüm içinde k1, k2, …) */
+                                id: string;
+                                /** @description Ölçüt */
+                                title: string;
+                                /** @description Ölçüt açıklaması */
+                                description: string | null;
+                                /** @description Göreli ağırlık (1–10) */
+                                weight: number;
+                                /** @description 0–5 seviye tanımları, sırasıyla */
+                                levels: {
+                                    level: number;
+                                    description: string;
+                                }[];
+                            }[];
+                            /** @description Son sürümle açılmış gözlem sayısı */
+                            observationCount: number;
+                            /** @description Son sürüm gözlemde kullanıldı mı; kullanıldıysa düzeltilmez (K-445) */
+                            used: boolean;
+                            /** @description Arşiv anı; arşivli form yeni gözlemde seçilmez */
+                            archivedAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için şablon sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createLessonObservationTemplate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Gözlem formunun adı (ör. "Ders gözlem formu") */
+                    name: string;
+                    /** @description Ölçütler, sırasıyla (1–10) */
+                    criteria: {
+                        /** @description Ölçüt (ör. "Sınıf yönetimi") */
+                        title: string;
+                        /** @description Ölçütün kısa açıklaması; boş olabilir */
+                        description?: string | null;
+                        /**
+                         * @description Göreli ağırlık (1–10; rubrik ağırlığı)
+                         * @default 1
+                         */
+                        weight?: number;
+                        /** @description 0–5 seviyelerinin tanımı (rubrik bantları) */
+                        levels: {
+                            level: number;
+                            description: string;
+                        }[];
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Son sürümün kimliği; yeni gözlem bunu kullanır */
+                            versionId: string;
+                            /** @description Son sürüm numarası */
+                            versionNumber: number;
+                            /** @description Form adı (son sürüm) */
+                            name: string;
+                            /** @description Son sürümün ölçütleri */
+                            criteria: {
+                                /** @description Ölçüt kimliği (sürüm içinde k1, k2, …) */
+                                id: string;
+                                /** @description Ölçüt */
+                                title: string;
+                                /** @description Ölçüt açıklaması */
+                                description: string | null;
+                                /** @description Göreli ağırlık (1–10) */
+                                weight: number;
+                                /** @description 0–5 seviye tanımları, sırasıyla */
+                                levels: {
+                                    level: number;
+                                    description: string;
+                                }[];
+                            }[];
+                            /** @description Son sürümle açılmış gözlem sayısı */
+                            observationCount: number;
+                            /** @description Son sürüm gözlemde kullanıldı mı; kullanıldıysa düzeltilmez (K-445) */
+                            used: boolean;
+                            /** @description Arşiv anı; arşivli form yeni gözlemde seçilmez */
+                            archivedAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için şablon sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateLessonObservationTemplate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Gözlem formunun adı (ör. "Ders gözlem formu") */
+                    name?: string;
+                    /** @description Ölçütler, sırasıyla (1–10) */
+                    criteria?: {
+                        /** @description Ölçüt (ör. "Sınıf yönetimi") */
+                        title: string;
+                        /** @description Ölçütün kısa açıklaması; boş olabilir */
+                        description?: string | null;
+                        /**
+                         * @description Göreli ağırlık (1–10; rubrik ağırlığı)
+                         * @default 1
+                         */
+                        weight?: number;
+                        /** @description 0–5 seviyelerinin tanımı (rubrik bantları) */
+                        levels: {
+                            level: number;
+                            description: string;
+                        }[];
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Son sürümün kimliği; yeni gözlem bunu kullanır */
+                            versionId: string;
+                            /** @description Son sürüm numarası */
+                            versionNumber: number;
+                            /** @description Form adı (son sürüm) */
+                            name: string;
+                            /** @description Son sürümün ölçütleri */
+                            criteria: {
+                                /** @description Ölçüt kimliği (sürüm içinde k1, k2, …) */
+                                id: string;
+                                /** @description Ölçüt */
+                                title: string;
+                                /** @description Ölçüt açıklaması */
+                                description: string | null;
+                                /** @description Göreli ağırlık (1–10) */
+                                weight: number;
+                                /** @description 0–5 seviye tanımları, sırasıyla */
+                                levels: {
+                                    level: number;
+                                    description: string;
+                                }[];
+                            }[];
+                            /** @description Son sürümle açılmış gözlem sayısı */
+                            observationCount: number;
+                            /** @description Son sürüm gözlemde kullanıldı mı; kullanıldıysa düzeltilmez (K-445) */
+                            used: boolean;
+                            /** @description Arşiv anı; arşivli form yeni gözlemde seçilmez */
+                            archivedAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için şablon sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createLessonObservationTemplateVersion: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Gözlem formunun adı (ör. "Ders gözlem formu") */
+                    name: string;
+                    /** @description Ölçütler, sırasıyla (1–10) */
+                    criteria: {
+                        /** @description Ölçüt (ör. "Sınıf yönetimi") */
+                        title: string;
+                        /** @description Ölçütün kısa açıklaması; boş olabilir */
+                        description?: string | null;
+                        /**
+                         * @description Göreli ağırlık (1–10; rubrik ağırlığı)
+                         * @default 1
+                         */
+                        weight?: number;
+                        /** @description 0–5 seviyelerinin tanımı (rubrik bantları) */
+                        levels: {
+                            level: number;
+                            description: string;
+                        }[];
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Son sürümün kimliği; yeni gözlem bunu kullanır */
+                            versionId: string;
+                            /** @description Son sürüm numarası */
+                            versionNumber: number;
+                            /** @description Form adı (son sürüm) */
+                            name: string;
+                            /** @description Son sürümün ölçütleri */
+                            criteria: {
+                                /** @description Ölçüt kimliği (sürüm içinde k1, k2, …) */
+                                id: string;
+                                /** @description Ölçüt */
+                                title: string;
+                                /** @description Ölçüt açıklaması */
+                                description: string | null;
+                                /** @description Göreli ağırlık (1–10) */
+                                weight: number;
+                                /** @description 0–5 seviye tanımları, sırasıyla */
+                                levels: {
+                                    level: number;
+                                    description: string;
+                                }[];
+                            }[];
+                            /** @description Son sürümle açılmış gözlem sayısı */
+                            observationCount: number;
+                            /** @description Son sürüm gözlemde kullanıldı mı; kullanıldıysa düzeltilmez (K-445) */
+                            used: boolean;
+                            /** @description Arşiv anı; arşivli form yeni gözlemde seçilmez */
+                            archivedAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için şablon sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveLessonObservationTemplate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Son sürümün kimliği; yeni gözlem bunu kullanır */
+                            versionId: string;
+                            /** @description Son sürüm numarası */
+                            versionNumber: number;
+                            /** @description Form adı (son sürüm) */
+                            name: string;
+                            /** @description Son sürümün ölçütleri */
+                            criteria: {
+                                /** @description Ölçüt kimliği (sürüm içinde k1, k2, …) */
+                                id: string;
+                                /** @description Ölçüt */
+                                title: string;
+                                /** @description Ölçüt açıklaması */
+                                description: string | null;
+                                /** @description Göreli ağırlık (1–10) */
+                                weight: number;
+                                /** @description 0–5 seviye tanımları, sırasıyla */
+                                levels: {
+                                    level: number;
+                                    description: string;
+                                }[];
+                            }[];
+                            /** @description Son sürümle açılmış gözlem sayısı */
+                            observationCount: number;
+                            /** @description Son sürüm gözlemde kullanıldı mı; kullanıldıysa düzeltilmez (K-445) */
+                            used: boolean;
+                            /** @description Arşiv anı; arşivli form yeni gözlemde seçilmez */
+                            archivedAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için şablon sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listLessonObservations: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Öğretmen adında arama */
+                q?: string;
+                /** @description Durum süzgeci */
+                status?: "draft" | "completed";
+                /** @description Performans dönemi süzgeci */
+                performancePeriodId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            templateId: string;
+                            templateVersionId: string;
+                            /** @description Kullanılan formun adı (gözlemin sürümü) */
+                            templateName: string;
+                            templateVersionNumber: number;
+                            /** @description Gözlenen öğretmenin kurum üyeliği */
+                            teacherMembershipId: string;
+                            teacherName: string;
+                            /** @description Gözlemcinin kurum üyeliği */
+                            observerMembershipId: string;
+                            observerName: string;
+                            /** @description Gözlem günü (YYYY-MM-DD) */
+                            observedDate: string;
+                            classId: string | null;
+                            className: string | null;
+                            subjectId: string | null;
+                            subjectName: string | null;
+                            /** @description Bağlı performans dönemi (DOM-FIN-124) */
+                            performancePeriodId: string | null;
+                            /** @description Ölçüt seviyeleri, formun ölçüt sırasıyla */
+                            ratings: {
+                                criterionId: string;
+                                /** @description Verilen seviye (0–5); boş = verilmedi */
+                                level: number | null;
+                                /** @description Ölçüt notu */
+                                note: string | null;
+                            }[];
+                            /** @description Genel değerlendirme */
+                            generalNote: string | null;
+                            /**
+                             * @description `draft` taslak (düzeltilebilir), `completed` tamamlandı (değişmez)
+                             * @enum {string}
+                             */
+                            status: "draft" | "completed";
+                            completedAt: string | null;
+                            criterionCount: number;
+                            /** @description Seviyesi verilmiş ölçüt sayısı */
+                            ratedCount: number;
+                            /** @description Sunucunun hesapladığı puan (rubrik kuralı, DOM-BEC-021); seviyesi eksikse boş */
+                            score: {
+                                /** @description Ağırlıklı seviye toplamı */
+                                total: number;
+                                /** @description Azami ağırlıklı toplam (5 × Σ ağırlık) */
+                                max: number;
+                                /** @description 100 üzerinden puan (rubrik yuvarlaması) */
+                                percent: number;
+                            } | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createLessonObservation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * Format: uuid
+                     * @description Gözlem formu şablonu; son sürümü kullanılır
+                     */
+                    templateId: string;
+                    /** @description Gözlenen öğretmenin kurum üyeliği */
+                    teacherMembershipId: string;
+                    /** @description Gözlemcinin kurum üyeliği (yönetici ya da öğretmen); boşsa isteği yapan */
+                    observerMembershipId?: string;
+                    /** @description Gözlem günü; bugünden sonra olamaz */
+                    observedDate: string;
+                    /** @description İsteğe bağlı sınıf (`classes` kaydı) */
+                    classId?: string | null;
+                    /** @description İsteğe bağlı ders (`subjects` kaydı) */
+                    subjectId?: string | null;
+                    /** @description İsteğe bağlı performans dönemi (DOM-FIN-124) */
+                    performancePeriodId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            templateId: string;
+                            templateVersionId: string;
+                            /** @description Kullanılan formun adı (gözlemin sürümü) */
+                            templateName: string;
+                            templateVersionNumber: number;
+                            /** @description Gözlenen öğretmenin kurum üyeliği */
+                            teacherMembershipId: string;
+                            teacherName: string;
+                            /** @description Gözlemcinin kurum üyeliği */
+                            observerMembershipId: string;
+                            observerName: string;
+                            /** @description Gözlem günü (YYYY-MM-DD) */
+                            observedDate: string;
+                            classId: string | null;
+                            className: string | null;
+                            subjectId: string | null;
+                            subjectName: string | null;
+                            /** @description Bağlı performans dönemi (DOM-FIN-124) */
+                            performancePeriodId: string | null;
+                            /** @description Ölçüt seviyeleri, formun ölçüt sırasıyla */
+                            ratings: {
+                                criterionId: string;
+                                /** @description Verilen seviye (0–5); boş = verilmedi */
+                                level: number | null;
+                                /** @description Ölçüt notu */
+                                note: string | null;
+                            }[];
+                            /** @description Genel değerlendirme */
+                            generalNote: string | null;
+                            /**
+                             * @description `draft` taslak (düzeltilebilir), `completed` tamamlandı (değişmez)
+                             * @enum {string}
+                             */
+                            status: "draft" | "completed";
+                            completedAt: string | null;
+                            criterionCount: number;
+                            /** @description Seviyesi verilmiş ölçüt sayısı */
+                            ratedCount: number;
+                            /** @description Sunucunun hesapladığı puan (rubrik kuralı, DOM-BEC-021); seviyesi eksikse boş */
+                            score: {
+                                /** @description Ağırlıklı seviye toplamı */
+                                total: number;
+                                /** @description Azami ağırlıklı toplam (5 × Σ ağırlık) */
+                                max: number;
+                                /** @description 100 üzerinden puan (rubrik yuvarlaması) */
+                                percent: number;
+                            } | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Gözlemin form sürümündeki ölçütler */
+                            criteria: {
+                                /** @description Ölçüt kimliği (sürüm içinde k1, k2, …) */
+                                id: string;
+                                /** @description Ölçüt */
+                                title: string;
+                                /** @description Ölçüt açıklaması */
+                                description: string | null;
+                                /** @description Göreli ağırlık (1–10) */
+                                weight: number;
+                                /** @description 0–5 seviye tanımları, sırasıyla */
+                                levels: {
+                                    level: number;
+                                    description: string;
+                                }[];
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getLessonObservation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                observationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            templateId: string;
+                            templateVersionId: string;
+                            /** @description Kullanılan formun adı (gözlemin sürümü) */
+                            templateName: string;
+                            templateVersionNumber: number;
+                            /** @description Gözlenen öğretmenin kurum üyeliği */
+                            teacherMembershipId: string;
+                            teacherName: string;
+                            /** @description Gözlemcinin kurum üyeliği */
+                            observerMembershipId: string;
+                            observerName: string;
+                            /** @description Gözlem günü (YYYY-MM-DD) */
+                            observedDate: string;
+                            classId: string | null;
+                            className: string | null;
+                            subjectId: string | null;
+                            subjectName: string | null;
+                            /** @description Bağlı performans dönemi (DOM-FIN-124) */
+                            performancePeriodId: string | null;
+                            /** @description Ölçüt seviyeleri, formun ölçüt sırasıyla */
+                            ratings: {
+                                criterionId: string;
+                                /** @description Verilen seviye (0–5); boş = verilmedi */
+                                level: number | null;
+                                /** @description Ölçüt notu */
+                                note: string | null;
+                            }[];
+                            /** @description Genel değerlendirme */
+                            generalNote: string | null;
+                            /**
+                             * @description `draft` taslak (düzeltilebilir), `completed` tamamlandı (değişmez)
+                             * @enum {string}
+                             */
+                            status: "draft" | "completed";
+                            completedAt: string | null;
+                            criterionCount: number;
+                            /** @description Seviyesi verilmiş ölçüt sayısı */
+                            ratedCount: number;
+                            /** @description Sunucunun hesapladığı puan (rubrik kuralı, DOM-BEC-021); seviyesi eksikse boş */
+                            score: {
+                                /** @description Ağırlıklı seviye toplamı */
+                                total: number;
+                                /** @description Azami ağırlıklı toplam (5 × Σ ağırlık) */
+                                max: number;
+                                /** @description 100 üzerinden puan (rubrik yuvarlaması) */
+                                percent: number;
+                            } | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Gözlemin form sürümündeki ölçütler */
+                            criteria: {
+                                /** @description Ölçüt kimliği (sürüm içinde k1, k2, …) */
+                                id: string;
+                                /** @description Ölçüt */
+                                title: string;
+                                /** @description Ölçüt açıklaması */
+                                description: string | null;
+                                /** @description Göreli ağırlık (1–10) */
+                                weight: number;
+                                /** @description 0–5 seviye tanımları, sırasıyla */
+                                levels: {
+                                    level: number;
+                                    description: string;
+                                }[];
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateLessonObservation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                observationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Gözlem günü; bugünden sonra olamaz */
+                    observedDate?: string;
+                    /** @description Sınıf; boş metin bağı kaldırır */
+                    classId?: string | null;
+                    /** @description Ders; boş metin bağı kaldırır */
+                    subjectId?: string | null;
+                    /** @description Performans dönemi; `null` bağı kaldırır */
+                    performancePeriodId?: string | null;
+                    /** @description Ölçüt başına seviye ve not; gönderilen ölçütler yazılır, diğerleri korunur */
+                    ratings?: {
+                        criterionId: string;
+                        /** @description Verilen seviye (0–5); boş = henüz verilmedi */
+                        level: number | null;
+                        /** @description Ölçüt notu; hedefin altındaki (0–2) seviyede tamamlamak için zorunlu */
+                        note?: string | null;
+                    }[];
+                    /** @description Genel değerlendirme; tamamlamak için zorunlu, boş metin siler */
+                    generalNote?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            templateId: string;
+                            templateVersionId: string;
+                            /** @description Kullanılan formun adı (gözlemin sürümü) */
+                            templateName: string;
+                            templateVersionNumber: number;
+                            /** @description Gözlenen öğretmenin kurum üyeliği */
+                            teacherMembershipId: string;
+                            teacherName: string;
+                            /** @description Gözlemcinin kurum üyeliği */
+                            observerMembershipId: string;
+                            observerName: string;
+                            /** @description Gözlem günü (YYYY-MM-DD) */
+                            observedDate: string;
+                            classId: string | null;
+                            className: string | null;
+                            subjectId: string | null;
+                            subjectName: string | null;
+                            /** @description Bağlı performans dönemi (DOM-FIN-124) */
+                            performancePeriodId: string | null;
+                            /** @description Ölçüt seviyeleri, formun ölçüt sırasıyla */
+                            ratings: {
+                                criterionId: string;
+                                /** @description Verilen seviye (0–5); boş = verilmedi */
+                                level: number | null;
+                                /** @description Ölçüt notu */
+                                note: string | null;
+                            }[];
+                            /** @description Genel değerlendirme */
+                            generalNote: string | null;
+                            /**
+                             * @description `draft` taslak (düzeltilebilir), `completed` tamamlandı (değişmez)
+                             * @enum {string}
+                             */
+                            status: "draft" | "completed";
+                            completedAt: string | null;
+                            criterionCount: number;
+                            /** @description Seviyesi verilmiş ölçüt sayısı */
+                            ratedCount: number;
+                            /** @description Sunucunun hesapladığı puan (rubrik kuralı, DOM-BEC-021); seviyesi eksikse boş */
+                            score: {
+                                /** @description Ağırlıklı seviye toplamı */
+                                total: number;
+                                /** @description Azami ağırlıklı toplam (5 × Σ ağırlık) */
+                                max: number;
+                                /** @description 100 üzerinden puan (rubrik yuvarlaması) */
+                                percent: number;
+                            } | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Gözlemin form sürümündeki ölçütler */
+                            criteria: {
+                                /** @description Ölçüt kimliği (sürüm içinde k1, k2, …) */
+                                id: string;
+                                /** @description Ölçüt */
+                                title: string;
+                                /** @description Ölçüt açıklaması */
+                                description: string | null;
+                                /** @description Göreli ağırlık (1–10) */
+                                weight: number;
+                                /** @description 0–5 seviye tanımları, sırasıyla */
+                                levels: {
+                                    level: number;
+                                    description: string;
+                                }[];
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    completeLessonObservation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                observationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            templateId: string;
+                            templateVersionId: string;
+                            /** @description Kullanılan formun adı (gözlemin sürümü) */
+                            templateName: string;
+                            templateVersionNumber: number;
+                            /** @description Gözlenen öğretmenin kurum üyeliği */
+                            teacherMembershipId: string;
+                            teacherName: string;
+                            /** @description Gözlemcinin kurum üyeliği */
+                            observerMembershipId: string;
+                            observerName: string;
+                            /** @description Gözlem günü (YYYY-MM-DD) */
+                            observedDate: string;
+                            classId: string | null;
+                            className: string | null;
+                            subjectId: string | null;
+                            subjectName: string | null;
+                            /** @description Bağlı performans dönemi (DOM-FIN-124) */
+                            performancePeriodId: string | null;
+                            /** @description Ölçüt seviyeleri, formun ölçüt sırasıyla */
+                            ratings: {
+                                criterionId: string;
+                                /** @description Verilen seviye (0–5); boş = verilmedi */
+                                level: number | null;
+                                /** @description Ölçüt notu */
+                                note: string | null;
+                            }[];
+                            /** @description Genel değerlendirme */
+                            generalNote: string | null;
+                            /**
+                             * @description `draft` taslak (düzeltilebilir), `completed` tamamlandı (değişmez)
+                             * @enum {string}
+                             */
+                            status: "draft" | "completed";
+                            completedAt: string | null;
+                            criterionCount: number;
+                            /** @description Seviyesi verilmiş ölçüt sayısı */
+                            ratedCount: number;
+                            /** @description Sunucunun hesapladığı puan (rubrik kuralı, DOM-BEC-021); seviyesi eksikse boş */
+                            score: {
+                                /** @description Ağırlıklı seviye toplamı */
+                                total: number;
+                                /** @description Azami ağırlıklı toplam (5 × Σ ağırlık) */
+                                max: number;
+                                /** @description 100 üzerinden puan (rubrik yuvarlaması) */
+                                percent: number;
+                            } | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Gözlemin form sürümündeki ölçütler */
+                            criteria: {
+                                /** @description Ölçüt kimliği (sürüm içinde k1, k2, …) */
+                                id: string;
+                                /** @description Ölçüt */
+                                title: string;
+                                /** @description Ölçüt açıklaması */
+                                description: string | null;
+                                /** @description Göreli ağırlık (1–10) */
+                                weight: number;
+                                /** @description 0–5 seviye tanımları, sırasıyla */
+                                levels: {
+                                    level: number;
+                                    description: string;
+                                }[];
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveLessonObservation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                observationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Arşiv anı (ISO 8601 UTC) */
+                            archivedAt: string;
                         };
                     };
                 };

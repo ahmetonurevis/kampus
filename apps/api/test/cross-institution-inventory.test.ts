@@ -3494,6 +3494,63 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: ders gözlem formu (ON-206; DOM-FIN-130, K-447).
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'liste',
+          'GET /api/v1/finance/lesson-observation-templates',
+          "call('GET', TEMPLATES, a.admin)",
+        ],
+        ['gövde', 'POST /api/v1/finance/lesson-observation-templates', 'institutionId: b.id'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/lesson-observation-templates/:templateId',
+          "call('PATCH', formUrl, a.admin",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/lesson-observation-templates/:templateId/versions',
+          '`${formUrl}/versions`, a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/lesson-observation-templates/:templateId/archive',
+          '`${formUrl}/archive`, a.admin',
+        ],
+        ['liste', 'GET /api/v1/finance/lesson-observations', "call('GET', OBSERVATIONS, a.admin)"],
+        ['gövde', 'POST /api/v1/finance/lesson-observations', 'institutionId: b.id,'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/lesson-observations/:observationId',
+          '`${OBSERVATIONS}/${String(rowB.id)}`, a.admin',
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/lesson-observations/:observationId',
+          'patch(a.admin, rowB',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/lesson-observations/:observationId/complete',
+          'complete(a.admin, rowB)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/lesson-observations/:observationId/archive',
+          'archive(a.admin, rowB)',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-lesson-observations.test.ts',
+        'DOM-FIN-130: başka kurumun formu ve gözlemi 404 ve değişmez; gövdedeki institutionId 400',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

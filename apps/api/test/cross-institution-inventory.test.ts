@@ -3285,6 +3285,57 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: öz değerlendirme (ON-210; DOM-FIN-131, K-450).
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'kayıt',
+          'GET /api/v1/finance/performance-periods/:periodId/self-evaluation',
+          'overview(a.admin, pb)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/performance-periods/:periodId/self-evaluation-template',
+          'createTemplate(a.admin, pb)',
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/self-evaluation-templates/:templateId',
+          'editTemplate(a.admin, template)',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/performance-periods/:periodId/self-evaluations',
+          'tracking(a.admin, pb)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/performance-periods/:periodId/self-evaluations',
+          'respond(a.admin, pb, selin)',
+        ],
+        ['kayıt', 'GET /api/v1/finance/self-evaluations/:responseId', 'read(a.admin, response)'],
+        ['kayıt', 'PATCH /api/v1/finance/self-evaluations/:responseId', 'patch(a.admin, response'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/self-evaluations/:responseId/submit',
+          'submit(a.admin, response)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/self-evaluations/:responseId/reopen',
+          'reopen(a.admin, response',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-self-evaluations.test.ts',
+        'DOM-FIN-131: başka kurumun dönemi, şablonu ve yanıtı 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

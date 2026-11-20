@@ -132,3 +132,109 @@ export function useCompleteLessonObservation() {
     exclusive: true,
   })
 }
+
+/** Tek gözlem ve sürümünün ölçütleri (düzenleme penceresi); okuma denetime yazılır (K-447). */
+export function useLessonObservation(observationId: string | null) {
+  return useFinanceListQuery(
+    {
+      key: [...LESSON_OBSERVATIONS_KEY, 'observation', observationId],
+      request: (client, signal) =>
+        client.GET('/api/v1/finance/lesson-observations/{observationId}', {
+          params: { path: { observationId: observationId ?? '' } },
+          signal,
+        }),
+    },
+    { enabled: observationId !== null, keepPreviousPage: false },
+  )
+}
+
+/** Kullanılmamış son sürümün düzeltmesi (K-445); kullanılmış sürüm 409 `observation_template_used`. */
+export function useUpdateLessonObservationTemplate() {
+  return useApiCommand({
+    request: (
+      client,
+      input: { templateId: string; version: number; body: UpdateLessonObservationTemplateBody },
+      headers: CommandHeaders,
+    ) =>
+      client.PATCH('/api/v1/finance/lesson-observation-templates/{templateId}', {
+        params: {
+          path: { templateId: input.templateId },
+          header: {
+            'idempotency-key': headers['idempotency-key'],
+            'if-match': requireIfMatch(headers),
+          },
+        },
+        body: input.body,
+      }),
+    invalidates: [LESSON_OBSERVATIONS_KEY],
+    version: (input) => input.version,
+    messages: MESSAGES,
+    exclusive: true,
+  })
+}
+
+/** Yeni sürüm (K-445): eski sürüm ve gözlemleri değişmez. */
+export function useCreateLessonObservationTemplateVersion() {
+  return useApiCommand({
+    request: (
+      client,
+      input: { templateId: string; version: number; body: LessonObservationTemplateBody },
+      headers: CommandHeaders,
+    ) =>
+      client.POST('/api/v1/finance/lesson-observation-templates/{templateId}/versions', {
+        params: {
+          path: { templateId: input.templateId },
+          header: {
+            'idempotency-key': headers['idempotency-key'],
+            'if-match': requireIfMatch(headers),
+          },
+        },
+        body: input.body,
+      }),
+    invalidates: [LESSON_OBSERVATIONS_KEY],
+    version: (input) => input.version,
+    messages: MESSAGES,
+    exclusive: true,
+  })
+}
+
+export function useArchiveLessonObservationTemplate() {
+  return useApiCommand({
+    request: (client, input: { templateId: string; version: number }, headers: CommandHeaders) =>
+      client.POST('/api/v1/finance/lesson-observation-templates/{templateId}/archive', {
+        params: {
+          path: { templateId: input.templateId },
+          header: {
+            'idempotency-key': headers['idempotency-key'],
+            'if-match': requireIfMatch(headers),
+          },
+        },
+        body: {},
+      }),
+    invalidates: [LESSON_OBSERVATIONS_KEY],
+    version: (input) => input.version,
+    messages: MESSAGES,
+    exclusive: true,
+  })
+}
+
+/** Taslak arşivi (K-446); tamamlanan gözlem 409. */
+export function useArchiveLessonObservation() {
+  return useApiCommand({
+    request: (client, input: { observationId: string; version: number }, headers: CommandHeaders) =>
+      client.POST('/api/v1/finance/lesson-observations/{observationId}/archive', {
+        params: {
+          path: { observationId: input.observationId },
+          header: {
+            'idempotency-key': headers['idempotency-key'],
+            'if-match': requireIfMatch(headers),
+          },
+        },
+        body: {},
+      }),
+    invalidates: [LESSON_OBSERVATIONS_KEY],
+    version: (input) => input.version,
+    messages: MESSAGES,
+    exclusive: true,
+  })
+}

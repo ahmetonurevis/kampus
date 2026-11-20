@@ -249,6 +249,10 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // (routes/finance-teacher-mentorships.ts; DOM-FIN-136, ON-219).
   'POST /api/v1/finance/teacher-mentorships',
   'POST /api/v1/finance/teacher-mentorships/{mentorshipId}/meetings',
+  // Ziyaretçi girişi ve toplu anonimleştirme; çift tıklama ikinci girişi yazmaz, anonimleştirme
+  // geri alınamaz (routes/finance-visitors.ts; DOM-FIN-141, ON-166).
+  'POST /api/v1/finance/visitors',
+  'POST /api/v1/finance/visitor-anonymizations',
 ]
 // Onur: kayıt ve finans sonu
 

@@ -270,10 +270,7 @@ describe('DOM-FIN-141: çıkış ve kart (K-479)', () => {
 
   test('DOM-FIN-141: telefon yalnız maskeli gösterilir', () => {
     assert.equal(maskVisitorPhone(null), null)
-    const masked = maskVisitorPhone('05321234567')
-    assert.ok(masked?.startsWith('0532'))
-    assert.ok(masked.endsWith('67'))
-    assert.ok(!masked.includes('12345'))
+    assert.equal(maskVisitorPhone('05321234567'), '0532 *** ** 67')
   })
 })
 

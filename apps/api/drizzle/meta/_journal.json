@@ -1044,6 +1044,13 @@
       "when": 1795215026512,
       "tag": "0148_add_meeting_kinds",
       "breakpoints": true
+    },
+    {
+      "idx": 149,
+      "version": "7",
+      "when": 1795217731047,
+      "tag": "0149_create_visitor_logs",
+      "breakpoints": true
     }
   ]
 }

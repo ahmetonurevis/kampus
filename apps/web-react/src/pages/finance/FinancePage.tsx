@@ -209,6 +209,10 @@ const FinanceProfessionalDevelopmentSection = lazy(async () => ({
   default: (await import('./FinanceProfessionalDevelopmentSection.tsx'))
     .FinanceProfessionalDevelopmentSection,
 }))
+const FinanceLessonObservationsSection = lazy(async () => ({
+  default: (await import('./FinanceLessonObservationsSection.tsx'))
+    .FinanceLessonObservationsSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -277,6 +281,7 @@ const VIEWS = {
   policyAcknowledgements: { label: 'Politika onayları', param: 'politika-onaylari' },
   staffingPlan: { label: 'Kadro planı', param: 'kadro-plani' },
   professionalDevelopment: { label: 'Mesleki gelişim', param: 'mesleki-gelisim' },
+  lessonObservations: { label: 'Ders gözlemleri', param: 'ders-gozlemleri' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -333,6 +338,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Politika onayları (DOM-FIN-127) ikisine açıktır; ön büro personel adına onay kaydeder, belgeyi
  * yönetici yayımlar (K-437).
  * Kadro planı (DOM-FIN-126) yalnız yöneticidedir; ücret türünden kapasite hesaplar (K-434).
+ * Ders gözlemleri (DOM-FIN-130) yalnız yöneticidedir; gözlem kişisel veridir (K-447).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -350,6 +356,7 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'staffingPlan' ||
       value === 'staffOnboarding' ||
       value === 'performance' ||
+      value === 'lessonObservations' ||
       value === 'staffRetention' ||
       value === 'staffSeparations' ||
       value === 'hrReports' ||
@@ -581,6 +588,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'professionalDevelopment' ? (
           <FinanceProfessionalDevelopmentSection canManage={isManager} />
         ) : null}
+        {tab === 'lessonObservations' ? <FinanceLessonObservationsSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

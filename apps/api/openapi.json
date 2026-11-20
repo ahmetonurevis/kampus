@@ -290906,7 +290906,7 @@
         "tags": [
           "finance-performance-reports"
         ],
-        "description": "Bölümler (K-466): dönem sonu değerlendirmesi (hedefler, puanlar, genel puan, ara görüşme, personel görüşü), öz değerlendirme özeti (yalnız gönderildiyse soru ve cevaplar, puanlı soruların ortalaması, yönetici görüşü), dönemdeki tamamlanmış ders gözlemleri (döneme bağlı ya da günü dönem içinde; kesinleşmiş raporda kesinleştirme anına kadar tamamlananlar) ve puan ortalaması, yönetici görüşü; kesinleştirme ve \"okudum\" kaydı. Gelişim hedefleri ve çok kaynaklı geri bildirim bölümleri sonraki işlerde eklenir (`sections`). Her okuma aynı transaction'da denetime yazılır: `purpose=view` `finance.performance_report.read`, `purpose=pdf` `finance.performance_report.export` (alan adları; K-468). Rol: `yonetici` her raporu, `ogretmen` yalnız kendi kesinleşmiş raporunu okur; başka personelin ya da kesinleşmemiş rapor 404. Başka kurumun kaydı 404. Modül `finance`.",
+        "description": "Bölümler (K-466): dönem sonu değerlendirmesi (hedefler, puanlar, genel puan, ara görüşme, personel görüşü), öz değerlendirme özeti (yalnız gönderildiyse soru ve cevaplar, puanlı soruların ortalaması, yönetici görüşü), dönemdeki tamamlanmış ders gözlemleri (döneme bağlı ya da günü dönem içinde; kesinleşmiş raporda kesinleştirme anına kadar tamamlananlar) ve puan ortalaması, döneme bağlı gelişim hedefleri (açık, sürüyor, ulaşıldı; kesinleşmiş raporda kesinleştirme anındaki durumuyla, K-468), yönetici görüşü; kesinleştirme ve \"okudum\" kaydı. Çok kaynaklı geri bildirim bölümü sonraki işte eklenir (`sections`). Her okuma aynı transaction'da denetime yazılır: `purpose=view` `finance.performance_report.read`, `purpose=pdf` `finance.performance_report.export` (alan adları; K-468). Rol: `yonetici` her raporu, `ogretmen` yalnız kendi kesinleşmiş raporunu okur; başka personelin ya da kesinleşmemiş rapor 404. Başka kurumun kaydı 404. Modül `finance`.",
         "parameters": [
           {
             "schema": {
@@ -290990,6 +290990,7 @@
                               "evaluation",
                               "selfEvaluation",
                               "observations",
+                              "developmentGoals",
                               "managerOpinion"
                             ]
                           },
@@ -291270,6 +291271,86 @@
                           "additionalProperties": false,
                           "description": "Dönemdeki tamamlanmış ders gözlemleri (DOM-FIN-130)"
                         },
+                        "developmentGoals": {
+                          "type": "object",
+                          "properties": {
+                            "count": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "achievedCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ulaşılan hedef sayısı"
+                            },
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "description": "Hedef"
+                                  },
+                                  "successCriterion": {
+                                    "type": "string",
+                                    "description": "Başarı ölçütü"
+                                  },
+                                  "source": {
+                                    "type": "string",
+                                    "enum": [
+                                      "observation_debrief",
+                                      "direct"
+                                    ],
+                                    "description": "`observation_debrief` gözlem görüşmesi, `direct` doğrudan"
+                                  },
+                                  "observedDate": {
+                                    "description": "Kaynak gözlemin günü",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "followUpDate": {
+                                    "type": "string",
+                                    "description": "Takip tarihi"
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "open",
+                                      "in_progress",
+                                      "achieved"
+                                    ],
+                                    "description": "Durum (kesinleşmiş raporda kesinleştirme anındaki): `open` açık, `in_progress` sürüyor, `achieved` ulaşıldı"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "title",
+                                  "successCriterion",
+                                  "source",
+                                  "observedDate",
+                                  "followUpDate",
+                                  "status"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "count",
+                            "achievedCount",
+                            "items"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez (K-468)"
+                        },
                         "managerOpinion": {
                           "description": "Yönetici görüşü; kesinleştirmede yazılır",
                           "type": [
@@ -291359,6 +291440,7 @@
                         "evaluation",
                         "selfEvaluation",
                         "observations",
+                        "developmentGoals",
                         "managerOpinion",
                         "reportId",
                         "status",
@@ -291572,6 +291654,7 @@
                               "evaluation",
                               "selfEvaluation",
                               "observations",
+                              "developmentGoals",
                               "managerOpinion"
                             ]
                           },
@@ -291852,6 +291935,86 @@
                           "additionalProperties": false,
                           "description": "Dönemdeki tamamlanmış ders gözlemleri (DOM-FIN-130)"
                         },
+                        "developmentGoals": {
+                          "type": "object",
+                          "properties": {
+                            "count": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "achievedCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ulaşılan hedef sayısı"
+                            },
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "description": "Hedef"
+                                  },
+                                  "successCriterion": {
+                                    "type": "string",
+                                    "description": "Başarı ölçütü"
+                                  },
+                                  "source": {
+                                    "type": "string",
+                                    "enum": [
+                                      "observation_debrief",
+                                      "direct"
+                                    ],
+                                    "description": "`observation_debrief` gözlem görüşmesi, `direct` doğrudan"
+                                  },
+                                  "observedDate": {
+                                    "description": "Kaynak gözlemin günü",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "followUpDate": {
+                                    "type": "string",
+                                    "description": "Takip tarihi"
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "open",
+                                      "in_progress",
+                                      "achieved"
+                                    ],
+                                    "description": "Durum (kesinleşmiş raporda kesinleştirme anındaki): `open` açık, `in_progress` sürüyor, `achieved` ulaşıldı"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "title",
+                                  "successCriterion",
+                                  "source",
+                                  "observedDate",
+                                  "followUpDate",
+                                  "status"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "count",
+                            "achievedCount",
+                            "items"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez (K-468)"
+                        },
                         "managerOpinion": {
                           "description": "Yönetici görüşü; kesinleştirmede yazılır",
                           "type": [
@@ -291941,6 +292104,7 @@
                         "evaluation",
                         "selfEvaluation",
                         "observations",
+                        "developmentGoals",
                         "managerOpinion",
                         "reportId",
                         "status",
@@ -292163,6 +292327,7 @@
                               "evaluation",
                               "selfEvaluation",
                               "observations",
+                              "developmentGoals",
                               "managerOpinion"
                             ]
                           },
@@ -292443,6 +292608,86 @@
                           "additionalProperties": false,
                           "description": "Dönemdeki tamamlanmış ders gözlemleri (DOM-FIN-130)"
                         },
+                        "developmentGoals": {
+                          "type": "object",
+                          "properties": {
+                            "count": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "achievedCount": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ulaşılan hedef sayısı"
+                            },
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "description": "Hedef"
+                                  },
+                                  "successCriterion": {
+                                    "type": "string",
+                                    "description": "Başarı ölçütü"
+                                  },
+                                  "source": {
+                                    "type": "string",
+                                    "enum": [
+                                      "observation_debrief",
+                                      "direct"
+                                    ],
+                                    "description": "`observation_debrief` gözlem görüşmesi, `direct` doğrudan"
+                                  },
+                                  "observedDate": {
+                                    "description": "Kaynak gözlemin günü",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "followUpDate": {
+                                    "type": "string",
+                                    "description": "Takip tarihi"
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "open",
+                                      "in_progress",
+                                      "achieved"
+                                    ],
+                                    "description": "Durum (kesinleşmiş raporda kesinleştirme anındaki): `open` açık, `in_progress` sürüyor, `achieved` ulaşıldı"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "title",
+                                  "successCriterion",
+                                  "source",
+                                  "observedDate",
+                                  "followUpDate",
+                                  "status"
+                                ],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "count",
+                            "achievedCount",
+                            "items"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez (K-468)"
+                        },
                         "managerOpinion": {
                           "description": "Yönetici görüşü; kesinleştirmede yazılır",
                           "type": [
@@ -292532,6 +292777,7 @@
                         "evaluation",
                         "selfEvaluation",
                         "observations",
+                        "developmentGoals",
                         "managerOpinion",
                         "reportId",
                         "status",

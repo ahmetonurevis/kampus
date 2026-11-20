@@ -1,7 +1,8 @@
 // Personel performans raporu (DOM-FIN-137; ON-220, K-466…K-468): personel ve dönem; bölümler
 // sunucunun bildirdiği sırayla — dönem sonu değerlendirmesi (hedef, ağırlık, puan, genel puan, ara
 // görüşme, personel görüşü), öz değerlendirme (gönderildiyse soru ve cevaplar), ders gözlemleri
-// (gün, form, gözlemci, puan, ortalama) ve yönetici görüşü; kesinleştirme, "okudum" kaydı ve imza
+// (gün, form, gözlemci, puan, ortalama), döneme bağlı gelişim hedefleri (hedef, ölçüt, takip
+// tarihi, durum) ve yönetici görüşü; kesinleştirme, "okudum" kaydı ve imza
 // alanları. Veri rapor ucundan gelir (okuması denetime düşer); belge web'de üretilir, sunucuda
 // saklanmaz. Kesinleşmemiş rapor "TASLAK" ibaresiyle basılır.
 import type { PerformanceReport } from '@kampus/react-shared/use-finance-performance-reports.ts'
@@ -13,6 +14,7 @@ import {
   type PerformanceReportSection,
 } from '@kampus/school-core/lib/finance-performance-reports.ts'
 import { PERFORMANCE_PERIOD_STATUS_LABELS } from '@kampus/school-core/lib/finance-performance.ts'
+import { DEVELOPMENT_GOAL_STATUS_LABELS } from '@kampus/school-core/lib/finance-observation-debriefs.ts'
 import { SELF_EVALUATION_CHANNEL_LABELS } from '@kampus/school-core/lib/finance-self-evaluations.ts'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import { STAFF_ROLE_LABELS, isStaffRole } from '@kampus/school-core/lib/staff-accounts.ts'
@@ -64,6 +66,16 @@ export function performanceObservationRows(report: PerformanceReport): string[][
     item.templateName,
     item.observerName,
     `${String(item.total)} / ${String(item.max)} · %${String(item.percent)}`,
+  ])
+}
+
+/** Gelişim hedefi tablosu satırları: hedef, ölçüt, takip tarihi, durum. */
+export function performanceDevelopmentGoalRows(report: PerformanceReport): string[][] {
+  return report.developmentGoals.items.map((goal, index) => [
+    `${String(index + 1)}. ${goal.title}`,
+    goal.successCriterion,
+    dayText(goal.followUpDate),
+    DEVELOPMENT_GOAL_STATUS_LABELS[goal.status],
   ])
 }
 
@@ -140,6 +152,25 @@ function observationsSection(doc: DocumentLayout, report: PerformanceReport) {
   )
 }
 
+function developmentGoalsSection(doc: DocumentLayout, report: PerformanceReport) {
+  const goals = report.developmentGoals
+  if (goals.count === 0) {
+    doc.paragraph('Bu döneme bağlı açık ya da ulaşılan gelişim hedefi yok.')
+    return
+  }
+  doc.table(
+    [
+      { header: 'Hedef', width: 58 },
+      { header: 'Başarı ölçütü', width: 66 },
+      { header: 'Takip', width: 26 },
+      { header: 'Durum', width: 24 },
+    ],
+    performanceDevelopmentGoalRows(report),
+    true,
+  )
+  doc.paragraph(`${String(goals.count)} hedef · ${String(goals.achievedCount)} ulaşıldı`)
+}
+
 function managerOpinionSection(doc: DocumentLayout, report: PerformanceReport) {
   doc.paragraph(report.managerOpinion ?? 'Rapor kesinleşince yönetici görüşü yazılır.')
 }
@@ -148,6 +179,7 @@ const SECTION_WRITERS = {
   evaluation: evaluationSection,
   selfEvaluation: selfEvaluationSection,
   observations: observationsSection,
+  developmentGoals: developmentGoalsSection,
   managerOpinion: managerOpinionSection,
 } satisfies Record<
   PerformanceReportSection,

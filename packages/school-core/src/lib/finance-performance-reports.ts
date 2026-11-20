@@ -3,14 +3,16 @@ import { z } from 'zod'
 import type { Role } from '../modules/navigation.ts'
 import { daySchema } from './domain.ts'
 import { DomainError } from './errors.ts'
+import type { DevelopmentGoalStatus } from './finance-observation-debriefs.ts'
 import type { PerformancePeriodStatus } from './finance-performance.ts'
 import type { SelfEvaluationAnswer, SelfEvaluationQuestion } from './finance-self-evaluations.ts'
 
 /**
  * Personel performans raporu (docs/domain/finans.md DOM-FIN-137; ON-220). Personel × dönem
  * raporu dönem sonu değerlendirmesini (DOM-FIN-124), gönderilmiş öz değerlendirmeyi
- * (DOM-FIN-131), dönemdeki tamamlanmış ders gözlemlerini ve puan ortalamasını (DOM-FIN-130) ve
- * yönetici görüşünü bölüm bölüm bir araya getirir (K-466). Rapor içeriği saklanmaz, kaynak
+ * (DOM-FIN-131), dönemdeki tamamlanmış ders gözlemlerini ve puan ortalamasını (DOM-FIN-130),
+ * döneme bağlı açık ve ulaşılan gelişim hedeflerini (DOM-FIN-133) ve yönetici görüşünü bölüm bölüm
+ * bir araya getirir (K-466, K-468). Rapor içeriği saklanmaz, kaynak
  * kayıtlardan okunur; dönem kapandıktan sonra yönetici raporu görüşüyle kesinleştirir, personelin
  * "okudum" kaydını kanalıyla personel adına girer (K-467). Rapor kişiseldir: dönem özeti ve
  * bütün raporlar yalnız yöneticide, personel kendi kesinleşmiş raporunu okur; her okuma denetime
@@ -26,13 +28,14 @@ export const PERFORMANCE_REPORT_READ_ROLES = [
 ] as const satisfies readonly Role[]
 
 /**
- * Raporun bu turdaki bölümleri, sırasıyla (K-466). Gelişim hedefleri (ON-209) ve çok kaynaklı
- * geri bildirim (ON-212) birleşince bu listeye kendi bölümleriyle eklenir.
+ * Raporun bölümleri, sırasıyla (K-466). Gelişim hedefleri ON-209 ile eklendi (K-468); çok kaynaklı
+ * geri bildirim (ON-212) birleşince bu listeye kendi bölümüyle eklenir.
  */
 export const PERFORMANCE_REPORT_SECTIONS = [
   'evaluation',
   'selfEvaluation',
   'observations',
+  'developmentGoals',
   'managerOpinion',
 ] as const
 export type PerformanceReportSection = (typeof PERFORMANCE_REPORT_SECTIONS)[number]
@@ -40,6 +43,7 @@ export const PERFORMANCE_REPORT_SECTION_LABELS = {
   evaluation: 'Dönem sonu değerlendirmesi',
   selfEvaluation: 'Öz değerlendirme',
   observations: 'Ders gözlemleri',
+  developmentGoals: 'Gelişim hedefleri',
   managerOpinion: 'Yönetici görüşü',
 } as const satisfies Record<PerformanceReportSection, string>
 
@@ -271,6 +275,42 @@ export function performanceScoreBand(score: number | null): PerformanceScoreBand
   const band = Math.min(5, Math.max(1, Math.floor(score)))
   return String(band) as PerformanceScoreBand
 }
+
+/**
+ * Rapora giren gelişim hedefi durumları (K-468): açık, sürüyor ve ulaşıldı; bırakılan hedef
+ * rapora girmez.
+ */
+export const PERFORMANCE_REPORT_GOAL_STATUSES = [
+  'open',
+  'in_progress',
+  'achieved',
+] as const satisfies readonly DevelopmentGoalStatus[]
+
+/**
+ * Hedefin verilen andaki durumu (K-468): an boşsa bugünkü durum. Kesinleşmiş raporda hedef
+ * kesinleştirme anındaki durumuyla girer; durum yalnız takip notlarıyla değiştiği için o ana kadarki
+ * son durum değişikliği (`statusTo`) esas alınır, yoksa hedef açıktır. Kesinleştirmeden sonra açılan
+ * hedef `null` döner (rapora girmez).
+ */
+export function developmentGoalStatusAt(
+  goal: { status: DevelopmentGoalStatus; createdAt: string },
+  changes: readonly { statusTo: DevelopmentGoalStatus | null; createdAt: string }[],
+  at: string | null,
+): DevelopmentGoalStatus | null {
+  if (at === null) return goal.status
+  if (goal.createdAt > at) return null
+  let status: DevelopmentGoalStatus = 'open'
+  for (const change of [...changes].sort((a, b) => a.createdAt.localeCompare(b.createdAt)))
+    if (change.createdAt <= at && change.statusTo !== null) status = change.statusTo
+  return status
+}
+
+/** Hedef rapora girer mi: durumu açık, sürüyor ya da ulaşıldı (K-468). */
+export type PerformanceReportGoalStatus = (typeof PERFORMANCE_REPORT_GOAL_STATUSES)[number]
+export const isGoalInPerformanceReport = (
+  status: DevelopmentGoalStatus | null,
+): status is PerformanceReportGoalStatus =>
+  status !== null && (PERFORMANCE_REPORT_GOAL_STATUSES as readonly string[]).includes(status)
 
 /** Dönem özeti satırı: personelin genel puanı, rapor durumu ve gözlem puanları. */
 export interface PerformanceReportSummaryInput {

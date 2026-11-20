@@ -16,7 +16,13 @@ export function reportFixture(patch: Partial<PerformanceReport> = {}): Performan
     membershipId: 'm-selin',
     staffName: 'Selin Kaya',
     staffRole: 'ogretmen',
-    sections: ['evaluation', 'selfEvaluation', 'observations', 'managerOpinion'],
+    sections: [
+      'evaluation',
+      'selfEvaluation',
+      'observations',
+      'developmentGoals',
+      'managerOpinion',
+    ],
     evaluation: {
       goals: [
         { title: 'Okuma becerisi', criterion: 'Sınıf ortalaması B1', weight: 60, score: 5 },
@@ -69,6 +75,30 @@ export function reportFixture(patch: Partial<PerformanceReport> = {}): Performan
           total: 11,
           max: 15,
           percent: 73,
+        },
+      ],
+    },
+    developmentGoals: {
+      count: 2,
+      achievedCount: 1,
+      items: [
+        {
+          id: 'g-1',
+          title: 'Ölçme araçlarını çeşitlendir',
+          successCriterion: 'Her ünitede iki farklı ölçme aracı',
+          source: 'observation_debrief',
+          observedDate: '2026-09-15',
+          followUpDate: '2026-10-20',
+          status: 'achieved',
+        },
+        {
+          id: 'g-2',
+          title: 'Sınıf içi soru tekniği',
+          successCriterion: 'Derste en az beş açık uçlu soru',
+          source: 'direct',
+          observedDate: null,
+          followUpDate: '2026-11-15',
+          status: 'open',
         },
       ],
     },

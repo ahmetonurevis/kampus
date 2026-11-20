@@ -1,8 +1,10 @@
 import { z } from 'zod'
 
 import { PERFORMANCE_PERIOD_STATUSES } from '@kampus/school-core/lib/finance-performance.ts'
+import { DEVELOPMENT_GOAL_SOURCES } from '@kampus/school-core/lib/finance-observation-debriefs.ts'
 import {
   PERFORMANCE_REPORT_ACK_CHANNELS,
+  PERFORMANCE_REPORT_GOAL_STATUSES,
   PERFORMANCE_REPORT_SECTIONS,
   PERFORMANCE_REPORT_SELF_STATUSES,
   PERFORMANCE_REPORT_STATUSES,
@@ -117,6 +119,32 @@ const reportSchema = z.object({
       ),
     })
     .describe('Dönemdeki tamamlanmış ders gözlemleri (DOM-FIN-130)'),
+  // kvkk: K
+  developmentGoals: z
+    .object({
+      count: z.number().int(),
+      achievedCount: z.number().int().describe('Ulaşılan hedef sayısı'),
+      items: z.array(
+        z.object({
+          id: z.string(),
+          title: z.string().describe('Hedef'),
+          successCriterion: z.string().describe('Başarı ölçütü'),
+          source: z
+            .enum(DEVELOPMENT_GOAL_SOURCES)
+            .describe('`observation_debrief` gözlem görüşmesi, `direct` doğrudan'),
+          observedDate: z.string().nullable().describe('Kaynak gözlemin günü'),
+          followUpDate: z.string().describe('Takip tarihi'),
+          status: z
+            .enum(PERFORMANCE_REPORT_GOAL_STATUSES)
+            .describe(
+              'Durum (kesinleşmiş raporda kesinleştirme anındaki): `open` açık, `in_progress` sürüyor, `achieved` ulaşıldı',
+            ),
+        }),
+      ),
+    })
+    .describe(
+      'Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez (K-468)',
+    ),
   // kvkk: K (serbest metin)
   managerOpinion: z.string().nullable().describe('Yönetici görüşü; kesinleştirmede yazılır'),
   ...reportMetaShape,

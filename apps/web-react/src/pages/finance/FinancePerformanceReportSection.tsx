@@ -20,6 +20,7 @@ import {
   type PerformanceReportSection,
   type PerformanceReportStatus,
 } from '@kampus/school-core/lib/finance-performance-reports.ts'
+import { DEVELOPMENT_GOAL_STATUS_LABELS } from '@kampus/school-core/lib/finance-observation-debriefs.ts'
 import { SELF_EVALUATION_CHANNEL_LABELS } from '@kampus/school-core/lib/finance-self-evaluations.ts'
 import { dateLabel, dayKey } from '@kampus/school-core/lib/format.ts'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
@@ -78,10 +79,10 @@ type Row = {
  * Performans raporu bölümü (DOM-FIN-137; ON-220): Finans "Performans" sekmesinde seçili dönemin
  * altında, yalnız yönetici (K-468). Dönem özeti (ortalama, dağılım, gözlem ortalaması, rapor
  * sayıları), personel başına satırlar ve personel × dönem raporu: dönem sonu değerlendirmesi, öz
- * değerlendirme, ders gözlemleri ve yönetici görüşü (K-466). Kapanan dönemde rapor görüşle
- * kesinleşir, personelin "okudum" kaydı kanalıyla girilir (K-467). Satır ve rapor açılışı ile PDF
- * denetim kaydına yazılır. Gelişim hedefleri (ON-209) ve çok kaynaklı geri bildirim (ON-212)
- * bölümleri birleşince sunucunun `sections` listesiyle eklenir.
+ * değerlendirme, ders gözlemleri, gelişim hedefleri ve yönetici görüşü (K-466, K-468). Kapanan
+ * dönemde rapor görüşle kesinleşir, personelin "okudum" kaydı kanalıyla girilir (K-467). Satır ve
+ * rapor açılışı ile PDF denetim kaydına yazılır. Çok kaynaklı geri bildirim (ON-212) bölümü
+ * birleşince sunucunun `sections` listesiyle eklenir.
  */
 export function PerformanceReportPanel({ period }: { period: PerformancePeriod }) {
   const summary = usePerformanceReportSummary(period.id)
@@ -161,9 +162,10 @@ export function PerformanceReportPanel({ period }: { period: PerformancePeriod }
           {period.name} · rapor
         </h2>
         <p className="text-sm text-muted-foreground">
-          Dönem sonu değerlendirmesi, öz değerlendirme ve ders gözlemleri personel başına bir
-          raporda. Dönem kapanınca rapor yönetici görüşüyle kesinleşir; personelin okuduğu kanalıyla
-          kaydedilir. Satırların, raporların ve PDF&apos;lerin açılışı denetim kaydına yazılır.
+          Dönem sonu değerlendirmesi, öz değerlendirme, ders gözlemleri ve gelişim hedefleri
+          personel başına bir raporda. Dönem kapanınca rapor yönetici görüşüyle kesinleşir;
+          personelin okuduğu kanalıyla kaydedilir. Satırların, raporların ve PDF&apos;lerin açılışı
+          denetim kaydına yazılır.
         </p>
         {summary.error ? (
           <QueryError error={summary.error} onRetry={() => void summary.refetch()} />
@@ -342,6 +344,30 @@ function SectionBody({
               <li key={item.id}>
                 {day(item.observedDate)} · {item.templateName} · {item.observerName}: %
                 {item.percent}
+              </li>
+            ))}
+          </ul>
+        </>
+      )
+    }
+    case 'developmentGoals': {
+      const goals = report.developmentGoals
+      if (goals.count === 0)
+        return (
+          <p className="text-sm text-muted-foreground">
+            Bu döneme bağlı açık ya da ulaşılan gelişim hedefi yok.
+          </p>
+        )
+      return (
+        <>
+          <p className="text-sm">
+            {goals.count} hedef · {goals.achievedCount} ulaşıldı
+          </p>
+          <ul aria-label="Gelişim hedefleri" className="grid gap-1 text-sm">
+            {goals.items.map((goal) => (
+              <li key={goal.id}>
+                {goal.title} — {goal.successCriterion} · takip {day(goal.followUpDate)} ·{' '}
+                {DEVELOPMENT_GOAL_STATUS_LABELS[goal.status]}
               </li>
             ))}
           </ul>

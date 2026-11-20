@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
+  performanceDevelopmentGoalRows,
   performanceGoalRows,
   performanceObservationRows,
   performanceReportDocument,
@@ -112,6 +113,9 @@ test('DOM-FIN-137 K-466: rapor PDF bölümleri, gözlemleri, görüşü ve okuma
     'Veli iletişimi güçlü',
     'Ders gözlemleri',
     '%86,5',
+    'Gelişim hedefleri',
+    'Ölçme araçlarını çeşitlendir',
+    '2 hedef · 1 ulaşıldı',
     'Yönetici görüşü',
     'Dönem hedeflerine ulaştı.',
     'Yüz yüze görüşme',
@@ -129,6 +133,12 @@ test('DOM-FIN-137 K-466: rapor PDF bölümleri, gözlemleri, görüşü ve okuma
     '5 / 5',
   ])
   assert.equal(performanceObservationRows(reportFixture())[1]?.[3], '11 / 15 · %73')
+  assert.deepEqual(performanceDevelopmentGoalRows(reportFixture())[1], [
+    '2. Sınıf içi soru tekniği',
+    'Derste en az beş açık uçlu soru',
+    '15 Kas 2026',
+    'Açık',
+  ])
   assert.equal(
     performanceReportFilename(reportFixture()),
     'performans-raporu-2026-guz-donemi-selin-kaya.pdf',
@@ -155,6 +165,7 @@ test('DOM-FIN-137 K-467: taslak rapor "TASLAK", gönderilmemiş öz değerlendir
       scaleAverage: null,
     },
     observations: { count: 0, averagePercent: null, items: [] },
+    developmentGoals: { count: 0, achievedCount: 0, items: [] },
   })
   const all = allTexts(performanceReportDocument(measurer, draft, OPTIONS))
   for (const text of [
@@ -162,6 +173,7 @@ test('DOM-FIN-137 K-467: taslak rapor "TASLAK", gönderilmemiş öz değerlendir
     'Kesinleşmedi',
     'Rapora yalnız gönderilmiş öz değerlendirme girer.',
     'Bu dönemde tamamlanmış ders gözlemi yok.',
+    'Bu döneme bağlı açık ya da ulaşılan gelişim hedefi yok.',
     'Rapor kesinleşince yönetici görüşü yazılır.',
     'henüz girilmedi',
   ])

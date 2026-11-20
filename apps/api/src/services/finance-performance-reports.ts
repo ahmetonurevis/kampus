@@ -3,6 +3,8 @@ import { randomUUID } from 'node:crypto'
 import { lessonObservationScore } from '@kampus/school-core/lib/finance-lesson-observations.ts'
 import {
   canViewPerformanceReport,
+  developmentGoalStatusAt,
+  isGoalInPerformanceReport,
   isObservationInPeriodReport,
   observationAverage,
   PERFORMANCE_REPORT_SECTIONS,
@@ -31,6 +33,7 @@ import {
 import {
   acknowledgePerformanceReport,
   findPerformanceReportByReview,
+  goalStatusChanges,
   insertPerformanceReport,
   performanceReportsByReview,
   periodReportObservations,
@@ -39,6 +42,10 @@ import {
   type ReportObservation,
   type StoredPerformanceReport,
 } from '../db/finance-performance-reports.ts'
+import {
+  listDevelopmentGoals,
+  type StoredDevelopmentGoal,
+} from '../db/finance-observation-debriefs.ts'
 import { findSelfEvaluation, findSelfEvaluationTemplate } from '../db/finance-self-evaluations.ts'
 import { findUserName } from '../db/finance-staff-certificates.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
@@ -51,8 +58,8 @@ import { auditWork } from './task-work.ts'
 /**
  * Personel performans raporu (DOM-FIN-137; ON-220). Kural core `lib/finance-performance-reports.ts`
  * 'tedir. Rapor içeriği saklanmaz: dönem sonu değerlendirmesi (DOM-FIN-124), gönderilmiş öz
- * değerlendirme (DOM-FIN-131) ve dönemdeki tamamlanmış ders gözlemleri (DOM-FIN-130) her okumada
- * kaynak tablolardan derlenir (K-466); `performance_reports` yalnız kesinleştirme ve "okudum"
+ * değerlendirme (DOM-FIN-131), dönemdeki tamamlanmış ders gözlemleri (DOM-FIN-130) ve döneme
+ * bağlı gelişim hedefleri (DOM-FIN-133) her okumada kaynak tablolardan derlenir (K-466, K-468); `performance_reports` yalnız kesinleştirme ve "okudum"
  * kaydını tutar (K-467). Rapor okuması (ekran ve PDF) ve personel satırları aynı transaction'da
  * denetime düşer (K-468). Rol ve modül denetimi rotadadır; öğretmenin yalnız kendi kesinleşmiş
  * raporunu görmesi burada uygulanır (gerisi 404).
@@ -68,6 +75,7 @@ const REPORT_FIELDS = [
   'staffComment',
   'selfEvaluation',
   'observations',
+  'developmentGoals',
   'managerOpinion',
 ]
 const ROW_FIELDS = ['staffName', 'overallScore', 'selfEvaluationStatus', 'observationAverage']
@@ -157,6 +165,66 @@ async function selfEvaluationSection(
   }
 }
 
+const GOAL_PAGE = 100
+
+/**
+ * Gelişim hedefleri bölümü (K-468): personelin bu döneme bağlı hedefleri; kesinleşmiş raporda
+ * kesinleştirme anındaki durumuyla (sonra açılan hedef girmez). Açık, süren ve ulaşılan hedefler
+ * girer; bırakılan girmez.
+ */
+async function developmentGoalSection(
+  db: Database,
+  ctx: ServiceContext,
+  review: StoredPerformanceReview,
+  finalizedAt: string | null,
+) {
+  const goals: StoredDevelopmentGoal[] = []
+  for (let page = 1; ; page += 1) {
+    const { items, total } = await listDevelopmentGoals(
+      db,
+      ctx.institutionId,
+      {
+        page,
+        pageSize: GOAL_PAGE,
+        performancePeriodId: review.periodId,
+        teacherMembershipId: review.membershipId,
+      },
+      null,
+    )
+    goals.push(...items)
+    if (items.length === 0 || goals.length >= total) break
+  }
+  const changes = await goalStatusChanges(
+    db,
+    ctx.institutionId,
+    goals.map((goal) => goal.id),
+  )
+  const items = goals.flatMap((goal) => {
+    const status = developmentGoalStatusAt(goal, changes.get(goal.id) ?? [], finalizedAt)
+    if (status === null || !isGoalInPerformanceReport(status)) return []
+    return [
+      {
+        id: goal.id,
+        title: goal.title,
+        successCriterion: goal.successCriterion,
+        source: goal.source,
+        observedDate: goal.observedDate,
+        followUpDate: goal.followUpDate,
+        status,
+      },
+    ]
+  })
+  // Sıra takip tarihi, sonra hedef adı: aynı anda açılan hedefler de her okumada aynı sırada gelir.
+  items.sort(
+    (a, b) => a.followUpDate.localeCompare(b.followUpDate) || a.title.localeCompare(b.title, 'tr'),
+  )
+  return {
+    count: items.length,
+    achievedCount: items.filter((item) => item.status === 'achieved').length,
+    items,
+  }
+}
+
 async function reportView(
   db: Database,
   ctx: ServiceContext,
@@ -205,6 +273,7 @@ async function reportView(
         percent: item.score.percent,
       })),
     },
+    developmentGoals: await developmentGoalSection(db, ctx, review, report?.finalizedAt ?? null),
     managerOpinion: report?.managerOpinion ?? null,
     ...reportMeta(report),
   }

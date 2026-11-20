@@ -12653,7 +12653,7 @@ export interface paths {
         };
         /**
          * Personel × dönem performans raporu
-         * @description Bölümler (K-466): dönem sonu değerlendirmesi (hedefler, puanlar, genel puan, ara görüşme, personel görüşü), öz değerlendirme özeti (yalnız gönderildiyse soru ve cevaplar, puanlı soruların ortalaması, yönetici görüşü), dönemdeki tamamlanmış ders gözlemleri (döneme bağlı ya da günü dönem içinde; kesinleşmiş raporda kesinleştirme anına kadar tamamlananlar) ve puan ortalaması, yönetici görüşü; kesinleştirme ve "okudum" kaydı. Gelişim hedefleri ve çok kaynaklı geri bildirim bölümleri sonraki işlerde eklenir (`sections`). Her okuma aynı transaction'da denetime yazılır: `purpose=view` `finance.performance_report.read`, `purpose=pdf` `finance.performance_report.export` (alan adları; K-468). Rol: `yonetici` her raporu, `ogretmen` yalnız kendi kesinleşmiş raporunu okur; başka personelin ya da kesinleşmemiş rapor 404. Başka kurumun kaydı 404. Modül `finance`.
+         * @description Bölümler (K-466): dönem sonu değerlendirmesi (hedefler, puanlar, genel puan, ara görüşme, personel görüşü), öz değerlendirme özeti (yalnız gönderildiyse soru ve cevaplar, puanlı soruların ortalaması, yönetici görüşü), dönemdeki tamamlanmış ders gözlemleri (döneme bağlı ya da günü dönem içinde; kesinleşmiş raporda kesinleştirme anına kadar tamamlananlar) ve puan ortalaması, döneme bağlı gelişim hedefleri (açık, sürüyor, ulaşıldı; kesinleşmiş raporda kesinleştirme anındaki durumuyla, K-468), yönetici görüşü; kesinleştirme ve "okudum" kaydı. Çok kaynaklı geri bildirim bölümü sonraki işte eklenir (`sections`). Her okuma aynı transaction'da denetime yazılır: `purpose=view` `finance.performance_report.read`, `purpose=pdf` `finance.performance_report.export` (alan adları; K-468). Rol: `yonetici` her raporu, `ogretmen` yalnız kendi kesinleşmiş raporunu okur; başka personelin ya da kesinleşmemiş rapor 404. Başka kurumun kaydı 404. Modül `finance`.
          */
         get: operations["getPerformanceReport"];
         put?: never;
@@ -133636,7 +133636,7 @@ export interface operations {
                             /** @description Personelin rolü */
                             staffRole: string;
                             /** @description Rapordaki bölümler, sırasıyla (K-466) */
-                            sections: ("evaluation" | "selfEvaluation" | "observations" | "managerOpinion")[];
+                            sections: ("evaluation" | "selfEvaluation" | "observations" | "developmentGoals" | "managerOpinion")[];
                             /** @description Dönem sonu değerlendirmesi (DOM-FIN-124) */
                             evaluation: {
                                 goals: {
@@ -133694,6 +133694,33 @@ export interface operations {
                                     total: number;
                                     max: number;
                                     percent: number;
+                                }[];
+                            };
+                            /** @description Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez (K-468) */
+                            developmentGoals: {
+                                count: number;
+                                /** @description Ulaşılan hedef sayısı */
+                                achievedCount: number;
+                                items: {
+                                    id: string;
+                                    /** @description Hedef */
+                                    title: string;
+                                    /** @description Başarı ölçütü */
+                                    successCriterion: string;
+                                    /**
+                                     * @description `observation_debrief` gözlem görüşmesi, `direct` doğrudan
+                                     * @enum {string}
+                                     */
+                                    source: "observation_debrief" | "direct";
+                                    /** @description Kaynak gözlemin günü */
+                                    observedDate: string | null;
+                                    /** @description Takip tarihi */
+                                    followUpDate: string;
+                                    /**
+                                     * @description Durum (kesinleşmiş raporda kesinleştirme anındaki): `open` açık, `in_progress` sürüyor, `achieved` ulaşıldı
+                                     * @enum {string}
+                                     */
+                                    status: "open" | "in_progress" | "achieved";
                                 }[];
                             };
                             /** @description Yönetici görüşü; kesinleştirmede yazılır */
@@ -133839,7 +133866,7 @@ export interface operations {
                             /** @description Personelin rolü */
                             staffRole: string;
                             /** @description Rapordaki bölümler, sırasıyla (K-466) */
-                            sections: ("evaluation" | "selfEvaluation" | "observations" | "managerOpinion")[];
+                            sections: ("evaluation" | "selfEvaluation" | "observations" | "developmentGoals" | "managerOpinion")[];
                             /** @description Dönem sonu değerlendirmesi (DOM-FIN-124) */
                             evaluation: {
                                 goals: {
@@ -133897,6 +133924,33 @@ export interface operations {
                                     total: number;
                                     max: number;
                                     percent: number;
+                                }[];
+                            };
+                            /** @description Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez (K-468) */
+                            developmentGoals: {
+                                count: number;
+                                /** @description Ulaşılan hedef sayısı */
+                                achievedCount: number;
+                                items: {
+                                    id: string;
+                                    /** @description Hedef */
+                                    title: string;
+                                    /** @description Başarı ölçütü */
+                                    successCriterion: string;
+                                    /**
+                                     * @description `observation_debrief` gözlem görüşmesi, `direct` doğrudan
+                                     * @enum {string}
+                                     */
+                                    source: "observation_debrief" | "direct";
+                                    /** @description Kaynak gözlemin günü */
+                                    observedDate: string | null;
+                                    /** @description Takip tarihi */
+                                    followUpDate: string;
+                                    /**
+                                     * @description Durum (kesinleşmiş raporda kesinleştirme anındaki): `open` açık, `in_progress` sürüyor, `achieved` ulaşıldı
+                                     * @enum {string}
+                                     */
+                                    status: "open" | "in_progress" | "achieved";
                                 }[];
                             };
                             /** @description Yönetici görüşü; kesinleştirmede yazılır */
@@ -134047,7 +134101,7 @@ export interface operations {
                             /** @description Personelin rolü */
                             staffRole: string;
                             /** @description Rapordaki bölümler, sırasıyla (K-466) */
-                            sections: ("evaluation" | "selfEvaluation" | "observations" | "managerOpinion")[];
+                            sections: ("evaluation" | "selfEvaluation" | "observations" | "developmentGoals" | "managerOpinion")[];
                             /** @description Dönem sonu değerlendirmesi (DOM-FIN-124) */
                             evaluation: {
                                 goals: {
@@ -134105,6 +134159,33 @@ export interface operations {
                                     total: number;
                                     max: number;
                                     percent: number;
+                                }[];
+                            };
+                            /** @description Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez (K-468) */
+                            developmentGoals: {
+                                count: number;
+                                /** @description Ulaşılan hedef sayısı */
+                                achievedCount: number;
+                                items: {
+                                    id: string;
+                                    /** @description Hedef */
+                                    title: string;
+                                    /** @description Başarı ölçütü */
+                                    successCriterion: string;
+                                    /**
+                                     * @description `observation_debrief` gözlem görüşmesi, `direct` doğrudan
+                                     * @enum {string}
+                                     */
+                                    source: "observation_debrief" | "direct";
+                                    /** @description Kaynak gözlemin günü */
+                                    observedDate: string | null;
+                                    /** @description Takip tarihi */
+                                    followUpDate: string;
+                                    /**
+                                     * @description Durum (kesinleşmiş raporda kesinleştirme anındaki): `open` açık, `in_progress` sürüyor, `achieved` ulaşıldı
+                                     * @enum {string}
+                                     */
+                                    status: "open" | "in_progress" | "achieved";
                                 }[];
                             };
                             /** @description Yönetici görüşü; kesinleştirmede yazılır */

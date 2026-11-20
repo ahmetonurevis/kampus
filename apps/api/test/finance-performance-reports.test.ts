@@ -33,6 +33,7 @@ const REVIEWS = '/api/v1/finance/performance-reviews'
 const OBS_TEMPLATES = '/api/v1/finance/lesson-observation-templates'
 const OBSERVATIONS = '/api/v1/finance/lesson-observations'
 const SELF = '/api/v1/finance/self-evaluations'
+const DEV_GOALS = '/api/v1/finance/development-goals'
 const GOALS = [
   { title: 'Okuma becerisi', criterion: 'Sınıf ortalaması B1', weight: 60 },
   { title: 'Veli iletişimi', criterion: 'Her ay görüşme', weight: 40 },
@@ -347,8 +348,10 @@ describe('DOM-FIN-137: performans raporu uçları', () => {
       'evaluation',
       'selfEvaluation',
       'observations',
+      'developmentGoals',
       'managerOpinion',
     ])
+    assert.deepEqual(draft.developmentGoals, { count: 0, achievedCount: 0, items: [] })
     assert.equal(draft.staffName, 'Selin Kaya')
     assert.equal(draft.status, 'draft')
     assert.equal(draft.managerOpinion, null)
@@ -555,6 +558,85 @@ describe('DOM-FIN-137: performans raporu uçları', () => {
     assert.equal(data.managerOpinion, OPINION)
     const [exported] = await auditOf(t.id, 'finance.performance_report.export')
     assert.equal(exported?.actorRole, 'ogretmen')
+  })
+
+  test('DOM-FIN-137 K-468: döneme bağlı açık ve ulaşılan gelişim hedefleri; kesinleşince donar', async () => {
+    const t = await institution()
+    const { selin, p, review } = await evaluated(t)
+    const goal = async (title: string, periodId: string | undefined, status?: string) => {
+      const created = ok(
+        await call(
+          'POST',
+          DEV_GOALS,
+          t.admin,
+          {
+            teacherMembershipId: selin.membershipId,
+            ...(periodId === undefined ? {} : { performancePeriodId: periodId }),
+            title,
+            successCriterion: 'Ölçütü karşılar',
+            followUpDate: '2026-10-20',
+          },
+          key(),
+        ),
+        201,
+      )
+      if (status === undefined) return created
+      return ok(
+        await call(
+          'POST',
+          `${DEV_GOALS}/${String(created.id)}/follow-ups`,
+          t.admin,
+          { note: 'Takip görüşmesi yapıldı', status },
+          ifMatch(created.version),
+        ),
+      )
+    }
+    await goal('Ölçme araçlarını çeşitlendir', String(p.id), 'achieved')
+    const open = await goal('Sınıf içi soru tekniği', String(p.id))
+    await goal('Proje tabanlı ders', String(p.id), 'dropped')
+    await goal('Dönemsiz hedef', undefined)
+
+    const titles = (data: Json) =>
+      ((data.developmentGoals as Json).items as Json[]).map((item) => [item.title, item.status])
+    const draft = ok(await report(t.admin, review))
+    assert.deepEqual(titles(draft), [
+      ['Ölçme araçlarını çeşitlendir', 'achieved'],
+      ['Sınıf içi soru tekniği', 'open'],
+    ])
+    assert.equal((draft.developmentGoals as Json).achievedCount, 1)
+    const [first] = (draft.developmentGoals as Json).items as Json[]
+    assert.equal(first?.source, 'direct')
+    assert.equal(first?.successCriterion, 'Ölçütü karşılar')
+
+    await advance(t, p, ['closed'])
+    ok(await finalize(t.admin, review), 201)
+    // Kesinleşmeden sonra ulaşılan hedef raporda kesinleştirme anındaki durumuyla kalır.
+    const later = await buildTestApp(db, { clock: () => new Date('2026-10-06T12:00:00.000Z') })
+    try {
+      const moved = await later.inject({
+        method: 'POST',
+        url: `${DEV_GOALS}/${String(open.id)}/follow-ups`,
+        remoteAddress: clientIp,
+        headers: {
+          origin: TEST_ORIGIN,
+          cookie: t.admin,
+          'content-type': 'application/json',
+          ...ifMatch(open.version),
+        },
+        payload: JSON.stringify({ note: 'Hedefe ulaştı', status: 'achieved' }),
+      })
+      assert.equal(moved.statusCode, 200, moved.body)
+    } finally {
+      await later.close()
+    }
+    const final = ok(await report(t.admin, review))
+    assert.deepEqual(titles(final), [
+      ['Ölçme araçlarını çeşitlendir', 'achieved'],
+      ['Sınıf içi soru tekniği', 'open'],
+    ])
+    // Öğretmen kendi kesinleşmiş raporunda hedeflerini görür.
+    const own = ok(await report(await signInAs(app, selin.user), review))
+    assert.equal((own.developmentGoals as Json).count, 2)
   })
 
   test('DOM-FIN-137 K-466: dönem özeti ortalama ve dağılım; satırlar denetime düşer', async () => {

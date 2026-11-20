@@ -4,6 +4,8 @@ import test from 'node:test'
 import {
   averageOf,
   canViewPerformanceReport,
+  developmentGoalStatusAt,
+  isGoalInPerformanceReport,
   isObservationInPeriodReport,
   observationAverage,
   PERFORMANCE_REPORT_MANAGE_ROLES,
@@ -51,7 +53,7 @@ test('DOM-FIN-137 K-468: yazma ve özet yalnız yönetici; okuma yönetici ve ö
 test('DOM-FIN-137 K-466: rapor bölümlüdür; bu turun bölümleri sırasıyla', () => {
   assert.deepEqual(
     [...PERFORMANCE_REPORT_SECTIONS],
-    ['evaluation', 'selfEvaluation', 'observations', 'managerOpinion'],
+    ['evaluation', 'selfEvaluation', 'observations', 'developmentGoals', 'managerOpinion'],
   )
 })
 
@@ -299,4 +301,25 @@ test('DOM-FIN-137 K-466: dönem özeti ortalama, dağılım ve rapor sayıları'
   assert.equal(empty.minScore, null)
   assert.equal(empty.maxScore, null)
   assert.equal(empty.observationAverage, null)
+})
+
+test('DOM-FIN-137 K-468: gelişim hedefi kesinleştirme anındaki durumuyla, bırakılan hariç', () => {
+  const goal = { status: 'achieved' as const, createdAt: '2026-09-10T09:00:00.000Z' }
+  const changes = [
+    { statusTo: 'achieved' as const, createdAt: '2026-10-08T09:00:00.000Z' },
+    { statusTo: null, createdAt: '2026-09-20T09:00:00.000Z' },
+    { statusTo: 'in_progress' as const, createdAt: '2026-09-15T09:00:00.000Z' },
+  ]
+  // Kesinleşmemiş rapor bugünkü durumu gösterir.
+  assert.equal(developmentGoalStatusAt(goal, changes, null), 'achieved')
+  // Kesinleşmiş rapor o anki son durum değişikliğini esas alır.
+  assert.equal(developmentGoalStatusAt(goal, changes, '2026-10-06T09:00:00.000Z'), 'in_progress')
+  assert.equal(developmentGoalStatusAt(goal, changes, '2026-09-12T09:00:00.000Z'), 'open')
+  assert.equal(developmentGoalStatusAt(goal, [], '2026-10-06T09:00:00.000Z'), 'open')
+  // Kesinleştirmeden sonra açılan hedef rapora girmez.
+  assert.equal(developmentGoalStatusAt(goal, changes, '2026-09-01T09:00:00.000Z'), null)
+  for (const status of ['open', 'in_progress', 'achieved'] as const)
+    assert.equal(isGoalInPerformanceReport(status), true)
+  assert.equal(isGoalInPerformanceReport('dropped'), false)
+  assert.equal(isGoalInPerformanceReport(null), false)
 })

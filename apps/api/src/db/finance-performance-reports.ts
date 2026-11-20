@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, or, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 
 import type {
@@ -6,6 +6,7 @@ import type {
   ObservationCriterion,
   ObservationRating,
 } from '@kampus/school-core/lib/finance-lesson-observations.ts'
+import type { DevelopmentGoalStatus } from '@kampus/school-core/lib/finance-observation-debriefs.ts'
 import type { PerformanceGoal } from '@kampus/school-core/lib/finance-performance.ts'
 import type { PerformanceReportAckChannel } from '@kampus/school-core/lib/finance-performance-reports.ts'
 import type { SelfEvaluationStatus } from '@kampus/school-core/lib/finance-self-evaluations.ts'
@@ -16,6 +17,7 @@ import {
   lessonObservations,
   lessonObservationTemplateVersions,
 } from './schema/finance-lesson-observations.ts'
+import { staffDevelopmentGoalNotes } from './schema/finance-observation-debriefs.ts'
 import { performanceReviews } from './schema/finance-performance.ts'
 import { performanceReports } from './schema/finance-performance-reports.ts'
 import { selfEvaluationResponses } from './schema/finance-self-evaluations.ts'
@@ -23,7 +25,7 @@ import { selfEvaluationResponses } from './schema/finance-self-evaluations.ts'
 /**
  * Performans raporu deposu (DOM-FIN-137; ON-220). Kurum kapsamlıdır: ilk parametre
  * `institutionId`. Kural core `lib/finance-performance-reports.ts`'tedir. Rapor içeriği performans
- * kaydı, öz değerlendirme ve ders gözlemi tablolarından yalnız okunur; bu depo yalnız
+ * kaydı, öz değerlendirme, ders gözlemi ve gelişim hedefi tablolarından yalnız okunur; bu depo yalnız
  * `performance_reports` (kesinleştirme ve "okudum" kaydı) yazar.
  */
 
@@ -280,4 +282,39 @@ export async function periodReportObservations(
     )
     .orderBy(asc(lessonObservations.observedDate), asc(lessonObservations.id))
   return rows.map((row) => ({ ...row, completedAt: row.completedAt?.toISOString() ?? null }))
+}
+
+/**
+ * Hedeflerin durum değişiklikleri (takip notlarından, `statusTo` dolu olanlar), hedefe göre
+ * (K-468). Durum yalnız takip notuyla değiştiği için kesinleştirme anındaki durum bundan çıkar.
+ */
+export async function goalStatusChanges(
+  db: Database,
+  institutionId: string,
+  goalIds: readonly string[],
+): Promise<Map<string, { statusTo: DevelopmentGoalStatus; createdAt: string }[]>> {
+  const changes = new Map<string, { statusTo: DevelopmentGoalStatus; createdAt: string }[]>()
+  if (goalIds.length === 0) return changes
+  const rows = await db
+    .select({
+      goalId: staffDevelopmentGoalNotes.goalId,
+      statusTo: staffDevelopmentGoalNotes.statusTo,
+      createdAt: staffDevelopmentGoalNotes.createdAt,
+    })
+    .from(staffDevelopmentGoalNotes)
+    .where(
+      and(
+        eq(staffDevelopmentGoalNotes.institutionId, institutionId),
+        inArray(staffDevelopmentGoalNotes.goalId, [...new Set(goalIds)]),
+        isNotNull(staffDevelopmentGoalNotes.statusTo),
+      ),
+    )
+    .orderBy(asc(staffDevelopmentGoalNotes.createdAt), asc(staffDevelopmentGoalNotes.id))
+  for (const row of rows) {
+    if (row.statusTo === null) continue
+    const list = changes.get(row.goalId) ?? []
+    list.push({ statusTo: row.statusTo, createdAt: row.createdAt.toISOString() })
+    changes.set(row.goalId, list)
+  }
+  return changes
 }

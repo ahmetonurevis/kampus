@@ -8,13 +8,14 @@ import { expectNoHorizontalOverflow } from './support/ui.ts'
 
 // Performans raporu (ON-220; DOM-FIN-137, K-466…K-468). Kural dalları birim ve API testlerindedir
 // (`tests/finance-performance-reports.test.ts`, `apps/api/test/finance-performance-reports.test.ts`);
-// burada dönem, puan, gözlem ve kapanış API'den kurulur; yönetici "Performans" sekmesinde dönem
+// burada dönem, puan, gözlem, gelişim hedefi ve kapanış API'den kurulur; yönetici "Performans" sekmesinde dönem
 // özetini ve raporu görür, raporu görüşüyle kesinleştirir, personelin "okudum" kaydını girer ve
 // PDF'i indirir.
 
 const ADMIN_URL = '/yonetici/finans?gorunum=performans'
 const PERIOD = 'Güz performans raporu'
 const OPINION = 'Okuma hedefine ulaştı; veli iletişimi örnek.'
+const GOAL = 'Sınıf içi soru tekniği'
 
 type Data<T> = { data: T }
 const key = () => ({ 'idempotency-key': randomUUID() })
@@ -116,6 +117,20 @@ test.describe('ON-220: performans raporu', () => {
     )
     expect(completed.status, JSON.stringify(completed.body)).toBe(200)
 
+    // Döneme bağlı açık bir gelişim hedefi (DOM-FIN-133); rapora "Gelişim hedefleri" bölümüyle girer.
+    const goal = await admin.post(
+      '/api/v1/finance/development-goals',
+      {
+        teacherMembershipId: membershipId,
+        performancePeriodId: periodId,
+        title: GOAL,
+        successCriterion: 'Derste en az beş açık uçlu soru',
+        followUpDate: istanbulDay(10),
+      },
+      key(),
+    )
+    expect(goal.status, JSON.stringify(goal.body)).toBe(201)
+
     periodVersion = await advance(admin, periodId, periodVersion, ['interim', 'evaluation'])
     const scored = await apiRequest(
       admin.context,
@@ -147,6 +162,8 @@ test.describe('ON-220: performans raporu', () => {
     let dialog = page.getByRole('dialog', { name: `${teacher} · performans raporu` })
     await expect(dialog.getByRole('heading', { name: 'Dönem sonu değerlendirmesi' })).toBeVisible()
     await expect(dialog.getByRole('heading', { name: 'Ders gözlemleri' })).toBeVisible()
+    await expect(dialog.getByRole('heading', { name: 'Gelişim hedefleri' })).toBeVisible()
+    await expect(dialog.getByRole('list', { name: 'Gelişim hedefleri' })).toContainText(GOAL)
     await expect(dialog.getByText('Yanıt yok', { exact: false })).toBeVisible()
     // Görüş en az 10 karakter (K-467).
     await dialog.getByRole('textbox', { name: 'Yönetici görüşü' }).fill('Kısa')
@@ -172,7 +189,14 @@ test.describe('ON-220: performans raporu', () => {
     const downloading = page.waitForEvent('download')
     await pdf.getByRole('button', { name: 'PDF’yi indir' }).click()
     const text = await pdfText(await downloading)
-    for (const expected of ['PERFORMANS RAPORU', teacher, 'Okuma becerisi', 'Yüz yüze görüşme'])
+    for (const expected of [
+      'PERFORMANS RAPORU',
+      teacher,
+      'Okuma becerisi',
+      'Gelişim hedefleri',
+      GOAL,
+      'Yüz yüze görüşme',
+    ])
       expect(text).toContain(expected)
     await page.keyboard.press('Escape')
     await expect(pdf).toBeHidden()

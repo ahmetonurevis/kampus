@@ -243,6 +243,10 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // açmaz (routes/finance-performance-reports.ts; DOM-FIN-137, ON-220).
   'POST /api/v1/finance/performance-reviews/{reviewId}/report/finalize',
   'POST /api/v1/finance/performance-reviews/{reviewId}/report/acknowledge',
+  // Mentorluk eşleşmesi ve görüşme kaydı; çift tıklama ikinci eşleşmeyi ya da görüşmeyi yazmaz
+  // (routes/finance-teacher-mentorships.ts; DOM-FIN-136, ON-219).
+  'POST /api/v1/finance/teacher-mentorships',
+  'POST /api/v1/finance/teacher-mentorships/{mentorshipId}/meetings',
 ]
 // Onur: kayıt ve finans sonu
 

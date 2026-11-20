@@ -3703,6 +3703,77 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: yeni öğretmen mentorluğu (ON-219; DOM-FIN-136, K-465).
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'liste',
+          'GET /api/v1/finance/teacher-mentorship-settings',
+          "call('GET', SETTINGS, a.admin)",
+        ],
+        [
+          'gövde',
+          'PATCH /api/v1/finance/teacher-mentorship-settings',
+          "call('PATCH', SETTINGS, a.admin, {",
+        ],
+        [
+          'liste',
+          'GET /api/v1/finance/teacher-mentorship-summary',
+          "call('GET', SUMMARY, a.admin)",
+        ],
+        [
+          'liste',
+          'GET /api/v1/finance/teacher-mentorship-onboarding-options',
+          "call('GET', ONBOARDING, a.admin)",
+        ],
+        ['liste', 'GET /api/v1/finance/teacher-mentorships', "call('GET', MENTORSHIPS, a.admin)"],
+        ['gövde', 'POST /api/v1/finance/teacher-mentorships', 'institutionId: b.id,'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/teacher-mentorships/:mentorshipId',
+          '`${MENTORSHIPS}/${String(rowB.id)}`, a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/teacher-mentorships/:mentorshipId/meetings',
+          'meet(a.admin, withMeeting)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/teacher-mentorships/:mentorshipId/meetings/:meetingId/archive',
+          'archiveB, a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/teacher-mentorships/:mentorshipId/checklist/:itemId/complete',
+          'tick(a.admin, withMeeting, itemB)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/teacher-mentorships/:mentorshipId/checklist/:itemId/reopen',
+          "tick(a.admin, withMeeting, itemB, 'reopen')",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/teacher-mentorships/:mentorshipId/complete',
+          'finish(a.admin, withMeeting)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/teacher-mentorships/:mentorshipId/end',
+          'endEarly(a.admin, withMeeting',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-teacher-mentorships.test.ts',
+        'DOM-FIN-136: başka kurumun eşleşmesi, görüşmesi ve maddesi 404 ve değişmez; gövdedeki institutionId 400',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

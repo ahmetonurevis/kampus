@@ -300,7 +300,7 @@ const VIEWS = {
   professionalDevelopment: { label: 'Mesleki gelişim', param: 'mesleki-gelisim' },
   orgChart: { label: 'Organizasyon', param: 'organizasyon' },
   jobPostings: { label: 'İş ilanları', param: 'is-ilanlari' },
-  departmentMeetings: { label: 'Zümre toplantıları', param: 'zumre-toplantilari' },
+  departmentMeetings: { label: 'Kurul ve zümre toplantıları', param: 'kurul-toplantilari' },
   lessonObservations: { label: 'Ders gözlemleri', param: 'ders-gozlemleri' },
   developmentGoals: { label: 'Gelişim hedefleri', param: 'gelisim-hedefleri' },
   teacherMentorships: { label: 'Mentorluk', param: 'mentorluk' },
@@ -363,7 +363,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Organizasyon şeması (DOM-FIN-129) yalnız yöneticidedir; atama personel verisidir (K-444).
  * İş ilanları (DOM-FIN-128) yalnız yöneticidedir; aday verisi kişiseldir, ön büro başvuruyu
  * yalnız API'den girer (K-440).
- * Zümre toplantıları (DOM-FIN-132) yalnız yöneticidedir (K-451).
+ * Kurul ve zümre toplantıları (DOM-FIN-132, DOM-FIN-135) yalnız yöneticidedir (K-451).
  * Ders gözlemleri (DOM-FIN-130) yalnız yöneticidedir; gözlem kişisel veridir (K-447).
  * Gelişim hedefleri (DOM-FIN-133) yalnız yöneticidedir; hedef kişisel veridir (K-456).
  * Mentorluk (DOM-FIN-136) yalnız yöneticidedir; görüşme notu kişisel veridir (K-465).

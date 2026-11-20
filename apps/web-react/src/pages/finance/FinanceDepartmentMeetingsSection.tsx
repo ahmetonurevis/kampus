@@ -2,20 +2,25 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
 import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import {
+  useArchiveDepartmentMeetingTemplate,
   useCreateDepartmentDecision,
   useCreateDepartmentMeeting,
+  useCreateDepartmentMeetingTemplate,
   useDepartmentDecisions,
   useDepartmentMeeting,
   useDepartmentMeetings,
   useDepartmentMeetingSubjects,
+  useDepartmentMeetingTemplates,
   useFinalizeDepartmentMeeting,
   useFollowUpDepartmentDecision,
   useRemoveDepartmentDecision,
   useUpdateDepartmentDecision,
   useUpdateDepartmentMeeting,
+  useUpdateDepartmentMeetingTemplate,
   type DepartmentMeeting,
   type DepartmentMeetingDecision,
   type DepartmentMeetingRow,
+  type DepartmentMeetingTemplate,
 } from '@kampus/react-shared/use-finance-department-meetings.ts'
 import { useCertificateStaff } from '@kampus/react-shared/use-finance-staff-certificates.ts'
 import {
@@ -27,8 +32,12 @@ import {
   DEPARTMENT_MEETING_KINDS,
   DEPARTMENT_MEETING_STATUS_LABELS,
   DEPARTMENT_MEETING_STATUSES,
+  MEETING_BOARD_LABELS,
+  MEETING_BOARDS,
+  meetingTitle,
   type DepartmentMeetingKind,
   type DepartmentMeetingStatus,
+  type MeetingBoard,
 } from '@kampus/school-core/lib/finance-department-meetings.ts'
 import { dateLabel, dayKey } from '@kampus/school-core/lib/format.ts'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
@@ -42,10 +51,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
+import { useCoreAll } from '@/hooks/use-core-collection.ts'
 import { useDepartmentMeetingMinutesPdf } from '@/hooks/use-finance-department-meeting-pdf.ts'
 import { useDebouncedValue } from '@/hooks/use-debounced-value.ts'
 import { useListState } from '@/hooks/use-list-state.ts'
-import { DEPARTMENT_MEETING_MINUTES_TITLE } from '@/lib/pdf/templates/finance-department-meeting-minutes.ts'
+import { meetingMinutesTitle } from '@/lib/pdf/templates/finance-department-meeting-minutes.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { notify } from '@/lib/notify.ts'
 import { RootError } from '../management/FormParts.tsx'
@@ -59,25 +69,42 @@ import {
   decisionFormSchema,
   emptyDecisionForm,
   emptyMeetingForm,
+  emptyTemplateForm,
   followUpFormSchema,
   meetingBody,
   meetingFormField,
   meetingFormFrom,
   meetingFormSchema,
   meetingStaffOptions,
+  suggestedItems,
+  templateBody,
+  templateFormField,
+  templateFormFrom,
+  templateFormSchema,
+  templateUpdateBody,
+  withTemplateAgenda,
   type AttendanceChoice,
   type DecisionFormValues,
   type FollowUpFormValues,
   type MeetingFormValues,
   type MeetingStaffOption,
+  type TemplateFormValues,
 } from './finance-department-meeting-forms.ts'
 
 const NO_SORT: readonly string[] = []
-const MOBILE = ['date', 'subject', 'status']
+const MOBILE = ['date', 'title', 'status']
+const BOARD_FILTER = {
+  key: 'board',
+  label: 'Kurul',
+  type: 'select' as const,
+  options: MEETING_BOARDS.map((value) => ({ value, label: MEETING_BOARD_LABELS[value] })),
+}
+const BOARD_FILTERS = [BOARD_FILTER]
 const FILTERS = [
+  BOARD_FILTER,
   {
     key: 'kind',
-    label: 'Tür',
+    label: 'Zaman',
     type: 'select' as const,
     options: DEPARTMENT_MEETING_KINDS.map((value) => ({
       value,
@@ -100,6 +127,7 @@ const STAFF_PAGE = { page: 1, pageSize: 100 } as const
 const VIEW_OPTIONS = [
   { value: 'meetings', label: 'Tutanaklar' },
   { value: 'overdue', label: 'Termini geçmiş kararlar' },
+  { value: 'templates', label: 'Gündem şablonları' },
 ] as const
 type View = (typeof VIEW_OPTIONS)[number]['value']
 
@@ -108,9 +136,15 @@ const isKind = (value: string | null): value is DepartmentMeetingKind =>
   (DEPARTMENT_MEETING_KINDS as readonly (string | null)[]).includes(value)
 const isStatus = (value: string | null): value is DepartmentMeetingStatus =>
   (DEPARTMENT_MEETING_STATUSES as readonly (string | null)[]).includes(value)
+const isBoard = (value: string | null): value is MeetingBoard =>
+  (MEETING_BOARDS as readonly (string | null)[]).includes(value)
+const boardQuery = (value: unknown) => {
+  const board = text(value)
+  return isBoard(board) ? { board } : {}
+}
 const dayText = (day: string) => dateLabel(`${day}T09:00:00.000Z`, { year: 'numeric' })
 
-/** Personel seçenekleri (zümre katılımcısı, başkan, sorumlu). */
+/** Personel seçenekleri (kurul ya da zümre katılımcısı, başkan, sorumlu). */
 function useMeetingStaff(listed: ReadonlySet<string>) {
   const staff = useCertificateStaff(STAFF_PAGE)
   const options = useMemo(
@@ -121,9 +155,11 @@ function useMeetingStaff(listed: ReadonlySet<string>) {
 }
 
 /**
- * Zümre toplantısı tutanağı (DOM-FIN-132; ON-217): Finans "Zümre toplantıları" sekmesi, yalnız
- * yönetici (K-451). Taslak tutanak açılır, gündem, katılım ve kararlar yazılır; imza günüyle
- * kesinleşen tutanakta yalnız karar takibi değişir (K-453). Tutanak PDF'i web'de üretilir.
+ * Kurul ve zümre toplantısı tutanağı (DOM-FIN-132, DOM-FIN-135; ON-217, ON-218): Finans "Kurul ve
+ * zümre toplantıları" sekmesi, yalnız yönetici (K-451). Zümre toplantısı, öğretmenler kurulu ve
+ * şube öğretmenler kurulu (K-460); gündem kurul türünün şablonundan doldurulur (K-461). Taslak
+ * tutanak açılır, gündem, katılım ve kararlar yazılır; imza günüyle kesinleşen tutanakta yalnız
+ * karar takibi değişir (K-453). Tutanak PDF'i web'de, kurul türünün başlığıyla üretilir (K-462).
  */
 export function FinanceDepartmentMeetingsSection() {
   const [view, setView] = useState<View>('meetings')
@@ -131,39 +167,38 @@ export function FinanceDepartmentMeetingsSection() {
   const [openId, setOpenId] = useState<string | null>(null)
   return (
     <section
-      aria-labelledby="zumre-toplantilari"
+      aria-labelledby="kurul-toplantilari"
       className="panel overflow-hidden rounded-card border bg-surface"
     >
       <header className="panel-heading flex flex-wrap items-start justify-between gap-3 px-6 pt-6 pb-2">
         <div className="grid gap-1">
-          <h2 id="zumre-toplantilari" className="text-lg font-semibold">
-            Zümre toplantıları
+          <h2 id="kurul-toplantilari" className="text-lg font-semibold">
+            Kurul ve zümre toplantıları
           </h2>
           <p className="text-sm text-muted-foreground">
-            Zümre öğretmenler kurulu tutanakları: gündem, katılım, karar, sorumlu ve termin. Tutanak
-            imza günüyle kesinleşir; sonra yalnız kararların takibi yazılır.
+            Zümre toplantısı, öğretmenler kurulu ve şube öğretmenler kurulu tutanakları: gündem,
+            katılım, karar, sorumlu ve termin. Tutanak imza günüyle kesinleşir; sonra yalnız
+            kararların takibi yazılır.
           </p>
         </div>
         <Button onClick={() => setCreating(true)}>Yeni tutanak</Button>
       </header>
       <div className="px-6">
         <LineTabs
-          label="Zümre görünümü"
+          label="Toplantı görünümü"
           value={view}
           options={VIEW_OPTIONS}
           onChange={(next) => setView(next)}
         />
       </div>
-      {view === 'meetings' ? (
-        <MeetingList onOpen={setOpenId} />
-      ) : (
-        <OverdueDecisions onOpen={setOpenId} />
-      )}
+      {view === 'meetings' ? <MeetingList onOpen={setOpenId} /> : null}
+      {view === 'overdue' ? <OverdueDecisions onOpen={setOpenId} /> : null}
+      {view === 'templates' ? <TemplateList /> : null}
       <Modal
         open={creating}
         onOpenChange={(open) => (open ? undefined : setCreating(false))}
-        title="Yeni zümre tutanağı"
-        description="Başkan katılımcılar arasında “katıldı” olarak işaretlenir. Kararlar tutanak açıldıktan sonra eklenir."
+        title="Yeni tutanak"
+        description="Gündem kurul türünün şablonundan doldurulabilir. Başkan katılımcılar arasında “katıldı” olarak işaretlenir; kararlar tutanak açıldıktan sonra eklenir."
         size="wide"
       >
         {creating ? (
@@ -179,7 +214,7 @@ export function FinanceDepartmentMeetingsSection() {
       <Modal
         open={openId !== null}
         onOpenChange={(open) => (open ? undefined : setOpenId(null))}
-        title="Zümre tutanağı"
+        title="Toplantı tutanağı"
         size="wide"
       >
         {openId !== null ? <MeetingDetail meetingId={openId} /> : null}
@@ -191,7 +226,7 @@ export function FinanceDepartmentMeetingsSection() {
 type Row = {
   id: string
   date: string
-  subject: string
+  title: string
   kind: string
   chair: string
   attendance: string
@@ -200,7 +235,7 @@ type Row = {
 }
 
 function MeetingList({ onOpen }: { onOpen: (id: string) => void }) {
-  const list = useListState('zumre-toplantilari', { urlPrefix: 'zt_' })
+  const list = useListState('kurul-toplantilari', { urlPrefix: 'kt_' })
   const search = useDebouncedValue(list.state.query).trim()
   const kind = text(list.state.filters.kind)
   const status = text(list.state.filters.status)
@@ -208,6 +243,7 @@ function MeetingList({ onOpen }: { onOpen: (id: string) => void }) {
     page: list.state.page,
     pageSize: list.state.pageSize,
     ...(search.length >= 2 ? { q: search } : {}),
+    ...boardQuery(list.state.filters.board),
     ...(isKind(kind) ? { kind } : {}),
     ...(isStatus(status) ? { status } : {}),
   })
@@ -216,7 +252,7 @@ function MeetingList({ onOpen }: { onOpen: (id: string) => void }) {
       meetings.data?.data.map((item): Row => ({
         id: item.id,
         date: dayText(item.meetingDate),
-        subject: item.subjectName,
+        title: meetingTitle(item),
         kind: DEPARTMENT_MEETING_KIND_LABELS[item.kind],
         chair: item.chairName,
         attendance: attendanceText(item),
@@ -228,8 +264,8 @@ function MeetingList({ onOpen }: { onOpen: (id: string) => void }) {
   const columns = useMemo<DataColumn<Row>[]>(
     () => [
       { key: 'date', label: 'Gün' },
-      { key: 'subject', label: 'Zümre' },
-      { key: 'kind', label: 'Tür' },
+      { key: 'title', label: 'Toplantı' },
+      { key: 'kind', label: 'Zaman' },
       { key: 'chair', label: 'Başkan' },
       { key: 'attendance', label: 'Katılım' },
       { key: 'decisions', label: 'Kararlar' },
@@ -251,17 +287,17 @@ function MeetingList({ onOpen }: { onOpen: (id: string) => void }) {
             <Button
               size="sm"
               variant="outline"
-              aria-label={`${row.subject} ${row.date} tutanağını aç`}
+              aria-label={`${row.title} ${row.date} tutanağını aç`}
               onClick={() => onOpen(row.id)}
             >
               Aç
             </Button>
             <PdfDialogButton
               label="PDF"
-              title={DEPARTMENT_MEETING_MINUTES_TITLE}
+              title={meetingMinutesTitle(row.meeting.board)}
               id={row.id}
               usePdf={useDepartmentMeetingMinutesPdf}
-              accessibleName={`${row.subject} ${row.date} tutanak PDF`}
+              accessibleName={`${row.title} ${row.date} tutanak PDF`}
             />
           </span>
         ),
@@ -278,8 +314,8 @@ function MeetingList({ onOpen }: { onOpen: (id: string) => void }) {
       columns={columns}
       filters={FILTERS}
       mobileColumns={MOBILE}
-      caption="Zümre toplantısı tutanakları"
-      empty="Henüz zümre tutanağı yok."
+      caption="Kurul ve zümre toplantısı tutanakları"
+      empty="Henüz tutanak yok."
       emptyFiltered="Bu seçimle eşleşen tutanak yok."
       loading={meetings.isPending}
       fetching={meetings.isFetching && !meetings.isPending}
@@ -304,11 +340,12 @@ type OverdueRow = {
 }
 
 function OverdueDecisions({ onOpen }: { onOpen: (id: string) => void }) {
-  const list = useListState('zumre-geciken-kararlar', { urlPrefix: 'zk_' })
+  const list = useListState('kurul-geciken-kararlar', { urlPrefix: 'kk_' })
   const decisions = useDepartmentDecisions({
     page: list.state.page,
     pageSize: list.state.pageSize,
     overdue: 'true',
+    ...boardQuery(list.state.filters.board),
   })
   const rows = useMemo(
     () =>
@@ -316,7 +353,7 @@ function OverdueDecisions({ onOpen }: { onOpen: (id: string) => void }) {
         id: item.id,
         due: item.dueDate === null ? '—' : dayText(item.dueDate),
         late: `${String(item.overdueDays)} gün`,
-        subject: `${item.subjectName} · ${dayText(item.meetingDate)}`,
+        subject: `${meetingTitle(item)} · ${dayText(item.meetingDate)}`,
         agenda: item.agendaTitle,
         decision: item.text,
         responsible: item.responsibleName,
@@ -356,6 +393,8 @@ function OverdueDecisions({ onOpen }: { onOpen: (id: string) => void }) {
       total={decisions.data?.meta.total ?? 0}
       sortable={NO_SORT}
       columns={columns}
+      filters={BOARD_FILTERS}
+      search={false}
       mobileColumns={['due', 'decision', 'responsible']}
       caption="Termini geçmiş açık kararlar"
       empty="Termini geçmiş açık karar yok."
@@ -380,7 +419,6 @@ function MeetingForm({
 }) {
   const create = useCreateDepartmentMeeting()
   const update = useUpdateDepartmentMeeting()
-  const subjects = useDepartmentMeetingSubjects()
   const listed = useMemo(
     () =>
       new Set(
@@ -397,6 +435,33 @@ function MeetingForm({
   })
   const agenda = useFieldArray({ control: form.control, name: 'agenda' })
   const attendance = useWatch({ control: form.control, name: 'attendance' })
+  const board = useWatch({ control: form.control, name: 'board' })
+  const templateId = useWatch({ control: form.control, name: 'agendaTemplateId' })
+  const subjects = useDepartmentMeetingSubjects(board === 'department')
+  const classes = useCoreAll('classes', {}, { enabled: board === 'class' })
+  const templates = useDepartmentMeetingTemplates({ ...STAFF_PAGE, board })
+  const classOptions = useMemo(
+    () =>
+      (classes.data ?? [])
+        .map((row) => row.record)
+        .filter((record) => record.isActive !== false || record.id === (meeting?.classId ?? null))
+        .sort((a, b) => a.name.localeCompare(b.name, 'tr', { numeric: true })),
+    [classes.data, meeting],
+  )
+  const templateOptions = useMemo(() => {
+    const active = templates.data?.data ?? []
+    // Tutanağın bağlı olduğu şablon arşivlenmişse seçenek olarak kalır (K-461).
+    const linked = meeting?.agendaTemplateId ?? null
+    return linked !== null && !active.some((row) => row.id === linked) && meeting?.board === board
+      ? [...active, { id: linked, name: 'Arşivlenmiş şablon', items: [] }]
+      : active
+  }, [templates.data, meeting, board])
+  const applyTemplate = () => {
+    const template = templateOptions.find((row) => row.id === templateId)
+    if (template === undefined || template.items.length === 0) return
+    agenda.replace(withTemplateAgenda(form.getValues(), template).agenda)
+    notify.success('Gündem şablondan dolduruldu; maddeleri düzenleyebilirsiniz.')
+  }
   const errors = form.formState.errors
   const busy = create.isPending || update.isPending || form.formState.isSubmitting
   const setChoice = (membershipId: string, choice: AttendanceChoice) =>
@@ -412,7 +477,7 @@ function MeetingForm({
     if (meeting === null) {
       const outcome = await create.submit(body, { setError })
       if (outcome.status === 'success') {
-        notify.success('Zümre tutanağı taslak olarak açıldı.')
+        notify.success('Tutanak taslak olarak açıldı.')
         onDone(outcome.data.data.id)
       }
       return
@@ -436,28 +501,73 @@ function MeetingForm({
   return (
     <form
       noValidate
-      aria-label="Zümre tutanağı"
+      aria-label="Toplantı tutanağı"
       className="grid gap-3 sm:grid-cols-2"
       onSubmit={(event) => void onSubmit(event)}
     >
-      <FormField id="zt-zumre" label="Zümre (ders)" error={errors.subjectId}>
+      <FormField id="zt-kurul" label="Kurul türü" error={errors.board}>
         {(control) => (
           <NativeSelect
             {...control}
-            {...form.register('subjectId')}
+            {...form.register('board', {
+              // Başka kurul türünün şablonu bağlanamaz (K-461).
+              onChange: () => form.setValue('agendaTemplateId', ''),
+            })}
             className="w-full"
             disabled={busy}
           >
-            <NativeSelectOption value="">Seçin</NativeSelectOption>
-            {(subjects.data?.data ?? []).map((subject) => (
-              <NativeSelectOption key={subject.id} value={subject.id}>
-                {subject.name}
+            {MEETING_BOARDS.map((value) => (
+              <NativeSelectOption key={value} value={value}>
+                {MEETING_BOARD_LABELS[value]}
               </NativeSelectOption>
             ))}
           </NativeSelect>
         )}
       </FormField>
-      <FormField id="zt-tur" label="Toplantı türü" error={errors.kind}>
+      {board === 'department' ? (
+        <FormField id="zt-zumre" label="Zümre (ders)" error={errors.subjectId}>
+          {(control) => (
+            <NativeSelect
+              {...control}
+              {...form.register('subjectId')}
+              className="w-full"
+              disabled={busy}
+            >
+              <NativeSelectOption value="">Seçin</NativeSelectOption>
+              {(subjects.data?.data ?? []).map((subject) => (
+                <NativeSelectOption key={subject.id} value={subject.id}>
+                  {subject.name}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          )}
+        </FormField>
+      ) : null}
+      {board === 'class' ? (
+        <FormField id="zt-sinif" label="Sınıf (şube)" error={errors.classId}>
+          {(control) => (
+            <NativeSelect
+              {...control}
+              {...form.register('classId')}
+              className="w-full"
+              disabled={busy}
+            >
+              <NativeSelectOption value="">Seçin</NativeSelectOption>
+              {classOptions.map((record) => (
+                <NativeSelectOption key={record.id} value={record.id}>
+                  {record.name}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          )}
+        </FormField>
+      ) : null}
+      {board === 'teachers' ? (
+        <p className="self-end text-sm text-muted-foreground">
+          Öğretmenler kurulunda ders ya da sınıf seçilmez.
+        </p>
+      ) : null}
+      <FormField id="zt-tur" label="Toplantı zamanı" error={errors.kind}>
         {(control) => (
           <NativeSelect {...control} {...form.register('kind')} className="w-full" disabled={busy}>
             {DEPARTMENT_MEETING_KINDS.map((value) => (
@@ -495,6 +605,44 @@ function MeetingForm({
           </NativeSelect>
         )}
       </FormField>
+
+      <div className="grid gap-2 sm:col-span-2 sm:grid-cols-[1fr_auto] sm:items-end">
+        <FormField
+          id="zt-sablon"
+          label="Gündem şablonu (isteğe bağlı)"
+          description="Şablon seçip “Şablondan doldur” ile maddeleri kopyalayın; sonra düzenleyebilirsiniz."
+          error={errors.agendaTemplateId}
+        >
+          {(control) => (
+            <NativeSelect
+              {...control}
+              {...form.register('agendaTemplateId')}
+              className="w-full"
+              disabled={busy}
+            >
+              <NativeSelectOption value="">Şablonsuz</NativeSelectOption>
+              {templateOptions.map((template) => (
+                <NativeSelectOption key={template.id} value={template.id}>
+                  {template.name}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          )}
+        </FormField>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={busy || templateId === ''}
+          onClick={applyTemplate}
+        >
+          Şablondan doldur
+        </Button>
+      </div>
+      {templates.error ? (
+        <div className="sm:col-span-2">
+          <QueryError error={templates.error} onRetry={() => void templates.refetch()} />
+        </div>
+      ) : null}
 
       <fieldset className="grid gap-2 sm:col-span-2">
         <legend className="text-sm font-medium">Gündem maddeleri (görüşülme sırasıyla)</legend>
@@ -646,7 +794,7 @@ function MeetingDetail({ meetingId }: { meetingId: string }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="grid gap-1">
           <h3 className="font-semibold">
-            {data.subjectName} · {DEPARTMENT_MEETING_KIND_LABELS[data.kind]}
+            {meetingTitle(data)} · {DEPARTMENT_MEETING_KIND_LABELS[data.kind]}
           </h3>
           <p className="text-sm text-muted-foreground">
             {dayText(data.meetingDate)} · {data.location} · Başkan {data.chairName}
@@ -665,7 +813,7 @@ function MeetingDetail({ meetingId }: { meetingId: string }) {
           ) : null}
           <PdfDialogButton
             label="Tutanak PDF"
-            title={DEPARTMENT_MEETING_MINUTES_TITLE}
+            title={meetingMinutesTitle(data.board)}
             id={data.id}
             usePdf={useDepartmentMeetingMinutesPdf}
           />
@@ -1034,5 +1182,332 @@ function FinalizeForm({ meeting }: { meeting: DepartmentMeeting }) {
       </div>
       <RootError message={error} />
     </section>
+  )
+}
+
+// --- Gündem şablonları (DOM-FIN-135; K-461) ------------------------------------------------------
+
+type TemplateRow = {
+  id: string
+  board: string
+  name: string
+  items: string
+  usage: string
+  template: DepartmentMeetingTemplate
+}
+
+function TemplateList() {
+  const list = useListState('kurul-gundem-sablonlari', { urlPrefix: 'ks_' })
+  const templates = useDepartmentMeetingTemplates({
+    page: list.state.page,
+    pageSize: list.state.pageSize,
+    ...boardQuery(list.state.filters.board),
+  })
+  const [editing, setEditing] = useState<DepartmentMeetingTemplate | 'new' | null>(null)
+  const [archiving, setArchiving] = useState<DepartmentMeetingTemplate | null>(null)
+  const rows = useMemo(
+    () =>
+      templates.data?.data.map((item): TemplateRow => ({
+        id: item.id,
+        board: MEETING_BOARD_LABELS[item.board],
+        name: item.name,
+        items: `${String(item.items.length)} madde`,
+        usage: item.meetingCount === 0 ? '—' : `${String(item.meetingCount)} toplantı`,
+        template: item,
+      })),
+    [templates.data],
+  )
+  const columns = useMemo<DataColumn<TemplateRow>[]>(
+    () => [
+      { key: 'board', label: 'Kurul' },
+      { key: 'name', label: 'Şablon' },
+      { key: 'items', label: 'Gündem' },
+      { key: 'usage', label: 'Kullanım' },
+      {
+        key: ACTIONS_KEY,
+        label: 'İşlemler',
+        cell: (row) => (
+          <span className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              aria-label={`${row.name} şablonunu düzelt`}
+              onClick={() => setEditing(row.template)}
+            >
+              Düzelt
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-label={`${row.name} şablonunu arşivle`}
+              onClick={() => setArchiving(row.template)}
+            >
+              Arşivle
+            </Button>
+          </span>
+        ),
+      },
+    ],
+    [],
+  )
+  return (
+    <div className="grid gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-6 pt-4">
+        <p className="text-sm text-muted-foreground">
+          Kurul türü başına sıralı gündem maddeleri. Toplantı açılırken gündem şablondan kopyalanır;
+          şablon sonradan değişse de açılmış toplantı değişmez.
+        </p>
+        <Button variant="outline" onClick={() => setEditing('new')}>
+          Yeni şablon
+        </Button>
+      </div>
+      <ServerDataTable
+        list={list}
+        rows={rows}
+        total={templates.data?.meta.total ?? 0}
+        sortable={NO_SORT}
+        columns={columns}
+        filters={BOARD_FILTERS}
+        search={false}
+        mobileColumns={['board', 'name']}
+        caption="Gündem şablonları"
+        empty="Henüz gündem şablonu yok."
+        emptyFiltered="Bu kurul türünde şablon yok."
+        loading={templates.isPending}
+        fetching={templates.isFetching && !templates.isPending}
+        error={
+          templates.error ? (
+            <QueryError error={templates.error} onRetry={() => void templates.refetch()} />
+          ) : undefined
+        }
+      />
+      <Modal
+        open={editing !== null}
+        onOpenChange={(open) => (open ? undefined : setEditing(null))}
+        title={editing === 'new' ? 'Yeni gündem şablonu' : 'Gündem şablonunu düzelt'}
+        description="Önerilen maddeler MEB mevzuatına göre doğrulanmalıdır; kurumunuza göre düzenleyin."
+        size="wide"
+      >
+        {editing !== null ? (
+          <TemplateForm
+            template={editing === 'new' ? null : editing}
+            onDone={() => setEditing(null)}
+          />
+        ) : null}
+      </Modal>
+      <Modal
+        open={archiving !== null}
+        onOpenChange={(open) => (open ? undefined : setArchiving(null))}
+        title="Şablonu arşivle"
+      >
+        {archiving !== null ? (
+          <ArchiveTemplate template={archiving} onDone={() => setArchiving(null)} />
+        ) : null}
+      </Modal>
+    </div>
+  )
+}
+
+function TemplateForm({
+  template,
+  onDone,
+}: {
+  template: DepartmentMeetingTemplate | null
+  onDone: () => void
+}) {
+  const create = useCreateDepartmentMeetingTemplate()
+  const update = useUpdateDepartmentMeetingTemplate()
+  const form = useForm<TemplateFormValues>({
+    resolver: zodResolver(templateFormSchema),
+    defaultValues: template === null ? emptyTemplateForm() : templateFormFrom(template),
+  })
+  const items = useFieldArray({ control: form.control, name: 'items' })
+  const board = useWatch({ control: form.control, name: 'board' })
+  const errors = form.formState.errors
+  const busy = create.isPending || update.isPending || form.formState.isSubmitting
+  const onSubmit = form.handleSubmit(async (values) => {
+    const setError = (name: string, error: { message: string }) => {
+      const field = templateFormField(name.split('.'))
+      if (field) form.setError(field as keyof TemplateFormValues, error, { shouldFocus: true })
+      else form.setError('root.server', error)
+    }
+    const outcome =
+      template === null
+        ? await create.submit(templateBody(values), { setError })
+        : await update.submit(
+            {
+              templateId: template.id,
+              version: template.version,
+              body: templateUpdateBody(values),
+            },
+            { setError },
+          )
+    if (outcome.status === 'success') {
+      notify.success(template === null ? 'Gündem şablonu kaydedildi.' : 'Şablon güncellendi.')
+      onDone()
+    } else if (outcome.status === 'failed' && outcome.error.code === 'version_conflict') onDone()
+  })
+  const itemsError = errors.items?.message ?? errors.items?.root?.message
+  return (
+    <form
+      noValidate
+      aria-label="Gündem şablonu"
+      className="grid gap-3 sm:grid-cols-2"
+      onSubmit={(event) => void onSubmit(event)}
+    >
+      <FormField
+        id="ks-kurul"
+        label="Kurul türü"
+        description={template === null ? undefined : 'Kurul türü şablon açıldıktan sonra değişmez.'}
+        error={errors.board}
+      >
+        {(control) => (
+          <NativeSelect
+            {...control}
+            {...form.register('board')}
+            className="w-full"
+            disabled={busy || template !== null}
+          >
+            {MEETING_BOARDS.map((value) => (
+              <NativeSelectOption key={value} value={value}>
+                {MEETING_BOARD_LABELS[value]}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+        )}
+      </FormField>
+      <FormField id="ks-ad" label="Şablon adı" error={errors.name}>
+        {(control) => (
+          <Input {...control} autoComplete="off" {...form.register('name')} disabled={busy} />
+        )}
+      </FormField>
+      <fieldset className="grid gap-2 sm:col-span-2">
+        <legend className="text-sm font-medium">Gündem maddeleri (görüşülme sırasıyla)</legend>
+        {items.fields.map((field, index) => (
+          <div key={field.id} className="grid gap-2 border-t pt-2 sm:grid-cols-[1fr_auto]">
+            <FormField
+              id={`ks-madde-${String(index)}`}
+              label={`${String(index + 1)}. şablon maddesi`}
+              error={errors.items?.[index]?.title}
+            >
+              {(control) => (
+                <Input
+                  {...control}
+                  autoComplete="off"
+                  {...form.register(`items.${index}.title`)}
+                  disabled={busy}
+                />
+              )}
+            </FormField>
+            <span className="flex flex-wrap items-end gap-1">
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                aria-label={`${String(index + 1)}. şablon maddesini yukarı taşı`}
+                disabled={busy || index === 0}
+                onClick={() => items.move(index, index - 1)}
+              >
+                Yukarı
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                aria-label={`${String(index + 1)}. şablon maddesini aşağı taşı`}
+                disabled={busy || index === items.fields.length - 1}
+                onClick={() => items.move(index, index + 1)}
+              >
+                Aşağı
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                aria-label={`${String(index + 1)}. şablon maddesini sil`}
+                disabled={busy || items.fields.length === 1}
+                onClick={() => items.remove(index)}
+              >
+                Sil
+              </Button>
+            </span>
+          </div>
+        ))}
+        {itemsError ? (
+          <p role="alert" className="text-sm text-danger">
+            {itemsError}
+          </p>
+        ) : null}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={busy}
+            onClick={() => items.append({ title: '' })}
+          >
+            Madde ekle
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={busy}
+            onClick={() => items.replace(suggestedItems(board))}
+          >
+            Önerilen maddeleri yükle
+          </Button>
+        </div>
+      </fieldset>
+      <div className="grid gap-2 sm:col-span-2">
+        <RootError message={errors.root?.server?.message} />
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" disabled={busy} onClick={onDone}>
+            Vazgeç
+          </Button>
+          <Button type="submit" disabled={busy}>
+            {template === null ? 'Şablonu kaydet' : 'Kaydet'}
+          </Button>
+        </div>
+      </div>
+    </form>
+  )
+}
+
+function ArchiveTemplate({
+  template,
+  onDone,
+}: {
+  template: DepartmentMeetingTemplate
+  onDone: () => void
+}) {
+  const archive = useArchiveDepartmentMeetingTemplate()
+  const [error, setError] = useState<string | undefined>()
+  const confirm = async () => {
+    const outcome = await archive.submit(
+      { templateId: template.id, version: template.version },
+      { setError: (_name, issue) => setError(issue.message) },
+    )
+    if (outcome.status === 'success') {
+      notify.success(`${template.name} arşivlendi.`)
+      onDone()
+    } else if (outcome.status === 'failed' && outcome.error.code === 'version_conflict') onDone()
+  }
+  return (
+    <div className="grid gap-3">
+      <p className="text-sm">
+        {template.name} yeni tutanakta seçilmez; bu şablondan açılmış tutanakların gündemi değişmez.
+      </p>
+      <RootError message={error} />
+      <div>
+        <Button
+          onClick={() => void confirm()}
+          disabled={archive.isPending}
+          aria-busy={archive.isPending || undefined}
+        >
+          Şablonu arşivle
+        </Button>
+      </div>
+    </div>
   )
 }

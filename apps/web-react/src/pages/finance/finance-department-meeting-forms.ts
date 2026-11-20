@@ -4,8 +4,12 @@ import type {
   DepartmentMeeting,
   DepartmentMeetingBody,
   DepartmentMeetingDecision,
+  DepartmentMeetingTemplate,
+  DepartmentMeetingTemplateBody,
+  DepartmentMeetingTemplateUpdateBody,
 } from '@kampus/react-shared/use-finance-department-meetings.ts'
 import {
+  agendaFromTemplate,
   departmentDecisionFollowUpSchema,
   departmentDecisionInputSchema,
   departmentMeetingInputSchema,
@@ -13,19 +17,28 @@ import {
   DEPARTMENT_MEETING_ATTENDANCE,
   DEPARTMENT_MEETING_KINDS,
   DEPARTMENT_MEETING_MEMBER_ROLES,
+  meetingAgendaTemplateInputSchema,
+  MEETING_BOARDS,
+  SUGGESTED_AGENDAS,
   type DepartmentDecisionStatus,
   type DepartmentMeetingAttendance,
   type DepartmentMeetingKind,
+  type MeetingBoard,
 } from '@kampus/school-core/lib/finance-department-meetings.ts'
 
-// Zümre tutanağı formlarının saf mantığı (DOM-FIN-132; ON-217): form değerleri gövdeye çevrilir,
-// doğrulama core şemasıyla yapılır ve hata alana düşer. Katılım, seçilebilir personelin her biri
-// için bir seçimdir ("listede değil" ya da katılım durumu).
+// Kurul ve zümre tutanağı formlarının saf mantığı (DOM-FIN-132, DOM-FIN-135; ON-217, ON-218):
+// form değerleri gövdeye çevrilir, doğrulama core şemasıyla yapılır ve hata alana düşer. Katılım,
+// seçilebilir personelin her biri için bir seçimdir ("listede değil" ya da katılım durumu).
+// Kurul türü hedefi belirler (zümrede ders, şube kurulunda sınıf); gündem şablondan doldurulur.
 
 export type AttendanceChoice = '' | DepartmentMeetingAttendance
 
 export type MeetingFormValues = {
+  board: MeetingBoard
   subjectId: string
+  classId: string
+  /** Gündemin doldurulduğu şablon; `''` şablonsuz. */
+  agendaTemplateId: string
   kind: DepartmentMeetingKind
   meetingDate: string
   location: string
@@ -61,8 +74,14 @@ export function meetingStaffOptions(
     )
 }
 
-export const emptyMeetingForm = (meetingDate: string): MeetingFormValues => ({
+export const emptyMeetingForm = (
+  meetingDate: string,
+  board: MeetingBoard = 'department',
+): MeetingFormValues => ({
+  board,
   subjectId: '',
+  classId: '',
+  agendaTemplateId: '',
   kind: 'term_start',
   meetingDate,
   location: '',
@@ -73,7 +92,10 @@ export const emptyMeetingForm = (meetingDate: string): MeetingFormValues => ({
 
 export function meetingFormFrom(meeting: DepartmentMeeting): MeetingFormValues {
   return {
-    subjectId: meeting.subjectId,
+    board: meeting.board,
+    subjectId: meeting.subjectId ?? '',
+    classId: meeting.classId ?? '',
+    agendaTemplateId: meeting.agendaTemplateId ?? '',
     kind: meeting.kind,
     meetingDate: meeting.meetingDate,
     location: meeting.location,
@@ -89,10 +111,16 @@ export function meetingFormFrom(meeting: DepartmentMeeting): MeetingFormValues {
   }
 }
 
-/** Gövde: boş madde kimliği yeni maddedir; katılım seçilenlerden, sırası kişi kimliğine göre. */
+/**
+ * Gövde: boş madde kimliği yeni maddedir; katılım seçilenlerden, sırası kişi kimliğine göre.
+ * Kurul türüne ait olmayan hedef gönderilmez (tür değişince eski seçim kalsa da).
+ */
 export function meetingBody(values: MeetingFormValues): DepartmentMeetingBody {
   return {
-    subjectId: values.subjectId,
+    board: values.board,
+    subjectId: values.board === 'department' ? values.subjectId : null,
+    classId: values.board === 'class' ? values.classId : null,
+    agendaTemplateId: values.agendaTemplateId === '' ? null : values.agendaTemplateId,
     kind: values.kind,
     meetingDate: values.meetingDate,
     location: values.location,
@@ -109,7 +137,16 @@ export function meetingBody(values: MeetingFormValues): DepartmentMeetingBody {
   }
 }
 
-const MEETING_FIELDS = ['subjectId', 'kind', 'meetingDate', 'location', 'chairMembershipId']
+const MEETING_FIELDS = [
+  'board',
+  'subjectId',
+  'classId',
+  'agendaTemplateId',
+  'kind',
+  'meetingDate',
+  'location',
+  'chairMembershipId',
+]
 
 /**
  * Sunucu ya da core hata yolunu form alanına çevirir: gündem maddesi `agenda.<i>.title`, gündem
@@ -130,7 +167,10 @@ export function meetingFormField(path: readonly (string | number)[]): string | n
 
 export const meetingFormSchema = z
   .object({
+    board: z.enum(MEETING_BOARDS),
     subjectId: z.string(),
+    classId: z.string(),
+    agendaTemplateId: z.string(),
     kind: z.enum(DEPARTMENT_MEETING_KINDS),
     meetingDate: z.string(),
     location: z.string(),
@@ -143,7 +183,91 @@ export const meetingFormSchema = z
     if (result.success) return
     const seen = new Set<string>()
     for (const issue of result.error.issues) {
-      const field = meetingFormField(issue.path as (string | number)[]) ?? 'subjectId'
+      const field = meetingFormField(issue.path as (string | number)[]) ?? 'board'
+      if (seen.has(field)) continue
+      seen.add(field)
+      context.addIssue({ code: 'custom', path: field.split('.'), message: issue.message })
+    }
+  })
+
+/**
+ * Şablondan gündem (K-461): maddeler kopyalanır (görüşme boş), şablon iz olarak seçilir; mevcut
+ * maddelerin yerini alır. Taslak düzeltmede de kullanılabilir; kararı olan madde sunucuda korunur.
+ */
+export function withTemplateAgenda(
+  values: MeetingFormValues,
+  template: Pick<DepartmentMeetingTemplate, 'id' | 'items'>,
+): MeetingFormValues {
+  return {
+    ...values,
+    agendaTemplateId: template.id,
+    agenda: agendaFromTemplate(template.items).map((item) => ({
+      id: '',
+      title: item.title,
+      discussion: '',
+    })),
+  }
+}
+
+// --- Gündem şablonu formu (DOM-FIN-135; K-461) ---------------------------------------------------
+
+export type TemplateFormValues = {
+  board: MeetingBoard
+  name: string
+  items: { title: string }[]
+}
+
+/** Yeni şablon önerilen gündemle açılır (H-101); kurum düzenler. */
+export const suggestedItems = (board: MeetingBoard) =>
+  SUGGESTED_AGENDAS[board].map((title) => ({ title }))
+
+export const emptyTemplateForm = (board: MeetingBoard = 'department'): TemplateFormValues => ({
+  board,
+  name: '',
+  items: suggestedItems(board),
+})
+
+export const templateFormFrom = (template: DepartmentMeetingTemplate): TemplateFormValues => ({
+  board: template.board,
+  name: template.name,
+  items: template.items.map((item) => ({ title: item.title })),
+})
+
+export const templateBody = (values: TemplateFormValues): DepartmentMeetingTemplateBody => ({
+  board: values.board,
+  name: values.name,
+  items: values.items.map((item) => ({ title: item.title })),
+})
+
+/** Düzeltme gövdesi: kurul türü değişmez, gönderilmez. */
+export const templateUpdateBody = (
+  values: TemplateFormValues,
+): DepartmentMeetingTemplateUpdateBody => ({
+  name: values.name,
+  items: values.items.map((item) => ({ title: item.title })),
+})
+
+/** Hata yolu → form alanı: `items.<i>.title`, `items`, `name`, `board`; yoksa `null`. */
+export function templateFormField(path: readonly (string | number)[]): string | null {
+  const [head, index, leaf] = path.map(String)
+  if (head === 'name' || head === 'board') return head
+  if (head === 'items')
+    return index !== undefined && leaf === 'title' ? `items.${index}.title` : 'items'
+  return null
+}
+
+export const templateFormSchema = z
+  .object({
+    board: z.enum(MEETING_BOARDS),
+    name: z.string(),
+    items: z.array(z.object({ title: z.string() })),
+  })
+  .superRefine((values, context) => {
+    const result = meetingAgendaTemplateInputSchema.safeParse(templateBody(values))
+    if (result.success) return
+    const seen = new Set<string>()
+    for (const issue of result.error.issues) {
+      const field = templateFormField(issue.path as (string | number)[]) ?? 'name'
       if (seen.has(field)) continue
       seen.add(field)
       context.addIssue({ code: 'custom', path: field.split('.'), message: issue.message })

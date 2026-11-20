@@ -7,21 +7,27 @@ import {
   departmentMeetingFinalizeSchema,
   departmentMeetingInputSchema,
   FINANCE_DEPARTMENT_MEETING_ROLES,
+  meetingAgendaTemplateInputSchema,
+  meetingAgendaTemplateUpdateSchema,
 } from '@kampus/school-core/lib/finance-department-meetings.ts'
 
 import { contextOf } from '../plugins/authenticate.ts'
 import {
+  archiveTemplateCommand,
   createDecisionCommand,
   createMeetingCommand,
+  createTemplateCommand,
   finalizeMeetingCommand,
   followUpDecisionCommand,
   listDecisionsFor,
   listMeetingsFor,
+  listTemplatesFor,
   meetingFor,
   removeDecisionCommand,
   subjectsFor,
   updateDecisionCommand,
   updateMeetingCommand,
+  updateTemplateCommand,
 } from '../services/finance-department-meetings.ts'
 import type { CommandResponse } from '../services/operation-runner.ts'
 import { captureInput, options, rejectIfMatch, requireIfMatch } from './commands.ts'
@@ -37,13 +43,18 @@ import {
   meetingParams,
   meetingResponse,
   subjectListResponse,
+  templateListQuery,
+  templateListResponse,
+  templateParams,
+  templateResponse,
 } from './finance-department-meetings.schemas.ts'
 
 /**
- * Zümre toplantısı tutanağı uçları (docs/domain/finans.md DOM-FIN-132; ON-217). Modül `finance`,
- * yalnız yönetici (K-451). Yeni tutanak ve yeni karar `Idempotency-Key` ister; düzeltme,
- * kesinleştirme, kaldırma ve takip `If-Match`. Kesinleşen tutanakta yalnız karar takibi yazılır
- * (K-453).
+ * Kurul ve zümre toplantısı tutanağı uçları (docs/domain/finans.md DOM-FIN-132, DOM-FIN-135;
+ * ON-217, ON-218). Modül `finance`, yalnız yönetici (K-451). Uç adları zümre modülünden kalır,
+ * öğretmenler kurulu ve şube öğretmenler kurulunu da taşır (K-460; geriye uyum). Yeni tutanak,
+ * yeni karar ve yeni gündem şablonu `Idempotency-Key` ister; düzeltme, kesinleştirme, kaldırma,
+ * arşiv ve takip `If-Match`. Kesinleşen tutanakta yalnız karar takibi yazılır (K-453).
  */
 
 const ROLE = 'Rol: yalnız `yonetici` (K-451). Modül `finance`.'
@@ -51,6 +62,10 @@ const URL = '/api/v1/finance/department-meetings'
 const ITEM = `${URL}/:meetingId`
 const DECISIONS = `${ITEM}/decisions`
 const DECISION = `${DECISIONS}/:decisionId`
+const TEMPLATES = '/api/v1/finance/department-meeting-templates'
+const TEMPLATE = `${TEMPLATES}/:templateId`
+const BOARD =
+  'Kurul türü (`board`, K-460): `department` zümre toplantısı (varsayılan; `subjectId` zorunlu), `teachers` öğretmenler kurulu (ders ve sınıf yok), `class` şube öğretmenler kurulu (`classId` zorunlu; kurumun etkin sınıf kaydı, yoksa 422 `department_meeting_class_not_found`). Türe uymayan hedef 400. İsteğe bağlı `agendaTemplateId` gündemin kopyalandığı şablondur (iz): olmayan 422 `department_meeting_template_not_found`, başka kurul türünün 422 `department_meeting_template_board_mismatch`, arşivli 422 `department_meeting_template_archived` (K-461).'
 
 function sendBody(reply: FastifyReply, result: CommandResponse): unknown {
   if (result.replayed) reply.header('idempotent-replayed', 'true')
@@ -81,8 +96,8 @@ export function registerFinanceDepartmentMeetingRoutes(app: FastifyInstance) {
       schema: {
         operationId: 'listDepartmentMeetings',
         tags,
-        summary: 'Zümre toplantılarını listele',
-        description: `Zümre toplantısı tutanakları, yeniden eskiye (DOM-FIN-132). Ders adında ya da yerde aranır; zümre, tür, durum ve gün aralığıyla süzülür. Satır katılım ve açık karar sayılarını taşır. ${ROLE}`,
+        summary: 'Kurul ve zümre toplantılarını listele',
+        description: `Kurul ve zümre toplantısı tutanakları, yeniden eskiye (DOM-FIN-132, DOM-FIN-135). Ders ya da sınıf adında ya da yerde aranır; kurul türü, zümre, sınıf, zaman, durum ve gün aralığıyla süzülür. Satır katılım ve açık karar sayılarını taşır. ${ROLE}`,
         querystring: meetingListQuery,
         response: { 200: meetingListResponse, ...commandErrors },
       },
@@ -105,8 +120,8 @@ export function registerFinanceDepartmentMeetingRoutes(app: FastifyInstance) {
       schema: {
         operationId: 'createDepartmentMeeting',
         tags,
-        summary: 'Zümre toplantısı tutanağı aç',
-        description: `Tutanak taslak açılır (K-452). Zümre kurumun dersi (yoksa 422 \`department_meeting_subject_not_found\`); başkan ve katılımcılar kurumun etkin öğretmen ya da yönetici üyeliği (olmayan ya da başka kurumun üyeliği 422 \`department_meeting_staff_not_found\`, diğer roller 422 \`department_meeting_not_staff\`, ayrılmış 422 \`department_meeting_staff_inactive\`); başkan katılımcılar arasında "katıldı" olmalı. Gündem 1–30 madde, sıra gövdedeki sıradır. Denetim kaydına alan adları yazılır. \`Idempotency-Key\` zorunlu. ${ROLE}`,
+        summary: 'Kurul ya da zümre toplantısı tutanağı aç',
+        description: `Tutanak taslak açılır (K-452). ${BOARD} Zümre kurumun dersi (yoksa 422 \`department_meeting_subject_not_found\`); başkan ve katılımcılar kurumun etkin öğretmen ya da yönetici üyeliği (olmayan ya da başka kurumun üyeliği 422 \`department_meeting_staff_not_found\`, diğer roller 422 \`department_meeting_not_staff\`, ayrılmış 422 \`department_meeting_staff_inactive\`); başkan katılımcılar arasında "katıldı" olmalı. Gündem 1–30 madde, sıra gövdedeki sıradır. Denetim kaydına alan adları yazılır. \`Idempotency-Key\` zorunlu. ${ROLE}`,
         headers: createHeaders,
         body: departmentMeetingInputSchema,
         response: { 201: meetingResponse, ...commandErrors },
@@ -132,6 +147,7 @@ export function registerFinanceDepartmentMeetingRoutes(app: FastifyInstance) {
         operationId: 'listDepartmentMeetingSubjects',
         tags,
         summary: 'Zümre (ders) seçenekleri',
+        // Uç adı zümreye özgüdür: ders yalnız zümre toplantısında seçilir.
         description: `Kurumun ders kayıtları ve öğretmen kayıtlarının dersleri (izin takvimiyle aynı kaynak, K-421); kurumda ders yoksa müfredat dersleri. ${ROLE}`,
         response: { 200: subjectListResponse, ...commandErrors },
       },
@@ -146,8 +162,8 @@ export function registerFinanceDepartmentMeetingRoutes(app: FastifyInstance) {
       schema: {
         operationId: 'listDepartmentMeetingDecisions',
         tags,
-        summary: 'Zümre kararlarının takip listesi',
-        description: `Kesinleşmiş tutanakların kararları; termine göre (terminsiz sonda). \`overdue=true\` termini İstanbul gününe göre geçmiş açık kararları verir (K-453). Durum, sorumlu ve zümreyle süzülür. ${ROLE}`,
+        summary: 'Kurul ve zümre kararlarının takip listesi',
+        description: `Kesinleşmiş tutanakların kararları; termine göre (terminsiz sonda). \`overdue=true\` termini İstanbul gününe göre geçmiş açık kararları verir (K-453). Durum, sorumlu, zümre ve kurul türüyle süzülür (K-462). ${ROLE}`,
         querystring: decisionListQuery,
         response: { 200: decisionListResponse, ...commandErrors },
       },
@@ -171,7 +187,7 @@ export function registerFinanceDepartmentMeetingRoutes(app: FastifyInstance) {
       schema: {
         operationId: 'getDepartmentMeeting',
         tags,
-        summary: 'Zümre toplantısı tutanağı',
+        summary: 'Kurul ya da zümre toplantısı tutanağı',
         description: `Gündem, katılım ve numaralı kararlar; tutanak PDF'i bu yanıttan üretilir. Olmayan ya da başka kurumun tutanağı 404. ${ROLE}`,
         params: meetingParams,
         response: { 200: meetingResponse, ...commandErrors },
@@ -188,7 +204,7 @@ export function registerFinanceDepartmentMeetingRoutes(app: FastifyInstance) {
         operationId: 'updateDepartmentMeeting',
         tags,
         summary: 'Tutanak taslağını düzelt',
-        description: `Tam gövde (oluşturma kurallarıyla). Var olan gündem maddesi kimliğiyle gönderilir; bilinmeyen kimlik 422 \`department_meeting_agenda_unknown\`, kararı olan maddeyi silmek 422 \`department_meeting_agenda_in_use\`. Toplantı günü açık kararların termininden sonraya alınamaz (422 \`department_meeting_due_before_meeting\`). Tutanakta zaten olan ayrılmış personel kalabilir. Kesinleşmiş tutanak 409 \`department_meeting_finalized\`. \`If-Match\` zorunlu. Başka kurumun tutanağı 404. ${ROLE}`,
+        description: `Tam gövde (oluşturma kurallarıyla; kurul türü taslakta değişebilir). Tutanakta zaten olan ders, sınıf ya da arşivlenmiş şablon kalabilir. Var olan gündem maddesi kimliğiyle gönderilir; bilinmeyen kimlik 422 \`department_meeting_agenda_unknown\`, kararı olan maddeyi silmek 422 \`department_meeting_agenda_in_use\`. Toplantı günü açık kararların termininden sonraya alınamaz (422 \`department_meeting_due_before_meeting\`). Tutanakta zaten olan ayrılmış personel kalabilir. Kesinleşmiş tutanak 409 \`department_meeting_finalized\`. \`If-Match\` zorunlu. Başka kurumun tutanağı 404. ${ROLE}`,
         headers: versionHeaders,
         params: meetingParams,
         body: departmentMeetingInputSchema,
@@ -344,6 +360,110 @@ export function registerFinanceDepartmentMeetingRoutes(app: FastifyInstance) {
         opts.idempotency,
       )
       return decisionResponse.parse(sendBody(reply, result))
+    },
+  )
+  typed.get(
+    TEMPLATES,
+    {
+      preValidation: guard,
+      schema: {
+        operationId: 'listDepartmentMeetingTemplates',
+        tags,
+        summary: 'Gündem şablonlarını listele',
+        description: `Kurumun kurul ve zümre toplantısı gündem şablonları (DOM-FIN-135, K-461), kurul türü sonra ada göre. Varsayılan yalnız etkinler; \`archived=true\` arşivlenmişler. Kurul türüyle süzülür. ${ROLE}`,
+        querystring: templateListQuery,
+        response: { 200: templateListResponse, ...commandErrors },
+      },
+    },
+    async (request) => {
+      const { page, pageSize, board, archived } = request.query
+      const { items, total } = await listTemplatesFor(contextOf(request), {
+        page,
+        pageSize,
+        board,
+        archived: archived === 'true',
+      })
+      return { data: items, meta: { page, pageSize, total } }
+    },
+  )
+
+  typed.post(
+    TEMPLATES,
+    {
+      preValidation: [...guard, rejectIfMatch(), captureInput()],
+      schema: {
+        operationId: 'createDepartmentMeetingTemplate',
+        tags,
+        summary: 'Gündem şablonu aç',
+        description: `Kurul türü, ad (2–120) ve 1–30 sıralı madde (K-461). Kurul türünde aynı adlı etkin şablon 409 \`department_meeting_template_name_taken\`. Toplantı açılırken gündem şablondan kopyalanır, sonra toplantıda düzenlenir. Denetim kaydına alan adları yazılır. \`Idempotency-Key\` zorunlu. ${ROLE}`,
+        headers: createHeaders,
+        body: meetingAgendaTemplateInputSchema,
+        response: { 201: templateResponse, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const result = await createTemplateCommand(
+        contextOf(request),
+        request.commandInput,
+        options(request, 'required').idempotency,
+      )
+      const body = templateResponse.parse(sendBody(reply, result))
+      reply.header('location', `${TEMPLATES}/${body.data.id}`)
+      return body
+    },
+  )
+
+  typed.patch(
+    TEMPLATE,
+    {
+      preValidation: [...guard, requireIfMatch(), captureInput()],
+      schema: {
+        operationId: 'updateDepartmentMeetingTemplate',
+        tags,
+        summary: 'Gündem şablonunu düzelt',
+        description: `Ad ve maddeler (tam gövde); kurul türü değişmez (gövdede 400). Bu şablondan açılmış toplantıların gündemi değişmez (kopya, K-461). Aynı adlı etkin şablon 409 \`department_meeting_template_name_taken\`, arşivli şablon 409 \`department_meeting_template_archived\`. \`If-Match\` zorunlu. Başka kurumun şablonu 404. ${ROLE}`,
+        headers: versionHeaders,
+        params: templateParams,
+        body: meetingAgendaTemplateUpdateSchema,
+        response: { 200: templateResponse, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const opts = options(request, 'optional')
+      const result = await updateTemplateCommand(
+        contextOf(request),
+        request.params.templateId,
+        request.commandInput,
+        expected(opts.expectedVersion),
+        opts.idempotency,
+      )
+      return templateResponse.parse(sendBody(reply, result))
+    },
+  )
+
+  typed.delete(
+    TEMPLATE,
+    {
+      preValidation: [...guard, requireIfMatch()],
+      schema: {
+        operationId: 'archiveDepartmentMeetingTemplate',
+        tags,
+        summary: 'Gündem şablonunu arşivle',
+        description: `Şablon silinmez, arşivlenir (K-461): yeni toplantıya bağlanmaz, bağlı toplantılar etkilenmez. Arşivli şablon 409 \`department_meeting_template_archived\`. \`If-Match\` zorunlu. Başka kurumun şablonu 404. ${ROLE}`,
+        headers: versionHeaders,
+        params: templateParams,
+        response: { 200: templateResponse, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const opts = options(request, 'optional')
+      const result = await archiveTemplateCommand(
+        contextOf(request),
+        request.params.templateId,
+        expected(opts.expectedVersion),
+        opts.idempotency,
+      )
+      return templateResponse.parse(sendBody(reply, result))
     },
   )
 }

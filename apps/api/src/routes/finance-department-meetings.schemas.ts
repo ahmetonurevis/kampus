@@ -6,17 +6,32 @@ import {
   DEPARTMENT_MEETING_ATTENDANCE,
   DEPARTMENT_MEETING_KINDS,
   DEPARTMENT_MEETING_STATUSES,
+  MEETING_BOARDS,
 } from '@kampus/school-core/lib/finance-department-meetings.ts'
 
 import { dataResponse, pageMetaSchema, pageQuerySchema } from './common.schemas.ts'
 
-/** Zümre toplantısı tutanağı şemaları (DOM-FIN-132; ON-217). */
+/** Kurul ve zümre toplantısı tutanağı şemaları (DOM-FIN-132, DOM-FIN-135; ON-217, ON-218). */
+
+const boardSchema = z
+  .enum(MEETING_BOARDS)
+  .describe('Kurul türü: `department` zümre, `teachers` öğretmenler kurulu, `class` şube kurulu')
 
 const meetingFields = {
   id: z.string(),
-  subjectId: z.string().describe('Zümrenin dersi'),
-  subjectName: z.string().describe('Ders adı (toplantı anındaki kopya)'),
-  kind: z.enum(DEPARTMENT_MEETING_KINDS),
+  board: boardSchema,
+  subjectId: z.string().nullable().describe('Zümrenin dersi; yalnız zümre toplantısında'),
+  subjectName: z
+    .string()
+    .nullable()
+    .describe('Ders adı (toplantı anındaki kopya); yalnız zümre toplantısında'),
+  classId: z.string().nullable().describe('Şube kurulunun sınıfı; yalnız şube kurulunda'),
+  className: z
+    .string()
+    .nullable()
+    .describe('Sınıf adı (toplantı anındaki kopya); yalnız şube kurulunda'),
+  agendaTemplateId: z.string().nullable().describe('Gündemin kopyalandığı şablon (iz)'),
+  kind: z.enum(DEPARTMENT_MEETING_KINDS).describe('Toplantı zamanı'),
   meetingDate: z.string().describe('Toplantı günü (YYYY-MM-DD)'),
   location: z.string(),
   chairMembershipId: z.string().describe('Başkanın kurum üyeliği'),
@@ -80,9 +95,17 @@ export const decisionRemoveResponse = dataResponse(z.object({ id: z.string() }))
 
 export const meetingListQuery = z.strictObject({
   ...pageQuerySchema.shape,
-  q: z.string().trim().min(2).max(100).optional().describe('Ders adında ya da yerde arama'),
+  q: z
+    .string()
+    .trim()
+    .min(2)
+    .max(100)
+    .optional()
+    .describe('Ders ya da sınıf adında ya da yerde arama'),
+  board: z.enum(MEETING_BOARDS).optional().describe('Kurul türü'),
   subjectId: z.string().trim().min(1).max(60).optional().describe('Zümre (ders)'),
-  kind: z.enum(DEPARTMENT_MEETING_KINDS).optional().describe('Toplantı türü'),
+  classId: z.string().trim().min(1).max(100).optional().describe('Şube kurulunun sınıfı'),
+  kind: z.enum(DEPARTMENT_MEETING_KINDS).optional().describe('Toplantı zamanı'),
   status: z.enum(DEPARTMENT_MEETING_STATUSES).optional().describe('Tutanak durumu'),
   from: daySchema.optional().describe('Bu günden itibaren (YYYY-MM-DD)'),
   to: daySchema.optional().describe('Bu güne kadar (YYYY-MM-DD); başlangıçtan önceyse liste boş'),
@@ -97,12 +120,15 @@ export const decisionListQuery = z.strictObject({
     .describe('`true`: yalnız termini geçmiş açık kararlar (İstanbul günü)'),
   responsibleMembershipId: z.string().trim().min(1).max(100).optional().describe('Sorumlu'),
   subjectId: z.string().trim().min(1).max(60).optional().describe('Zümre (ders)'),
+  board: z.enum(MEETING_BOARDS).optional().describe('Kurul türü (K-462)'),
 })
 
 const decisionListItem = z.object({
   id: z.string(),
   meetingId: z.string(),
-  subjectName: z.string(),
+  board: boardSchema,
+  subjectName: z.string().nullable().describe('Zümre toplantısında ders adı'),
+  className: z.string().nullable().describe('Şube kurulunda sınıf adı'),
   meetingDate: z.string(),
   meetingKind: z.enum(DEPARTMENT_MEETING_KINDS),
   agendaTitle: z.string().describe('Bağlı gündem maddesi'),
@@ -132,3 +158,29 @@ export const decisionParams = z.object({
   meetingId: z.uuid('Toplantı geçersiz.'),
   decisionId: z.uuid('Karar geçersiz.'),
 })
+
+const templateSchema = z.object({
+  id: z.string(),
+  board: boardSchema,
+  name: z.string(),
+  items: z.array(z.object({ title: z.string() })).describe('Gündem maddeleri, sırasıyla'),
+  archivedAt: z.string().nullable().describe('Arşivlenme anı; etkin şablonda boş'),
+  meetingCount: z.number().int().describe('Bu şablondan açılmış toplantı sayısı'),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  version: z.number().int().describe('`If-Match` için kayıt sürümü'),
+})
+export const templateResponse = dataResponse(templateSchema)
+export const templateListResponse = z.object({
+  data: z.array(templateSchema),
+  meta: pageMetaSchema,
+})
+export const templateListQuery = z.strictObject({
+  ...pageQuerySchema.shape,
+  board: z.enum(MEETING_BOARDS).optional().describe('Kurul türü'),
+  archived: z
+    .enum(['true'])
+    .optional()
+    .describe('`true`: yalnız arşivlenmiş şablonlar; yoksa yalnız etkinler'),
+})
+export const templateParams = z.object({ templateId: z.uuid('Şablon geçersiz.') })

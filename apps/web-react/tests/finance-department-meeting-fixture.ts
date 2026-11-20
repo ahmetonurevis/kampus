@@ -8,8 +8,12 @@ export const AGENDA_B = '00000000-0000-4000-8000-00000000000b'
 export function meetingFixture(overrides: Partial<DepartmentMeeting> = {}): DepartmentMeeting {
   return {
     id: '11111111-1111-4111-8111-111111111111',
+    board: 'department',
     subjectId: 'math',
     subjectName: 'Matematik',
+    classId: null,
+    className: null,
+    agendaTemplateId: null,
     kind: 'term_start',
     meetingDate: '2026-09-10',
     location: 'Öğretmenler odası',

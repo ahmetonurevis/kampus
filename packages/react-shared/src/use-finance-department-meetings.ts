@@ -5,9 +5,10 @@ import { useApiCommand } from './use-api-command.ts'
 import { useApiQuery } from './use-api-query.ts'
 import { useFinanceListQuery } from './use-finance-list-query.ts'
 
-// Zümre toplantısı tutanağı kancaları (`/finance/department-meetings`; DOM-FIN-132, ON-217).
-// Yalnız yönetici (K-451). Yeni tutanak ve karar `Idempotency-Key`; düzeltme, kesinleştirme,
-// kaldırma ve takip `If-Match` ile gider. Komutlar `exclusive`.
+// Kurul ve zümre toplantısı tutanağı kancaları (`/finance/department-meetings`; DOM-FIN-132,
+// DOM-FIN-135, ON-217, ON-218). Yalnız yönetici (K-451). Yeni tutanak, karar ve gündem şablonu
+// `Idempotency-Key`; düzeltme, kesinleştirme, kaldırma, arşiv ve takip `If-Match` ile gider.
+// Komutlar `exclusive`.
 
 type JsonBody<TOperation extends keyof operations> =
   NonNullable<operations[TOperation]['requestBody']> extends {
@@ -37,10 +38,18 @@ export type DepartmentDecisionFollowUpBody = JsonBody<'followUpDepartmentMeeting
 export type DepartmentDecisionQuery = Query<'listDepartmentMeetingDecisions'>
 export type DepartmentDecisionRow =
   Ok<'listDepartmentMeetingDecisions'> extends readonly (infer T)[] ? T : never
+export type DepartmentMeetingTemplate =
+  Ok<'listDepartmentMeetingTemplates'> extends readonly (infer T)[] ? T : never
+export type DepartmentMeetingTemplateQuery = Query<'listDepartmentMeetingTemplates'>
+export type DepartmentMeetingTemplateBody = JsonBody<'createDepartmentMeetingTemplate'>
+export type DepartmentMeetingTemplateUpdateBody = JsonBody<'updateDepartmentMeetingTemplate'>
 
 export const DEPARTMENT_MEETINGS_KEY = ['finance', 'department-meetings'] as const
 const MESSAGES = {
   version_conflict: 'Tutanak başka biri tarafından değiştirildi. Liste güncellendi.',
+}
+const TEMPLATE_MESSAGES = {
+  version_conflict: 'Şablon başka biri tarafından değiştirildi. Liste güncellendi.',
 }
 
 export function useDepartmentMeetings(query: DepartmentMeetingQuery) {
@@ -227,6 +236,66 @@ export function useFollowUpDepartmentDecision() {
     invalidates: [DEPARTMENT_MEETINGS_KEY],
     version: (input) => input.version,
     messages: MESSAGES,
+    exclusive: true,
+  })
+}
+
+// --- Gündem şablonları (DOM-FIN-135; K-461) ------------------------------------------------------
+
+/** Kurumun gündem şablonları; varsayılan yalnız etkinler. */
+export function useDepartmentMeetingTemplates(
+  query: DepartmentMeetingTemplateQuery,
+  enabled = true,
+) {
+  return useFinanceListQuery(
+    {
+      key: [...DEPARTMENT_MEETINGS_KEY, 'templates', query],
+      request: (client, signal) =>
+        client.GET('/api/v1/finance/department-meeting-templates', { params: { query }, signal }),
+    },
+    { enabled },
+  )
+}
+
+export function useCreateDepartmentMeetingTemplate() {
+  return useApiCommand({
+    request: (client, body: DepartmentMeetingTemplateBody, headers: CommandHeaders) =>
+      client.POST('/api/v1/finance/department-meeting-templates', {
+        params: { header: { 'idempotency-key': headers['idempotency-key'] } },
+        body,
+      }),
+    invalidates: [DEPARTMENT_MEETINGS_KEY],
+    exclusive: true,
+  })
+}
+
+export function useUpdateDepartmentMeetingTemplate() {
+  return useApiCommand({
+    request: (
+      client,
+      input: { templateId: string; version: number; body: DepartmentMeetingTemplateUpdateBody },
+      headers: CommandHeaders,
+    ) =>
+      client.PATCH('/api/v1/finance/department-meeting-templates/{templateId}', {
+        params: { path: { templateId: input.templateId }, header: versioned(headers) },
+        body: input.body,
+      }),
+    invalidates: [DEPARTMENT_MEETINGS_KEY],
+    version: (input) => input.version,
+    messages: TEMPLATE_MESSAGES,
+    exclusive: true,
+  })
+}
+
+export function useArchiveDepartmentMeetingTemplate() {
+  return useApiCommand({
+    request: (client, input: { templateId: string; version: number }, headers: CommandHeaders) =>
+      client.DELETE('/api/v1/finance/department-meeting-templates/{templateId}', {
+        params: { path: { templateId: input.templateId }, header: versioned(headers) },
+      }),
+    invalidates: [DEPARTMENT_MEETINGS_KEY],
+    version: (input) => input.version,
+    messages: TEMPLATE_MESSAGES,
     exclusive: true,
   })
 }

@@ -3774,6 +3774,36 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: kurul ve zümre toplantısı gündem şablonu (ON-218; DOM-FIN-135).
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'liste',
+          'GET /api/v1/finance/department-meeting-templates',
+          'listOf(a.admin, TEMPLATES_URL)',
+        ],
+        ['gövde', 'POST /api/v1/finance/department-meeting-templates', 'institutionId: b.id'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/department-meeting-templates/:templateId',
+          'editTemplate(a.admin, bTemplate',
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/department-meeting-templates/:templateId',
+          'archiveTemplate(a.admin, bTemplate',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-department-meetings.test.ts',
+        'DOM-FIN-135: başka kurumun şablonu ve sınıfı 404/422, B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

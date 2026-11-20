@@ -2,12 +2,15 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import {
+  agendaFromTemplate,
+  assertAgendaTemplate,
   assertDecision,
   assertFinalize,
   assertFollowUp,
   assertMeetingDateFitsDecisions,
   assertMeetingEditable,
   assertMeetingPerson,
+  assertTemplateEditable,
   attendanceCounts,
   departmentDecisionFollowUpSchema,
   departmentDecisionInputSchema,
@@ -16,9 +19,16 @@ import {
   DEPARTMENT_MEETING_MEMBER_ROLES,
   FINANCE_DEPARTMENT_MEETING_ROLES,
   isDecisionOverdue,
+  meetingAgendaTemplateInputSchema,
+  meetingAgendaTemplateUpdateSchema,
+  meetingTitle,
+  MEETING_BOARD_LABELS,
+  MEETING_BOARD_MINUTES_TITLES,
+  MEETING_BOARDS,
   mergeAgenda,
   numberDecisions,
   overdueDays,
+  SUGGESTED_AGENDAS,
 } from '../packages/school-core/src/lib/finance-department-meetings.ts'
 
 import { DomainError } from '../packages/school-core/src/lib/errors.ts'
@@ -318,4 +328,138 @@ test('DOM-FIN-132: katılım sayıları', () => {
     ]),
     { attended: 2, absent: 1, excused: 1 },
   )
+})
+
+// --- Kurul türü ve gündem şablonu (DOM-FIN-135; ON-218; K-460…K-462) ---------------------------
+
+test('DOM-FIN-135: K-460 kurul türü varsayılan zümre; hedef türe göre zorunlu ve tekil', () => {
+  assert.deepEqual([...MEETING_BOARDS], ['department', 'teachers', 'class'])
+  const zumre = departmentMeetingInputSchema.parse(BASE)
+  assert.equal(zumre.board, 'department')
+  assert.equal(zumre.classId, null)
+  assert.equal(zumre.agendaTemplateId, null)
+  const withoutSubject = Object.fromEntries(
+    Object.entries(BASE).filter(([key]) => key !== 'subjectId'),
+  )
+  assert.deepEqual(issuePaths(withoutSubject), ['subjectId'])
+  assert.deepEqual(issuePaths({ ...BASE, subjectId: '' }), ['subjectId'])
+
+  const board = departmentMeetingInputSchema.parse({ ...withoutSubject, board: 'teachers' })
+  assert.equal(board.subjectId, null)
+  assert.deepEqual(issuePaths({ ...BASE, board: 'teachers' }), ['subjectId'])
+  assert.deepEqual(issuePaths({ ...withoutSubject, board: 'teachers', classId: 'c1' }), ['classId'])
+  assert.deepEqual(issuePaths({ ...withoutSubject, board: 'class' }), ['classId'])
+  assert.deepEqual(issuePaths({ ...BASE, board: 'class', classId: 'c1' }), ['subjectId'])
+  assert.equal(
+    departmentMeetingInputSchema.parse({ ...withoutSubject, board: 'class', classId: ' c1 ' })
+      .classId,
+    'c1',
+  )
+  assert.deepEqual(issuePaths({ ...BASE, board: 'senate' }), ['board'])
+  assert.deepEqual(issuePaths({ ...BASE, agendaTemplateId: 'sablon' }), ['agendaTemplateId'])
+  assert.deepEqual(issuePaths({ ...BASE, classId: 'x'.repeat(101) }), ['classId', 'classId'])
+})
+
+test('DOM-FIN-135: K-462 toplantı adı kurul türünden', () => {
+  assert.equal(
+    meetingTitle({ board: 'department', subjectName: 'Matematik', className: null }),
+    'Matematik zümresi',
+  )
+  assert.equal(
+    meetingTitle({ board: 'teachers', subjectName: null, className: null }),
+    'Öğretmenler kurulu',
+  )
+  assert.equal(
+    meetingTitle({ board: 'class', subjectName: null, className: '9-A' }),
+    '9-A şube öğretmenler kurulu',
+  )
+  assert.equal(
+    meetingTitle({ board: 'class', subjectName: null, className: null }),
+    MEETING_BOARD_LABELS.class,
+  )
+  assert.equal(
+    meetingTitle({ board: 'department', subjectName: null, className: null }),
+    'Zümre toplantısı',
+  )
+  for (const board of MEETING_BOARDS) {
+    assert.ok(MEETING_BOARD_MINUTES_TITLES[board].endsWith('tutanağı'))
+    assert.ok(SUGGESTED_AGENDAS[board].length >= 1 && SUGGESTED_AGENDAS[board].length <= 30)
+    // Önerilen maddeler şablon şemasından geçer.
+    assert.ok(
+      meetingAgendaTemplateInputSchema.safeParse({
+        board,
+        name: 'Öneri',
+        items: SUGGESTED_AGENDAS[board].map((title) => ({ title })),
+      }).success,
+    )
+  }
+})
+
+test('DOM-FIN-135: K-461 gündem şablonu gövdesi ve kurul türü sabit', () => {
+  const parsed = meetingAgendaTemplateInputSchema.parse({
+    board: 'teachers',
+    name: '  Dönem başı  ',
+    items: [{ title: ' Açılış ' }],
+  })
+  assert.deepEqual(parsed, { board: 'teachers', name: 'Dönem başı', items: [{ title: 'Açılış' }] })
+  const paths = (schema: typeof meetingAgendaTemplateUpdateSchema, input: unknown) => {
+    const result = schema.safeParse(input)
+    return result.success ? [] : result.error.issues.map((issue) => issue.path.join('.'))
+  }
+  assert.deepEqual(paths(meetingAgendaTemplateInputSchema, { ...parsed, items: [] }), ['items'])
+  assert.deepEqual(paths(meetingAgendaTemplateInputSchema, { ...parsed, name: 'x' }), ['name'])
+  assert.deepEqual(
+    paths(meetingAgendaTemplateInputSchema, { ...parsed, items: [{ title: 'a' }] }),
+    ['items.0.title'],
+  )
+  assert.deepEqual(
+    paths(meetingAgendaTemplateInputSchema, {
+      ...parsed,
+      items: Array.from({ length: 31 }, () => ({ title: 'Madde' })),
+    }),
+    ['items'],
+  )
+  assert.deepEqual(paths(meetingAgendaTemplateInputSchema, { ...parsed, board: 'x' }), ['board'])
+  // Düzeltme gövdesinde kurul türü yoktur.
+  assert.deepEqual(paths(meetingAgendaTemplateUpdateSchema, parsed), [''])
+  assert.deepEqual(
+    paths(meetingAgendaTemplateUpdateSchema, { name: 'Ad', items: parsed.items }),
+    [],
+  )
+})
+
+test('DOM-FIN-135: K-461 şablon bağı kurumda, aynı kurul türünde ve etkin olmalı', () => {
+  const check = (
+    template: { board: 'department' | 'teachers' | 'class'; archived: boolean } | null,
+    alreadyLinked = false,
+  ) => codeOf(() => assertAgendaTemplate({ template, board: 'teachers', alreadyLinked }))
+  assert.equal(check({ board: 'teachers', archived: false }), null)
+  assert.equal(check(null), 'department_meeting_template_not_found')
+  assert.equal(
+    check({ board: 'class', archived: false }),
+    'department_meeting_template_board_mismatch',
+  )
+  assert.equal(check({ board: 'teachers', archived: true }), 'department_meeting_template_archived')
+  assert.equal(check({ board: 'teachers', archived: true }, true), null)
+  assert.equal(
+    check({ board: 'class', archived: true }, true),
+    'department_meeting_template_board_mismatch',
+  )
+
+  assert.equal(
+    codeOf(() => assertTemplateEditable(false)),
+    null,
+  )
+  assert.equal(
+    codeOf(() => assertTemplateEditable(true)),
+    'department_meeting_template_archived',
+  )
+
+  // Şablondan gündem: yeni maddeler, görüşme boş; toplantı gövdesinden geçer.
+  const agenda = agendaFromTemplate([{ title: 'Açılış' }, { title: 'Takvim' }])
+  assert.deepEqual(agenda, [
+    { id: null, title: 'Açılış', discussion: null },
+    { id: null, title: 'Takvim', discussion: null },
+  ])
+  assert.ok(departmentMeetingInputSchema.safeParse({ ...BASE, agenda }).success)
 })

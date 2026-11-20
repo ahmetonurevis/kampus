@@ -1037,6 +1037,13 @@
       "when": 1795214909881,
       "tag": "0147_create_teacher_mentorships",
       "breakpoints": true
+    },
+    {
+      "idx": 148,
+      "version": "7",
+      "when": 1795215026512,
+      "tag": "0148_add_meeting_kinds",
+      "breakpoints": true
     }
   ]
 }

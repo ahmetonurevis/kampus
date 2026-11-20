@@ -16,10 +16,19 @@ import {
   meetingFormFrom,
   meetingFormSchema,
   meetingStaffOptions,
+  emptyTemplateForm,
+  suggestedItems,
+  templateBody,
+  templateFormField,
+  templateFormFrom,
+  templateFormSchema,
+  templateUpdateBody,
+  withTemplateAgenda,
 } from '../src/pages/finance/finance-department-meeting-forms.ts'
 import { AGENDA_A, AGENDA_B, meetingFixture } from './finance-department-meeting-fixture.ts'
 
-// Zümre tutanağı formları (DOM-FIN-132; ON-217; K-452, K-453).
+// Kurul ve zümre tutanağı formları (DOM-FIN-132, DOM-FIN-135; ON-217, ON-218; K-452, K-453,
+// K-460, K-461).
 
 const issues = (result: { success: boolean; error?: { issues: { path: PropertyKey[] }[] } }) =>
   result.success ? [] : (result.error?.issues ?? []).map((issue) => issue.path.join('.'))
@@ -54,7 +63,10 @@ test('DOM-FIN-132: tutanak formu gövdeye çevrilir; yeni madde kimliksiz, liste
     attendance: { 'm-chair': 'attended' as const, 'm-2': 'excused' as const, 'm-3': '' as const },
   }
   assert.deepEqual(meetingBody(values), {
+    board: 'department',
     subjectId: 'math',
+    classId: null,
+    agendaTemplateId: null,
     kind: 'term_start',
     meetingDate: '2026-09-10',
     location: 'Öğretmenler odası',
@@ -158,4 +170,108 @@ test('DOM-FIN-132: liste sütun metinleri', () => {
   assert.equal(attendanceText({ attendedCount: 4, attendeeCount: 6 }), '4 / 6 katıldı')
   assert.equal(decisionCountText({ openDecisionCount: 0, decisionCount: 0 }), '—')
   assert.equal(decisionCountText({ openDecisionCount: 2, decisionCount: 5 }), '2 açık / 5')
+})
+
+test('DOM-FIN-135: K-460 kurul türü hedefi belirler; türe ait olmayan seçim gönderilmez', () => {
+  const base = {
+    ...emptyMeetingForm('2026-09-10', 'teachers'),
+    subjectId: 'math',
+    classId: 'c-9a',
+    location: 'Konferans salonu',
+    chairMembershipId: 'm-chair',
+    agenda: [{ id: '', title: 'Açılış', discussion: '' }],
+    attendance: { 'm-chair': 'attended' as const },
+  }
+  const board = meetingBody(base)
+  assert.equal(board.board, 'teachers')
+  assert.equal(board.subjectId, null)
+  assert.equal(board.classId, null)
+  assert.equal(meetingFormSchema.safeParse(base).success, true)
+
+  const section = meetingBody({ ...base, board: 'class' })
+  assert.equal(section.classId, 'c-9a')
+  assert.equal(section.subjectId, null)
+  assert.deepEqual(issues(meetingFormSchema.safeParse({ ...base, board: 'class', classId: '' })), [
+    'classId',
+  ])
+  assert.deepEqual(
+    issues(meetingFormSchema.safeParse({ ...base, board: 'department', subjectId: '' })),
+    ['subjectId'],
+  )
+  assert.equal(meetingFormField(['classId']), 'classId')
+  assert.equal(meetingFormField(['board']), 'board')
+  assert.equal(meetingFormField(['agendaTemplateId']), 'agendaTemplateId')
+
+  const values = meetingFormFrom(
+    meetingFixture({
+      board: 'class',
+      subjectId: null,
+      subjectName: null,
+      classId: 'c-9a',
+      className: '9-A',
+      agendaTemplateId: '22222222-2222-4222-8222-222222222222',
+    }),
+  )
+  assert.equal(values.board, 'class')
+  assert.equal(values.subjectId, '')
+  assert.equal(values.classId, 'c-9a')
+  assert.equal(values.agendaTemplateId, '22222222-2222-4222-8222-222222222222')
+})
+
+test('DOM-FIN-135: K-461 şablondan gündem kopyalanır, şablon iz olarak seçilir', () => {
+  const values = {
+    ...emptyMeetingForm('2026-09-10', 'teachers'),
+    agenda: [{ id: AGENDA_A, title: 'Eski madde', discussion: 'Not' }],
+  }
+  const filled = withTemplateAgenda(values, {
+    id: '33333333-3333-4333-8333-333333333333',
+    items: [{ title: 'Açılış ve yoklama' }, { title: 'Çalışma takvimi' }],
+  })
+  assert.equal(filled.agendaTemplateId, '33333333-3333-4333-8333-333333333333')
+  assert.deepEqual(filled.agenda, [
+    { id: '', title: 'Açılış ve yoklama', discussion: '' },
+    { id: '', title: 'Çalışma takvimi', discussion: '' },
+  ])
+  assert.equal(meetingBody(filled).agendaTemplateId, '33333333-3333-4333-8333-333333333333')
+  assert.equal(filled.board, 'teachers')
+})
+
+test('DOM-FIN-135: K-461 şablon formu önerilen gündemle açılır; kurul türü düzeltmede gitmez', () => {
+  const empty = emptyTemplateForm('class')
+  assert.deepEqual(empty.items, suggestedItems('class'))
+  assert.ok(empty.items.length > 0)
+  assert.deepEqual(issues(templateFormSchema.safeParse(empty)), ['name'])
+  const values = { ...empty, name: 'Şube kurulu', items: [{ title: 'Açılış' }] }
+  assert.equal(templateFormSchema.safeParse(values).success, true)
+  assert.deepEqual(templateBody(values), {
+    board: 'class',
+    name: 'Şube kurulu',
+    items: [{ title: 'Açılış' }],
+  })
+  assert.deepEqual(templateUpdateBody(values), {
+    name: 'Şube kurulu',
+    items: [{ title: 'Açılış' }],
+  })
+  assert.deepEqual(issues(templateFormSchema.safeParse({ ...values, items: [] })), ['items'])
+  assert.deepEqual(issues(templateFormSchema.safeParse({ ...values, items: [{ title: 'a' }] })), [
+    'items.0.title',
+  ])
+  assert.equal(templateFormField(['items', 3, 'title']), 'items.3.title')
+  assert.equal(templateFormField(['items']), 'items')
+  assert.equal(templateFormField(['name']), 'name')
+  assert.equal(templateFormField(['board']), 'board')
+  assert.equal(templateFormField(['other']), null)
+
+  const stored = templateFormFrom({
+    id: '33333333-3333-4333-8333-333333333333',
+    board: 'teachers',
+    name: 'Dönem başı',
+    items: [{ title: 'Açılış' }],
+    archivedAt: null,
+    meetingCount: 2,
+    createdAt: '2026-09-01T09:00:00.000Z',
+    updatedAt: '2026-09-01T09:00:00.000Z',
+    version: 1,
+  })
+  assert.deepEqual(stored, { board: 'teachers', name: 'Dönem başı', items: [{ title: 'Açılış' }] })
 })

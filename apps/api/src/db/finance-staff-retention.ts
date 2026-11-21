@@ -14,6 +14,7 @@ import { memberships, users } from './schema/auth.ts'
 import { staffMedicalReports } from './schema/finance-medical-reports.ts'
 import { staffPersonnelFiles } from './schema/finance-personnel-files.ts'
 import { staffPayRates } from './schema/finance-pay-rates.ts'
+import { professionalDevelopmentEnrollments } from './schema/finance-professional-development.ts'
 import { payrollLessonHours } from './schema/finance-payroll-exports.ts'
 import { payrollAdjustments } from './schema/finance-payroll-periods.ts'
 import { sgkEmploymentDates, sgkMissingDays } from './schema/finance-sgk-preparation.ts'
@@ -73,6 +74,14 @@ const CATEGORY_PARTS: Record<StaffRetentionCategory, readonly CategoryPart[]> = 
   health_reports: [docsOfTypes(['health_report'])],
   criminal_records: [docsOfTypes(['criminal_record'])],
   personnel_file: [
+    // Mesleki gelişim katılımları (DOM-FIN-125, DOM-FIN-144; K-489) ve katılım belgeleri: sertifika
+    // özlük belgesine ve gelişim hedefine işaret ettikleri için özlük belgelerinden önce silinir.
+    {
+      table: professionalDevelopmentEnrollments,
+      institutionId: professionalDevelopmentEnrollments.institutionId,
+      membershipId: professionalDevelopmentEnrollments.membershipId,
+      fileId: professionalDevelopmentEnrollments.documentFileId,
+    },
     docsOfTypes(['diploma', 'certificate', 'id_copy', 'other']),
     {
       table: teacherWorkPermits,

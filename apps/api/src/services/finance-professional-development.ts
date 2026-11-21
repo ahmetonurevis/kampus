@@ -13,9 +13,14 @@ import {
   type ProfessionalDevelopmentEnrollmentStatus,
   type ProfessionalDevelopmentProgramInput,
 } from '@kampus/school-core/lib/finance-professional-development.ts'
+import {
+  assertAttendanceKeepsDocuments,
+  assertGoalLink,
+} from '@kampus/school-core/lib/finance-professional-development-hours.ts'
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
 
 import type { Database } from '../db/client.ts'
+import { findGoalOwner } from '../db/finance-professional-development-hours.ts'
 import {
   enrollmentExists,
   findCostCenterActive,
@@ -74,7 +79,11 @@ export function programView(program: StoredProgram) {
     version: program.version,
   }
 }
-export function enrollmentView(enrollment: StoredEnrollment) {
+/**
+ * Katılım görünümü. Belge, sertifika ve gelişim hedefi (DOM-FIN-144; K-488, K-489) yalnız
+ * yöneticiye döner; ön büroya üçü de `null`dır (performans ve özlük verisi).
+ */
+export function enrollmentView(enrollment: StoredEnrollment, full = true) {
   return {
     id: enrollment.id,
     programId: enrollment.programId,
@@ -84,6 +93,26 @@ export function enrollmentView(enrollment: StoredEnrollment) {
     origin: enrollment.origin,
     status: enrollment.status,
     attendedHours: enrollment.attendedHours,
+    document:
+      !full || enrollment.documentFileId === null
+        ? null
+        : {
+            fileId: enrollment.documentFileId,
+            name: enrollment.documentFileName ?? 'belge.pdf',
+            byteSize: enrollment.documentFileBytes,
+          },
+    certificate:
+      !full || enrollment.certificateDocumentId === null
+        ? null
+        : {
+            staffDocumentId: enrollment.certificateDocumentId,
+            documentDate: enrollment.certificateDocumentDate,
+            validUntil: enrollment.certificateValidUntil,
+          },
+    developmentGoal:
+      !full || enrollment.developmentGoalId === null
+        ? null
+        : { id: enrollment.developmentGoalId, title: enrollment.developmentGoalTitle ?? '' },
     statusChangedAt: enrollment.statusChangedAt,
     createdAt: enrollment.createdAt,
     version: enrollment.version,
@@ -117,7 +146,7 @@ export async function listEnrollmentsFor(
 ) {
   await visibleProgram(ctx.db, ctx, programId)
   const { items, total } = await listEnrollments(ctx.db, ctx.institutionId, programId, query)
-  return { items: items.map(enrollmentView), total }
+  return { items: items.map((item) => enrollmentView(item, isManager(ctx))), total }
 }
 
 function toWrite(input: ProfessionalDevelopmentProgramInput): ProgramWrite {
@@ -158,7 +187,7 @@ async function programBody(tx: Database, ctx: ServiceContext, id: string) {
   return { data: programView(saved) }
 }
 
-async function enrollmentBody(tx: Database, ctx: ServiceContext, id: string) {
+export async function enrollmentBody(tx: Database, ctx: ServiceContext, id: string) {
   const saved = await findEnrollment(tx, ctx.institutionId, id)
   if (saved === null) throw new Error('professional development enrollment was not written')
   return { data: enrollmentView(saved) }
@@ -404,6 +433,12 @@ export function updateEnrollmentCommand(
         const parsed = professionalDevelopmentEnrollmentUpdateSchema.parse(input)
         const attendedMinutes =
           parsed.attendedHours === null ? null : hoursToMinutes(parsed.attendedHours)
+        const goalId = parsed.developmentGoalId
+        // Bağ yalnız değişiyorsa denetlenir: kapanmış hedefe kurulmuş eski bağ kalır (K-489).
+        const goal =
+          goalId === undefined || goalId === null || goalId === enrollment.developmentGoalId
+            ? undefined
+            : await findGoalOwner(tx, ctx.institutionId, goalId)
         return {
           run: () => {
             assertEnrollmentUpdate({
@@ -411,7 +446,18 @@ export function updateEnrollmentCommand(
               programMinutes: program.durationMinutes,
               attendedMinutes,
             })
-            return { status: parsed.status, attendedMinutes }
+            assertAttendanceKeepsDocuments({
+              nextStatus: parsed.status,
+              hasDocument: enrollment.documentFileId !== null,
+              hasCertificate: enrollment.certificateDocumentId !== null,
+            })
+            if (goal !== undefined)
+              assertGoalLink({ enrollmentMembershipId: enrollment.membershipId, goal })
+            return {
+              status: parsed.status,
+              attendedMinutes,
+              ...(goalId === undefined ? {} : { developmentGoalId: goalId }),
+            }
           },
         }
       },
@@ -426,6 +472,7 @@ export function updateEnrollmentCommand(
         await auditWork(tx, ctx, 'finance.professional_development.attendance', entity, [
           'status',
           ...(change.attendedMinutes === null ? [] : ['attendedHours']),
+          ...('developmentGoalId' in change ? ['developmentGoalId'] : []),
         ])
         body = await enrollmentBody(tx, ctx, id)
       },

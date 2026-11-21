@@ -4116,6 +4116,56 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: mesleki gelişim saati, belge ve sertifika (ON-215; DOM-FIN-144).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/professional-development-hours', 'listOf(a.admin, HOURS)'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/professional-development-targets/:academicYear',
+          '`${TARGETS}/2026`, a.admin',
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/professional-development-targets/:academicYear',
+          'institutionId: b.id',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/professional-development/:programId/enrollments/:enrollmentId/document',
+          'attach(a, bProgram, bEnrollment',
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/professional-development/:programId/enrollments/:enrollmentId/document',
+          '`${enrollmentUrl(bProgram, bEnrollment)}/document`',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/professional-development/:programId/enrollments/:enrollmentId/document/url',
+          '/document/url`, a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/professional-development/:programId/enrollments/:enrollmentId/certificate',
+          'link(a.admin, bProgram, bEnrollment',
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/professional-development/:programId/enrollments/:enrollmentId/certificate',
+          '`${enrollmentUrl(bProgram, bEnrollment)}/certificate`',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-professional-development-hours.test.ts',
+        'DOM-FIN-144: başka kurumun katılımı, belgesi ve hedefi 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

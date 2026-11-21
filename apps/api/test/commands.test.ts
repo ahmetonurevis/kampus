@@ -281,6 +281,9 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/lost-items',
   'POST /api/v1/finance/lost-item-reports',
   'POST /api/v1/finance/lost-item-disposals',
+  // Katılıma sertifika bağı yüklemeyle yeni özlük belgesi açabilir; çift tıklama ikinci belgeyi
+  // açmaz (routes/finance-professional-development-hours.ts; DOM-FIN-144, ON-215).
+  'POST /api/v1/finance/professional-development/{programId}/enrollments/{enrollmentId}/certificate',
 ]
 // Onur: kayıt ve finans sonu
 

@@ -261,6 +261,13 @@ export const professionalDevelopmentEnrollmentUpdateSchema = z
       .nullable()
       .default(null)
       .describe('Katılım saati; yalnız `attended` durumunda ve zorunlu'),
+    developmentGoalId: z
+      .uuid('Gelişim hedefi geçersiz.')
+      .nullable()
+      .optional()
+      .describe(
+        'Katkı verdiği gelişim hedefi (DOM-FIN-144, K-489); verilmezse bağ değişmez, `null` bağı kaldırır',
+      ),
   })
   .superRefine((value, ctx) => {
     if (value.status === 'attended' && value.attendedHours === null)

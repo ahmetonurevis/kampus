@@ -34,11 +34,15 @@ import {
   type ProfessionalDevelopmentKind,
   type ProfessionalDevelopmentStatus,
 } from '@kampus/school-core/lib/finance-professional-development.ts'
+import { PROFESSIONAL_DEVELOPMENT_TARGET_MAX_HOURS } from '@kampus/school-core/lib/finance-professional-development-hours.ts'
 import type { StaffRole } from '@kampus/school-core/lib/staff-accounts.ts'
 
 import { institutions, memberships } from './auth.ts'
 import { oneOf, requiredColumns } from './columns.ts'
 import { costCenters } from './finance-budget.ts'
+import { staffDevelopmentGoals } from './finance-observation-debriefs.ts'
+import { staffDocuments } from './finance-staff-documents.ts'
+import { files } from './files.ts'
 
 const n = (value: number) => sql.raw(String(value))
 
@@ -136,8 +140,10 @@ export const professionalDevelopmentPrograms = pgTable(
 
 /**
  * Personelin eğitime ataması ya da katılım isteği (DOM-FIN-125; K-432). Personel kurum üyeliğidir;
- * aynı personel aynı eğitime bir kez. Katılım saati yalnız "katıldı" durumunda. Sertifika (ON-215)
- * burada tutulmaz.
+ * aynı personel aynı eğitime bir kez. Katılım saati yalnız "katıldı" durumunda. Katılım belgesi
+ * platform dosyasıdır (bağ türü `professional_development_enrollment`); sertifika ikinci kez
+ * tutulmaz, özlük belgesine (`staff_documents`, tür `certificate`) bağlanır; gelişim hedefi bağı
+ * isteğe bağlıdır (DOM-FIN-144; ON-215; K-488, K-489). Belge ve sertifika yalnız "katıldı"da.
  */
 export const professionalDevelopmentEnrollments = pgTable(
   'professional_development_enrollments',
@@ -152,6 +158,10 @@ export const professionalDevelopmentEnrollments = pgTable(
     origin: text('origin').$type<ProfessionalDevelopmentEnrollmentOrigin>().notNull(),
     status: text('status').$type<ProfessionalDevelopmentEnrollmentStatus>().notNull(),
     attendedMinutes: integer('attended_minutes'),
+    // kvkk: K (katılım belgesi dosyası; açılışı denetimde)
+    documentFileId: uuid('document_file_id'),
+    certificateDocumentId: uuid('certificate_document_id'),
+    developmentGoalId: uuid('development_goal_id'),
     statusChangedAt: timestamp('status_changed_at', { withTimezone: true }).notNull(),
     // kvkk: K
     createdByUserId: text('created_by_user_id').notNull(),
@@ -175,6 +185,21 @@ export const professionalDevelopmentEnrollments = pgTable(
       columns: [table.institutionId, table.membershipId],
       foreignColumns: [memberships.institutionId, memberships.id],
     }).onDelete('restrict'),
+    foreignKey({
+      name: 'professional_development_enrollments_document_file_fkey',
+      columns: [table.institutionId, table.documentFileId],
+      foreignColumns: [files.institutionId, files.id],
+    }).onDelete('restrict'),
+    foreignKey({
+      name: 'professional_development_enrollments_certificate_fkey',
+      columns: [table.institutionId, table.certificateDocumentId],
+      foreignColumns: [staffDocuments.institutionId, staffDocuments.id],
+    }).onDelete('restrict'),
+    foreignKey({
+      name: 'professional_development_enrollments_goal_fkey',
+      columns: [table.institutionId, table.developmentGoalId],
+      foreignColumns: [staffDevelopmentGoals.institutionId, staffDevelopmentGoals.id],
+    }).onDelete('restrict'),
     check(
       'professional_development_enrollments_origin_check',
       oneOf(table.origin, PROFESSIONAL_DEVELOPMENT_ENROLLMENT_ORIGINS),
@@ -188,6 +213,22 @@ export const professionalDevelopmentEnrollments = pgTable(
       sql`((${table.status} = 'attended') = (${table.attendedMinutes} is not null))
         and (${table.attendedMinutes} is null or (${table.attendedMinutes} > 0 and ${table.attendedMinutes} % 30 = 0))`,
     ),
+    // Belge ve sertifika yalnız "katıldı" işaretli katılımda (K-488).
+    check(
+      'professional_development_enrollments_documents_check',
+      sql`${table.status} = 'attended' or (${table.documentFileId} is null and ${table.certificateDocumentId} is null)`,
+    ),
+    uniqueIndex('professional_development_enrollments_document_file_key')
+      .on(table.institutionId, table.documentFileId)
+      .where(sql`${table.documentFileId} is not null`),
+    // Bir sertifika tek katılıma bağlanır (K-488).
+    uniqueIndex('professional_development_enrollments_certificate_key')
+      .on(table.institutionId, table.certificateDocumentId)
+      .where(sql`${table.certificateDocumentId} is not null`),
+    index('professional_development_enrollments_goal_idx').on(
+      table.institutionId,
+      table.developmentGoalId,
+    ),
     uniqueIndex('professional_development_enrollments_member_key').on(
       table.institutionId,
       table.programId,
@@ -196,6 +237,45 @@ export const professionalDevelopmentEnrollments = pgTable(
     index('professional_development_enrollments_membership_idx').on(
       table.institutionId,
       table.membershipId,
+    ),
+  ],
+)
+
+/**
+ * Öğretim yılı başına mesleki gelişim hedef saati (DOM-FIN-144; ON-215; K-487). Kurum ayarıdır;
+ * satırı olmayan yılda hedef tanımsızdır (özet yalnız tamamlanan saati gösterir). Öğretim yılı
+ * başlangıç yılıyla anılır (2026 → 2026–2027); kayıtlı öğretim yılı şart değildir. Hedef tam saattir,
+ * dakika tutulur; hedef kitle personel rolleridir.
+ */
+export const professionalDevelopmentTargets = pgTable(
+  'professional_development_targets',
+  {
+    institutionId: text('institution_id')
+      .notNull()
+      .references(() => institutions.id),
+    academicYear: integer('academic_year').notNull(),
+    targetMinutes: integer('target_minutes').notNull(),
+    appliesToRoles: jsonb('applies_to_roles').$type<StaffRole[]>().notNull(),
+    // kvkk: K
+    updatedByUserId: text('updated_by_user_id').notNull(),
+    ...requiredColumns(),
+  },
+  (table) => [
+    primaryKey({
+      name: 'professional_development_targets_pkey',
+      columns: [table.institutionId, table.academicYear],
+    }),
+    check(
+      'professional_development_targets_year_check',
+      sql`${table.academicYear} between 2000 and 2100`,
+    ),
+    check(
+      'professional_development_targets_minutes_check',
+      sql`${table.targetMinutes} between 60 and ${n(PROFESSIONAL_DEVELOPMENT_TARGET_MAX_HOURS * 60)} and ${table.targetMinutes} % 60 = 0`,
+    ),
+    check(
+      'professional_development_targets_roles_check',
+      sql`jsonb_typeof(${table.appliesToRoles}) = 'array' and jsonb_array_length(${table.appliesToRoles}) between 1 and 3`,
     ),
   ],
 )

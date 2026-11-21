@@ -20909,6 +20909,57 @@
             ],
             "description": "Özlük belgelerinden sertifika özeti (DOM-FIN-113); eğitim grubuyla birlikte bulunur"
           },
+          "professionalDevelopment": {
+            "type": "object",
+            "properties": {
+              "academicYear": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "İçinde bulunulan öğretim yılı (başlangıç yılı)"
+              },
+              "attendedCount": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Yıl içinde katıldığı eğitim sayısı"
+              },
+              "completedHours": {
+                "type": "number",
+                "description": "Tamamlanan mesleki gelişim saati"
+              },
+              "targetHours": {
+                "description": "Hedef; yoksa ya da rolüne uygulanmıyorsa boş",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "missingHours": {
+                "description": "Eksik saat; hedef yoksa boş",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "met": {
+                "description": "Hedef tamamlandı mı; hedef yoksa boş",
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "academicYear",
+              "attendedCount",
+              "completedHours",
+              "targetHours",
+              "missingHours",
+              "met"
+            ],
+            "description": "Mesleki gelişim saati özeti (DOM-FIN-144); eğitim grubuyla birlikte bulunur"
+          },
           "bank": {
             "type": "object",
             "properties": {
@@ -42321,6 +42372,58 @@
             ],
             "additionalProperties": false,
             "description": "Özlük belgelerinden sertifika özeti (DOM-FIN-113); eğitim grubuyla birlikte bulunur"
+          },
+          "professionalDevelopment": {
+            "type": "object",
+            "properties": {
+              "academicYear": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "İçinde bulunulan öğretim yılı (başlangıç yılı)"
+              },
+              "attendedCount": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Yıl içinde katıldığı eğitim sayısı"
+              },
+              "completedHours": {
+                "type": "number",
+                "description": "Tamamlanan mesleki gelişim saati"
+              },
+              "targetHours": {
+                "description": "Hedef; yoksa ya da rolüne uygulanmıyorsa boş",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "missingHours": {
+                "description": "Eksik saat; hedef yoksa boş",
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "met": {
+                "description": "Hedef tamamlandı mı; hedef yoksa boş",
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "academicYear",
+              "attendedCount",
+              "completedHours",
+              "targetHours",
+              "missingHours",
+              "met"
+            ],
+            "additionalProperties": false,
+            "description": "Mesleki gelişim saati özeti (DOM-FIN-144); eğitim grubuyla birlikte bulunur"
           },
           "bank": {
             "type": "object",
@@ -270023,6 +270126,106 @@
                               "null"
                             ]
                           },
+                          "document": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "fileId": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "type": "string",
+                                    "description": "Dosya adı"
+                                  },
+                                  "byteSize": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Boyut; dosya hazır değilse boş"
+                                  }
+                                },
+                                "required": [
+                                  "fileId",
+                                  "name",
+                                  "byteSize"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Katılım belgesi (DOM-FIN-144, K-488); yalnız yöneticiye döner, ön büroya `null`"
+                          },
+                          "certificate": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "staffDocumentId": {
+                                    "type": "string",
+                                    "description": "Sertifika özlük belgesi (DOM-FIN-113)"
+                                  },
+                                  "documentDate": {
+                                    "description": "Sertifika günü (YYYY-MM-DD)",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "validUntil": {
+                                    "description": "Geçerlilik bitişi; süresizse boş",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "staffDocumentId",
+                                  "documentDate",
+                                  "validUntil"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Bağlı sertifika (K-488); yalnız yöneticiye döner, ön büroya `null`"
+                          },
+                          "developmentGoal": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "title"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Katkı verdiği gelişim hedefi (K-489); yalnız yöneticiye döner, ön büroya `null`"
+                          },
                           "statusChangedAt": {
                             "type": "string"
                           },
@@ -270044,6 +270247,9 @@
                           "origin",
                           "status",
                           "attendedHours",
+                          "document",
+                          "certificate",
+                          "developmentGoal",
                           "statusChangedAt",
                           "createdAt",
                           "version"
@@ -270257,6 +270463,106 @@
                             "null"
                           ]
                         },
+                        "document": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "fileId": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string",
+                                  "description": "Dosya adı"
+                                },
+                                "byteSize": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Boyut; dosya hazır değilse boş"
+                                }
+                              },
+                              "required": [
+                                "fileId",
+                                "name",
+                                "byteSize"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Katılım belgesi (DOM-FIN-144, K-488); yalnız yöneticiye döner, ön büroya `null`"
+                        },
+                        "certificate": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "staffDocumentId": {
+                                  "type": "string",
+                                  "description": "Sertifika özlük belgesi (DOM-FIN-113)"
+                                },
+                                "documentDate": {
+                                  "description": "Sertifika günü (YYYY-MM-DD)",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "validUntil": {
+                                  "description": "Geçerlilik bitişi; süresizse boş",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "staffDocumentId",
+                                "documentDate",
+                                "validUntil"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Bağlı sertifika (K-488); yalnız yöneticiye döner, ön büroya `null`"
+                        },
+                        "developmentGoal": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "title": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "title"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Katkı verdiği gelişim hedefi (K-489); yalnız yöneticiye döner, ön büroya `null`"
+                        },
                         "statusChangedAt": {
                           "type": "string"
                         },
@@ -270278,6 +270584,9 @@
                         "origin",
                         "status",
                         "attendedHours",
+                        "document",
+                        "certificate",
+                        "developmentGoal",
                         "statusChangedAt",
                         "createdAt",
                         "version"
@@ -270383,7 +270692,7 @@
         "tags": [
           "finance-professional-development"
         ],
-        "description": "Atandı, katıldı ya da tamamlamadı (K-432). \"Katıldı\" katılım saati ister (yarım saat adımlı, eğitim süresini aşamaz: 422 `professional_development_hours_exceed`); diğer durumlarda saat girilmez. Arşivdeki eğitimin katılımı değişmez (409 `professional_development_archived`). Sertifika ayrı iştir (ON-215). `If-Match` zorunlu. Başka kurumun kaydı 404. Rol: yalnız `yonetici` (K-430). Modül `finance`.",
+        "description": "Atandı, katıldı ya da tamamlamadı (K-432). \"Katıldı\" katılım saati ister (yarım saat adımlı, eğitim süresini aşamaz: 422 `professional_development_hours_exceed`); diğer durumlarda saat girilmez. Arşivdeki eğitimin katılımı değişmez (409 `professional_development_archived`). Belgesi ya da sertifikası olan katılım \"katıldı\"dan çıkarılamaz (409 `professional_development_attendance_has_documents`; DOM-FIN-144). İsteğe bağlı `developmentGoalId` katılımı aynı personelin açık ya da süren gelişim hedefine katkı olarak işaretler (başka personelin ya da yoksa 422 `professional_development_goal_not_found`, kapanmış 422 `professional_development_goal_closed`; K-489); verilmezse bağ değişmez, `null` kaldırır. `If-Match` zorunlu. Başka kurumun kaydı 404. Rol: yalnız `yonetici` (K-430). Modül `finance`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -270409,6 +270718,19 @@
                         "exclusiveMinimum": 0,
                         "maximum": 2000,
                         "multipleOf": 0.5
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "developmentGoalId": {
+                    "description": "Katkı verdiği gelişim hedefi (DOM-FIN-144, K-489); verilmezse bağ değişmez, `null` bağı kaldırır",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                       },
                       {
                         "type": "null"
@@ -270517,6 +270839,106 @@
                             "null"
                           ]
                         },
+                        "document": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "fileId": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string",
+                                  "description": "Dosya adı"
+                                },
+                                "byteSize": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Boyut; dosya hazır değilse boş"
+                                }
+                              },
+                              "required": [
+                                "fileId",
+                                "name",
+                                "byteSize"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Katılım belgesi (DOM-FIN-144, K-488); yalnız yöneticiye döner, ön büroya `null`"
+                        },
+                        "certificate": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "staffDocumentId": {
+                                  "type": "string",
+                                  "description": "Sertifika özlük belgesi (DOM-FIN-113)"
+                                },
+                                "documentDate": {
+                                  "description": "Sertifika günü (YYYY-MM-DD)",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "validUntil": {
+                                  "description": "Geçerlilik bitişi; süresizse boş",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "staffDocumentId",
+                                "documentDate",
+                                "validUntil"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Bağlı sertifika (K-488); yalnız yöneticiye döner, ön büroya `null`"
+                        },
+                        "developmentGoal": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "title": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "title"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Katkı verdiği gelişim hedefi (K-489); yalnız yöneticiye döner, ön büroya `null`"
+                        },
                         "statusChangedAt": {
                           "type": "string"
                         },
@@ -270538,6 +270960,9 @@
                         "origin",
                         "status",
                         "attendedHours",
+                        "document",
+                        "certificate",
+                        "developmentGoal",
                         "statusChangedAt",
                         "createdAt",
                         "version"
@@ -328753,6 +329178,2244 @@
                       "required": [
                         "retentionDays",
                         "familyGalleryEnabled",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/professional-development-hours": {
+      "get": {
+        "operationId": "listProfessionalDevelopmentHours",
+        "summary": "Mesleki gelişim saati özeti",
+        "tags": [
+          "finance-professional-development"
+        ],
+        "description": "Etkin personelin öğretim yılındaki tamamlanan saati, hedefi ve eksik saati, ada göre (DOM-FIN-144, K-487). Tamamlanan saat \"katıldı\" işaretli atamaların katılım saatidir; katılım günü tarihli eğitimde bitiş günü, sürekli eğitimde işaretin İstanbul günüdür ve kurumun kayıtlı öğretim yılı (yoksa 1 Eylül – 31 Ağustos) aralığına düşmelidir. Hedef yoksa `targetHours`, `missingHours` ve `met` boştur ve `status` süzgeci boş liste döner; hedef varken süzgeç yalnız hedef rollerindeki personeli döner. `academicYear` verilmezse içinde bulunulan yıl; yanıtın `meta.academicYear` alanındadır. Rol: yalnız `yonetici` (K-487). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 2000,
+              "maximum": 2100
+            },
+            "in": "query",
+            "name": "academicYear",
+            "required": false,
+            "description": "Öğretim yılı; verilmezse içinde bulunulan yıl"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Personel adında arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "missing",
+                "met"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "`missing` eksik saati olan, `met` hedefi tamamlayan (yalnız hedef rollerinde)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "membershipId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string",
+                            "description": "Personel adı"
+                          },
+                          "role": {
+                            "type": "string"
+                          },
+                          "attendedCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Yıl içinde katıldığı eğitim sayısı"
+                          },
+                          "completedHours": {
+                            "type": "number",
+                            "description": "Tamamlanan saat (katılım saatlerinin toplamı)"
+                          },
+                          "targetHours": {
+                            "description": "Hedef; hedef yoksa ya da rolüne uygulanmıyorsa boş",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "missingHours": {
+                            "description": "Eksik saat; hedef yoksa boş",
+                            "type": [
+                              "number",
+                              "null"
+                            ]
+                          },
+                          "met": {
+                            "description": "Hedef tamamlandı mı; hedef yoksa boş",
+                            "type": [
+                              "boolean",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "membershipId",
+                          "name",
+                          "role",
+                          "attendedCount",
+                          "completedHours",
+                          "targetHours",
+                          "missingHours",
+                          "met"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "page": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991,
+                          "description": "Sayfa numarası (1’den başlar)"
+                        },
+                        "pageSize": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 100,
+                          "description": "Sayfa boyutu"
+                        },
+                        "total": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991,
+                          "description": "Filtre uygulanmış toplam kayıt sayısı"
+                        },
+                        "academicYear": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Özetin öğretim yılı"
+                        }
+                      },
+                      "required": [
+                        "page",
+                        "pageSize",
+                        "total",
+                        "academicYear"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/professional-development-targets/{academicYear}": {
+      "get": {
+        "operationId": "getProfessionalDevelopmentTarget",
+        "summary": "Öğretim yılı hedef saati",
+        "tags": [
+          "finance-professional-development"
+        ],
+        "description": "Kurumun öğretim yılı hedefi (K-487) ve yılın gün aralığı. Hedef yazılmamışsa `targetHours` boş, roller boş liste. Rol: yalnız `yonetici` (K-487). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 2000,
+              "maximum": 2100
+            },
+            "in": "path",
+            "name": "academicYear",
+            "required": true,
+            "description": "Öğretim yılının başlangıç yılı (2026 → 2026–2027)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "academicYear": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "description": "Öğretim yılı başlangıcı (kayıtlı yıl ya da 1 Eylül)"
+                        },
+                        "endDate": {
+                          "type": "string",
+                          "description": "Öğretim yılı sonu (kayıtlı yıl ya da 31 Ağustos)"
+                        },
+                        "targetHours": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Hedef saat; tanımsızsa boş"
+                        },
+                        "appliesToRoles": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "yonetici",
+                              "ogretmen",
+                              "onburo"
+                            ]
+                          },
+                          "description": "Hedefin uygulandığı roller"
+                        },
+                        "updatedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "academicYear",
+                        "startDate",
+                        "endDate",
+                        "targetHours",
+                        "appliesToRoles",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateProfessionalDevelopmentTarget",
+        "summary": "Öğretim yılı hedef saatini yaz",
+        "tags": [
+          "finance-professional-development"
+        ],
+        "description": "Hedef tam saat (1–500) ve uygulandığı personel rolleri (varsayılan öğretmen); `targetHours: null` hedefi kaldırır (K-487). Ayar bütünüyle yazılır, kayıtlı öğretim yılı şart değildir. Denetim `finance.professional_development.target` (alan adları). Rol: yalnız `yonetici` (K-487). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "targetHours": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Öğretim yılı hedefi, tam saat; `null` hedefi kaldırır"
+                  },
+                  "appliesToRoles": {
+                    "description": "Hedefin uygulandığı personel rolleri; varsayılan öğretmen",
+                    "default": [
+                      "ogretmen"
+                    ],
+                    "minItems": 1,
+                    "maxItems": 3,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "yonetici",
+                        "ogretmen",
+                        "onburo"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "targetHours"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 2000,
+              "maximum": 2100
+            },
+            "in": "path",
+            "name": "academicYear",
+            "required": true,
+            "description": "Öğretim yılının başlangıç yılı (2026 → 2026–2027)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "academicYear": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "startDate": {
+                          "type": "string",
+                          "description": "Öğretim yılı başlangıcı (kayıtlı yıl ya da 1 Eylül)"
+                        },
+                        "endDate": {
+                          "type": "string",
+                          "description": "Öğretim yılı sonu (kayıtlı yıl ya da 31 Ağustos)"
+                        },
+                        "targetHours": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Hedef saat; tanımsızsa boş"
+                        },
+                        "appliesToRoles": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "yonetici",
+                              "ogretmen",
+                              "onburo"
+                            ]
+                          },
+                          "description": "Hedefin uygulandığı roller"
+                        },
+                        "updatedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "academicYear",
+                        "startDate",
+                        "endDate",
+                        "targetHours",
+                        "appliesToRoles",
+                        "updatedAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/professional-development/{programId}/enrollments/{enrollmentId}/document": {
+      "post": {
+        "operationId": "attachProfessionalDevelopmentDocument",
+        "summary": "Katılım belgesi ekle",
+        "tags": [
+          "finance-professional-development"
+        ],
+        "description": "Yüklenmiş `document` amaçlı dosyayı katılıma bağlar (K-488). Yalnız \"katıldı\" katılımda (422 `professional_development_document_not_attended`); PDF (422 `professional_development_document_format`), en çok 10 MB (422 `professional_development_document_too_large`). Başkasının ya da hazır olmayan dosya 422 `file_unavailable`/`file_not_ready`, başka kayda bağlı dosya 409 `file_already_attached`. Eski belgenin dosya bağı kalkar. Arşivdeki eğitimde de eklenir. Denetim `finance.professional_development.document_attach`. `If-Match` katılımın sürümü. Başka kurumun kaydı 404. Rol: yalnız `yonetici` (K-487). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "fileId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "description": "Yüklenmiş `document` amaçlı PDF (`POST /files`); en çok 10 MB"
+                  }
+                },
+                "required": [
+                  "fileId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "programId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "enrollmentId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "programId": {
+                          "type": "string"
+                        },
+                        "membershipId": {
+                          "type": "string",
+                          "description": "Personelin kurum üyeliği"
+                        },
+                        "staffName": {
+                          "type": "string",
+                          "description": "Personel adı (üyelikten)"
+                        },
+                        "staffRole": {
+                          "type": "string",
+                          "description": "Personelin rolü"
+                        },
+                        "origin": {
+                          "type": "string",
+                          "enum": [
+                            "request",
+                            "assignment"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "assigned",
+                            "attended",
+                            "not_completed"
+                          ]
+                        },
+                        "attendedHours": {
+                          "description": "Katılım saati; yalnız `attended`",
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "document": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "fileId": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string",
+                                  "description": "Dosya adı"
+                                },
+                                "byteSize": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Boyut; dosya hazır değilse boş"
+                                }
+                              },
+                              "required": [
+                                "fileId",
+                                "name",
+                                "byteSize"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Katılım belgesi (DOM-FIN-144, K-488); yalnız yöneticiye döner, ön büroya `null`"
+                        },
+                        "certificate": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "staffDocumentId": {
+                                  "type": "string",
+                                  "description": "Sertifika özlük belgesi (DOM-FIN-113)"
+                                },
+                                "documentDate": {
+                                  "description": "Sertifika günü (YYYY-MM-DD)",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "validUntil": {
+                                  "description": "Geçerlilik bitişi; süresizse boş",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "staffDocumentId",
+                                "documentDate",
+                                "validUntil"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Bağlı sertifika (K-488); yalnız yöneticiye döner, ön büroya `null`"
+                        },
+                        "developmentGoal": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "title": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "title"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Katkı verdiği gelişim hedefi (K-489); yalnız yöneticiye döner, ön büroya `null`"
+                        },
+                        "statusChangedAt": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "programId",
+                        "membershipId",
+                        "staffName",
+                        "staffRole",
+                        "origin",
+                        "status",
+                        "attendedHours",
+                        "document",
+                        "certificate",
+                        "developmentGoal",
+                        "statusChangedAt",
+                        "createdAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "removeProfessionalDevelopmentDocument",
+        "summary": "Katılım belgesini kaldır",
+        "tags": [
+          "finance-professional-development"
+        ],
+        "description": "Belgenin katılımla bağı kalkar; bağsız dosyayı temizlik işi siler. Belge yoksa 422 `professional_development_no_document`. Denetim `finance.professional_development.document_remove`. `If-Match` zorunlu. Başka kurumun kaydı 404. Rol: yalnız `yonetici` (K-487). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "programId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "enrollmentId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "programId": {
+                          "type": "string"
+                        },
+                        "membershipId": {
+                          "type": "string",
+                          "description": "Personelin kurum üyeliği"
+                        },
+                        "staffName": {
+                          "type": "string",
+                          "description": "Personel adı (üyelikten)"
+                        },
+                        "staffRole": {
+                          "type": "string",
+                          "description": "Personelin rolü"
+                        },
+                        "origin": {
+                          "type": "string",
+                          "enum": [
+                            "request",
+                            "assignment"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "assigned",
+                            "attended",
+                            "not_completed"
+                          ]
+                        },
+                        "attendedHours": {
+                          "description": "Katılım saati; yalnız `attended`",
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "document": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "fileId": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string",
+                                  "description": "Dosya adı"
+                                },
+                                "byteSize": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Boyut; dosya hazır değilse boş"
+                                }
+                              },
+                              "required": [
+                                "fileId",
+                                "name",
+                                "byteSize"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Katılım belgesi (DOM-FIN-144, K-488); yalnız yöneticiye döner, ön büroya `null`"
+                        },
+                        "certificate": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "staffDocumentId": {
+                                  "type": "string",
+                                  "description": "Sertifika özlük belgesi (DOM-FIN-113)"
+                                },
+                                "documentDate": {
+                                  "description": "Sertifika günü (YYYY-MM-DD)",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "validUntil": {
+                                  "description": "Geçerlilik bitişi; süresizse boş",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "staffDocumentId",
+                                "documentDate",
+                                "validUntil"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Bağlı sertifika (K-488); yalnız yöneticiye döner, ön büroya `null`"
+                        },
+                        "developmentGoal": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "title": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "title"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Katkı verdiği gelişim hedefi (K-489); yalnız yöneticiye döner, ön büroya `null`"
+                        },
+                        "statusChangedAt": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "programId",
+                        "membershipId",
+                        "staffName",
+                        "staffRole",
+                        "origin",
+                        "status",
+                        "attendedHours",
+                        "document",
+                        "certificate",
+                        "developmentGoal",
+                        "statusChangedAt",
+                        "createdAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/professional-development/{programId}/enrollments/{enrollmentId}/document/url": {
+      "get": {
+        "operationId": "getProfessionalDevelopmentDocumentUrl",
+        "summary": "Katılım belgesini aç",
+        "tags": [
+          "finance-professional-development"
+        ],
+        "description": "Kısa ömürlü imzalı bağlantı (5 dk). Her üretim denetim kaydına `finance.professional_development.document_open` olarak yazılır. Belge yoksa 422 `professional_development_no_document`. Dosya `GET /files/{fileId}/url` yolundan açılmaz (404). Başka kurumun kaydı 404. Rol: yalnız `yonetici` (K-487). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "programId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "enrollmentId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "url": {
+                          "type": "string",
+                          "description": "Kısa ömürlü imzalı GET bağlantısı"
+                        },
+                        "expiresAt": {
+                          "type": "string",
+                          "description": "Bağlantının geçerlilik sonu"
+                        }
+                      },
+                      "required": [
+                        "url",
+                        "expiresAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/professional-development/{programId}/enrollments/{enrollmentId}/certificate": {
+      "post": {
+        "operationId": "linkProfessionalDevelopmentCertificate",
+        "summary": "Katılıma sertifika bağla",
+        "tags": [
+          "finance-professional-development"
+        ],
+        "description": "Sertifika ikinci kez tutulmaz, özlük belgesidir (DOM-FIN-113; K-488). `source: existing`: personelin yerine geçilmemiş `certificate` türü belgesi (başka personelin ya da yoksa 422 `professional_development_certificate_not_found`, başka tür 422 `professional_development_certificate_wrong_type`, yerine geçilmiş 422 `professional_development_certificate_superseded`, başka katılıma bağlı 409 `professional_development_certificate_linked`). `source: upload`: yüklenen PDF (en çok 10 MB) ile aynı işlemde yeni sertifika özlük belgesi açılır; özlük belgesi kuralları geçer (ör. 422 `staff_document_date_in_future`, ayrılmış personel 422 `staff_document_staff_inactive`). Yalnız \"katıldı\" katılımda; zaten bağlıysa 409 `professional_development_certificate_exists`. Denetim `finance.professional_development.certificate_link` (yeni belgede ayrıca `finance.staff_document.create`). `Idempotency-Key` ve `If-Match` zorunlu. Başka kurumun kaydı 404. Rol: yalnız `yonetici` (K-487). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Var olan sertifika özlük belgesine bağla",
+                        "enum": [
+                          "existing"
+                        ]
+                      },
+                      "staffDocumentId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                        "description": "Personelin yerine geçilmemiş `certificate` türü özlük belgesi"
+                      }
+                    },
+                    "required": [
+                      "source",
+                      "staffDocumentId"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "source": {
+                        "type": "string",
+                        "description": "Yüklenen dosyayla yeni sertifika özlük belgesi aç",
+                        "enum": [
+                          "upload"
+                        ]
+                      },
+                      "fileId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                        "description": "Yüklenmiş `document` amaçlı PDF (`POST /files`); en çok 10 MB"
+                      },
+                      "documentDate": {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                        "description": "Sertifikanın düzenlendiği gün; bugünden sonra olamaz"
+                      },
+                      "validUntil": {
+                        "default": null,
+                        "description": "Geçerlilik bitişi (dahil); boşsa sertifika türünün süresi uygulanır",
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "source",
+                      "fileId",
+                      "documentDate"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "programId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "enrollmentId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "programId": {
+                          "type": "string"
+                        },
+                        "membershipId": {
+                          "type": "string",
+                          "description": "Personelin kurum üyeliği"
+                        },
+                        "staffName": {
+                          "type": "string",
+                          "description": "Personel adı (üyelikten)"
+                        },
+                        "staffRole": {
+                          "type": "string",
+                          "description": "Personelin rolü"
+                        },
+                        "origin": {
+                          "type": "string",
+                          "enum": [
+                            "request",
+                            "assignment"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "assigned",
+                            "attended",
+                            "not_completed"
+                          ]
+                        },
+                        "attendedHours": {
+                          "description": "Katılım saati; yalnız `attended`",
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "document": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "fileId": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string",
+                                  "description": "Dosya adı"
+                                },
+                                "byteSize": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Boyut; dosya hazır değilse boş"
+                                }
+                              },
+                              "required": [
+                                "fileId",
+                                "name",
+                                "byteSize"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Katılım belgesi (DOM-FIN-144, K-488); yalnız yöneticiye döner, ön büroya `null`"
+                        },
+                        "certificate": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "staffDocumentId": {
+                                  "type": "string",
+                                  "description": "Sertifika özlük belgesi (DOM-FIN-113)"
+                                },
+                                "documentDate": {
+                                  "description": "Sertifika günü (YYYY-MM-DD)",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "validUntil": {
+                                  "description": "Geçerlilik bitişi; süresizse boş",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "staffDocumentId",
+                                "documentDate",
+                                "validUntil"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Bağlı sertifika (K-488); yalnız yöneticiye döner, ön büroya `null`"
+                        },
+                        "developmentGoal": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "title": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "title"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Katkı verdiği gelişim hedefi (K-489); yalnız yöneticiye döner, ön büroya `null`"
+                        },
+                        "statusChangedAt": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "programId",
+                        "membershipId",
+                        "staffName",
+                        "staffRole",
+                        "origin",
+                        "status",
+                        "attendedHours",
+                        "document",
+                        "certificate",
+                        "developmentGoal",
+                        "statusChangedAt",
+                        "createdAt",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "unlinkProfessionalDevelopmentCertificate",
+        "summary": "Sertifika bağını kaldır",
+        "tags": [
+          "finance-professional-development"
+        ],
+        "description": "Katılımın sertifika bağı kalkar; özlük belgesi kalır (K-488). Bağ yoksa 422 `professional_development_no_certificate`. Denetim `finance.professional_development.certificate_unlink`. `If-Match` zorunlu. Başka kurumun kaydı 404. Rol: yalnız `yonetici` (K-487). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "programId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "enrollmentId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "programId": {
+                          "type": "string"
+                        },
+                        "membershipId": {
+                          "type": "string",
+                          "description": "Personelin kurum üyeliği"
+                        },
+                        "staffName": {
+                          "type": "string",
+                          "description": "Personel adı (üyelikten)"
+                        },
+                        "staffRole": {
+                          "type": "string",
+                          "description": "Personelin rolü"
+                        },
+                        "origin": {
+                          "type": "string",
+                          "enum": [
+                            "request",
+                            "assignment"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "assigned",
+                            "attended",
+                            "not_completed"
+                          ]
+                        },
+                        "attendedHours": {
+                          "description": "Katılım saati; yalnız `attended`",
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "document": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "fileId": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string",
+                                  "description": "Dosya adı"
+                                },
+                                "byteSize": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "Boyut; dosya hazır değilse boş"
+                                }
+                              },
+                              "required": [
+                                "fileId",
+                                "name",
+                                "byteSize"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Katılım belgesi (DOM-FIN-144, K-488); yalnız yöneticiye döner, ön büroya `null`"
+                        },
+                        "certificate": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "staffDocumentId": {
+                                  "type": "string",
+                                  "description": "Sertifika özlük belgesi (DOM-FIN-113)"
+                                },
+                                "documentDate": {
+                                  "description": "Sertifika günü (YYYY-MM-DD)",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "validUntil": {
+                                  "description": "Geçerlilik bitişi; süresizse boş",
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "staffDocumentId",
+                                "documentDate",
+                                "validUntil"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Bağlı sertifika (K-488); yalnız yöneticiye döner, ön büroya `null`"
+                        },
+                        "developmentGoal": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "title": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "title"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Katkı verdiği gelişim hedefi (K-489); yalnız yöneticiye döner, ön büroya `null`"
+                        },
+                        "statusChangedAt": {
+                          "type": "string"
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "programId",
+                        "membershipId",
+                        "staffName",
+                        "staffRole",
+                        "origin",
+                        "status",
+                        "attendedHours",
+                        "document",
+                        "certificate",
+                        "developmentGoal",
+                        "statusChangedAt",
+                        "createdAt",
                         "version"
                       ],
                       "additionalProperties": false

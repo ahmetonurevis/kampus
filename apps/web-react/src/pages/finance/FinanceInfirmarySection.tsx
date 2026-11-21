@@ -18,6 +18,7 @@ import {
   type MedicationConsentRow,
   type MedicationScheduleSlot,
 } from '@kampus/react-shared/use-finance-infirmary.ts'
+import type { HealthAccessReason } from '@kampus/school-core/lib/finance-health-access.ts'
 import {
   CONSENT_STATUS_LABELS,
   CONSENT_STATUSES,
@@ -49,6 +50,12 @@ import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { notify } from '@/lib/notify.ts'
 import { RootError } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
+import {
+  HealthAccessGate,
+  HealthAccessPrompt,
+  useHealthAccessReason,
+  useRememberHealthReason,
+} from './FinanceHealthAccessReasonDialog.tsx'
 import { occurredText } from './finance-incident-forms.ts'
 import {
   actionsText,
@@ -95,9 +102,13 @@ const text = (value: unknown) => (typeof value === 'string' && value !== '' ? va
  * görevlisi rolü yok; K-510). Bugünkü ilaç uygulama listesi, revir ziyaretleri (açma, ayrıntı,
  * kapatma) ve veli ilaç talepleri (onay, gerekçeli ret, uygulamalar). Onaysız ilaç verilmez; aynı
  * doz saati iki kez yazılmaz (K-509). Sağlık ayrıntısı sunucudan okunur ve her açılış denetime
- * düşer; veliye ya da öğretmene ileti gönderilmez.
+ * düşer; veliye ya da öğretmene ileti gönderilmez. İlaç listeleri ve ziyaret ayrıntısı erişim
+ * gerekçesi ister (DOM-FIN-156): ilaç listelerinin gerekçesi görünüm için bir kez seçilir ve talep
+ * ayrıntısında da kullanılır; ziyareti yeni açanın gerekçesi "ilk yardım / revir işlemi" olarak
+ * önceden kaydedilir (K-525).
  */
 export function FinanceInfirmarySection() {
+  const medications = useHealthAccessReason(MEDICATIONS_SCOPE)
   return (
     <section
       aria-labelledby="revir"
@@ -113,9 +124,17 @@ export function FinanceInfirmarySection() {
         </p>
       </header>
       <div className="grid gap-8 px-6 pb-6">
-        <TodaySchedule />
+        {medications.reason === null ? (
+          <HealthAccessPrompt
+            subject="Bugünkü ilaç uygulamaları ve ilaç onayları"
+            askOnOpen={false}
+            onConfirm={medications.choose}
+          />
+        ) : (
+          <TodaySchedule reason={medications.reason} />
+        )}
         <Visits />
-        <Consents />
+        {medications.reason === null ? null : <Consents reason={medications.reason} />}
       </div>
     </section>
   )
@@ -123,8 +142,11 @@ export function FinanceInfirmarySection() {
 
 // --- Bugünkü ilaçlar -----------------------------------------------------------------------------
 
-function TodaySchedule() {
-  const schedule = useMedicationSchedule(undefined)
+const MEDICATIONS_SCOPE = 'infirmary-medications'
+const visitScope = (visitId: string) => `infirmary-visit:${visitId}`
+
+function TodaySchedule({ reason }: { reason: HealthAccessReason }) {
+  const schedule = useMedicationSchedule(undefined, reason)
   const record = useRecordMedicationAdministration()
   const [busySlot, setBusySlot] = useState('')
   const slots = schedule.data?.data ?? []
@@ -189,6 +211,7 @@ type VisitTableRow = { id: string; row: InfirmaryVisitRow; student: string; time
 function Visits() {
   const panel = useDetailPanel('ziyaret')
   const [creating, setCreating] = useState(false)
+  const rememberReason = useRememberHealthReason()
   const list = useListState('revir-ziyaretleri', { urlPrefix: 'ziyaret_' })
   const status = VISIT_STATUSES.find((value) => value === text(list.state.filters.status))
   const visits = useInfirmaryVisits({
@@ -270,7 +293,16 @@ function Visits() {
         onOpenChange={(open) => (open ? undefined : panel.close())}
         title="Revir ziyareti"
       >
-        {panel.selectedId ? <VisitPanel visitId={panel.selectedId} /> : null}
+        {panel.selectedId ? (
+          <HealthAccessGate
+            key={panel.selectedId}
+            scope={visitScope(panel.selectedId)}
+            subject="Revir ziyareti"
+            askOnOpen
+          >
+            {(reason) => <VisitPanel visitId={panel.selectedId} reason={reason} />}
+          </HealthAccessGate>
+        ) : null}
       </SidePanel>
       <Modal
         open={creating}
@@ -283,7 +315,9 @@ function Visits() {
           <VisitForm
             onDone={(id) => {
               setCreating(false)
-              if (id) panel.open(id)
+              if (!id) return
+              rememberReason(visitScope(id), { code: 'first_aid', note: null })
+              panel.open(id)
             }}
           />
         ) : null}
@@ -527,8 +561,8 @@ function StudentChoice({
   )
 }
 
-function VisitPanel({ visitId }: { visitId: string }) {
-  const visit = useInfirmaryVisit(visitId)
+function VisitPanel({ visitId, reason }: { visitId: string; reason: HealthAccessReason }) {
+  const visit = useInfirmaryVisit(visitId, reason)
   if (visit.error) return <QueryError error={visit.error} onRetry={() => void visit.refetch()} />
   const detail = visit.data?.data
   if (!detail) return <SummaryLoading />
@@ -649,17 +683,20 @@ type ConsentTableRow = {
   period: string
 }
 
-function Consents() {
+function Consents({ reason }: { reason: HealthAccessReason }) {
   const panel = useDetailPanel('ilac')
   const [rejecting, setRejecting] = useState<MedicationConsentRow | null>(null)
   const approve = useApproveMedicationConsent()
   const list = useListState('revir-ilac-onaylari', { urlPrefix: 'ilac_' })
   const status = CONSENT_STATUSES.find((value) => value === text(list.state.filters.status))
-  const consents = useMedicationConsents({
-    page: list.state.page,
-    pageSize: list.state.pageSize,
-    ...(status === undefined ? {} : { status }),
-  })
+  const consents = useMedicationConsents(
+    {
+      page: list.state.page,
+      pageSize: list.state.pageSize,
+      ...(status === undefined ? {} : { status }),
+    },
+    reason,
+  )
   const rows = useMemo(
     () =>
       consents.data?.data.map((item): ConsentTableRow => ({
@@ -759,7 +796,7 @@ function Consents() {
         onOpenChange={(open) => (open ? undefined : panel.close())}
         title="İlaç talebi"
       >
-        {panel.selectedId ? <ConsentPanel consentId={panel.selectedId} /> : null}
+        {panel.selectedId ? <ConsentPanel consentId={panel.selectedId} reason={reason} /> : null}
       </SidePanel>
       <Modal
         open={rejecting !== null}
@@ -818,8 +855,8 @@ function RejectForm({ consent, onDone }: { consent: MedicationConsentRow; onDone
   )
 }
 
-function ConsentPanel({ consentId }: { consentId: string }) {
-  const consent = useMedicationConsent(consentId)
+function ConsentPanel({ consentId, reason }: { consentId: string; reason: HealthAccessReason }) {
+  const consent = useMedicationConsent(consentId, reason)
   if (consent.error)
     return <QueryError error={consent.error} onRetry={() => void consent.refetch()} />
   const detail = consent.data?.data

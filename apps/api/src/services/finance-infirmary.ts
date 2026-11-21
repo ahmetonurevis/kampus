@@ -25,6 +25,7 @@ import {
   type VisitStatus,
   type VisitValues,
 } from '@kampus/school-core/lib/finance-infirmary.ts'
+import type { HealthAccessReason } from '@kampus/school-core/lib/finance-health-access.ts'
 import {
   assertDoseSlotOpen,
   doseSlotKey,
@@ -57,6 +58,7 @@ import { loadRecordsByIds } from '../db/records.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { FieldBinding, FieldCipher } from '../lib/field-crypto.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
+import { recordHealthRead } from './finance-health-access.ts'
 import { loadDoseSlots } from './finance-infirmary-schedule-slots.ts'
 import { istanbulDayStart } from './list-filters.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
@@ -285,18 +287,26 @@ export async function listVisitsFor(ctx: ServiceContext, query: VisitListFilters
   return { items: await visitRows(ctx.db, ctx, items), total }
 }
 
-/** Ziyaret ayrıntısı (K-510): şikâyet, yapılanlar, not; okuma `finance.infirmary.visit_read`. */
-export function getVisitFor(ctx: ServiceContext, deps: InfirmaryDeps, id: string) {
+/**
+ * Ziyaret ayrıntısı (K-510): şikâyet, yapılanlar, not; okuma `finance.infirmary.visit_read` ve
+ * gerekçesiyle sağlık erişim günlüğü (DOM-FIN-156).
+ */
+export function getVisitFor(
+  ctx: ServiceContext,
+  deps: InfirmaryDeps,
+  id: string,
+  reason: HealthAccessReason | null,
+) {
   return ctx.db.transaction(async (tx) => {
     const row = await visitOf(tx, ctx, id)
     const body = await visitDetail(tx, ctx, deps, row)
-    await auditWork(
-      tx,
-      ctx,
-      'finance.infirmary.visit_read',
-      { type: VISITS, id },
-      VISIT_HEALTH_FIELDS,
-    )
+    await recordHealthRead(tx, ctx, {
+      action: 'finance.infirmary.visit_read',
+      entity: { type: VISITS, id },
+      fields: VISIT_HEALTH_FIELDS,
+      studentId: row.studentId,
+      reason,
+    })
     return body
   })
 }
@@ -721,7 +731,8 @@ async function childrenFor(ctx: ServiceContext): Promise<ReadonlySet<string> | n
 
 /**
  * Talep listesi: okul bütün talepleri, veli kapsamdaki çocuklarınınkini görür. Satır ilaç adı ve doz
- * taşıdığından her dönen talep `finance.infirmary.consent_read` denetimine düşer.
+ * taşıdığından her dönen talep `finance.infirmary.consent_read` denetimine, okulda gerekçesiyle
+ * sağlık erişim günlüğüne düşer (DOM-FIN-156; velide `reason` `null`).
  */
 export async function listConsentsFor(
   ctx: ServiceContext,
@@ -732,6 +743,7 @@ export async function listConsentsFor(
     status?: ConsentStatus | undefined
     studentId?: string | undefined
   },
+  reason: HealthAccessReason | null,
 ) {
   const children = await childrenFor(ctx)
   return ctx.db.transaction(async (tx) => {
@@ -749,36 +761,53 @@ export async function listConsentsFor(
     })
     const data = await consentViews(tx, ctx, deps, items)
     for (const row of items)
-      await auditWork(
-        tx,
-        ctx,
-        'finance.infirmary.consent_read',
-        { type: CONSENTS, id: row.id },
-        CONSENT_HEALTH_FIELDS,
-      )
+      await recordHealthRead(tx, ctx, {
+        action: 'finance.infirmary.consent_read',
+        entity: { type: CONSENTS, id: row.id },
+        fields: CONSENT_HEALTH_FIELDS,
+        studentId: row.studentId,
+        reason,
+      })
     return { items: data, total }
   })
 }
 
-/** Talep ayrıntısı ve uygulamaları; okuma `finance.infirmary.consent_read`. */
-export async function getConsentFor(ctx: ServiceContext, deps: InfirmaryDeps, id: string) {
+/**
+ * Talep ayrıntısı ve uygulamaları; okuma `finance.infirmary.consent_read`, okulda gerekçesiyle
+ * sağlık erişim günlüğü (DOM-FIN-156).
+ */
+export async function getConsentFor(
+  ctx: ServiceContext,
+  deps: InfirmaryDeps,
+  id: string,
+  reason: HealthAccessReason | null,
+) {
   const children = await childrenFor(ctx)
   return ctx.db.transaction(async (tx) => {
     const row = await readableConsent(tx, ctx, id, children)
     const body = await consentDetail(tx, ctx, deps, row)
-    await auditWork(tx, ctx, 'finance.infirmary.consent_read', { type: CONSENTS, id }, [
-      ...CONSENT_HEALTH_FIELDS,
-      'administrations',
-    ])
+    await recordHealthRead(tx, ctx, {
+      action: 'finance.infirmary.consent_read',
+      entity: { type: CONSENTS, id },
+      fields: [...CONSENT_HEALTH_FIELDS, 'administrations'],
+      studentId: row.studentId,
+      reason,
+    })
     return body
   })
 }
 
 /**
  * Gün planı (K-509): günü kapsayan onaylı taleplerin her doz saati ve o günkü uygulaması. Her
- * talep `finance.infirmary.schedule_read` denetimine düşer.
+ * talep `finance.infirmary.schedule_read` denetimine ve gerekçesiyle sağlık erişim günlüğüne düşer
+ * (DOM-FIN-156).
  */
-export function getMedicationScheduleFor(ctx: ServiceContext, deps: InfirmaryDeps, day: string) {
+export function getMedicationScheduleFor(
+  ctx: ServiceContext,
+  deps: InfirmaryDeps,
+  day: string,
+  reason: HealthAccessReason | null,
+) {
   return ctx.db.transaction(async (tx) => {
     const consents = await listApprovedConsentsOn(tx, ctx.institutionId, day)
     const [views, given] = await Promise.all([
@@ -816,11 +845,13 @@ export function getMedicationScheduleFor(ctx: ServiceContext, deps: InfirmaryDep
       }
     })
     for (const row of consents)
-      await auditWork(tx, ctx, 'finance.infirmary.schedule_read', { type: CONSENTS, id: row.id }, [
-        'medicationName',
-        'dose',
-        'administrations',
-      ])
+      await recordHealthRead(tx, ctx, {
+        action: 'finance.infirmary.schedule_read',
+        entity: { type: CONSENTS, id: row.id },
+        fields: ['medicationName', 'dose', 'administrations'],
+        studentId: row.studentId,
+        reason,
+      })
     return slots
   })
 }

@@ -336944,6 +336944,4662 @@
         }
       }
     },
+    "/api/v1/finance/infirmary/visits": {
+      "get": {
+        "operationId": "listInfirmaryVisits",
+        "summary": "Revir ziyaretleri",
+        "tags": [
+          "finance-infirmary"
+        ],
+        "description": "En yeni geliş önce. Süzgeç durum (`open` revirde, `closed` ayrıldı), öğrenci ve geliş günü aralığı (Europe/Istanbul). Satırda şikâyet, yapılanlar ve not yoktur; okuma denetlenmez. Rol: `yonetici` ve `onburo` (revir görevlisi rolü yok). Öğretmen, veli ve öğrenci 403. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "closed"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "`open` revirde, `closed` ayrıldı"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "studentId",
+            "required": false,
+            "description": "Öğrenci"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "description": "Geliş günü başlangıcı (YYYY-MM-DD, Europe/Istanbul)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "description": "Geliş günü sonu (dahil)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "studentId": {
+                            "type": "string"
+                          },
+                          "studentName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "open",
+                              "closed"
+                            ],
+                            "description": "`open` revirde, `closed` ayrıldı"
+                          },
+                          "arrivedAt": {
+                            "type": "string",
+                            "description": "Geliş anı (ISO 8601)"
+                          },
+                          "returnedAt": {
+                            "description": "Ayrılış anı; açık ziyarette boş",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "outcome": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "returned_to_class",
+                                  "went_home",
+                                  "referred"
+                                ],
+                                "description": "`returned_to_class` sınıfa döndü, `went_home` eve gitti, `referred` sevk"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "referredByMembershipId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "referredByName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "incidentReportId": {
+                            "description": "Bağlı kaza tutanağı (DOM-FIN-146)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "createdByUserId": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "studentId",
+                          "studentName",
+                          "status",
+                          "arrivedAt",
+                          "returnedAt",
+                          "outcome",
+                          "referredByMembershipId",
+                          "referredByName",
+                          "incidentReportId",
+                          "createdByUserId",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createInfirmaryVisit",
+        "summary": "Revir ziyareti aç",
+        "tags": [
+          "finance-infirmary"
+        ],
+        "description": "Öğrenci (yok 422 `infirmary_student_not_found`), geliş anı (boşsa şimdi; gelecekte 422 `infirmary_arrived_in_future`, 7 günden eski 422 `infirmary_arrived_too_old`), isteğe bağlı gönderen (kurumun etkin personeli; 422 `infirmary_referred_by_not_found|not_staff|inactive`), şikâyet (2–500), yapılanlar, not ve kaza tutanağı (aynı öğrencinin; 422 `infirmary_incident_not_found`, `infirmary_incident_other_student`). Öğrencinin açık ziyareti varsa 409 `infirmary_visit_already_open`. Şikâyet, yapılanlar ve not şifreli saklanır; sağlık profili kopyalanmaz. Denetim `finance.infirmary.visit_create` (alan adları). `Idempotency-Key` zorunlu. Rol: `yonetici` ve `onburo` (revir görevlisi rolü yok). Öğretmen, veli ve öğrenci 403. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "studentId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Öğrenci kaydı"
+                  },
+                  "arrivedAt": {
+                    "default": null,
+                    "description": "Revire geliş anı (ISO 8601); boşsa şimdi. Gelecekte ve 7 günden eski olamaz",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "referredByMembershipId": {
+                    "default": null,
+                    "description": "Öğrenciyi gönderen personel üyeliği; kendisi geldiyse boş",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "complaint": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 500,
+                    "description": "Öğrencinin şikâyeti (2–500; şifreli)"
+                  },
+                  "actions": {
+                    "default": [],
+                    "maxItems": 6,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "rest",
+                        "first_aid",
+                        "medication",
+                        "guardian_called",
+                        "sent_home",
+                        "emergency_112"
+                      ]
+                    },
+                    "description": "`rest` dinlenme, `first_aid` ilk yardım, `medication` ilaç verildi, `guardian_called` veli çağrıldı, `sent_home` eve gönderildi, `emergency_112` 112 (şifreli)"
+                  },
+                  "note": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Revir notu (≤ 1000; şifreli, veliye gitmez)"
+                  },
+                  "incidentReportId": {
+                    "default": null,
+                    "description": "Kaza kaynaklıysa aynı öğrencinin kaza tutanağı (DOM-FIN-146)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "studentId",
+                  "complaint"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "closed"
+                          ],
+                          "description": "`open` revirde, `closed` ayrıldı"
+                        },
+                        "arrivedAt": {
+                          "type": "string",
+                          "description": "Geliş anı (ISO 8601)"
+                        },
+                        "returnedAt": {
+                          "description": "Ayrılış anı; açık ziyarette boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "outcome": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "returned_to_class",
+                                "went_home",
+                                "referred"
+                              ],
+                              "description": "`returned_to_class` sınıfa döndü, `went_home` eve gitti, `referred` sevk"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "referredByMembershipId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "referredByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "incidentReportId": {
+                          "description": "Bağlı kaza tutanağı (DOM-FIN-146)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdByUserId": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        },
+                        "complaint": {
+                          "type": "string",
+                          "description": "Şikâyet (özel nitelikli; şifreli saklanır)"
+                        },
+                        "actions": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "rest",
+                              "first_aid",
+                              "medication",
+                              "guardian_called",
+                              "sent_home",
+                              "emergency_112"
+                            ]
+                          },
+                          "description": "Yapılanlar (özel nitelikli)"
+                        },
+                        "note": {
+                          "description": "Revir notu (özel nitelikli; veliye gitmez)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "closedByUserId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "studentId",
+                        "studentName",
+                        "status",
+                        "arrivedAt",
+                        "returnedAt",
+                        "outcome",
+                        "referredByMembershipId",
+                        "referredByName",
+                        "incidentReportId",
+                        "createdByUserId",
+                        "version",
+                        "complaint",
+                        "actions",
+                        "note",
+                        "closedByUserId",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/infirmary/visits/{visitId}": {
+      "get": {
+        "operationId": "getInfirmaryVisit",
+        "summary": "Revir ziyareti ayrıntısı",
+        "tags": [
+          "finance-infirmary"
+        ],
+        "description": "Şikâyet, yapılanlar ve not dahil. Okuma aynı transaction'da `finance.infirmary.visit_read` denetimine düşer (alan adları; değer yok). Olmayan ya da başka kurumun ziyareti 404. Rol: `yonetici` ve `onburo` (revir görevlisi rolü yok). Öğretmen, veli ve öğrenci 403. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "visitId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "closed"
+                          ],
+                          "description": "`open` revirde, `closed` ayrıldı"
+                        },
+                        "arrivedAt": {
+                          "type": "string",
+                          "description": "Geliş anı (ISO 8601)"
+                        },
+                        "returnedAt": {
+                          "description": "Ayrılış anı; açık ziyarette boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "outcome": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "returned_to_class",
+                                "went_home",
+                                "referred"
+                              ],
+                              "description": "`returned_to_class` sınıfa döndü, `went_home` eve gitti, `referred` sevk"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "referredByMembershipId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "referredByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "incidentReportId": {
+                          "description": "Bağlı kaza tutanağı (DOM-FIN-146)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdByUserId": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        },
+                        "complaint": {
+                          "type": "string",
+                          "description": "Şikâyet (özel nitelikli; şifreli saklanır)"
+                        },
+                        "actions": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "rest",
+                              "first_aid",
+                              "medication",
+                              "guardian_called",
+                              "sent_home",
+                              "emergency_112"
+                            ]
+                          },
+                          "description": "Yapılanlar (özel nitelikli)"
+                        },
+                        "note": {
+                          "description": "Revir notu (özel nitelikli; veliye gitmez)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "closedByUserId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "studentId",
+                        "studentName",
+                        "status",
+                        "arrivedAt",
+                        "returnedAt",
+                        "outcome",
+                        "referredByMembershipId",
+                        "referredByName",
+                        "incidentReportId",
+                        "createdByUserId",
+                        "version",
+                        "complaint",
+                        "actions",
+                        "note",
+                        "closedByUserId",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateInfirmaryVisit",
+        "summary": "Açık revir ziyaretini düzelt",
+        "tags": [
+          "finance-infirmary"
+        ],
+        "description": "Kısmi: verilmeyen alan değişmez, öğrenci değişmez. Değişiklik yoksa 422 `infirmary_visit_unchanged`; kapanmış ziyaret 409 `infirmary_visit_closed` (veritabanında tetikleyici). Denetime değişen alanların adları. `If-Match` zorunlu. Rol: `yonetici` ve `onburo` (revir görevlisi rolü yok). Öğretmen, veli ve öğrenci 403. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "arrivedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                  },
+                  "referredByMembershipId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "complaint": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 500,
+                    "description": "Öğrencinin şikâyeti (2–500; şifreli)"
+                  },
+                  "actions": {
+                    "maxItems": 6,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "rest",
+                        "first_aid",
+                        "medication",
+                        "guardian_called",
+                        "sent_home",
+                        "emergency_112"
+                      ]
+                    },
+                    "description": "`rest` dinlenme, `first_aid` ilk yardım, `medication` ilaç verildi, `guardian_called` veli çağrıldı, `sent_home` eve gönderildi, `emergency_112` 112 (şifreli)"
+                  },
+                  "note": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Revir notu (≤ 1000; şifreli, veliye gitmez)"
+                  },
+                  "incidentReportId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "visitId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "closed"
+                          ],
+                          "description": "`open` revirde, `closed` ayrıldı"
+                        },
+                        "arrivedAt": {
+                          "type": "string",
+                          "description": "Geliş anı (ISO 8601)"
+                        },
+                        "returnedAt": {
+                          "description": "Ayrılış anı; açık ziyarette boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "outcome": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "returned_to_class",
+                                "went_home",
+                                "referred"
+                              ],
+                              "description": "`returned_to_class` sınıfa döndü, `went_home` eve gitti, `referred` sevk"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "referredByMembershipId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "referredByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "incidentReportId": {
+                          "description": "Bağlı kaza tutanağı (DOM-FIN-146)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdByUserId": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        },
+                        "complaint": {
+                          "type": "string",
+                          "description": "Şikâyet (özel nitelikli; şifreli saklanır)"
+                        },
+                        "actions": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "rest",
+                              "first_aid",
+                              "medication",
+                              "guardian_called",
+                              "sent_home",
+                              "emergency_112"
+                            ]
+                          },
+                          "description": "Yapılanlar (özel nitelikli)"
+                        },
+                        "note": {
+                          "description": "Revir notu (özel nitelikli; veliye gitmez)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "closedByUserId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "studentId",
+                        "studentName",
+                        "status",
+                        "arrivedAt",
+                        "returnedAt",
+                        "outcome",
+                        "referredByMembershipId",
+                        "referredByName",
+                        "incidentReportId",
+                        "createdByUserId",
+                        "version",
+                        "complaint",
+                        "actions",
+                        "note",
+                        "closedByUserId",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/infirmary/visits/{visitId}/discharge": {
+      "post": {
+        "operationId": "dischargeInfirmaryVisit",
+        "summary": "Revir ziyaretini kapat",
+        "tags": [
+          "finance-infirmary"
+        ],
+        "description": "Dönüş anı (boşsa şimdi; gelişten önce 422 `infirmary_returned_before_arrival`, gelecekte 422 `infirmary_returned_in_future`) ve sonuç; isteğe bağlı yapılanlar ve not. En az bir yapılan kayıtlı olmalı (422 `infirmary_actions_required`). Kapanan ziyaret değişmez (409 `infirmary_visit_closed`). Veliye bildirim gönderilmez. Denetim `finance.infirmary.visit_discharge`. `If-Match` zorunlu. Rol: `yonetici` ve `onburo` (revir görevlisi rolü yok). Öğretmen, veli ve öğrenci 403. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "returnedAt": {
+                    "default": null,
+                    "description": "Revirden ayrılış anı (ISO 8601); boşsa şimdi. Gelişten önce ve gelecekte olamaz",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "outcome": {
+                    "type": "string",
+                    "enum": [
+                      "returned_to_class",
+                      "went_home",
+                      "referred"
+                    ],
+                    "description": "`returned_to_class` sınıfa döndü, `went_home` eve gitti, `referred` sevk"
+                  },
+                  "actions": {
+                    "description": "Yapılanlar; verilmezse ziyaretteki liste kalır",
+                    "maxItems": 6,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "rest",
+                        "first_aid",
+                        "medication",
+                        "guardian_called",
+                        "sent_home",
+                        "emergency_112"
+                      ]
+                    }
+                  },
+                  "note": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Revir notu (≤ 1000; şifreli, veliye gitmez)"
+                  }
+                },
+                "required": [
+                  "outcome"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "visitId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "closed"
+                          ],
+                          "description": "`open` revirde, `closed` ayrıldı"
+                        },
+                        "arrivedAt": {
+                          "type": "string",
+                          "description": "Geliş anı (ISO 8601)"
+                        },
+                        "returnedAt": {
+                          "description": "Ayrılış anı; açık ziyarette boş",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "outcome": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "returned_to_class",
+                                "went_home",
+                                "referred"
+                              ],
+                              "description": "`returned_to_class` sınıfa döndü, `went_home` eve gitti, `referred` sevk"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "referredByMembershipId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "referredByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "incidentReportId": {
+                          "description": "Bağlı kaza tutanağı (DOM-FIN-146)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdByUserId": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        },
+                        "complaint": {
+                          "type": "string",
+                          "description": "Şikâyet (özel nitelikli; şifreli saklanır)"
+                        },
+                        "actions": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": [
+                              "rest",
+                              "first_aid",
+                              "medication",
+                              "guardian_called",
+                              "sent_home",
+                              "emergency_112"
+                            ]
+                          },
+                          "description": "Yapılanlar (özel nitelikli)"
+                        },
+                        "note": {
+                          "description": "Revir notu (özel nitelikli; veliye gitmez)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "closedByUserId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "studentId",
+                        "studentName",
+                        "status",
+                        "arrivedAt",
+                        "returnedAt",
+                        "outcome",
+                        "referredByMembershipId",
+                        "referredByName",
+                        "incidentReportId",
+                        "createdByUserId",
+                        "version",
+                        "complaint",
+                        "actions",
+                        "note",
+                        "closedByUserId",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/infirmary/visit-states": {
+      "get": {
+        "operationId": "listInfirmaryVisitStates",
+        "summary": "Revir durumu (revirde / döndü)",
+        "tags": [
+          "finance-infirmary"
+        ],
+        "description": "Günün (Europe/Istanbul; boşsa bugün) ziyaretlerinden öğrenci, geliş ve ayrılış anı ile `in_infirmary` revirde ya da `returned` döndü. Şikâyet, yapılanlar ve sonuç (eve gitti, sevk) dönmez; okuma denetlenmez (K-510). Öğretmen yalnız sınıf öğretmeni olduğu sınıfların öğrencilerini görür. Rol: `yonetici`, `onburo`, `ogretmen`. Veli ve öğrenci 403. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "date",
+            "required": false,
+            "description": "Gün (YYYY-MM-DD, Europe/Istanbul); boşsa bugün"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "visitId": {
+                            "type": "string"
+                          },
+                          "studentId": {
+                            "type": "string"
+                          },
+                          "studentName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "state": {
+                            "type": "string",
+                            "enum": [
+                              "in_infirmary",
+                              "returned"
+                            ],
+                            "description": "`in_infirmary` revirde, `returned` döndü"
+                          },
+                          "arrivedAt": {
+                            "type": "string"
+                          },
+                          "returnedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "visitId",
+                          "studentId",
+                          "studentName",
+                          "state",
+                          "arrivedAt",
+                          "returnedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/infirmary/my-visits": {
+      "get": {
+        "operationId": "listGuardianInfirmaryVisits",
+        "summary": "Çocuğumun revir ziyaretleri (özet)",
+        "tags": [
+          "finance-infirmary"
+        ],
+        "description": "Kapsamdaki (velayetli ve kısıtsız bağ) çocukların ziyaretleri: geliş ve ayrılış anı, durum, sonuç, şikâyet ve yapılanlar. Revir notu, gönderen ve kaza tutanağı bağı dönmez. Her dönen ziyaret `finance.infirmary.guardian_read` denetimine düşer. Rol: yalnız `veli` (kapsamındaki çocuklar; başkası 404). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "studentId",
+            "required": false,
+            "description": "Çocuklardan biri"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "studentId": {
+                            "type": "string"
+                          },
+                          "studentName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "open",
+                              "closed"
+                            ],
+                            "description": "`open` revirde, `closed` ayrıldı"
+                          },
+                          "arrivedAt": {
+                            "type": "string"
+                          },
+                          "returnedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "outcome": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "returned_to_class",
+                                  "went_home",
+                                  "referred"
+                                ],
+                                "description": "`returned_to_class` sınıfa döndü, `went_home` eve gitti, `referred` sevk"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "complaint": {
+                            "type": "string"
+                          },
+                          "actions": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "rest",
+                                "first_aid",
+                                "medication",
+                                "guardian_called",
+                                "sent_home",
+                                "emergency_112"
+                              ]
+                            },
+                            "description": "`rest` dinlenme, `first_aid` ilk yardım, `medication` ilaç verildi, `guardian_called` veli çağrıldı, `sent_home` eve gönderildi, `emergency_112` 112"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "studentId",
+                          "studentName",
+                          "status",
+                          "arrivedAt",
+                          "returnedAt",
+                          "outcome",
+                          "complaint",
+                          "actions"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/infirmary/medication-consents": {
+      "get": {
+        "operationId": "listMedicationConsents",
+        "summary": "İlaç onayı talepleri",
+        "tags": [
+          "finance-infirmary"
+        ],
+        "description": "En yeni talep önce; süzgeç durum ve öğrenci. Satır ilaç adı ve doz taşıdığından her dönen talep `finance.infirmary.consent_read` denetimine düşer. Rol: `yonetici` ve `onburo` (bütün talepler), `veli` (kapsamındaki çocuklar; başkası 404). Öğretmen ve öğrenci 403. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "approved",
+                "rejected",
+                "withdrawn"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "`pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `withdrawn` geri çekildi"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "studentId",
+            "required": false,
+            "description": "Öğrenci (velide çocuklardan biri)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "studentId": {
+                            "type": "string"
+                          },
+                          "studentName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "approved",
+                              "rejected",
+                              "withdrawn"
+                            ],
+                            "description": "`pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `withdrawn` geri çekildi"
+                          },
+                          "medicationName": {
+                            "type": "string",
+                            "description": "İlaç adı (özel nitelikli; şifreli saklanır)"
+                          },
+                          "dose": {
+                            "type": "string",
+                            "description": "Bir seferlik doz (özel nitelikli)"
+                          },
+                          "times": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            },
+                            "description": "Doz saatleri (SS:DD, Europe/Istanbul)"
+                          },
+                          "startDate": {
+                            "type": "string"
+                          },
+                          "endDate": {
+                            "type": "string"
+                          },
+                          "note": {
+                            "description": "Veli notu (özel nitelikli)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "requestedByName": {
+                            "description": "Talebi açan veli",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "decidedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "decidedByName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "rejectionReason": {
+                            "description": "Ret gerekçesi; yalnız reddedilen talepte",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "withdrawnAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "studentId",
+                          "studentName",
+                          "status",
+                          "medicationName",
+                          "dose",
+                          "times",
+                          "startDate",
+                          "endDate",
+                          "note",
+                          "requestedByName",
+                          "decidedAt",
+                          "decidedByName",
+                          "rejectionReason",
+                          "withdrawnAt",
+                          "createdAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createMedicationConsent",
+        "summary": "Çocuğum için ilaç onayı ver",
+        "tags": [
+          "finance-infirmary"
+        ],
+        "description": "Veli kendi çocuğu (kapsam dışı 404, varlık ipucu yok) için ilaç adı, doz, doz saatleri (1–6), ilk ve son gün (ilk gün bugünden önce 422 `infirmary_consent_start_past`, 60 günden sonra 422 `infirmary_consent_start_too_far`; son gün ilk günden önce 422 `infirmary_consent_end_before_start`; en çok 90 gün 422 `infirmary_consent_too_long`) ve not yazar. Talep okul onayını bekler; onaysız ilaç verilmez. İlaç adı, doz ve not şifreli saklanır. Denetim `finance.infirmary.consent_create`. `Idempotency-Key` zorunlu. Rol: yalnız `veli` (kapsamındaki çocuklar; başkası 404). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "studentId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Velinin kapsamındaki çocuk"
+                  },
+                  "medicationName": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120,
+                    "description": "İlacın adı (2–120; şifreli)"
+                  },
+                  "dose": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60,
+                    "description": "Bir seferlik doz (ör. \"5 ml\", \"1 tablet\"; ≤ 60; şifreli)"
+                  },
+                  "times": {
+                    "description": "Doz saatleri (1–6, SS:DD, Europe/Istanbul)",
+                    "minItems": 1,
+                    "maxItems": 6,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                      "description": "Doz saati (SS:DD, Europe/Istanbul)"
+                    }
+                  },
+                  "startDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "İlk gün (YYYY-MM-DD); bugünden önce ve 60 günden sonra olamaz"
+                  },
+                  "endDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Son gün (dahil); başlangıçtan önce olamaz, en çok 90 gün"
+                  },
+                  "note": {
+                    "description": "Veli notu (≤ 500; şifreli)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "studentId",
+                  "medicationName",
+                  "dose",
+                  "times",
+                  "startDate",
+                  "endDate"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "approved",
+                            "rejected",
+                            "withdrawn"
+                          ],
+                          "description": "`pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `withdrawn` geri çekildi"
+                        },
+                        "medicationName": {
+                          "type": "string",
+                          "description": "İlaç adı (özel nitelikli; şifreli saklanır)"
+                        },
+                        "dose": {
+                          "type": "string",
+                          "description": "Bir seferlik doz (özel nitelikli)"
+                        },
+                        "times": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Doz saatleri (SS:DD, Europe/Istanbul)"
+                        },
+                        "startDate": {
+                          "type": "string"
+                        },
+                        "endDate": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "description": "Veli notu (özel nitelikli)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "requestedByName": {
+                          "description": "Talebi açan veli",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "description": "Ret gerekçesi; yalnız reddedilen talepte",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "withdrawnAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        },
+                        "administrations": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "doseDay": {
+                                "type": "string",
+                                "description": "Uygulama günü (Europe/Istanbul)"
+                              },
+                              "scheduledTime": {
+                                "type": "string"
+                              },
+                              "administeredAt": {
+                                "type": "string"
+                              },
+                              "administeredByMembershipId": {
+                                "type": "string"
+                              },
+                              "administeredByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "dose": {
+                                "type": "string",
+                                "description": "Verilen doz (özel nitelikli)"
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "doseDay",
+                              "scheduledTime",
+                              "administeredAt",
+                              "administeredByMembershipId",
+                              "administeredByName",
+                              "dose",
+                              "note",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "İlaç uygulamaları (en eski önce)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "studentId",
+                        "studentName",
+                        "status",
+                        "medicationName",
+                        "dose",
+                        "times",
+                        "startDate",
+                        "endDate",
+                        "note",
+                        "requestedByName",
+                        "decidedAt",
+                        "decidedByName",
+                        "rejectionReason",
+                        "withdrawnAt",
+                        "createdAt",
+                        "version",
+                        "administrations"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/infirmary/medication-consents/{consentId}": {
+      "get": {
+        "operationId": "getMedicationConsent",
+        "summary": "İlaç onayı ve uygulamaları",
+        "tags": [
+          "finance-infirmary"
+        ],
+        "description": "Talep ve ilaç uygulamaları (an, saat, doz, uygulayan). Okuma `finance.infirmary.consent_read` denetimine düşer. Olmayan, başka kurumun ya da velinin kapsamı dışındaki talep 404. Rol: `yonetici` ve `onburo` (bütün talepler), `veli` (kapsamındaki çocuklar; başkası 404). Öğretmen ve öğrenci 403. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "consentId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "approved",
+                            "rejected",
+                            "withdrawn"
+                          ],
+                          "description": "`pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `withdrawn` geri çekildi"
+                        },
+                        "medicationName": {
+                          "type": "string",
+                          "description": "İlaç adı (özel nitelikli; şifreli saklanır)"
+                        },
+                        "dose": {
+                          "type": "string",
+                          "description": "Bir seferlik doz (özel nitelikli)"
+                        },
+                        "times": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Doz saatleri (SS:DD, Europe/Istanbul)"
+                        },
+                        "startDate": {
+                          "type": "string"
+                        },
+                        "endDate": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "description": "Veli notu (özel nitelikli)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "requestedByName": {
+                          "description": "Talebi açan veli",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "description": "Ret gerekçesi; yalnız reddedilen talepte",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "withdrawnAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        },
+                        "administrations": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "doseDay": {
+                                "type": "string",
+                                "description": "Uygulama günü (Europe/Istanbul)"
+                              },
+                              "scheduledTime": {
+                                "type": "string"
+                              },
+                              "administeredAt": {
+                                "type": "string"
+                              },
+                              "administeredByMembershipId": {
+                                "type": "string"
+                              },
+                              "administeredByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "dose": {
+                                "type": "string",
+                                "description": "Verilen doz (özel nitelikli)"
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "doseDay",
+                              "scheduledTime",
+                              "administeredAt",
+                              "administeredByMembershipId",
+                              "administeredByName",
+                              "dose",
+                              "note",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "İlaç uygulamaları (en eski önce)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "studentId",
+                        "studentName",
+                        "status",
+                        "medicationName",
+                        "dose",
+                        "times",
+                        "startDate",
+                        "endDate",
+                        "note",
+                        "requestedByName",
+                        "decidedAt",
+                        "decidedByName",
+                        "rejectionReason",
+                        "withdrawnAt",
+                        "createdAt",
+                        "version",
+                        "administrations"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/infirmary/medication-consents/{consentId}/approve": {
+      "post": {
+        "operationId": "approveMedicationConsent",
+        "summary": "İlaç talebini onayla",
+        "tags": [
+          "finance-infirmary"
+        ],
+        "description": "Onaydan sonra ilaç onaydaki saat ve dozla verilebilir. Son günü geçmiş talep 422 `infirmary_consent_expired`. Gövde boş nesne. Denetim `finance.infirmary.consent_approve`. Yalnız bekleyen talep (409 `infirmary_consent_not_pending`). Veliye bildirim gönderilmez. `If-Match` zorunlu. Rol: `yonetici` ve `onburo` (revir görevlisi rolü yok). Öğretmen, veli ve öğrenci 403. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "consentId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "approved",
+                            "rejected",
+                            "withdrawn"
+                          ],
+                          "description": "`pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `withdrawn` geri çekildi"
+                        },
+                        "medicationName": {
+                          "type": "string",
+                          "description": "İlaç adı (özel nitelikli; şifreli saklanır)"
+                        },
+                        "dose": {
+                          "type": "string",
+                          "description": "Bir seferlik doz (özel nitelikli)"
+                        },
+                        "times": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Doz saatleri (SS:DD, Europe/Istanbul)"
+                        },
+                        "startDate": {
+                          "type": "string"
+                        },
+                        "endDate": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "description": "Veli notu (özel nitelikli)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "requestedByName": {
+                          "description": "Talebi açan veli",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "description": "Ret gerekçesi; yalnız reddedilen talepte",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "withdrawnAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        },
+                        "administrations": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "doseDay": {
+                                "type": "string",
+                                "description": "Uygulama günü (Europe/Istanbul)"
+                              },
+                              "scheduledTime": {
+                                "type": "string"
+                              },
+                              "administeredAt": {
+                                "type": "string"
+                              },
+                              "administeredByMembershipId": {
+                                "type": "string"
+                              },
+                              "administeredByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "dose": {
+                                "type": "string",
+                                "description": "Verilen doz (özel nitelikli)"
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "doseDay",
+                              "scheduledTime",
+                              "administeredAt",
+                              "administeredByMembershipId",
+                              "administeredByName",
+                              "dose",
+                              "note",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "İlaç uygulamaları (en eski önce)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "studentId",
+                        "studentName",
+                        "status",
+                        "medicationName",
+                        "dose",
+                        "times",
+                        "startDate",
+                        "endDate",
+                        "note",
+                        "requestedByName",
+                        "decidedAt",
+                        "decidedByName",
+                        "rejectionReason",
+                        "withdrawnAt",
+                        "createdAt",
+                        "version",
+                        "administrations"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/infirmary/medication-consents/{consentId}/reject": {
+      "post": {
+        "operationId": "rejectMedicationConsent",
+        "summary": "İlaç talebini reddet",
+        "tags": [
+          "finance-infirmary"
+        ],
+        "description": "Gerekçe (5–500) şifreli saklanır ve veliye döner. Denetim `finance.infirmary.consent_reject` (gerekçe yazılmaz). Yalnız bekleyen talep (409 `infirmary_consent_not_pending`). Veliye bildirim gönderilmez. `If-Match` zorunlu. Rol: `yonetici` ve `onburo` (revir görevlisi rolü yok). Öğretmen, veli ve öğrenci 403. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500,
+                    "description": "Ret gerekçesi (5–500; şifreli, veliye döner)"
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "consentId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "approved",
+                            "rejected",
+                            "withdrawn"
+                          ],
+                          "description": "`pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `withdrawn` geri çekildi"
+                        },
+                        "medicationName": {
+                          "type": "string",
+                          "description": "İlaç adı (özel nitelikli; şifreli saklanır)"
+                        },
+                        "dose": {
+                          "type": "string",
+                          "description": "Bir seferlik doz (özel nitelikli)"
+                        },
+                        "times": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Doz saatleri (SS:DD, Europe/Istanbul)"
+                        },
+                        "startDate": {
+                          "type": "string"
+                        },
+                        "endDate": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "description": "Veli notu (özel nitelikli)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "requestedByName": {
+                          "description": "Talebi açan veli",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "description": "Ret gerekçesi; yalnız reddedilen talepte",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "withdrawnAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        },
+                        "administrations": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "doseDay": {
+                                "type": "string",
+                                "description": "Uygulama günü (Europe/Istanbul)"
+                              },
+                              "scheduledTime": {
+                                "type": "string"
+                              },
+                              "administeredAt": {
+                                "type": "string"
+                              },
+                              "administeredByMembershipId": {
+                                "type": "string"
+                              },
+                              "administeredByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "dose": {
+                                "type": "string",
+                                "description": "Verilen doz (özel nitelikli)"
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "doseDay",
+                              "scheduledTime",
+                              "administeredAt",
+                              "administeredByMembershipId",
+                              "administeredByName",
+                              "dose",
+                              "note",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "İlaç uygulamaları (en eski önce)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "studentId",
+                        "studentName",
+                        "status",
+                        "medicationName",
+                        "dose",
+                        "times",
+                        "startDate",
+                        "endDate",
+                        "note",
+                        "requestedByName",
+                        "decidedAt",
+                        "decidedByName",
+                        "rejectionReason",
+                        "withdrawnAt",
+                        "createdAt",
+                        "version",
+                        "administrations"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/infirmary/medication-consents/{consentId}/withdraw": {
+      "post": {
+        "operationId": "withdrawMedicationConsent",
+        "summary": "İlaç onayını geri çek",
+        "tags": [
+          "finance-infirmary"
+        ],
+        "description": "Veli bekleyen ya da onaylı talebi geri çeker; sonra ilaç verilmez (422 `infirmary_consent_not_approved`). Kapanmış talep 409 `infirmary_consent_closed`. Gövde boş nesne. Denetim `finance.infirmary.consent_withdraw`. `If-Match` zorunlu. Rol: yalnız `veli` (kapsamındaki çocuklar; başkası 404). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "consentId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "approved",
+                            "rejected",
+                            "withdrawn"
+                          ],
+                          "description": "`pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `withdrawn` geri çekildi"
+                        },
+                        "medicationName": {
+                          "type": "string",
+                          "description": "İlaç adı (özel nitelikli; şifreli saklanır)"
+                        },
+                        "dose": {
+                          "type": "string",
+                          "description": "Bir seferlik doz (özel nitelikli)"
+                        },
+                        "times": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Doz saatleri (SS:DD, Europe/Istanbul)"
+                        },
+                        "startDate": {
+                          "type": "string"
+                        },
+                        "endDate": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "description": "Veli notu (özel nitelikli)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "requestedByName": {
+                          "description": "Talebi açan veli",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "description": "Ret gerekçesi; yalnız reddedilen talepte",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "withdrawnAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        },
+                        "administrations": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "doseDay": {
+                                "type": "string",
+                                "description": "Uygulama günü (Europe/Istanbul)"
+                              },
+                              "scheduledTime": {
+                                "type": "string"
+                              },
+                              "administeredAt": {
+                                "type": "string"
+                              },
+                              "administeredByMembershipId": {
+                                "type": "string"
+                              },
+                              "administeredByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "dose": {
+                                "type": "string",
+                                "description": "Verilen doz (özel nitelikli)"
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "doseDay",
+                              "scheduledTime",
+                              "administeredAt",
+                              "administeredByMembershipId",
+                              "administeredByName",
+                              "dose",
+                              "note",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "İlaç uygulamaları (en eski önce)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "studentId",
+                        "studentName",
+                        "status",
+                        "medicationName",
+                        "dose",
+                        "times",
+                        "startDate",
+                        "endDate",
+                        "note",
+                        "requestedByName",
+                        "decidedAt",
+                        "decidedByName",
+                        "rejectionReason",
+                        "withdrawnAt",
+                        "createdAt",
+                        "version",
+                        "administrations"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/infirmary/medication-consents/{consentId}/administrations": {
+      "post": {
+        "operationId": "recordMedicationAdministration",
+        "summary": "İlaç uygulamasını kaydet",
+        "tags": [
+          "finance-infirmary"
+        ],
+        "description": "Onaylı talep (422 `infirmary_consent_not_approved`), onaydaki doz saati (422 `infirmary_dose_time_not_approved`) ve doz (422 `infirmary_dose_not_approved`; boşluk, büyük harf ve ondalık virgül farkı sayılmaz), uygulama anı (boşsa şimdi; gelecekte 422 `infirmary_administration_in_future`, 24 saatten eski 422 `infirmary_administration_too_old`; Europe/Istanbul günü dönem dışında 422 `infirmary_administration_outside_period`) ve uygulayan (boşsa kaydeden; 422 `infirmary_administered_by_not_found|not_staff|inactive`). Aynı günün aynı doz saati ikinci kez yazılmaz (409 `infirmary_dose_already_given`). Kayıt değişmez. Denetim `finance.infirmary.administration_create`. `Idempotency-Key` zorunlu. Rol: `yonetici` ve `onburo` (revir görevlisi rolü yok). Öğretmen, veli ve öğrenci 403. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "scheduledTime": {
+                    "type": "string",
+                    "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                    "description": "Onaydaki doz saati (SS:DD)"
+                  },
+                  "dose": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60,
+                    "description": "Verilen doz; onaydaki dozla aynı olmalı (şifreli)"
+                  },
+                  "administeredAt": {
+                    "default": null,
+                    "description": "Uygulama anı (ISO 8601); boşsa şimdi. Gelecekte ve 24 saatten eski olamaz",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "administeredByMembershipId": {
+                    "default": null,
+                    "description": "İlacı veren personel üyeliği; boşsa kaydeden",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "note": {
+                    "description": "Not (≤ 500; şifreli)",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "scheduledTime",
+                  "dose"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "consentId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "approved",
+                            "rejected",
+                            "withdrawn"
+                          ],
+                          "description": "`pending` onay bekliyor, `approved` onaylandı, `rejected` reddedildi, `withdrawn` geri çekildi"
+                        },
+                        "medicationName": {
+                          "type": "string",
+                          "description": "İlaç adı (özel nitelikli; şifreli saklanır)"
+                        },
+                        "dose": {
+                          "type": "string",
+                          "description": "Bir seferlik doz (özel nitelikli)"
+                        },
+                        "times": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Doz saatleri (SS:DD, Europe/Istanbul)"
+                        },
+                        "startDate": {
+                          "type": "string"
+                        },
+                        "endDate": {
+                          "type": "string"
+                        },
+                        "note": {
+                          "description": "Veli notu (özel nitelikli)",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "requestedByName": {
+                          "description": "Talebi açan veli",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedByName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rejectionReason": {
+                          "description": "Ret gerekçesi; yalnız reddedilen talepte",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "withdrawnAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        },
+                        "administrations": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "doseDay": {
+                                "type": "string",
+                                "description": "Uygulama günü (Europe/Istanbul)"
+                              },
+                              "scheduledTime": {
+                                "type": "string"
+                              },
+                              "administeredAt": {
+                                "type": "string"
+                              },
+                              "administeredByMembershipId": {
+                                "type": "string"
+                              },
+                              "administeredByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "dose": {
+                                "type": "string",
+                                "description": "Verilen doz (özel nitelikli)"
+                              },
+                              "note": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "doseDay",
+                              "scheduledTime",
+                              "administeredAt",
+                              "administeredByMembershipId",
+                              "administeredByName",
+                              "dose",
+                              "note",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "İlaç uygulamaları (en eski önce)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "studentId",
+                        "studentName",
+                        "status",
+                        "medicationName",
+                        "dose",
+                        "times",
+                        "startDate",
+                        "endDate",
+                        "note",
+                        "requestedByName",
+                        "decidedAt",
+                        "decidedByName",
+                        "rejectionReason",
+                        "withdrawnAt",
+                        "createdAt",
+                        "version",
+                        "administrations"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/infirmary/medication-schedule": {
+      "get": {
+        "operationId": "getMedicationSchedule",
+        "summary": "Günün ilaç uygulama listesi",
+        "tags": [
+          "finance-infirmary"
+        ],
+        "description": "Günü (Europe/Istanbul; boşsa bugün) kapsayan onaylı taleplerin her doz saati, saat sırasıyla; o gün verildiyse uygulama. Her talep `finance.infirmary.schedule_read` denetimine düşer. Rol: `yonetici` ve `onburo` (revir görevlisi rolü yok). Öğretmen, veli ve öğrenci 403. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "date",
+            "required": false,
+            "description": "Gün (YYYY-MM-DD, Europe/Istanbul); boşsa bugün"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "consentId": {
+                            "type": "string"
+                          },
+                          "consentVersion": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "studentId": {
+                            "type": "string"
+                          },
+                          "studentName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "medicationName": {
+                            "type": "string"
+                          },
+                          "dose": {
+                            "type": "string"
+                          },
+                          "scheduledTime": {
+                            "type": "string"
+                          },
+                          "administration": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "administeredAt": {
+                                    "type": "string"
+                                  },
+                                  "administeredByName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "administeredAt",
+                                  "administeredByName"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "O günkü uygulama; verilmediyse boş"
+                          }
+                        },
+                        "required": [
+                          "consentId",
+                          "consentVersion",
+                          "studentId",
+                          "studentName",
+                          "medicationName",
+                          "dose",
+                          "scheduledTime",
+                          "administration"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/infirmary/staff": {
+      "get": {
+        "operationId": "listInfirmaryStaff",
+        "summary": "Revir için personel",
+        "tags": [
+          "finance-infirmary"
+        ],
+        "description": "Gönderen ve uygulayan seçimi: kurumun etkin yönetici, öğretmen ve ön büro üyelikleri, ada göre. Rol: `yonetici` ve `onburo` (revir görevlisi rolü yok). Öğretmen, veli ve öğrenci 403. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Personel adında arama"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "membershipId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "role": {
+                            "type": "string",
+                            "description": "`yonetici`, `ogretmen` ya da `onburo`"
+                          },
+                          "active": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "membershipId",
+                          "name",
+                          "role",
+                          "active"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

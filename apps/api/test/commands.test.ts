@@ -293,6 +293,11 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/clubs',
   'POST /api/v1/finance/clubs/{clubId}/members',
   'POST /api/v1/finance/clubs/{clubId}/sessions',
+  // Revir ziyareti, veli ilaç talebi ve ilaç uygulaması; çift tıklama ikinci ziyareti, talebi ya
+  // da uygulamayı yazmaz (routes/finance-infirmary.ts; DOM-FIN-151, ON-101).
+  'POST /api/v1/finance/infirmary/visits',
+  'POST /api/v1/finance/infirmary/medication-consents',
+  'POST /api/v1/finance/infirmary/medication-consents/{consentId}/administrations',
 ]
 // Onur: kayıt ve finans sonu
 

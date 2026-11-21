@@ -39,6 +39,7 @@ import { notify } from '@/lib/notify.ts'
 import { RootError } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { FinanceStudentSearch } from './FinanceStudentSearch.tsx'
+import { FinanceTransportRosterButton } from './FinanceTransportRosterButton.tsx'
 import {
   directionText,
   emptyStop,
@@ -167,14 +168,17 @@ function RouteList() {
         key: ACTIONS_KEY,
         label: 'İşlemler',
         cell: (row) => (
-          <Button
-            className="min-h-11"
-            variant="ghost"
-            aria-label={`${row.name} güzergâhını aç`}
-            onClick={() => panel.open(row.id)}
-          >
-            Aç
-          </Button>
+          <div className="flex flex-wrap gap-1">
+            <Button
+              className="min-h-11"
+              variant="ghost"
+              aria-label={`${row.name} güzergâhını aç`}
+              onClick={() => panel.open(row.id)}
+            >
+              Aç
+            </Button>
+            <FinanceTransportRosterButton route={row.row} />
+          </div>
         ),
       },
     ],

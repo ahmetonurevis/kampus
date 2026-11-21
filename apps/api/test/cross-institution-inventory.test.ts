@@ -3804,6 +3804,41 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: personel özlük kartı (ON-172; DOM-FIN-140).
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'liste',
+          'GET /api/v1/finance/personnel-files',
+          'listA.data.some((row) => row.membershipId === bStaff)',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/personnel-files/:membershipId',
+          'get(`${FILES}/${bStaff}`, a.admin)',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/personnel-files/:membershipId/national-id',
+          'get(`${FILES}/${bStaff}/national-id`, a.admin)',
+        ],
+        ['gövde', 'POST /api/v1/finance/personnel-files', 'institutionId: b.id'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/personnel-files/:membershipId',
+          'patchCard(a.admin, bStaff',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-personnel-files.test.ts',
+        'başka kurumun personeli ve kartı 404 ve B değişmez; listede yok; gövdedeki institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

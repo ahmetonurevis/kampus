@@ -194,6 +194,8 @@ export const infirmaryMedicationConsents = pgTable(
 /**
  * İlaç uygulaması (DOM-FIN-151; K-509; ON-161 genişletir): onaylı talebin bir doz saatinin bir günde
  * verilişi. Aynı talepte aynı günün aynı doz saati tekildir; satır yalnız eklenir (tetikleyici).
+ * Düzeltme ve iptal `infirmary_medication_dose_corrections`'tadır (DOM-FIN-152); iptal edilen
+ * uygulamanın yerine yazılan kayıt `replaces_administration_id` ile zinciri sürdürür.
  */
 export const infirmaryMedicationAdministrations = pgTable(
   'infirmary_medication_administrations',
@@ -218,6 +220,8 @@ export const infirmaryMedicationAdministrations = pgTable(
     healthCiphertext: text('health_ciphertext').notNull(),
     // Kişisel veri değil: yalnız anahtar sürümü.
     healthKeyVersion: integer('health_key_version').notNull(),
+    // İptal edilen aynı doz saati uygulamasının yerine geçiyorsa onun kimliği (DOM-FIN-152, K-513).
+    replacesAdministrationId: uuid('replaces_administration_id'),
     ...requiredColumns(),
   },
   (table) => [
@@ -243,12 +247,19 @@ export const infirmaryMedicationAdministrations = pgTable(
       'infirmary_medication_administrations_key_version_check',
       sql`${table.healthKeyVersion} > 0`,
     ),
-    uniqueIndex('infirmary_medication_administrations_dose_key').on(
-      table.institutionId,
-      table.consentId,
-      table.doseDay,
-      table.scheduledTime,
-    ),
+    foreignKey({
+      name: 'infirmary_medication_administrations_replaces_fkey',
+      columns: [table.institutionId, table.replacesAdministrationId],
+      foreignColumns: [table.institutionId, table.id],
+    }).onDelete('restrict'),
+    // Doz saatinin ilk uygulaması tekildir; iptal edilen uygulamanın yerine geçen kayıt zinciri
+    // sürdürür ve her kayıt en çok bir kez yerine geçilir (DOM-FIN-152, K-513).
+    uniqueIndex('infirmary_medication_administrations_dose_key')
+      .on(table.institutionId, table.consentId, table.doseDay, table.scheduledTime)
+      .where(sql`${table.replacesAdministrationId} is null`),
+    uniqueIndex('infirmary_medication_administrations_replaces_key')
+      .on(table.institutionId, table.replacesAdministrationId)
+      .where(sql`${table.replacesAdministrationId} is not null`),
     index('infirmary_medication_administrations_student_idx').on(
       table.institutionId,
       table.studentId,

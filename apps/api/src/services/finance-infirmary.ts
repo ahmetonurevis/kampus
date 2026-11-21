@@ -26,6 +26,10 @@ import {
   type VisitValues,
 } from '@kampus/school-core/lib/finance-infirmary.ts'
 import type { HealthAccessReason } from '@kampus/school-core/lib/finance-health-access.ts'
+import {
+  assertDoseSlotOpen,
+  doseSlotKey,
+} from '@kampus/school-core/lib/finance-infirmary-schedule.ts'
 
 import type { Database } from '../db/client.ts'
 import { findIncidentReport, loadIncidentMembers } from '../db/finance-incidents.ts'
@@ -55,6 +59,7 @@ import { ConflictError, NotFoundError } from '../errors.ts'
 import type { FieldBinding, FieldCipher } from '../lib/field-crypto.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { recordHealthRead } from './finance-health-access.ts'
+import { loadDoseSlots } from './finance-infirmary-schedule-slots.ts'
 import { istanbulDayStart } from './list-filters.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
 import { readScope, readSource } from './read-scope.ts'
@@ -103,7 +108,7 @@ const consentBinding = (
   context: [row.studentId],
 })
 
-const administrationBinding = (
+export const administrationBinding = (
   institutionId: string,
   row: { id: string; consentId: string },
 ): FieldBinding => ({
@@ -125,7 +130,7 @@ function visitHealthOf(deps: InfirmaryDeps, institutionId: string, row: StoredVi
   )
 }
 
-function consentHealthOf(
+export function consentHealthOf(
   deps: InfirmaryDeps,
   institutionId: string,
   row: StoredConsent,
@@ -1025,20 +1030,16 @@ export function recordAdministrationCommand(
         const row = await readableConsent(tx, ctx, consentId, null)
         const parsed = medicationAdministrationSchema.parse(input)
         const administeredById = parsed.administeredByMembershipId ?? ctx.actor.membershipId
-        const [members, given] = await Promise.all([
+        // Etkin sonuç iptal ve atlamayı da sayar (DOM-FIN-152, K-512, K-513).
+        const [members, slots] = await Promise.all([
           loadIncidentMembers(tx, ctx.institutionId, [administeredById]),
-          loadAdministrations(tx, ctx.institutionId, [consentId]),
+          loadDoseSlots(tx, ctx.institutionId, [consentId]),
         ])
-        const taken = new Set(
-          (given.get(consentId) ?? []).map((item) => `${item.doseDay} ${item.scheduledTime}`),
-        )
+        const slotOf = (day: string, time: string) => slots.get(doseSlotKey(consentId, day, time))
         const health = consentHealthOf(deps, ctx.institutionId, row)
         return {
-          run: () => ({
-            row,
-            parsed,
-            administeredById,
-            plan: planMedicationAdministration(
+          run: () => {
+            const plan = planMedicationAdministration(
               {
                 status: row.status,
                 startDate: row.startDate,
@@ -1050,13 +1051,18 @@ export function recordAdministrationCommand(
               {
                 now: ctx.now,
                 administeredBy: members.get(administeredById) ?? null,
-                alreadyGiven: (day, time) => taken.has(`${day} ${time}`),
+                alreadyGiven: (day, time) => slotOf(day, time)?.active?.kind === 'administration',
               },
-            ),
-          }),
+            )
+            const { replacesId } = assertDoseSlotOpen(
+              slotOf(plan.doseDay, parsed.scheduledTime),
+              'administration',
+            )
+            return { row, parsed, administeredById, plan, replacesId }
+          },
         }
       },
-      after: async (tx, { row, parsed, administeredById, plan }) => {
+      after: async (tx, { row, parsed, administeredById, plan, replacesId }) => {
         const health = deps.cipher.encrypt(
           administrationBinding(ctx.institutionId, { id: administrationId, consentId }),
           JSON.stringify(plan.health),
@@ -1071,6 +1077,7 @@ export function recordAdministrationCommand(
           administeredByMembershipId: administeredById,
           healthCiphertext: health.ciphertext,
           healthKeyVersion: health.keyVersion,
+          replacesAdministrationId: replacesId,
           userId: ctx.actor.userId,
           now: ctx.now,
         })

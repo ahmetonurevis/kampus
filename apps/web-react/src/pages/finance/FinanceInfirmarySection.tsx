@@ -10,13 +10,10 @@ import {
   useInfirmaryVisits,
   useMedicationConsent,
   useMedicationConsents,
-  useMedicationSchedule,
-  useRecordMedicationAdministration,
   useRejectMedicationConsent,
   type InfirmaryVisitDetail,
   type InfirmaryVisitRow,
   type MedicationConsentRow,
-  type MedicationScheduleSlot,
 } from '@kampus/react-shared/use-finance-infirmary.ts'
 import type { HealthAccessReason } from '@kampus/school-core/lib/finance-health-access.ts'
 import {
@@ -56,6 +53,7 @@ import {
   useHealthAccessReason,
   useRememberHealthReason,
 } from './FinanceHealthAccessReasonDialog.tsx'
+import { TodayMedications } from './FinanceInfirmaryScheduleSection.tsx'
 import { occurredText } from './finance-incident-forms.ts'
 import {
   actionsText,
@@ -65,7 +63,6 @@ import {
   dischargeDefaults,
   dischargeFormSchema,
   rejectFormSchema,
-  scheduleSlotText,
   visitCreateBody,
   visitDefaults,
   visitFormField,
@@ -99,7 +96,7 @@ const text = (value: unknown) => (typeof value === 'string' && value !== '' ? va
 
 /**
  * Revir (DOM-FIN-151; ON-101; IST-102): Finans "Revir" sekmesi, yönetici ve ön büro (revir
- * görevlisi rolü yok; K-510). Bugünkü ilaç uygulama listesi, revir ziyaretleri (açma, ayrıntı,
+ * görevlisi rolü yok; K-510). Bugünkü ilaç çizelgesi (DOM-FIN-152, `FinanceInfirmaryScheduleSection.tsx`), revir ziyaretleri (açma, ayrıntı,
  * kapatma) ve veli ilaç talepleri (onay, gerekçeli ret, uygulamalar). Onaysız ilaç verilmez; aynı
  * doz saati iki kez yazılmaz (K-509). Sağlık ayrıntısı sunucudan okunur ve her açılış denetime
  * düşer; veliye ya da öğretmene ileti gönderilmez. İlaç listeleri ve ziyaret ayrıntısı erişim
@@ -131,7 +128,7 @@ export function FinanceInfirmarySection() {
             onConfirm={medications.choose}
           />
         ) : (
-          <TodaySchedule reason={medications.reason} />
+          <TodayMedications reason={medications.reason} />
         )}
         <Visits />
         {medications.reason === null ? null : <Consents reason={medications.reason} />}
@@ -144,65 +141,6 @@ export function FinanceInfirmarySection() {
 
 const MEDICATIONS_SCOPE = 'infirmary-medications'
 const visitScope = (visitId: string) => `infirmary-visit:${visitId}`
-
-function TodaySchedule({ reason }: { reason: HealthAccessReason }) {
-  const schedule = useMedicationSchedule(undefined, reason)
-  const record = useRecordMedicationAdministration()
-  const [busySlot, setBusySlot] = useState('')
-  const slots = schedule.data?.data ?? []
-  const give = async (slot: MedicationScheduleSlot) => {
-    setBusySlot(`${slot.consentId} ${slot.scheduledTime}`)
-    const outcome = await record.submit({
-      consentId: slot.consentId,
-      body: { scheduledTime: slot.scheduledTime, dose: slot.dose },
-    })
-    setBusySlot('')
-    if (outcome.status === 'success') notify.success('İlaç uygulaması kaydedildi.')
-  }
-  return (
-    <section aria-labelledby="revir-bugun" className="grid gap-2">
-      <h3 id="revir-bugun" className="text-base font-semibold">
-        Bugünkü ilaç uygulamaları
-      </h3>
-      {schedule.error ? (
-        <QueryError error={schedule.error} onRetry={() => void schedule.refetch()} />
-      ) : schedule.isPending ? (
-        <SummaryLoading />
-      ) : slots.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Bugün verilecek onaylı ilaç yok.</p>
-      ) : (
-        <ul aria-label="Bugünkü ilaçlar" className="grid gap-2">
-          {slots.map((slot) => {
-            const key = `${slot.consentId} ${slot.scheduledTime}`
-            const busy = busySlot === key
-            return (
-              <li
-                key={key}
-                className="flex flex-wrap items-center justify-between gap-2 border-b pb-2 text-sm"
-              >
-                <span>{`${slot.scheduledTime} · ${slot.studentName ?? '—'} · ${slot.medicationName} (${slot.dose})`}</span>
-                {slot.administration === null ? (
-                  <Button
-                    size="sm"
-                    className="min-h-11"
-                    disabled={record.isPending}
-                    aria-busy={busy || undefined}
-                    aria-label={`${slot.studentName ?? 'Öğrenci'} ${slot.scheduledTime} dozunu verildi olarak kaydet`}
-                    onClick={() => void give(slot)}
-                  >
-                    Verildi olarak kaydet
-                  </Button>
-                ) : (
-                  <StatusBadge text={scheduleSlotText(slot)} tone="green" />
-                )}
-              </li>
-            )
-          })}
-        </ul>
-      )}
-    </section>
-  )
-}
 
 // --- Ziyaretler ----------------------------------------------------------------------------------
 

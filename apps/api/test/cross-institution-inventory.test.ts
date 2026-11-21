@@ -3804,6 +3804,115 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: personel özlük kartı (ON-172; DOM-FIN-140).
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'liste',
+          'GET /api/v1/finance/personnel-files',
+          'listA.data.some((row) => row.membershipId === bStaff)',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/personnel-files/:membershipId',
+          'get(`${FILES}/${bStaff}`, a.admin)',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/personnel-files/:membershipId/national-id',
+          'get(`${FILES}/${bStaff}/national-id`, a.admin)',
+        ],
+        ['gövde', 'POST /api/v1/finance/personnel-files', 'institutionId: b.id'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/personnel-files/:membershipId',
+          'patchCard(a.admin, bStaff',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-personnel-files.test.ts',
+        'başka kurumun personeli ve kartı 404 ve B değişmez; listede yok; gövdedeki institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: ders gözlem planı (ON-207; DOM-FIN-139, K-474).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/observation-plans', 'listOf(a.admin)'],
+        ['gövde', 'POST /api/v1/finance/observation-plans', 'institutionId: b.id,'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/observation-plans/:planId',
+          '`${PLANS}/${String(rowB.id)}`, a.admin',
+        ],
+        ['kayıt', 'PATCH /api/v1/finance/observation-plans/:planId', 'patch(a.admin, rowB'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/observation-plans/:planId/postpone',
+          "command(a.admin, rowB, 'postpone'",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/observation-plans/:planId/cancel',
+          "command(a.admin, rowB, 'cancel'",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/observation-plans/:planId/start',
+          "command(a.admin, rowB, 'start')",
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-observation-plans.test.ts',
+        'DOM-FIN-139: başka kurumun planı 404 ve değişmez; gövdedeki institutionId 400; liste ayrık',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: ziyaretçi kaydı (ON-166; DOM-FIN-141).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/visitors', 'get(VISITORS, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/visitors', 'visitorBody({ institutionId: b.id })'],
+        ['kayıt', 'GET /api/v1/finance/visitors/:visitorId', 'get(bUrl, a.admin)'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/visitors/:visitorId/check-out',
+          '`${bUrl}/check-out`, a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/visitors/:visitorId/badge-release',
+          '`${bUrl}/badge-release`',
+        ],
+        ['liste', 'GET /api/v1/finance/visitor-summary', 'get(SUMMARY, a.admin)'],
+        ['liste', 'GET /api/v1/finance/visitor-hosts', 'get(`${HOSTS}?pageSize=100`, a.admin)'],
+        ['liste', 'GET /api/v1/finance/visitor-retention', 'get(RETENTION, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/visitor-anonymizations', 'visitorIds: [bVisitor.id]'],
+        ['liste', 'GET /api/v1/finance/visitor-settings', 'get(SETTINGS, a.admin)'],
+        [
+          'gövde',
+          'PATCH /api/v1/finance/visitor-settings',
+          'retentionDays: 10, institutionId: b.id',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-visitors.test.ts',
+        'DOM-FIN-141: başka kurumun ziyaret kaydı 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

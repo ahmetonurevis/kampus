@@ -3,17 +3,25 @@ import { z } from 'zod'
 import type { Role } from '../modules/navigation.ts'
 import { daySchema } from './domain.ts'
 import { DomainError } from './errors.ts'
-import type { DevelopmentGoalStatus } from './finance-observation-debriefs.ts'
+import {
+  DEVELOPMENT_GOAL_CRITERION_MAX,
+  DEVELOPMENT_GOAL_SOURCES,
+  DEVELOPMENT_GOAL_TITLE_MAX,
+  type DevelopmentGoalStatus,
+} from './finance-observation-debriefs.ts'
 import type { PerformancePeriodStatus } from './finance-performance.ts'
 import type { SelfEvaluationAnswer, SelfEvaluationQuestion } from './finance-self-evaluations.ts'
+import type { StaffFeedbackResult } from './finance-staff-feedback.ts'
 
 /**
  * Personel performans raporu (docs/domain/finans.md DOM-FIN-137; ON-220). Personel × dönem
  * raporu dönem sonu değerlendirmesini (DOM-FIN-124), gönderilmiş öz değerlendirmeyi
  * (DOM-FIN-131), dönemdeki tamamlanmış ders gözlemlerini ve puan ortalamasını (DOM-FIN-130),
- * döneme bağlı açık ve ulaşılan gelişim hedeflerini (DOM-FIN-133) ve yönetici görüşünü bölüm bölüm
- * bir araya getirir (K-466, K-468). Rapor içeriği saklanmaz, kaynak
- * kayıtlardan okunur; dönem kapandıktan sonra yönetici raporu görüşüyle kesinleştirir, personelin
+ * çok kaynaklı geri bildirimin toplu sonucunu (DOM-FIN-134), döneme bağlı açık ve ulaşılan gelişim
+ * hedeflerini (DOM-FIN-133) ve yönetici görüşünü bölüm bölüm bir araya getirir (K-466, K-468).
+ * Rapor içeriği kaynak kayıtlardan okunur; yalnız kesinleştirmeden sonra kaynağı değişebilen
+ * gelişim hedefi özeti ve geri bildirim eşiği kesinleştirmede sabitlenir (K-468). Dönem kapandıktan
+ * sonra yönetici raporu görüşüyle kesinleştirir, personelin
  * "okudum" kaydını kanalıyla personel adına girer (K-467). Rapor kişiseldir: dönem özeti ve
  * bütün raporlar yalnız yöneticide, personel kendi kesinleşmiş raporunu okur; her okuma denetime
  * düşer (K-468). Fonksiyonlar saftır; bugün `today` (Europe/Istanbul günü) ile gelir.
@@ -28,13 +36,14 @@ export const PERFORMANCE_REPORT_READ_ROLES = [
 ] as const satisfies readonly Role[]
 
 /**
- * Raporun bölümleri, sırasıyla (K-466). Gelişim hedefleri ON-209 ile eklendi (K-468); çok kaynaklı
- * geri bildirim (ON-212) birleşince bu listeye kendi bölümüyle eklenir.
+ * Raporun bölümleri, sırasıyla (K-466). Gelişim hedefleri (ON-209) ve çok kaynaklı geri bildirim
+ * (ON-212) bölümleri K-468'dedir.
  */
 export const PERFORMANCE_REPORT_SECTIONS = [
   'evaluation',
   'selfEvaluation',
   'observations',
+  'staffFeedback',
   'developmentGoals',
   'managerOpinion',
 ] as const
@@ -43,6 +52,7 @@ export const PERFORMANCE_REPORT_SECTION_LABELS = {
   evaluation: 'Dönem sonu değerlendirmesi',
   selfEvaluation: 'Öz değerlendirme',
   observations: 'Ders gözlemleri',
+  staffFeedback: 'Çok kaynaklı geri bildirim',
   developmentGoals: 'Gelişim hedefleri',
   managerOpinion: 'Yönetici görüşü',
 } as const satisfies Record<PerformanceReportSection, string>
@@ -311,6 +321,112 @@ export const isGoalInPerformanceReport = (
   status: DevelopmentGoalStatus | null,
 ): status is PerformanceReportGoalStatus =>
   status !== null && (PERFORMANCE_REPORT_GOAL_STATUSES as readonly string[]).includes(status)
+
+/**
+ * Rapordaki gelişim hedefi özeti (K-468). Kesinleştirmede bu biçimle `performance_reports`'a anlık
+ * görüntü olarak yazılır: hedefin başlığı, ölçütü, takip tarihi ve dönem bağı kesinleştirmeden
+ * sonra da değişebildiği için kesinleşen rapor hedefi kaynaktan değil bu görüntüden okur.
+ */
+export const performanceReportGoalItemSchema = z.strictObject({
+  id: z.string().min(1),
+  // kvkk: K
+  title: z.string().min(1).max(DEVELOPMENT_GOAL_TITLE_MAX),
+  // kvkk: K
+  successCriterion: z.string().min(1).max(DEVELOPMENT_GOAL_CRITERION_MAX),
+  source: z.enum(DEVELOPMENT_GOAL_SOURCES),
+  observedDate: daySchema.nullable(),
+  followUpDate: daySchema,
+  status: z.enum(PERFORMANCE_REPORT_GOAL_STATUSES),
+})
+export type PerformanceReportGoalItem = z.output<typeof performanceReportGoalItemSchema>
+export const performanceReportGoalSnapshotSchema = z.array(performanceReportGoalItemSchema)
+
+/**
+ * Gelişim hedefleri bölümü (K-468): sıra takip tarihi, sonra hedef adı (aynı gün açılan hedefler
+ * de her okumada aynı sırada), hedef ve ulaşılan sayısı.
+ */
+export function performanceReportGoalSection(items: readonly PerformanceReportGoalItem[]) {
+  const sorted = [...items].sort(
+    (a, b) => a.followUpDate.localeCompare(b.followUpDate) || a.title.localeCompare(b.title, 'tr'),
+  )
+  return {
+    count: sorted.length,
+    achievedCount: sorted.filter((item) => item.status === 'achieved').length,
+    items: sorted,
+  }
+}
+
+// --- Çok kaynaklı geri bildirim bölümü -----------------------------------------------------------
+
+/**
+ * Geri bildirim bölümünün durumu (K-468): `not_collected` dönemde şablon ya da atama yok,
+ * `period_open` dönem değerlendirme aşamasına geçmedi, `below_threshold` meslektaş yanıtı eşiğin
+ * altında (yeterli yanıt yok), `visible` meslektaş toplu sonucu görünür (K-459).
+ */
+export const PERFORMANCE_REPORT_FEEDBACK_STATES = [
+  'not_collected',
+  'period_open',
+  'below_threshold',
+  'visible',
+] as const
+export type PerformanceReportFeedbackState = (typeof PERFORMANCE_REPORT_FEEDBACK_STATES)[number]
+export const PERFORMANCE_REPORT_FEEDBACK_STATE_LABELS = {
+  not_collected: 'Bu dönemde çok kaynaklı geri bildirim toplanmadı.',
+  period_open: 'Meslektaş sonucu dönem değerlendirme aşamasına geçince gösterilir.',
+  below_threshold: 'Yeterli meslektaş yanıtı yok; anonimlik için toplu sonuç gösterilmez.',
+  visible: 'Meslektaş yanıtlarının toplu sonucu.',
+} as const satisfies Record<PerformanceReportFeedbackState, string>
+
+/**
+ * Raporun geri bildirim bölümü (K-468): değerlendirilenin toplu sonucundan (`multiSourceFeedbackResult`,
+ * K-459) türetilir. Yönetici yanıtları adıyla ve soru metniyle; meslektaş bölümü yalnız `visible`
+ * durumunda soru başına toplu sonuç (eşik altında cevaplanan soru gizli kalır) taşır. Tek meslektaş
+ * yanıtı, kimin neyi yazdığı ya da meslektaş adı hiçbir durumda dönmez.
+ */
+export function performanceReportFeedbackSection(result: StaffFeedbackResult) {
+  const collected =
+    result.questions.length > 0 && result.manager.assigned + result.peer.assigned > 0
+  const state: PerformanceReportFeedbackState = !collected
+    ? 'not_collected'
+    : (result.peer.hiddenReason ?? 'visible')
+  return {
+    state,
+    threshold: result.threshold,
+    questionCount: result.questions.length,
+    manager: {
+      assigned: result.manager.assigned,
+      responded: result.manager.responded,
+      responses: !collected
+        ? []
+        : result.manager.responses.map((response) => ({
+            reviewerName: response.reviewerName,
+            submittedAt: response.submittedAt,
+            items: result.questions.map((question, index) => ({
+              question: question.text,
+              kind: question.kind,
+              score: response.answers[index]?.score ?? null,
+              text: response.answers[index]?.text ?? null,
+            })),
+          })),
+    },
+    peer: {
+      assigned: result.peer.assigned,
+      responded: result.peer.responded,
+      questions:
+        state !== 'visible'
+          ? []
+          : result.peer.questions.map((question) => ({
+              question: question.text,
+              kind: question.kind,
+              answered: question.answered,
+              hidden: question.hidden,
+              average: question.hidden ? null : question.average,
+              texts: question.hidden ? [] : [...question.texts],
+            })),
+    },
+  }
+}
+export type PerformanceReportFeedbackSection = ReturnType<typeof performanceReportFeedbackSection>
 
 /** Dönem özeti satırı: personelin genel puanı, rapor durumu ve gözlem puanları. */
 export interface PerformanceReportSummaryInput {

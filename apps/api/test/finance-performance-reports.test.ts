@@ -34,6 +34,12 @@ const OBS_TEMPLATES = '/api/v1/finance/lesson-observation-templates'
 const OBSERVATIONS = '/api/v1/finance/lesson-observations'
 const SELF = '/api/v1/finance/self-evaluations'
 const DEV_GOALS = '/api/v1/finance/development-goals'
+const FEEDBACK_ASSIGNMENTS = '/api/v1/finance/staff-feedback-assignments'
+const FEEDBACK_SETTINGS = '/api/v1/finance/staff-feedback-settings'
+const FEEDBACK_QUESTIONS = [
+  { kind: 'scale', text: 'Ekip çalışmasına katkısı', required: true },
+  { kind: 'open', text: 'Güçlü yanları', required: false },
+]
 const GOALS = [
   { title: 'Okuma becerisi', criterion: 'Sınıf ortalaması B1', weight: 60 },
   { title: 'Veli iletişimi', criterion: 'Her ay görüşme', weight: 40 },
@@ -234,7 +240,11 @@ describe('DOM-FIN-137: performans raporu uçları', () => {
    * Değerlendirme aşamasında dönem: Selin (öğretmen) gönderilmiş öz değerlendirme, iki dönem
    * gözlemi (biri döneme bağlı, biri günüyle) ve dönem dışı bir gözlemle; puanlar 5 ve 4.
    */
-  async function evaluated(t: Tenant, others: string[] = []) {
+  async function evaluated(
+    t: Tenant,
+    others: string[] = [],
+    duringActive?: (p: Json, selin: string) => Promise<void>,
+  ) {
     const selin = await person(t, 'ogretmen', 'Selin Kaya')
     let p = ok(
       await call(
@@ -260,6 +270,7 @@ describe('DOM-FIN-137: performans raporu uçları', () => {
       201,
     )
     p = await advance(t, p, ['active'])
+    if (duringActive !== undefined) await duringActive(p, selin.membershipId)
     const response = ok(
       await call(
         'POST',
@@ -348,6 +359,7 @@ describe('DOM-FIN-137: performans raporu uçları', () => {
       'evaluation',
       'selfEvaluation',
       'observations',
+      'staffFeedback',
       'developmentGoals',
       'managerOpinion',
     ])
@@ -424,7 +436,13 @@ describe('DOM-FIN-137: performans raporu uçları', () => {
     assert.equal(stored.length, 1)
     assert.equal(stored[0]?.managerOpinion, OPINION)
     const [audit] = await auditOf(t.id, 'finance.performance_report.finalize')
-    assert.deepEqual(audit?.changes?.fields, ['reviewId', 'managerOpinion', 'finalizedAt'])
+    assert.deepEqual(audit?.changes?.fields, [
+      'reviewId',
+      'managerOpinion',
+      'finalizedAt',
+      'developmentGoals',
+      'feedbackThreshold',
+    ])
     assert.equal(JSON.stringify(audit?.changes).includes('Gizli'), false)
 
     // Kesinleşmeden sonra (aynı an değil, sonraki saatte) tamamlanan gözlem rapora girmez.
@@ -637,6 +655,298 @@ describe('DOM-FIN-137: performans raporu uçları', () => {
     // Öğretmen kendi kesinleşmiş raporunda hedeflerini görür.
     const own = ok(await report(await signInAs(app, selin.user), review))
     assert.equal((own.developmentGoals as Json).count, 2)
+  })
+
+  /** Kesinleştirmeden sonraki bir anda (FIXED_NOW + 6 saat) istek; uygulama ayrı saatle kurulur. */
+  async function later(
+    method: 'POST' | 'PATCH',
+    url: string,
+    cookie: string,
+    payload: unknown,
+    headers: Record<string, string>,
+  ) {
+    const app2 = await buildTestApp(db, { clock: () => new Date('2026-10-06T12:00:00.000Z') })
+    try {
+      return await app2.inject({
+        method,
+        url,
+        remoteAddress: clientIp,
+        headers: { origin: TEST_ORIGIN, cookie, 'content-type': 'application/json', ...headers },
+        payload: JSON.stringify(payload),
+      })
+    } finally {
+      await app2.close()
+    }
+  }
+
+  test('DOM-FIN-137 K-468 DOM-FIN-133 K-455: kesinleşen raporun hedefleri anlık görüntüdür; hedef sonradan düzenlenince rapor değişmez', async () => {
+    const t = await institution()
+    const { selin, p, review } = await evaluated(t)
+    const create = async (title: string, followUpDate: string) =>
+      ok(
+        await call(
+          'POST',
+          DEV_GOALS,
+          t.admin,
+          {
+            teacherMembershipId: selin.membershipId,
+            performancePeriodId: String(p.id),
+            title,
+            successCriterion: 'Her derste üç açık uçlu soru',
+            followUpDate,
+          },
+          key(),
+        ),
+        201,
+      )
+    const kept = await create('Sınıf içi soru tekniği', '2026-10-20')
+    const unlinked = await create('Ölçme araçlarını çeşitlendir', '2026-10-25')
+    await advance(t, p, ['closed'])
+    const finalized = ok(await finalize(t.admin, review), 201)
+    const frozen = finalized.developmentGoals
+    assert.deepEqual(
+      ((frozen as Json).items as Json[]).map((item) => item.title),
+      ['Sınıf içi soru tekniği', 'Ölçme araçlarını çeşitlendir'],
+    )
+
+    // Hedef kesinleştirmeden sonra düzenlenebilir (ileriki takip sürer); rapor değişmez.
+    const edited = await later(
+      'PATCH',
+      `${DEV_GOALS}/${String(kept.id)}`,
+      t.admin,
+      {
+        title: 'Değiştirilmiş hedef başlığı',
+        successCriterion: 'Değiştirilmiş ölçüt metni',
+        followUpDate: '2026-11-30',
+      },
+      ifMatch(kept.version),
+    )
+    assert.equal(edited.statusCode, 200, edited.body)
+    const detached = await later(
+      'PATCH',
+      `${DEV_GOALS}/${String(unlinked.id)}`,
+      t.admin,
+      { performancePeriodId: null },
+      ifMatch(unlinked.version),
+    )
+    assert.equal(detached.statusCode, 200, detached.body)
+    const after = ok(await report(t.admin, review))
+    assert.deepEqual(after.developmentGoals, frozen)
+    const own = ok(await report(await signInAs(app, selin.user), review))
+    assert.deepEqual(own.developmentGoals, frozen)
+
+    // Görüntü satırda saklanır ve doğrudan değiştirilemez (tetikleyici).
+    const [stored] = await reportRows(t.id)
+    assert.equal(stored?.developmentGoals?.length, 2)
+    assert.equal(stored?.feedbackThreshold, 3)
+    await assert.rejects(
+      db
+        .update(performanceReports)
+        .set({ developmentGoals: [] })
+        .where(eq(performanceReports.institutionId, t.id)),
+    )
+    await assert.rejects(
+      db
+        .update(performanceReports)
+        .set({ feedbackThreshold: 5 })
+        .where(eq(performanceReports.institutionId, t.id)),
+    )
+    // Hedef metni denetime yazılmaz.
+    const [audit] = await auditOf(t.id, 'finance.performance_report.finalize')
+    assert.equal(JSON.stringify(audit?.changes).includes('soru tekniği'), false)
+  })
+
+  /**
+   * Yürürlükteki döneme geri bildirim şablonu; Selin'e bir yönetici ve `peerAnswers` kadar meslektaş
+   * değerlendiren atanır, her meslektaş yanıtı (puan, metin) kâğıttan girilir; `pendingPeers` yanıtsız.
+   */
+  function withFeedback(
+    t: Tenant,
+    peerAnswers: [number, string | null][],
+    pendingPeers = 0,
+  ): (p: Json, selin: string) => Promise<void> {
+    return async (p, selin) => {
+      ok(
+        await call(
+          'POST',
+          `${PERIODS}/${String(p.id)}/staff-feedback-template`,
+          t.admin,
+          { questions: FEEDBACK_QUESTIONS },
+          key(),
+        ),
+        201,
+      )
+      const reviewer = async (role: Role, name: string, relation: string) => {
+        const member = await person(t, role, name)
+        return ok(
+          await call(
+            'POST',
+            `${PERIODS}/${String(p.id)}/staff-feedback-assignments`,
+            t.admin,
+            { subjectMembershipId: selin, reviewerMembershipId: member.membershipId, relation },
+            key(),
+          ),
+          201,
+        )
+      }
+      const respond = async (assignment: Json, score: number, text: string | null) =>
+        ok(
+          await call(
+            'POST',
+            `${FEEDBACK_ASSIGNMENTS}/${String(assignment.id)}/response`,
+            t.admin,
+            { channel: 'paper', answers: [{ score }, text === null ? {} : { text }] },
+            ifMatch(assignment.version),
+          ),
+        )
+      await respond(await reviewer('yonetici', 'Murat Yılmaz', 'manager'), 5, 'Planlı ve özenli')
+      let index = 0
+      for (const [score, text] of peerAnswers)
+        await respond(
+          await reviewer('ogretmen', `Meslektaş ${String((index += 1))}`, 'peer'),
+          score,
+          text,
+        )
+      for (let rest = 0; rest < pendingPeers; rest += 1)
+        await reviewer('ogretmen', `Bekleyen ${String(rest + 1)}`, 'peer')
+    }
+  }
+  const feedbackOf = (data: Json) => data.staffFeedback as Json
+  const peerOf = (data: Json) => feedbackOf(data).peer as Json
+
+  test('DOM-FIN-137 K-468 K-459: geri bildirim eşik altındaysa yeterli yanıt yok; tek meslektaş yanıtı dönmez', async () => {
+    const t = await institution()
+    const secret = 'Tek-meslektas-cevabi'
+    const { review } = await evaluated(
+      t,
+      [],
+      withFeedback(
+        t,
+        [
+          [2, secret],
+          [4, null],
+        ],
+        1,
+      ),
+    )
+    const data = ok(await report(t.admin, review))
+    assert.deepEqual(data.sections, [
+      'evaluation',
+      'selfEvaluation',
+      'observations',
+      'staffFeedback',
+      'developmentGoals',
+      'managerOpinion',
+    ])
+    const section = feedbackOf(data)
+    assert.equal(section.state, 'below_threshold')
+    assert.equal(section.threshold, 3)
+    assert.deepEqual(peerOf(data), { assigned: 3, responded: 2, questions: [] })
+    assert.equal(JSON.stringify(data).includes(secret), false)
+    assert.equal(JSON.stringify(data).includes('Meslektaş 1'), false)
+    // Yönetici yanıtı anonim değildir (K-459): adıyla ve soru metniyle.
+    const [manager] = (section.manager as Json).responses as Json[]
+    assert.equal(manager?.reviewerName, 'Murat Yılmaz')
+    assert.deepEqual(manager?.items, [
+      { question: 'Ekip çalışmasına katkısı', kind: 'scale', score: 5, text: null },
+      { question: 'Güçlü yanları', kind: 'open', score: null, text: 'Planlı ve özenli' },
+    ])
+    // Okuma denetimi yönetici yanıtını adlandırır, meslektaş toplamını görünmediği için yazmaz.
+    const [read] = await auditOf(t.id, 'finance.performance_report.read')
+    assert.ok(read?.changes?.fields?.includes('managerFeedback'))
+    assert.equal(read?.changes?.fields?.includes('peerFeedbackAggregate'), false)
+    assert.equal(JSON.stringify(read?.changes).includes('Planlı'), false)
+  })
+
+  test('DOM-FIN-137 K-468 K-459: eşik geçilince toplu sonuç; kesinleşen rapor eşiği sabitler', async () => {
+    const t = await institution()
+    const { selin, p, review } = await evaluated(
+      t,
+      [],
+      withFeedback(t, [
+        [4, 'Yardımsever'],
+        [5, 'Düzenli'],
+        [3, 'Sabırlı'],
+      ]),
+    )
+    const draft = ok(await report(t.admin, review))
+    assert.equal(feedbackOf(draft).state, 'visible')
+    assert.deepEqual(peerOf(draft).questions, [
+      {
+        question: 'Ekip çalışmasına katkısı',
+        kind: 'scale',
+        answered: 3,
+        hidden: false,
+        average: 4,
+        texts: [],
+      },
+      {
+        question: 'Güçlü yanları',
+        kind: 'open',
+        answered: 3,
+        hidden: false,
+        average: null,
+        texts: ['Düzenli', 'Sabırlı', 'Yardımsever'],
+      },
+    ])
+    const [read] = await auditOf(t.id, 'finance.performance_report.read')
+    assert.ok(read?.changes?.fields?.includes('peerFeedbackAggregate'))
+
+    await advance(t, p, ['closed'])
+    const finalized = ok(await finalize(t.admin, review), 201)
+    assert.deepEqual(finalized.staffFeedback, feedbackOf(draft))
+    // Kurum eşiği sonradan yükselse de kesinleşen rapor kesinleştirme anındaki eşikle kalır.
+    const current = ok(await call('GET', FEEDBACK_SETTINGS, t.admin))
+    ok(
+      await call(
+        'PATCH',
+        FEEDBACK_SETTINGS,
+        t.admin,
+        { peerAnonymityThreshold: 5 },
+        ifMatch(current.version),
+      ),
+    )
+    const after = ok(await report(t.admin, review))
+    assert.deepEqual(after.staffFeedback, finalized.staffFeedback)
+    // Personel kendi kesinleşmiş raporunda yalnız toplu sonucu görür.
+    const own = ok(await report(await signInAs(app, selin.user), review, '?purpose=pdf'))
+    assert.equal(feedbackOf(own).state, 'visible')
+    assert.deepEqual(feedbackOf(own).threshold, 3)
+  })
+
+  test('DOM-FIN-137 K-468: geri bildirim toplanmadıysa ya da dönem açıksa içerik yok', async () => {
+    const t = await institution()
+    const { review } = await evaluated(t)
+    assert.deepEqual(feedbackOf(ok(await report(t.admin, review))), {
+      state: 'not_collected',
+      threshold: 3,
+      questionCount: 0,
+      manager: { assigned: 0, responded: 0, responses: [] },
+      peer: { assigned: 0, responded: 0, questions: [] },
+    })
+    // Yürürlükteki dönemde (değerlendirme aşamasından önce) meslektaş sonucu gösterilmez.
+    const u = await institution()
+    const selin = await person(u, 'ogretmen', 'Selin Kaya')
+    let p = ok(
+      await call(
+        'POST',
+        PERIODS,
+        u.admin,
+        { name: '2027 bahar dönemi', startDate: '2026-09-01', endDate: '2026-10-05' },
+        key(),
+      ),
+      201,
+    )
+    const opened = await enroll(u, p, selin.membershipId)
+    p = await advance(u, p, ['active'])
+    await withFeedback(u, [
+      [4, 'a'],
+      [5, 'b'],
+      [3, 'c'],
+    ])(p, selin.membershipId)
+    const open = ok(await report(u.admin, opened))
+    assert.equal(feedbackOf(open).state, 'period_open')
+    assert.deepEqual(peerOf(open).questions, [])
   })
 
   test('DOM-FIN-137 K-466: dönem özeti ortalama ve dağılım; satırlar denetime düşer', async () => {

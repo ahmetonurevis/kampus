@@ -6,6 +6,7 @@ import { useApiQuery } from './use-api-query.ts'
 import { useFinanceListQuery } from './use-finance-list-query.ts'
 import { MEDICAL_REPORTS_KEY } from './use-finance-medical-reports.ts'
 import { PAY_RATES_KEY } from './use-finance-pay-rates.ts'
+import { PERSONNEL_FILES_KEY } from './use-finance-personnel-files.ts'
 import { PAYROLL_EXPORTS_KEY } from './use-finance-payroll-exports.ts'
 import { PAYROLL_PERIODS_KEY } from './use-finance-payroll-periods.ts'
 import { STAFF_CERTIFICATES_KEY } from './use-finance-staff-certificates.ts'
@@ -106,6 +107,7 @@ export function useDestroyStaffData() {
       STAFF_DEDUCTIONS_KEY,
       PAYROLL_PERIODS_KEY,
       PAYROLL_EXPORTS_KEY,
+      PERSONNEL_FILES_KEY,
     ],
     exclusive: true,
   })

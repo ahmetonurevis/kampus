@@ -8,11 +8,15 @@ import {
   isObservationInPeriodReport,
   observationAverage,
   PERFORMANCE_REPORT_SECTIONS,
+  performanceReportFeedbackSection,
+  performanceReportGoalSection,
   performanceReportStatus,
   performanceReportSummary,
   planPerformanceReportAcknowledge,
   planPerformanceReportFinalize,
   selfEvaluationScaleAverage,
+  type PerformanceReportFeedbackSection,
+  type PerformanceReportGoalItem,
   type PerformanceReportSelfStatus,
 } from '@kampus/school-core/lib/finance-performance-reports.ts'
 import {
@@ -53,14 +57,17 @@ import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
 import { performanceReviewView } from './finance-performance.ts'
+import { loadStaffFeedbackResults, loadStaffFeedbackThreshold } from './finance-staff-feedback.ts'
 import { auditWork } from './task-work.ts'
 
 /**
- * Personel performans raporu (DOM-FIN-137; ON-220). Kural core `lib/finance-performance-reports.ts`
- * 'tedir. Rapor içeriği saklanmaz: dönem sonu değerlendirmesi (DOM-FIN-124), gönderilmiş öz
- * değerlendirme (DOM-FIN-131), dönemdeki tamamlanmış ders gözlemleri (DOM-FIN-130) ve döneme
- * bağlı gelişim hedefleri (DOM-FIN-133) her okumada kaynak tablolardan derlenir (K-466, K-468); `performance_reports` yalnız kesinleştirme ve "okudum"
- * kaydını tutar (K-467). Rapor okuması (ekran ve PDF) ve personel satırları aynı transaction'da
+ * Personel performans raporu (DOM-FIN-137; ON-220, ON-350). Kural core
+ * `lib/finance-performance-reports.ts`'tedir. Dönem sonu değerlendirmesi (DOM-FIN-124),
+ * gönderilmiş öz değerlendirme (DOM-FIN-131), dönemdeki tamamlanmış ders gözlemleri (DOM-FIN-130)
+ * ve çok kaynaklı geri bildirimin toplu sonucu (DOM-FIN-134) her okumada kaynak tablolardan
+ * derlenir (K-466, K-468). `performance_reports` kesinleştirme ve "okudum" kaydını (K-467) ve
+ * kaynağı kesinleştirmeden sonra değişebilen iki bilgiyi tutar (K-468): döneme bağlı gelişim
+ * hedeflerinin (DOM-FIN-133) özeti ve geri bildirimin anonimlik eşiği. Rapor okuması (ekran ve PDF) ve personel satırları aynı transaction'da
  * denetime düşer (K-468). Rol ve modül denetimi rotadadır; öğretmenin yalnız kendi kesinleşmiş
  * raporunu görmesi burada uygulanır (gerisi 404).
  */
@@ -77,6 +84,11 @@ const REPORT_FIELDS = [
   'observations',
   'developmentGoals',
   'managerOpinion',
+]
+/** Geri bildirim bölümünün denetim alan adları: yönetici yanıtı ve görünürse meslektaş toplamı. */
+const feedbackFields = (section: PerformanceReportFeedbackSection) => [
+  ...(section.manager.responses.length > 0 ? ['managerFeedback'] : []),
+  ...(section.state === 'visible' ? ['peerFeedbackAggregate'] : []),
 ]
 const ROW_FIELDS = ['staffName', 'overallScore', 'selfEvaluationStatus', 'observationAverage']
 
@@ -168,16 +180,16 @@ async function selfEvaluationSection(
 const GOAL_PAGE = 100
 
 /**
- * Gelişim hedefleri bölümü (K-468): personelin bu döneme bağlı hedefleri; kesinleşmiş raporda
- * kesinleştirme anındaki durumuyla (sonra açılan hedef girmez). Açık, süren ve ulaşılan hedefler
- * girer; bırakılan girmez.
+ * Personelin bu döneme bağlı hedefleri kaynaktan (K-468): `at` anındaki durumuyla (sonra açılan
+ * hedef girmez; `at` boşsa bugünkü durum). Açık, süren ve ulaşılan hedefler girer; bırakılan girmez.
+ * Kesinleştirme bu listeyi anlık görüntü olarak yazar.
  */
-async function developmentGoalSection(
+async function sourceGoalItems(
   db: Database,
   ctx: ServiceContext,
   review: StoredPerformanceReview,
-  finalizedAt: string | null,
-) {
+  at: string | null,
+): Promise<PerformanceReportGoalItem[]> {
   const goals: StoredDevelopmentGoal[] = []
   for (let page = 1; ; page += 1) {
     const { items, total } = await listDevelopmentGoals(
@@ -199,8 +211,8 @@ async function developmentGoalSection(
     ctx.institutionId,
     goals.map((goal) => goal.id),
   )
-  const items = goals.flatMap((goal) => {
-    const status = developmentGoalStatusAt(goal, changes.get(goal.id) ?? [], finalizedAt)
+  return goals.flatMap((goal) => {
+    const status = developmentGoalStatusAt(goal, changes.get(goal.id) ?? [], at)
     if (status === null || !isGoalInPerformanceReport(status)) return []
     return [
       {
@@ -214,15 +226,48 @@ async function developmentGoalSection(
       },
     ]
   })
-  // Sıra takip tarihi, sonra hedef adı: aynı anda açılan hedefler de her okumada aynı sırada gelir.
-  items.sort(
-    (a, b) => a.followUpDate.localeCompare(b.followUpDate) || a.title.localeCompare(b.title, 'tr'),
+}
+
+/**
+ * Gelişim hedefleri bölümü (K-468). Kesinleşmiş rapor kesinleştirmede yazılan anlık görüntüyü okur:
+ * hedefin başlığı, ölçütü, takip tarihi ya da dönem bağı sonradan değişse de rapor değişmez.
+ * Görüntüsü olmayan (ON-350 öncesi kesinleşen) rapor hedefleri kaynaktan kesinleştirme anındaki
+ * durumuyla okur; kesinleşmemiş rapor bugünkü durumla.
+ */
+async function developmentGoalSection(
+  db: Database,
+  ctx: ServiceContext,
+  review: StoredPerformanceReview,
+  report: StoredPerformanceReport | null,
+) {
+  return performanceReportGoalSection(
+    report?.developmentGoals ??
+      (await sourceGoalItems(db, ctx, review, report?.finalizedAt ?? null)),
   )
-  return {
-    count: items.length,
-    achievedCount: items.filter((item) => item.status === 'achieved').length,
-    items,
-  }
+}
+
+/**
+ * Çok kaynaklı geri bildirim bölümü (K-468, K-459): değerlendirilenin toplu sonucu; meslektaş
+ * yanıtları yalnız toplu ve eşik üstünde. Yanıtlar kapanan dönemde değişmediği için (K-457)
+ * kaynaktan okunur; kesinleşmiş rapor kesinleştirme anındaki eşiği kullanır, kurum ayarı sonradan
+ * değişse de bölüm değişmez. Okuma denetimini çağıran yazar.
+ */
+async function staffFeedbackSection(
+  db: Database,
+  ctx: ServiceContext,
+  review: StoredPerformanceReview,
+  report: StoredPerformanceReport | null,
+) {
+  const results = await loadStaffFeedbackResults(
+    db,
+    ctx.institutionId,
+    review.periodId,
+    [review.membershipId],
+    { threshold: report?.feedbackThreshold ?? undefined },
+  )
+  const result = results.get(review.membershipId)
+  if (result === undefined) throw new Error('staff feedback result is missing')
+  return performanceReportFeedbackSection(result)
 }
 
 async function reportView(
@@ -273,7 +318,8 @@ async function reportView(
         percent: item.score.percent,
       })),
     },
-    developmentGoals: await developmentGoalSection(db, ctx, review, report?.finalizedAt ?? null),
+    staffFeedback: await staffFeedbackSection(db, ctx, review, report),
+    developmentGoals: await developmentGoalSection(db, ctx, review, report),
     managerOpinion: report?.managerOpinion ?? null,
     ...reportMeta(report),
   }
@@ -305,6 +351,7 @@ export async function getPerformanceReportFor(
       finalized: report !== null,
     })
     if (!visible) throw new NotFoundError()
+    const view = await reportView(tx, ctx, review, period, report)
     await tx.insert(auditLog).values({
       institutionId: ctx.institutionId,
       actorUserId: ctx.actor.userId,
@@ -313,11 +360,11 @@ export async function getPerformanceReportFor(
         purpose === 'pdf' ? 'finance.performance_report.export' : 'finance.performance_report.read',
       entityType: REVIEW_ENTITY,
       entityId: reviewId,
-      // kvkk: değer değil, dönen kişisel alanların adı.
-      changes: { fields: REPORT_FIELDS },
+      // kvkk: değer değil, dönen kişisel alanların adı; meslektaş toplamı yalnız görünürse.
+      changes: { fields: [...REPORT_FIELDS, ...feedbackFields(view.staffFeedback)] },
       createdAt: ctx.now,
     })
-    return reportView(tx, ctx, review, period, report)
+    return view
   })
 }
 
@@ -469,15 +516,23 @@ export function finalizePerformanceReportCommand(
               staffUserId: staff.userId,
               actorUserId: ctx.actor.userId,
             }),
+            review,
             actorName: actorName ?? '—',
           }),
         }
       },
       after: async (tx, plan) => {
+        // Kaynağı sonradan değişebilen bilgiler kesinleştirme anındaki hâliyle sabitlenir (K-468).
+        const [developmentGoals, feedbackThreshold] = await Promise.all([
+          sourceGoalItems(tx, ctx, plan.review, ctx.now.toISOString()),
+          loadStaffFeedbackThreshold(tx, ctx.institutionId),
+        ])
         await insertPerformanceReport(tx, ctx.institutionId, {
           id,
           reviewId,
           managerOpinion: plan.managerOpinion,
+          developmentGoals,
+          feedbackThreshold,
           userId: ctx.actor.userId,
           userName: plan.actorName,
           now: ctx.now,
@@ -486,6 +541,8 @@ export function finalizePerformanceReportCommand(
           'reviewId',
           'managerOpinion',
           'finalizedAt',
+          'developmentGoals',
+          'feedbackThreshold',
         ])
         body = { data: await reportBody(tx, ctx, reviewId) }
       },

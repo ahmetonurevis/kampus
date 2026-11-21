@@ -6,16 +6,19 @@ import { expect, test } from './support/fixtures.ts'
 import { pdfText } from './support/finance-pdf-text.ts'
 import { expectNoHorizontalOverflow } from './support/ui.ts'
 
-// Performans raporu (ON-220; DOM-FIN-137, K-466…K-468). Kural dalları birim ve API testlerindedir
-// (`tests/finance-performance-reports.test.ts`, `apps/api/test/finance-performance-reports.test.ts`);
-// burada dönem, puan, gözlem, gelişim hedefi ve kapanış API'den kurulur; yönetici "Performans" sekmesinde dönem
-// özetini ve raporu görür, raporu görüşüyle kesinleştirir, personelin "okudum" kaydını girer ve
-// PDF'i indirir.
+// Performans raporu (ON-220, ON-350; DOM-FIN-137, K-466…K-468). Kural dalları birim ve API
+// testlerindedir (`tests/finance-performance-reports.test.ts`,
+// `apps/api/test/finance-performance-reports.test.ts`); burada dönem, puan, gözlem, geri bildirim,
+// gelişim hedefi ve kapanış API'den kurulur; yönetici "Performans" sekmesinde dönem özetini ve
+// raporu görür (meslektaş yanıtı eşiğin altında: "yeterli yanıt yok"), raporu görüşüyle
+// kesinleştirir, hedef sonradan düzenlense de rapordaki özetin değişmediğini görür, personelin
+// "okudum" kaydını girer ve PDF'i indirir.
 
 const ADMIN_URL = '/yonetici/finans?gorunum=performans'
 const PERIOD = 'Güz performans raporu'
 const OPINION = 'Okuma hedefine ulaştı; veli iletişimi örnek.'
 const GOAL = 'Sınıf içi soru tekniği'
+const PEER_SECRET = 'Tek meslektaş cevabı görünmemeli'
 
 type Data<T> = { data: T }
 const key = () => ({ 'idempotency-key': randomUUID() })
@@ -40,8 +43,9 @@ test.describe('ON-220: performans raporu', () => {
     loginAs,
     tenant,
   }) => {
-    const school = await tenant({ roles: ['ogretmen'] })
+    const school = await tenant({ roles: ['ogretmen', 'onburo'] })
     const teacher = school.user('ogretmen').name
+    const manager = school.user('yonetici').name
     const admin = await api(school.user('yonetici'))
     const period = await admin.post(
       '/api/v1/finance/performance-periods',
@@ -51,9 +55,9 @@ test.describe('ON-220: performans raporu', () => {
     expect(period.status, JSON.stringify(period.body)).toBe(201)
     const { id: periodId, version } = (period.body as Data<{ id: string; version: number }>).data
     const staff = await admin.get('/api/v1/finance/staff-certificate-staff?page=1&pageSize=100')
-    const membershipId = (staff.body as Data<{ membershipId: string; name: string }[]>).data.find(
-      (row) => row.name === teacher,
-    )?.membershipId
+    const staffRows = (staff.body as Data<{ membershipId: string; name: string }[]>).data
+    const memberOf = (name: string) => staffRows.find((row) => row.name === name)?.membershipId
+    const membershipId = memberOf(teacher)
     expect(membershipId).toBeTruthy()
     const review = await admin.post(
       `/api/v1/finance/performance-periods/${periodId}/reviews`,
@@ -68,7 +72,42 @@ test.describe('ON-220: performans raporu', () => {
     )
     expect(review.status, JSON.stringify(review.body)).toBe(201)
     const reviewRow = (review.body as Data<{ id: string; version: number }>).data
+    const template = await admin.post(
+      `/api/v1/finance/performance-periods/${periodId}/staff-feedback-template`,
+      {
+        questions: [
+          { kind: 'scale', text: 'Ekip çalışmasına katkısı', required: true },
+          { kind: 'open', text: 'Güçlü yanları', required: false },
+        ],
+      },
+      key(),
+    )
+    expect(template.status, JSON.stringify(template.body)).toBe(201)
     let periodVersion = await advance(admin, periodId, version, ['active'])
+
+    // Çok kaynaklı geri bildirim (DOM-FIN-134): yönetici ve tek meslektaş yanıtı; meslektaş eşiğin
+    // (3) altında kaldığı için raporda yalnız "yeterli yanıt yok" görünür (K-459, K-468).
+    const feedback = async (reviewerName: string, relation: string, answers: unknown[]) => {
+      const assigned = await admin.post(
+        `/api/v1/finance/performance-periods/${periodId}/staff-feedback-assignments`,
+        {
+          subjectMembershipId: membershipId,
+          reviewerMembershipId: memberOf(reviewerName),
+          relation,
+        },
+        key(),
+      )
+      expect(assigned.status, JSON.stringify(assigned.body)).toBe(201)
+      const row = (assigned.body as Data<{ id: string; version: number }>).data
+      const responded = await admin.post(
+        `/api/v1/finance/staff-feedback-assignments/${row.id}/response`,
+        { channel: 'paper', answers },
+        { 'if-match': `"${String(row.version)}"` },
+      )
+      expect(responded.status, JSON.stringify(responded.body)).toBe(200)
+    }
+    await feedback(manager, 'manager', [{ score: 5 }, { text: 'Planlı ve özenli' }])
+    await feedback(school.user('onburo').name, 'peer', [{ score: 2 }, { text: PEER_SECRET }])
 
     // Döneme bağlı tamamlanmış bir ders gözlemi: (4×2 + 3×1) / 15 → %73.
     const levels = [0, 1, 2, 3, 4, 5].map((level) => ({ level, description: `Seviye ${level}` }))
@@ -130,6 +169,7 @@ test.describe('ON-220: performans raporu', () => {
       key(),
     )
     expect(goal.status, JSON.stringify(goal.body)).toBe(201)
+    const goalRow = (goal.body as Data<{ id: string; version: number }>).data
 
     periodVersion = await advance(admin, periodId, periodVersion, ['interim', 'evaluation'])
     const scored = await apiRequest(
@@ -165,6 +205,12 @@ test.describe('ON-220: performans raporu', () => {
     await expect(dialog.getByRole('heading', { name: 'Gelişim hedefleri' })).toBeVisible()
     await expect(dialog.getByRole('list', { name: 'Gelişim hedefleri' })).toContainText(GOAL)
     await expect(dialog.getByText('Yanıt yok', { exact: false })).toBeVisible()
+    await expect(dialog.getByRole('heading', { name: 'Çok kaynaklı geri bildirim' })).toBeVisible()
+    await expect(dialog.getByLabel(`Yönetici değerlendirmesi: ${manager}`)).toContainText(
+      'Planlı ve özenli',
+    )
+    await expect(dialog.getByText(/Yeterli meslektaş yanıtı yok/)).toBeVisible()
+    await expect(dialog.getByText(PEER_SECRET)).toHaveCount(0)
     // Görüş en az 10 karakter (K-467).
     await dialog.getByRole('textbox', { name: 'Yönetici görüşü' }).fill('Kısa')
     await dialog.getByRole('button', { name: 'Raporu kesinleştir' }).click()
@@ -174,9 +220,21 @@ test.describe('ON-220: performans raporu', () => {
     await expect(dialog).toBeHidden()
     await expect(row).toContainText('Kesinleşti')
 
+    // Kesinleşmeden sonra hedef düzenlenir ve dönem bağı kaldırılır; rapordaki özet değişmez (K-468).
+    const edited = await apiRequest(
+      admin.context,
+      'PATCH',
+      `/api/v1/finance/development-goals/${goalRow.id}`,
+      { title: 'Sonradan değişen hedef', performancePeriodId: null },
+      { 'if-match': `"${String(goalRow.version)}"` },
+    )
+    expect(edited.status, JSON.stringify(edited.body)).toBe(200)
+
     await row.getByRole('button', { name: `${teacher} raporunu aç` }).click()
     dialog = page.getByRole('dialog', { name: `${teacher} · performans raporu` })
     await expect(dialog.getByText(OPINION)).toBeVisible()
+    await expect(dialog.getByRole('list', { name: 'Gelişim hedefleri' })).toContainText(GOAL)
+    await expect(dialog.getByText('Sonradan değişen hedef')).toHaveCount(0)
     await expect(dialog.getByRole('button', { name: 'Raporu kesinleştir' })).toHaveCount(0)
     await dialog.getByLabel('Kanal').selectOption({ label: 'Yüz yüze görüşme' })
     await dialog.getByRole('button', { name: 'Okudum kaydını gir' }).click()
@@ -193,11 +251,15 @@ test.describe('ON-220: performans raporu', () => {
       'PERFORMANS RAPORU',
       teacher,
       'Okuma becerisi',
+      'Çok kaynaklı geri bildirim',
+      'Yeterli meslektaş yanıtı yok',
       'Gelişim hedefleri',
       GOAL,
       'Yüz yüze görüşme',
     ])
       expect(text).toContain(expected)
+    expect(text).not.toContain(PEER_SECRET)
+    expect(text).not.toContain('Sonradan değişen hedef')
     await page.keyboard.press('Escape')
     await expect(pdf).toBeHidden()
 

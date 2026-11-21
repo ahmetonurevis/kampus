@@ -42,6 +42,7 @@ import {
   type StoredLessonObservation,
   type StoredObservationTemplate,
 } from '../db/finance-lesson-observations.ts'
+import { markObservationPlanDone, unlinkObservationPlan } from '../db/finance-observation-plans.ts'
 import { findPerformancePeriod } from '../db/finance-performance.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
@@ -556,7 +557,10 @@ export function updateLessonObservationCommand(
   )
 }
 
-/** Tamamlama (K-446): her ölçüt seviyeli, hedef altı notlu, genel değerlendirme yazılı; sonra kilit. */
+/**
+ * Tamamlama (K-446): her ölçüt seviyeli, hedef altı notlu, genel değerlendirme yazılı; sonra kilit.
+ * Gözlem plandan açıldıysa plan aynı transaction'da gerçekleşir (DOM-FIN-139).
+ */
 export function completeLessonObservationCommand(
   ctx: ServiceContext,
   id: string,
@@ -589,6 +593,19 @@ export function completeLessonObservationCommand(
           'status',
           'completedAt',
         ])
+        // Plandan açılmış gözlem tamamlanınca plan gerçekleşir (DOM-FIN-139, K-473).
+        const planId = await markObservationPlanDone(tx, ctx.institutionId, {
+          observationId: id,
+          now: ctx.now,
+        })
+        if (planId !== null)
+          await auditWork(
+            tx,
+            ctx,
+            'finance.observation_plan.done',
+            { type: 'observation_plans', id: planId },
+            ['status', 'doneAt'],
+          )
         body = { data: await observationBody(tx, ctx, id) }
       },
     },
@@ -626,6 +643,19 @@ export function archiveLessonObservationCommand(
         })
         if (!saved) throw new ConflictError()
         await auditWork(tx, ctx, 'finance.lesson_observation.archive', entity, ['archivedAt'])
+        // Plandan açılmış taslak arşivlenince plan bağı kalkar; plan yeniden başlatılır (K-473).
+        const planId = await unlinkObservationPlan(tx, ctx.institutionId, {
+          observationId: id,
+          now: ctx.now,
+        })
+        if (planId !== null)
+          await auditWork(
+            tx,
+            ctx,
+            'finance.observation_plan.unlink',
+            { type: 'observation_plans', id: planId },
+            ['observationId'],
+          )
       },
     },
     () => ({ statusCode: 200, body }),

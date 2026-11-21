@@ -37,6 +37,7 @@ import { dateLabel, dayKey } from '@kampus/school-core/lib/format.ts'
 import type { z } from 'zod'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { FormField } from '@/components/FormField.tsx'
+import { LineTabs } from '@/components/LineTabs.tsx'
 import { Modal } from '@/components/Modal.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
@@ -51,6 +52,7 @@ import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { notify } from '@/lib/notify.ts'
 import { RootError } from '../management/FormParts.tsx'
 import { ObservationDebriefPanel } from './FinanceObservationDebriefPanel.tsx'
+import { FinanceObservationPlansPanel } from './FinanceObservationPlansPanel.tsx'
 import {
   defaultTemplateFormValues,
   emptyCriterion,
@@ -107,20 +109,39 @@ type ObservationRow = {
 }
 type TemplateMode =
   { kind: 'create' } | { kind: 'edit' | 'version'; template: LessonObservationTemplate }
+type SectionView = 'observations' | 'plan'
+const SECTION_VIEWS = [
+  { value: 'observations', label: 'Gözlemler' },
+  { value: 'plan', label: 'Plan' },
+] as const satisfies readonly { value: SectionView; label: string }[]
 
 /**
  * Ders gözlemleri (DOM-FIN-130; ON-206): Finans "Ders gözlemleri" sekmesi, yalnız yönetici
  * (K-447). Üstte gözlem formları (sürüm, kullanım; kullanılmamış sürüm düzeltilir, kullanılmışa
  * yeni sürüm açılır; K-445), altta gözlemler (öğretmen, gün, sınıf/ders, gözlemci, durum, puan).
  * Gözlem penceresi taslakta ölçüt seviyesi ve notunu yazar, tamamlar (K-446); tamamlanan gözlem
- * salt okunur. Puanı sunucu rubrik kuralıyla hesaplar; formdaki puan önizlemedir.
+ * salt okunur. Puanı sunucu rubrik kuralıyla hesaplar; formdaki puan önizlemedir. "Plan"
+ * görünümü gözlem planıdır (DOM-FIN-139; ON-207): plandan başlatılan gözlem aynı pencerede açılır.
  */
 export function FinanceLessonObservationsSection() {
   const [opened, setOpened] = useState<string | null>(null)
+  const [view, setView] = useState<SectionView>('observations')
   return (
     <div className="grid gap-6">
-      <TemplatesPanel />
-      <ObservationsPanel onOpen={setOpened} />
+      <LineTabs
+        label="Ders gözlemleri görünümü"
+        value={view}
+        options={SECTION_VIEWS}
+        onChange={setView}
+      />
+      {view === 'plan' ? (
+        <FinanceObservationPlansPanel onOpenObservation={setOpened} />
+      ) : (
+        <>
+          <TemplatesPanel />
+          <ObservationsPanel onOpen={setOpened} />
+        </>
+      )}
       <Modal
         open={opened !== null}
         onOpenChange={(open) => (open ? undefined : setOpened(null))}

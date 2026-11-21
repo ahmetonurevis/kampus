@@ -4407,6 +4407,108 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'DOM-FIN-156: başka kurumun günlüğü görünmez; başka kurumun kaydı gerekçeyle de 404 ve günlüğe düşmez',
     'get(LOGS, a.admin)',
   ),
+  // Onur: gezi günü yoklaması ve acil kart (ON-157; DOM-FIN-154).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/trip-days/my', 'get(MY, a.mother)'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/trip-plans/:planId/day',
+          'get(dayUrl(bSetup.planId), a.admin)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/trip-plans/:planId/day/groups',
+          'groupsUrl(bSetup.planId), a.admin',
+        ],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/trip-plans/:planId/day/groups/:groupId',
+          "'PATCH', groupUrl(bSetup.planId, bSetup.bus), a.admin",
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/trip-plans/:planId/day/groups/:groupId',
+          "'DELETE', groupUrl(bSetup.planId, bSetup.bus), a.admin",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/trip-plans/:planId/day/assignments',
+          'assignUrl(bSetup.planId), a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/trip-plans/:planId/day/groups/:groupId/checks',
+          'checksUrl(bSetup.planId, bSetup.bus), a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/trip-plans/:planId/day/checks/:checkId/marks',
+          'checkUrl(bSetup.planId, bCheck.id)}/marks`, a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/trip-plans/:planId/day/checks/:checkId/complete',
+          'checkUrl(bSetup.planId, bCheck.id)}/complete`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/trip-plans/:planId/day/checks/:checkId/proceed',
+          'checkUrl(bSetup.planId, bCheck.id)}/proceed`',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/trip-plans/:planId/day/groups/:groupId/emergency-card',
+          'card(cardUrl(bSetup.planId, bSetup.bus), a.admin)',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-trip-day.test.ts',
+        'DOM-FIN-154: başka kurumun planı, grubu ve turu 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: ilaç çizelgesi, atlama ve düzeltme (ON-161; DOM-FIN-152).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/infirmary/medication-chart', 'chartOf(a.admin)'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/infirmary/medication-consents/:consentId/skips',
+          'skip(a, bConsent.id, {}, a.admin)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/infirmary/medication-administrations/:administrationId/corrections',
+          'administrationUrl(bAdministration?.id), a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/infirmary/medication-skips/:skipId/corrections',
+          'skipUrl(bSkip.id), a.admin',
+        ],
+        ['liste', 'GET /api/v1/finance/infirmary/my-medication-doses', 'get(MY_DOSES, a.mother)'],
+        ['liste', 'GET /api/v1/finance/infirmary/medication-settings', 'get(SETTINGS, a.admin)'],
+        [
+          'gövde',
+          'PATCH /api/v1/finance/infirmary/medication-settings',
+          'lateToleranceMinutes: 50, institutionId: b.id',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-infirmary-schedule.test.ts',
+        'DOM-FIN-152: başka kurumun talebi, uygulaması ve atlaması 404 ve B değişmez; listede yok',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

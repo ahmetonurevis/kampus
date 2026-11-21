@@ -15620,6 +15620,210 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/trip-days/my": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Çocuğumun gezideki son kontrol noktası
+         * @description Veli bağlı çocuklarının, öğrenci kendinin bugün süren (çıkış–dönüş günleri, Europe/Istanbul) gezilerindeki grubu, grup sorumlusu ve son kapanan kontrol noktasındaki işareti (`present`/`absent`; tur henüz kapanmadıysa boş). Gerekçe ve diğer öğrenciler dönmez; bildirim gönderilmez (K-519). Rol: `veli`, `ogrenci`. Modül `finance`.
+         */
+        get: operations["listMyTripDays"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/trip-plans/{planId}/day": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Gezi günü görünümü
+         * @description Planın grupları (ad, plaka, sorumlu), grupların öğrencileri ve yoklama turları (kontrol noktası, durum, sayılar, öğrenci başına var/yok), görevliler ve grubu olmayan katılımcılar. Katılımcılar bağlı ücretli etkinliğin asil katılımlarıdır; etkinliksiz planda kayıtlı öğrenciler (K-517). Katılımı iptal edilen öğrenci grup listesinden düşer. Eksikle devam gerekçesi yalnız turu yürütebilene döner. Olmayan ya da başka kurumun planı 404. Rol: `yonetici`, `onburo`, `ogretmen` (öğretmen yalnız sorumlusu olduğu grubu görür; grubu yoksa 404; K-517). Modül `finance`.
+         */
+        get: operations["getTripDay"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/trip-plans/{planId}/day/groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Gezi günü grubu aç
+         * @description Araç ya da grup: ad (2–60; planda tekil, 409 `trip_day_group_name_taken`), isteğe bağlı plaka (`34 ABC 123`) ve grup sorumlusu (planın görevlisi; değilse 422 `trip_day_leader_not_staff`). Tamamlanmış ya da iptal edilmiş plan 422 `trip_day_plan_closed`; planda en çok 30 grup (422 `trip_day_groups_full`). Denetim `finance.trip_day.group_create`. `Idempotency-Key` zorunlu. Başarı 201; yanıt gezi günü görünümüdür. Rol: `yonetici`, `onburo` (K-517). Modül `finance`.
+         */
+        post: operations["createTripDayGroup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/trip-plans/{planId}/day/groups/{groupId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Gezi günü grubunu kaldır
+         * @description Grup arşivlenir, öğrencileri grupsuz kalır. Yoklama turu açılmış grup kaldırılmaz (422 `trip_day_group_has_checks`). Denetim `finance.trip_day.group_archive`. `If-Match` grubun sürümü. Rol: `yonetici`, `onburo` (K-517). Modül `finance`.
+         */
+        delete: operations["archiveTripDayGroup"];
+        options?: never;
+        head?: never;
+        /**
+         * Gezi günü grubunu düzelt
+         * @description Verilen alanlar değişir (ad, plaka, sorumlu); kurallar açmadakiyle aynıdır. Süren turu olan grubun sorumlusu değişmez (422 `trip_day_check_open`). Değişmeyen alan yazılmaz. Denetim `finance.trip_day.group_update`. `If-Match` grubun sürümü; tutmazsa 409. Rol: `yonetici`, `onburo` (K-517). Modül `finance`.
+         */
+        patch: operations["updateTripDayGroup"];
+        trace?: never;
+    };
+    "/api/v1/finance/trip-plans/{planId}/day/assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Öğrencileri gruplara dağıt
+         * @description 1–200 öğrenciyi gruba ekler ya da taşır; `groupId: null` gruptan çıkarır. Yalnız gezinin katılımcısı (422 `trip_day_student_not_participant`); olmayan grup 422 `trip_day_group_not_found`. Hedefte ya da öğrencinin grubunda süren tur varken dağıtım değişmez (422 `trip_day_check_open`). Zaten o gruptaki öğrenci için bir şey yazılmaz. Denetim `finance.trip_day.assign` (öğrenci kimliği yazılmaz). `Idempotency-Key` zorunlu. Rol: `yonetici`, `onburo` (K-517). Modül `finance`.
+         */
+        post: operations["assignTripDayStudents"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/trip-plans/{planId}/day/groups/{groupId}/checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Yoklama turu aç
+         * @description Grubun adlandırılmış kontrol noktasında (`Okuldan çıkış`, `Varış`, `Dönüş çıkışı`, `Okula varış` …; sayı serbest) yeni tur açar. Plan onaylı olmalı (422 `trip_day_plan_not_approved`), bugün gezi günlerinden biri (422 `trip_day_not_today`), grupta öğrenci olmalı (422 `trip_day_group_empty`); süren tur varken 409 `trip_day_check_open`; grupta en çok 50 tur. Denetim `finance.trip_day.check_start`. `Idempotency-Key` zorunlu; başarı 201. Rol: `yonetici`, `ogretmen`; turu yönetici ve grubun sorumlusu yürütür, sorumlusu olmadığı grup öğretmene 404 (K-517). Modül `finance`.
+         */
+        post: operations["startTripDayCheck"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/trip-plans/{planId}/day/checks/{checkId}/marks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Var ya da yok işaretle
+         * @description Süren turda 1–200 öğrenciyi `present` (var) ya da `absent` (yok) işaretler; yalnız grubun öğrencisi (422 `trip_day_student_not_in_group`), biten tur 422 `trip_day_check_closed`. İşaret anı verilmezse sunucu anıdır; çevrimdışı yeniden denemede cihazın işaret anı gönderilir: ileri olamaz (5 dk pay; 422 `trip_day_mark_future`), 24 saatten eski olamaz (422 `trip_day_mark_too_old`). Aynı işaretin yinelenmesi yazmaz. Konum alınmaz. Denetim `finance.trip_day.check_mark`. `Idempotency-Key` zorunlu; `If-Match` yok (çevrimdışı kuyruktaki ardışık işaretler sırayla uygulanır). Rol: `yonetici`, `ogretmen`; turu yönetici ve grubun sorumlusu yürütür, sorumlusu olmadığı grup öğretmene 404 (K-517). Modül `finance`.
+         */
+        post: operations["markTripDayCheck"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/trip-plans/{planId}/day/checks/{checkId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Yoklama turunu tamam yap
+         * @description Bütün öğrenciler "var" ise tur `complete` olur. Yok ya da işaretlenmemiş öğrenci varken 422 `trip_day_check_missing` (güvenlik; eksikle devam ayrı ve gerekçeli adımdır). Biten tur 409 `trip_day_check_already_closed`. Gövde boş nesnedir. Denetim `finance.trip_day.check_complete`. `If-Match` turun sürümü. Rol: `yonetici`, `ogretmen`; turu yönetici ve grubun sorumlusu yürütür, sorumlusu olmadığı grup öğretmene 404 (K-517). Modül `finance`.
+         */
+        post: operations["completeTripDayCheck"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/trip-plans/{planId}/day/checks/{checkId}/proceed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Eksikle devam et
+         * @description Gerekçeyle (5–500) turu `incomplete` kapatır: bütün öğrenciler işaretlenmiş olmalı (422 `trip_day_check_unmarked`), en az biri "yok" olmalı (422 `trip_day_check_no_missing`; herkes varsa tur tamam yapılır). Eksik sayısı ve gerekçe turda saklanır; gerekçe denetime ve loga yazılmaz. Denetim `finance.trip_day.check_proceed`. `If-Match` turun sürümü. Rol: `yonetici`, `ogretmen`; turu yönetici ve grubun sorumlusu yürütür, sorumlusu olmadığı grup öğretmene 404 (K-517). Modül `finance`.
+         */
+        post: operations["proceedTripDayCheck"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/trip-plans/{planId}/day/groups/{groupId}/emergency-card": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Grubun acil kartı (PDF verisi)
+         * @description Grubun öğrencileri ada göre: sınıf, acil iletişim (velayetli ve iletişim kısıtı olmayan veli bağları, bağ yoksa öğrenci kaydındaki veli; en çok iki kişi; K-501) ve en az bilgiyle sağlık uyarısı: yalnız "alerji / kronik durum / ilaç var" türü, kısaltılmış acil talimat ve revirde kart günü için onaylı ilaç işareti; alerjen, ilaç adı ve doz yok (K-518). Sağlık bilgisi sağlık profili servisinden okunur (her öğrencide `health_profile.read` ya da `health_profile.read_emergency` denetimi); okuyanın profil erişimi yoksa `source: unavailable` ve yalnız revir işareti. `purpose=office` (varsayılan) veli telefonu maskeli; `purpose=emergency` tam telefon: yönetici her zaman, grup sorumlusu yalnız gezi günlerinde (403 `trip_day_card_full_forbidden`). Taze oturum ister (403 `reauthentication_required`), kullanıcı başına 10/dk. Sağlık verisi erişim gerekçesi zorunludur (`X-Access-Reason`; web `emergency` önerir; DOM-FIN-156). Her açılış gerekçesiyle denetime ve sağlık erişim günlüğüne düşer: `finance.trip_day.emergency_card` ya da `finance.trip_day.emergency_card_full` (alan adları). Web PDF'i bu veriden üretir. Rol: `yonetici`, `ogretmen`; turu yönetici ve grubun sorumlusu yürütür, sorumlusu olmadığı grup öğretmene 404 (K-517). Modül `finance`.
+         */
+        get: operations["getTripDayEmergencyCard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -164023,6 +164227,2139 @@ export interface operations {
                             reasonNote: string | null;
                         }[];
                         meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listMyTripDays: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            studentId: string;
+                            studentName: string;
+                            planId: string;
+                            planName: string;
+                            departureAt: string;
+                            returnAt: string;
+                            groupName: string;
+                            leaderName: string | null;
+                            /** @description Son kapanan kontrol noktası; yoksa boş */
+                            checkpoint: string | null;
+                            checkedAt: string | null;
+                            /** @description Çocuğun o noktadaki işareti */
+                            status: ("present" | "absent") | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getTripDay: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            planId: string;
+                            planNumber: string;
+                            planName: string;
+                            /** @enum {string} */
+                            planStatus: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                            departureAt: string;
+                            returnAt: string;
+                            /** @description Gezinin ilk günü (YYYY-MM-DD, Europe/Istanbul) */
+                            firstDay: string;
+                            /** @description Gezinin son günü */
+                            lastDay: string;
+                            /** @description Bugün gezi günlerinden biri; tur yalnız o zaman açılır */
+                            isTripDay: boolean;
+                            /** @description Planın ulaşım plakası (grup için öneri) */
+                            transportPlate: string | null;
+                            paidActivity: {
+                                id: string;
+                                name: string;
+                            } | null;
+                            /**
+                             * @description `activity` bağlı ücretli etkinliğin asil katılımları, `students` kayıtlı öğrenciler
+                             * @enum {string}
+                             */
+                            participantSource: "activity" | "students";
+                            participantCount: number;
+                            /** @description Grup kurar ve dağıtır (yönetici, ön büro) */
+                            canManage: boolean;
+                            /** @description Planın görevlileri (grup sorumlusu seçenekleri); yalnız yönetici ve ön büroya */
+                            staff: {
+                                membershipId: string;
+                                name: string | null;
+                                /** @enum {string} */
+                                role: "lead" | "assistant";
+                            }[];
+                            groups: {
+                                id: string;
+                                name: string;
+                                vehiclePlate: string | null;
+                                leaderMembershipId: string;
+                                leaderName: string | null;
+                                position: number;
+                                /** @description Grubun öğrencileri (katılımı süren), ada göre */
+                                students: {
+                                    studentId: string;
+                                    studentName: string;
+                                    className: string | null;
+                                }[];
+                                /** @description Yoklama turları, sırasıyla */
+                                checks: {
+                                    id: string;
+                                    /** @description Grupta tur sırası */
+                                    sequence: number;
+                                    /** @description Kontrol noktası */
+                                    checkpoint: string;
+                                    /** @enum {string} */
+                                    status: "open" | "complete" | "incomplete";
+                                    startedAt: string;
+                                    startedByName: string | null;
+                                    closedAt: string | null;
+                                    closedByName: string | null;
+                                    counts: {
+                                        total: number;
+                                        present: number;
+                                        absent: number;
+                                        pending: number;
+                                    };
+                                    /** @description Eksikle devam gerekçesi; yalnız turu yürütebilen role döner */
+                                    missingReason: string | null;
+                                    /** @description Oturumdaki rol bu turda işaretler ve turu bitirir */
+                                    canOperate: boolean;
+                                    /** @description `If-Match` için turun sürümü */
+                                    version: number;
+                                    /** @description Süren turda grubun öğrencileri, kapanan turda işaretler; ada göre */
+                                    roster: {
+                                        studentId: string;
+                                        studentName: string;
+                                        className: string | null;
+                                        /** @enum {string} */
+                                        status: "pending" | "present" | "absent";
+                                        markedAt: string | null;
+                                    }[];
+                                }[];
+                                openCheckId: string | null;
+                                canEdit: boolean;
+                                canStartCheck: boolean;
+                                canOperate: boolean;
+                                canReadCard: boolean;
+                                /** @description Tam telefonlu acil kartı açabilir (K-518) */
+                                canReadFullCard: boolean;
+                                /** @description `If-Match` için grubun sürümü */
+                                version: number;
+                            }[];
+                            /** @description Grubu olmayan katılımcılar (en çok 500, ada göre); yalnız yönetici ve ön büroya */
+                            unassigned: {
+                                studentId: string;
+                                studentName: string;
+                                className: string | null;
+                            }[];
+                            unassignedTotal: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createTripDayGroup: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Araç ya da grup adı (`1. otobüs`, `Mavi grup`) */
+                    name: string;
+                    /** @description Grubun aracının plakası; boşluksuz büyük harfle saklanır, araçsız grupta boş */
+                    vehiclePlate?: string | null;
+                    /** @description Grup sorumlusunun kurum üyeliği; planın görevlisi olmalı */
+                    leaderMembershipId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            planId: string;
+                            planNumber: string;
+                            planName: string;
+                            /** @enum {string} */
+                            planStatus: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                            departureAt: string;
+                            returnAt: string;
+                            /** @description Gezinin ilk günü (YYYY-MM-DD, Europe/Istanbul) */
+                            firstDay: string;
+                            /** @description Gezinin son günü */
+                            lastDay: string;
+                            /** @description Bugün gezi günlerinden biri; tur yalnız o zaman açılır */
+                            isTripDay: boolean;
+                            /** @description Planın ulaşım plakası (grup için öneri) */
+                            transportPlate: string | null;
+                            paidActivity: {
+                                id: string;
+                                name: string;
+                            } | null;
+                            /**
+                             * @description `activity` bağlı ücretli etkinliğin asil katılımları, `students` kayıtlı öğrenciler
+                             * @enum {string}
+                             */
+                            participantSource: "activity" | "students";
+                            participantCount: number;
+                            /** @description Grup kurar ve dağıtır (yönetici, ön büro) */
+                            canManage: boolean;
+                            /** @description Planın görevlileri (grup sorumlusu seçenekleri); yalnız yönetici ve ön büroya */
+                            staff: {
+                                membershipId: string;
+                                name: string | null;
+                                /** @enum {string} */
+                                role: "lead" | "assistant";
+                            }[];
+                            groups: {
+                                id: string;
+                                name: string;
+                                vehiclePlate: string | null;
+                                leaderMembershipId: string;
+                                leaderName: string | null;
+                                position: number;
+                                /** @description Grubun öğrencileri (katılımı süren), ada göre */
+                                students: {
+                                    studentId: string;
+                                    studentName: string;
+                                    className: string | null;
+                                }[];
+                                /** @description Yoklama turları, sırasıyla */
+                                checks: {
+                                    id: string;
+                                    /** @description Grupta tur sırası */
+                                    sequence: number;
+                                    /** @description Kontrol noktası */
+                                    checkpoint: string;
+                                    /** @enum {string} */
+                                    status: "open" | "complete" | "incomplete";
+                                    startedAt: string;
+                                    startedByName: string | null;
+                                    closedAt: string | null;
+                                    closedByName: string | null;
+                                    counts: {
+                                        total: number;
+                                        present: number;
+                                        absent: number;
+                                        pending: number;
+                                    };
+                                    /** @description Eksikle devam gerekçesi; yalnız turu yürütebilen role döner */
+                                    missingReason: string | null;
+                                    /** @description Oturumdaki rol bu turda işaretler ve turu bitirir */
+                                    canOperate: boolean;
+                                    /** @description `If-Match` için turun sürümü */
+                                    version: number;
+                                    /** @description Süren turda grubun öğrencileri, kapanan turda işaretler; ada göre */
+                                    roster: {
+                                        studentId: string;
+                                        studentName: string;
+                                        className: string | null;
+                                        /** @enum {string} */
+                                        status: "pending" | "present" | "absent";
+                                        markedAt: string | null;
+                                    }[];
+                                }[];
+                                openCheckId: string | null;
+                                canEdit: boolean;
+                                canStartCheck: boolean;
+                                canOperate: boolean;
+                                canReadCard: boolean;
+                                /** @description Tam telefonlu acil kartı açabilir (K-518) */
+                                canReadFullCard: boolean;
+                                /** @description `If-Match` için grubun sürümü */
+                                version: number;
+                            }[];
+                            /** @description Grubu olmayan katılımcılar (en çok 500, ada göre); yalnız yönetici ve ön büroya */
+                            unassigned: {
+                                studentId: string;
+                                studentName: string;
+                                className: string | null;
+                            }[];
+                            unassignedTotal: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveTripDayGroup: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                planId: string;
+                groupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            planId: string;
+                            planNumber: string;
+                            planName: string;
+                            /** @enum {string} */
+                            planStatus: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                            departureAt: string;
+                            returnAt: string;
+                            /** @description Gezinin ilk günü (YYYY-MM-DD, Europe/Istanbul) */
+                            firstDay: string;
+                            /** @description Gezinin son günü */
+                            lastDay: string;
+                            /** @description Bugün gezi günlerinden biri; tur yalnız o zaman açılır */
+                            isTripDay: boolean;
+                            /** @description Planın ulaşım plakası (grup için öneri) */
+                            transportPlate: string | null;
+                            paidActivity: {
+                                id: string;
+                                name: string;
+                            } | null;
+                            /**
+                             * @description `activity` bağlı ücretli etkinliğin asil katılımları, `students` kayıtlı öğrenciler
+                             * @enum {string}
+                             */
+                            participantSource: "activity" | "students";
+                            participantCount: number;
+                            /** @description Grup kurar ve dağıtır (yönetici, ön büro) */
+                            canManage: boolean;
+                            /** @description Planın görevlileri (grup sorumlusu seçenekleri); yalnız yönetici ve ön büroya */
+                            staff: {
+                                membershipId: string;
+                                name: string | null;
+                                /** @enum {string} */
+                                role: "lead" | "assistant";
+                            }[];
+                            groups: {
+                                id: string;
+                                name: string;
+                                vehiclePlate: string | null;
+                                leaderMembershipId: string;
+                                leaderName: string | null;
+                                position: number;
+                                /** @description Grubun öğrencileri (katılımı süren), ada göre */
+                                students: {
+                                    studentId: string;
+                                    studentName: string;
+                                    className: string | null;
+                                }[];
+                                /** @description Yoklama turları, sırasıyla */
+                                checks: {
+                                    id: string;
+                                    /** @description Grupta tur sırası */
+                                    sequence: number;
+                                    /** @description Kontrol noktası */
+                                    checkpoint: string;
+                                    /** @enum {string} */
+                                    status: "open" | "complete" | "incomplete";
+                                    startedAt: string;
+                                    startedByName: string | null;
+                                    closedAt: string | null;
+                                    closedByName: string | null;
+                                    counts: {
+                                        total: number;
+                                        present: number;
+                                        absent: number;
+                                        pending: number;
+                                    };
+                                    /** @description Eksikle devam gerekçesi; yalnız turu yürütebilen role döner */
+                                    missingReason: string | null;
+                                    /** @description Oturumdaki rol bu turda işaretler ve turu bitirir */
+                                    canOperate: boolean;
+                                    /** @description `If-Match` için turun sürümü */
+                                    version: number;
+                                    /** @description Süren turda grubun öğrencileri, kapanan turda işaretler; ada göre */
+                                    roster: {
+                                        studentId: string;
+                                        studentName: string;
+                                        className: string | null;
+                                        /** @enum {string} */
+                                        status: "pending" | "present" | "absent";
+                                        markedAt: string | null;
+                                    }[];
+                                }[];
+                                openCheckId: string | null;
+                                canEdit: boolean;
+                                canStartCheck: boolean;
+                                canOperate: boolean;
+                                canReadCard: boolean;
+                                /** @description Tam telefonlu acil kartı açabilir (K-518) */
+                                canReadFullCard: boolean;
+                                /** @description `If-Match` için grubun sürümü */
+                                version: number;
+                            }[];
+                            /** @description Grubu olmayan katılımcılar (en çok 500, ada göre); yalnız yönetici ve ön büroya */
+                            unassigned: {
+                                studentId: string;
+                                studentName: string;
+                                className: string | null;
+                            }[];
+                            unassignedTotal: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateTripDayGroup: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                planId: string;
+                groupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Araç ya da grup adı (`1. otobüs`, `Mavi grup`) */
+                    name?: string;
+                    /** @description Grubun aracının plakası; boşluksuz büyük harfle saklanır, araçsız grupta boş */
+                    vehiclePlate?: string | null;
+                    /** @description Grup sorumlusunun kurum üyeliği; planın görevlisi olmalı */
+                    leaderMembershipId?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            planId: string;
+                            planNumber: string;
+                            planName: string;
+                            /** @enum {string} */
+                            planStatus: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                            departureAt: string;
+                            returnAt: string;
+                            /** @description Gezinin ilk günü (YYYY-MM-DD, Europe/Istanbul) */
+                            firstDay: string;
+                            /** @description Gezinin son günü */
+                            lastDay: string;
+                            /** @description Bugün gezi günlerinden biri; tur yalnız o zaman açılır */
+                            isTripDay: boolean;
+                            /** @description Planın ulaşım plakası (grup için öneri) */
+                            transportPlate: string | null;
+                            paidActivity: {
+                                id: string;
+                                name: string;
+                            } | null;
+                            /**
+                             * @description `activity` bağlı ücretli etkinliğin asil katılımları, `students` kayıtlı öğrenciler
+                             * @enum {string}
+                             */
+                            participantSource: "activity" | "students";
+                            participantCount: number;
+                            /** @description Grup kurar ve dağıtır (yönetici, ön büro) */
+                            canManage: boolean;
+                            /** @description Planın görevlileri (grup sorumlusu seçenekleri); yalnız yönetici ve ön büroya */
+                            staff: {
+                                membershipId: string;
+                                name: string | null;
+                                /** @enum {string} */
+                                role: "lead" | "assistant";
+                            }[];
+                            groups: {
+                                id: string;
+                                name: string;
+                                vehiclePlate: string | null;
+                                leaderMembershipId: string;
+                                leaderName: string | null;
+                                position: number;
+                                /** @description Grubun öğrencileri (katılımı süren), ada göre */
+                                students: {
+                                    studentId: string;
+                                    studentName: string;
+                                    className: string | null;
+                                }[];
+                                /** @description Yoklama turları, sırasıyla */
+                                checks: {
+                                    id: string;
+                                    /** @description Grupta tur sırası */
+                                    sequence: number;
+                                    /** @description Kontrol noktası */
+                                    checkpoint: string;
+                                    /** @enum {string} */
+                                    status: "open" | "complete" | "incomplete";
+                                    startedAt: string;
+                                    startedByName: string | null;
+                                    closedAt: string | null;
+                                    closedByName: string | null;
+                                    counts: {
+                                        total: number;
+                                        present: number;
+                                        absent: number;
+                                        pending: number;
+                                    };
+                                    /** @description Eksikle devam gerekçesi; yalnız turu yürütebilen role döner */
+                                    missingReason: string | null;
+                                    /** @description Oturumdaki rol bu turda işaretler ve turu bitirir */
+                                    canOperate: boolean;
+                                    /** @description `If-Match` için turun sürümü */
+                                    version: number;
+                                    /** @description Süren turda grubun öğrencileri, kapanan turda işaretler; ada göre */
+                                    roster: {
+                                        studentId: string;
+                                        studentName: string;
+                                        className: string | null;
+                                        /** @enum {string} */
+                                        status: "pending" | "present" | "absent";
+                                        markedAt: string | null;
+                                    }[];
+                                }[];
+                                openCheckId: string | null;
+                                canEdit: boolean;
+                                canStartCheck: boolean;
+                                canOperate: boolean;
+                                canReadCard: boolean;
+                                /** @description Tam telefonlu acil kartı açabilir (K-518) */
+                                canReadFullCard: boolean;
+                                /** @description `If-Match` için grubun sürümü */
+                                version: number;
+                            }[];
+                            /** @description Grubu olmayan katılımcılar (en çok 500, ada göre); yalnız yönetici ve ön büroya */
+                            unassigned: {
+                                studentId: string;
+                                studentName: string;
+                                className: string | null;
+                            }[];
+                            unassignedTotal: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    assignTripDayStudents: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Hedef grup; `null` öğrencileri gruptan çıkarır */
+                    groupId: string | null;
+                    /** @description Gezinin katılımcıları (bağlı ücretli etkinlikte asil katılım) */
+                    studentIds: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            planId: string;
+                            planNumber: string;
+                            planName: string;
+                            /** @enum {string} */
+                            planStatus: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                            departureAt: string;
+                            returnAt: string;
+                            /** @description Gezinin ilk günü (YYYY-MM-DD, Europe/Istanbul) */
+                            firstDay: string;
+                            /** @description Gezinin son günü */
+                            lastDay: string;
+                            /** @description Bugün gezi günlerinden biri; tur yalnız o zaman açılır */
+                            isTripDay: boolean;
+                            /** @description Planın ulaşım plakası (grup için öneri) */
+                            transportPlate: string | null;
+                            paidActivity: {
+                                id: string;
+                                name: string;
+                            } | null;
+                            /**
+                             * @description `activity` bağlı ücretli etkinliğin asil katılımları, `students` kayıtlı öğrenciler
+                             * @enum {string}
+                             */
+                            participantSource: "activity" | "students";
+                            participantCount: number;
+                            /** @description Grup kurar ve dağıtır (yönetici, ön büro) */
+                            canManage: boolean;
+                            /** @description Planın görevlileri (grup sorumlusu seçenekleri); yalnız yönetici ve ön büroya */
+                            staff: {
+                                membershipId: string;
+                                name: string | null;
+                                /** @enum {string} */
+                                role: "lead" | "assistant";
+                            }[];
+                            groups: {
+                                id: string;
+                                name: string;
+                                vehiclePlate: string | null;
+                                leaderMembershipId: string;
+                                leaderName: string | null;
+                                position: number;
+                                /** @description Grubun öğrencileri (katılımı süren), ada göre */
+                                students: {
+                                    studentId: string;
+                                    studentName: string;
+                                    className: string | null;
+                                }[];
+                                /** @description Yoklama turları, sırasıyla */
+                                checks: {
+                                    id: string;
+                                    /** @description Grupta tur sırası */
+                                    sequence: number;
+                                    /** @description Kontrol noktası */
+                                    checkpoint: string;
+                                    /** @enum {string} */
+                                    status: "open" | "complete" | "incomplete";
+                                    startedAt: string;
+                                    startedByName: string | null;
+                                    closedAt: string | null;
+                                    closedByName: string | null;
+                                    counts: {
+                                        total: number;
+                                        present: number;
+                                        absent: number;
+                                        pending: number;
+                                    };
+                                    /** @description Eksikle devam gerekçesi; yalnız turu yürütebilen role döner */
+                                    missingReason: string | null;
+                                    /** @description Oturumdaki rol bu turda işaretler ve turu bitirir */
+                                    canOperate: boolean;
+                                    /** @description `If-Match` için turun sürümü */
+                                    version: number;
+                                    /** @description Süren turda grubun öğrencileri, kapanan turda işaretler; ada göre */
+                                    roster: {
+                                        studentId: string;
+                                        studentName: string;
+                                        className: string | null;
+                                        /** @enum {string} */
+                                        status: "pending" | "present" | "absent";
+                                        markedAt: string | null;
+                                    }[];
+                                }[];
+                                openCheckId: string | null;
+                                canEdit: boolean;
+                                canStartCheck: boolean;
+                                canOperate: boolean;
+                                canReadCard: boolean;
+                                /** @description Tam telefonlu acil kartı açabilir (K-518) */
+                                canReadFullCard: boolean;
+                                /** @description `If-Match` için grubun sürümü */
+                                version: number;
+                            }[];
+                            /** @description Grubu olmayan katılımcılar (en çok 500, ada göre); yalnız yönetici ve ön büroya */
+                            unassigned: {
+                                studentId: string;
+                                studentName: string;
+                                className: string | null;
+                            }[];
+                            unassignedTotal: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    startTripDayCheck: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                planId: string;
+                groupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Kontrol noktası (`Okuldan çıkış`, `Varış`, `Dönüş çıkışı`, `Okula varış`) */
+                    checkpoint: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            planId: string;
+                            planNumber: string;
+                            planName: string;
+                            /** @enum {string} */
+                            planStatus: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                            departureAt: string;
+                            returnAt: string;
+                            /** @description Gezinin ilk günü (YYYY-MM-DD, Europe/Istanbul) */
+                            firstDay: string;
+                            /** @description Gezinin son günü */
+                            lastDay: string;
+                            /** @description Bugün gezi günlerinden biri; tur yalnız o zaman açılır */
+                            isTripDay: boolean;
+                            /** @description Planın ulaşım plakası (grup için öneri) */
+                            transportPlate: string | null;
+                            paidActivity: {
+                                id: string;
+                                name: string;
+                            } | null;
+                            /**
+                             * @description `activity` bağlı ücretli etkinliğin asil katılımları, `students` kayıtlı öğrenciler
+                             * @enum {string}
+                             */
+                            participantSource: "activity" | "students";
+                            participantCount: number;
+                            /** @description Grup kurar ve dağıtır (yönetici, ön büro) */
+                            canManage: boolean;
+                            /** @description Planın görevlileri (grup sorumlusu seçenekleri); yalnız yönetici ve ön büroya */
+                            staff: {
+                                membershipId: string;
+                                name: string | null;
+                                /** @enum {string} */
+                                role: "lead" | "assistant";
+                            }[];
+                            groups: {
+                                id: string;
+                                name: string;
+                                vehiclePlate: string | null;
+                                leaderMembershipId: string;
+                                leaderName: string | null;
+                                position: number;
+                                /** @description Grubun öğrencileri (katılımı süren), ada göre */
+                                students: {
+                                    studentId: string;
+                                    studentName: string;
+                                    className: string | null;
+                                }[];
+                                /** @description Yoklama turları, sırasıyla */
+                                checks: {
+                                    id: string;
+                                    /** @description Grupta tur sırası */
+                                    sequence: number;
+                                    /** @description Kontrol noktası */
+                                    checkpoint: string;
+                                    /** @enum {string} */
+                                    status: "open" | "complete" | "incomplete";
+                                    startedAt: string;
+                                    startedByName: string | null;
+                                    closedAt: string | null;
+                                    closedByName: string | null;
+                                    counts: {
+                                        total: number;
+                                        present: number;
+                                        absent: number;
+                                        pending: number;
+                                    };
+                                    /** @description Eksikle devam gerekçesi; yalnız turu yürütebilen role döner */
+                                    missingReason: string | null;
+                                    /** @description Oturumdaki rol bu turda işaretler ve turu bitirir */
+                                    canOperate: boolean;
+                                    /** @description `If-Match` için turun sürümü */
+                                    version: number;
+                                    /** @description Süren turda grubun öğrencileri, kapanan turda işaretler; ada göre */
+                                    roster: {
+                                        studentId: string;
+                                        studentName: string;
+                                        className: string | null;
+                                        /** @enum {string} */
+                                        status: "pending" | "present" | "absent";
+                                        markedAt: string | null;
+                                    }[];
+                                }[];
+                                openCheckId: string | null;
+                                canEdit: boolean;
+                                canStartCheck: boolean;
+                                canOperate: boolean;
+                                canReadCard: boolean;
+                                /** @description Tam telefonlu acil kartı açabilir (K-518) */
+                                canReadFullCard: boolean;
+                                /** @description `If-Match` için grubun sürümü */
+                                version: number;
+                            }[];
+                            /** @description Grubu olmayan katılımcılar (en çok 500, ada göre); yalnız yönetici ve ön büroya */
+                            unassigned: {
+                                studentId: string;
+                                studentName: string;
+                                className: string | null;
+                            }[];
+                            unassignedTotal: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    markTripDayCheck: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                planId: string;
+                checkId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    marks: {
+                        /** @description Grubun öğrencisi */
+                        studentId: string;
+                        /**
+                         * @description `present` var, `absent` yok
+                         * @enum {string}
+                         */
+                        status: "present" | "absent";
+                        /**
+                         * Format: date-time
+                         * @description İşaret anı (ISO 8601). Verilmezse sunucu anı; çevrimdışı yeniden denemede cihazın işaret anı gönderilir.
+                         */
+                        markedAt?: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            planId: string;
+                            planNumber: string;
+                            planName: string;
+                            /** @enum {string} */
+                            planStatus: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                            departureAt: string;
+                            returnAt: string;
+                            /** @description Gezinin ilk günü (YYYY-MM-DD, Europe/Istanbul) */
+                            firstDay: string;
+                            /** @description Gezinin son günü */
+                            lastDay: string;
+                            /** @description Bugün gezi günlerinden biri; tur yalnız o zaman açılır */
+                            isTripDay: boolean;
+                            /** @description Planın ulaşım plakası (grup için öneri) */
+                            transportPlate: string | null;
+                            paidActivity: {
+                                id: string;
+                                name: string;
+                            } | null;
+                            /**
+                             * @description `activity` bağlı ücretli etkinliğin asil katılımları, `students` kayıtlı öğrenciler
+                             * @enum {string}
+                             */
+                            participantSource: "activity" | "students";
+                            participantCount: number;
+                            /** @description Grup kurar ve dağıtır (yönetici, ön büro) */
+                            canManage: boolean;
+                            /** @description Planın görevlileri (grup sorumlusu seçenekleri); yalnız yönetici ve ön büroya */
+                            staff: {
+                                membershipId: string;
+                                name: string | null;
+                                /** @enum {string} */
+                                role: "lead" | "assistant";
+                            }[];
+                            groups: {
+                                id: string;
+                                name: string;
+                                vehiclePlate: string | null;
+                                leaderMembershipId: string;
+                                leaderName: string | null;
+                                position: number;
+                                /** @description Grubun öğrencileri (katılımı süren), ada göre */
+                                students: {
+                                    studentId: string;
+                                    studentName: string;
+                                    className: string | null;
+                                }[];
+                                /** @description Yoklama turları, sırasıyla */
+                                checks: {
+                                    id: string;
+                                    /** @description Grupta tur sırası */
+                                    sequence: number;
+                                    /** @description Kontrol noktası */
+                                    checkpoint: string;
+                                    /** @enum {string} */
+                                    status: "open" | "complete" | "incomplete";
+                                    startedAt: string;
+                                    startedByName: string | null;
+                                    closedAt: string | null;
+                                    closedByName: string | null;
+                                    counts: {
+                                        total: number;
+                                        present: number;
+                                        absent: number;
+                                        pending: number;
+                                    };
+                                    /** @description Eksikle devam gerekçesi; yalnız turu yürütebilen role döner */
+                                    missingReason: string | null;
+                                    /** @description Oturumdaki rol bu turda işaretler ve turu bitirir */
+                                    canOperate: boolean;
+                                    /** @description `If-Match` için turun sürümü */
+                                    version: number;
+                                    /** @description Süren turda grubun öğrencileri, kapanan turda işaretler; ada göre */
+                                    roster: {
+                                        studentId: string;
+                                        studentName: string;
+                                        className: string | null;
+                                        /** @enum {string} */
+                                        status: "pending" | "present" | "absent";
+                                        markedAt: string | null;
+                                    }[];
+                                }[];
+                                openCheckId: string | null;
+                                canEdit: boolean;
+                                canStartCheck: boolean;
+                                canOperate: boolean;
+                                canReadCard: boolean;
+                                /** @description Tam telefonlu acil kartı açabilir (K-518) */
+                                canReadFullCard: boolean;
+                                /** @description `If-Match` için grubun sürümü */
+                                version: number;
+                            }[];
+                            /** @description Grubu olmayan katılımcılar (en çok 500, ada göre); yalnız yönetici ve ön büroya */
+                            unassigned: {
+                                studentId: string;
+                                studentName: string;
+                                className: string | null;
+                            }[];
+                            unassignedTotal: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    completeTripDayCheck: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                planId: string;
+                checkId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            planId: string;
+                            planNumber: string;
+                            planName: string;
+                            /** @enum {string} */
+                            planStatus: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                            departureAt: string;
+                            returnAt: string;
+                            /** @description Gezinin ilk günü (YYYY-MM-DD, Europe/Istanbul) */
+                            firstDay: string;
+                            /** @description Gezinin son günü */
+                            lastDay: string;
+                            /** @description Bugün gezi günlerinden biri; tur yalnız o zaman açılır */
+                            isTripDay: boolean;
+                            /** @description Planın ulaşım plakası (grup için öneri) */
+                            transportPlate: string | null;
+                            paidActivity: {
+                                id: string;
+                                name: string;
+                            } | null;
+                            /**
+                             * @description `activity` bağlı ücretli etkinliğin asil katılımları, `students` kayıtlı öğrenciler
+                             * @enum {string}
+                             */
+                            participantSource: "activity" | "students";
+                            participantCount: number;
+                            /** @description Grup kurar ve dağıtır (yönetici, ön büro) */
+                            canManage: boolean;
+                            /** @description Planın görevlileri (grup sorumlusu seçenekleri); yalnız yönetici ve ön büroya */
+                            staff: {
+                                membershipId: string;
+                                name: string | null;
+                                /** @enum {string} */
+                                role: "lead" | "assistant";
+                            }[];
+                            groups: {
+                                id: string;
+                                name: string;
+                                vehiclePlate: string | null;
+                                leaderMembershipId: string;
+                                leaderName: string | null;
+                                position: number;
+                                /** @description Grubun öğrencileri (katılımı süren), ada göre */
+                                students: {
+                                    studentId: string;
+                                    studentName: string;
+                                    className: string | null;
+                                }[];
+                                /** @description Yoklama turları, sırasıyla */
+                                checks: {
+                                    id: string;
+                                    /** @description Grupta tur sırası */
+                                    sequence: number;
+                                    /** @description Kontrol noktası */
+                                    checkpoint: string;
+                                    /** @enum {string} */
+                                    status: "open" | "complete" | "incomplete";
+                                    startedAt: string;
+                                    startedByName: string | null;
+                                    closedAt: string | null;
+                                    closedByName: string | null;
+                                    counts: {
+                                        total: number;
+                                        present: number;
+                                        absent: number;
+                                        pending: number;
+                                    };
+                                    /** @description Eksikle devam gerekçesi; yalnız turu yürütebilen role döner */
+                                    missingReason: string | null;
+                                    /** @description Oturumdaki rol bu turda işaretler ve turu bitirir */
+                                    canOperate: boolean;
+                                    /** @description `If-Match` için turun sürümü */
+                                    version: number;
+                                    /** @description Süren turda grubun öğrencileri, kapanan turda işaretler; ada göre */
+                                    roster: {
+                                        studentId: string;
+                                        studentName: string;
+                                        className: string | null;
+                                        /** @enum {string} */
+                                        status: "pending" | "present" | "absent";
+                                        markedAt: string | null;
+                                    }[];
+                                }[];
+                                openCheckId: string | null;
+                                canEdit: boolean;
+                                canStartCheck: boolean;
+                                canOperate: boolean;
+                                canReadCard: boolean;
+                                /** @description Tam telefonlu acil kartı açabilir (K-518) */
+                                canReadFullCard: boolean;
+                                /** @description `If-Match` için grubun sürümü */
+                                version: number;
+                            }[];
+                            /** @description Grubu olmayan katılımcılar (en çok 500, ada göre); yalnız yönetici ve ön büroya */
+                            unassigned: {
+                                studentId: string;
+                                studentName: string;
+                                className: string | null;
+                            }[];
+                            unassignedTotal: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    proceedTripDayCheck: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                planId: string;
+                checkId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Eksik öğrencinin durumu ve alınan önlem (ör. "Ece veliyle ayrıldı, müdür bilgilendirildi") */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            planId: string;
+                            planNumber: string;
+                            planName: string;
+                            /** @enum {string} */
+                            planStatus: "draft" | "submitted" | "approved" | "rejected" | "completed" | "cancelled";
+                            departureAt: string;
+                            returnAt: string;
+                            /** @description Gezinin ilk günü (YYYY-MM-DD, Europe/Istanbul) */
+                            firstDay: string;
+                            /** @description Gezinin son günü */
+                            lastDay: string;
+                            /** @description Bugün gezi günlerinden biri; tur yalnız o zaman açılır */
+                            isTripDay: boolean;
+                            /** @description Planın ulaşım plakası (grup için öneri) */
+                            transportPlate: string | null;
+                            paidActivity: {
+                                id: string;
+                                name: string;
+                            } | null;
+                            /**
+                             * @description `activity` bağlı ücretli etkinliğin asil katılımları, `students` kayıtlı öğrenciler
+                             * @enum {string}
+                             */
+                            participantSource: "activity" | "students";
+                            participantCount: number;
+                            /** @description Grup kurar ve dağıtır (yönetici, ön büro) */
+                            canManage: boolean;
+                            /** @description Planın görevlileri (grup sorumlusu seçenekleri); yalnız yönetici ve ön büroya */
+                            staff: {
+                                membershipId: string;
+                                name: string | null;
+                                /** @enum {string} */
+                                role: "lead" | "assistant";
+                            }[];
+                            groups: {
+                                id: string;
+                                name: string;
+                                vehiclePlate: string | null;
+                                leaderMembershipId: string;
+                                leaderName: string | null;
+                                position: number;
+                                /** @description Grubun öğrencileri (katılımı süren), ada göre */
+                                students: {
+                                    studentId: string;
+                                    studentName: string;
+                                    className: string | null;
+                                }[];
+                                /** @description Yoklama turları, sırasıyla */
+                                checks: {
+                                    id: string;
+                                    /** @description Grupta tur sırası */
+                                    sequence: number;
+                                    /** @description Kontrol noktası */
+                                    checkpoint: string;
+                                    /** @enum {string} */
+                                    status: "open" | "complete" | "incomplete";
+                                    startedAt: string;
+                                    startedByName: string | null;
+                                    closedAt: string | null;
+                                    closedByName: string | null;
+                                    counts: {
+                                        total: number;
+                                        present: number;
+                                        absent: number;
+                                        pending: number;
+                                    };
+                                    /** @description Eksikle devam gerekçesi; yalnız turu yürütebilen role döner */
+                                    missingReason: string | null;
+                                    /** @description Oturumdaki rol bu turda işaretler ve turu bitirir */
+                                    canOperate: boolean;
+                                    /** @description `If-Match` için turun sürümü */
+                                    version: number;
+                                    /** @description Süren turda grubun öğrencileri, kapanan turda işaretler; ada göre */
+                                    roster: {
+                                        studentId: string;
+                                        studentName: string;
+                                        className: string | null;
+                                        /** @enum {string} */
+                                        status: "pending" | "present" | "absent";
+                                        markedAt: string | null;
+                                    }[];
+                                }[];
+                                openCheckId: string | null;
+                                canEdit: boolean;
+                                canStartCheck: boolean;
+                                canOperate: boolean;
+                                canReadCard: boolean;
+                                /** @description Tam telefonlu acil kartı açabilir (K-518) */
+                                canReadFullCard: boolean;
+                                /** @description `If-Match` için grubun sürümü */
+                                version: number;
+                            }[];
+                            /** @description Grubu olmayan katılımcılar (en çok 500, ada göre); yalnız yönetici ve ön büroya */
+                            unassigned: {
+                                studentId: string;
+                                studentName: string;
+                                className: string | null;
+                            }[];
+                            unassignedTotal: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getTripDayEmergencyCard: {
+        parameters: {
+            query?: {
+                /** @description `office` veli telefonu maskeli (varsayılan); `emergency` tam telefon (yönetici her zaman, grup sorumlusu yalnız gezi günlerinde; K-518) */
+                purpose?: "office" | "emergency";
+            };
+            header: {
+                /** @description Zorunlu. Sağlık verisi erişim gerekçesi: `emergency` acil durum, `first_aid` ilk yardım / revir işlemi, `guardian_meeting` veli görüşmesi, `incident_report` tutanak hazırlama, `official_request` resmî talep, `other` diğer. Yoksa 400 `health_access_reason_required`, geçersizse 400 `health_access_reason_invalid`. Gerekçe başlıkta taşınır, sorgu dizesine konmaz; istek logunda başlık yer almaz. */
+                "x-access-reason": "emergency" | "first_aid" | "guardian_meeting" | "incident_report" | "official_request" | "other";
+                /** @description Yalnız `other` gerekçede zorunlu açıklama: yüzde kodlu UTF-8 (`encodeURIComponent`), çözülmüş hâli kırpılınca 5–200 karakter. Kodlu gerekçede gönderilirse 400 `health_access_reason_invalid`. */
+                "x-access-reason-note"?: string;
+            };
+            path: {
+                planId: string;
+                groupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            plan: {
+                                id: string;
+                                number: string;
+                                name: string;
+                                departureAt: string;
+                                returnAt: string;
+                                emergencyContacts: {
+                                    name: string;
+                                    phone: string;
+                                    relation: string | null;
+                                }[];
+                            };
+                            group: {
+                                id: string;
+                                name: string;
+                                vehiclePlate: string | null;
+                                leaderName: string | null;
+                            };
+                            /** @enum {string} */
+                            purpose: "office" | "emergency";
+                            phonesMasked: boolean;
+                            /** @description Revir ilaç işaretinin günü (YYYY-MM-DD) */
+                            cardDay: string;
+                            total: number;
+                            students: {
+                                studentId: string;
+                                studentName: string;
+                                className: string | null;
+                                contacts: {
+                                    name: string | null;
+                                    relationship: ("mother" | "father" | "legal_guardian" | "other") | null;
+                                    /** @description Amaca göre maskeli ya da tam */
+                                    phone: string | null;
+                                }[];
+                                health: {
+                                    alert: boolean;
+                                    /** @description Yalnız tür: alerji, kronik durum, ilaç */
+                                    kinds: ("allergy" | "chronic" | "medication")[];
+                                    /** @description Kısaltılmış acil talimat (en çok 200 karakter) */
+                                    action: string | null;
+                                    /** @description Revirde kart günü için onaylı ilaç talebi var */
+                                    medicationToday: boolean;
+                                    /**
+                                     * @description `unavailable`: okuyanın sağlık profili erişimi yok; yalnız revir işareti
+                                     * @enum {string}
+                                     */
+                                    source: "profile" | "unavailable";
+                                };
+                            }[];
+                        };
                     };
                 };
             };

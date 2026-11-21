@@ -28,6 +28,8 @@ import {
 import type { CommandResponse } from '../services/operation-runner.ts'
 import { captureInput, options, rejectIfMatch, requireIfMatch } from './commands.ts'
 import { commandErrors, commandHeadersSchema } from './commands.schemas.ts'
+import { healthAccessReasonOf, requireHealthAccessReason } from './finance-health-access.ts'
+import { healthAccessHeadersSchema } from './finance-health-access.schemas.ts'
 import { consentParams } from './finance-infirmary.schemas.ts'
 import {
   administrationParams,
@@ -78,19 +80,27 @@ export function registerFinanceInfirmaryScheduleRoutes(app: FastifyInstance) {
   typed.get(
     `${BASE}/medication-chart`,
     {
-      preValidation: school,
+      preValidation: [...school, requireHealthAccessReason()],
       schema: {
         operationId: 'getMedicationChart',
         tags,
         summary: 'Günlük ilaç çizelgesi',
-        description: `Günü (Europe/Istanbul; boşsa bugün) kapsayan onaylı taleplerin her doz saati: öğrenci, ilaç, onaydaki doz, doz anı ve durum (\`administered\` uygulandı, \`skipped\` atlandı; sonuç yoksa doz anı + kurumun gecikme payı geçtiyse \`overdue\`, değilse \`pending\`). Geciken dozlar üstte, sonra bekleyenler, sonra sonuçlananlar; grup içinde saat sırası. Satır doz saatinin bütün kayıtlarını (iptal edilenler ve düzeltmeler dahil) ve o günkü yoklamada yok/izinli işaretini (yoklama yalnız okunur; alınmadıysa ya da \`academic\` kapalıysa boş) taşır. Her talep \`finance.infirmary.chart_read\` denetimine düşer. ${SCHOOL}`,
+        description: `Günü (Europe/Istanbul; boşsa bugün) kapsayan onaylı taleplerin her doz saati: öğrenci, ilaç, onaydaki doz, doz anı ve durum (\`administered\` uygulandı, \`skipped\` atlandı; sonuç yoksa doz anı + kurumun gecikme payı geçtiyse \`overdue\`, değilse \`pending\`). Geciken dozlar üstte, sonra bekleyenler, sonra sonuçlananlar; grup içinde saat sırası. Satır doz saatinin bütün kayıtlarını (iptal edilenler ve düzeltmeler dahil) ve o günkü yoklamada yok/izinli işaretini (yoklama yalnız okunur; alınmadıysa ya da \`academic\` kapalıysa boş) taşır. Her talep \`finance.infirmary.chart_read\` denetimine düşer. Erişim gerekçesi zorunlu (\`X-Access-Reason\`; DOM-FIN-156, K-523): yoksa 400 \`health_access_reason_required\`; okuma gerekçesiyle sağlık erişim günlüğüne düşer. ${SCHOOL}`,
+        headers: healthAccessHeadersSchema(true),
         querystring: chartQuery,
         response: { 200: medicationChartResponse, ...commandErrors },
       },
     },
     async (request) => {
       const ctx = contextOf(request)
-      return { data: await getMedicationChartFor(ctx, deps, request.query.date ?? dayKey(ctx.now)) }
+      return {
+        data: await getMedicationChartFor(
+          ctx,
+          deps,
+          request.query.date ?? dayKey(ctx.now),
+          healthAccessReasonOf(request),
+        ),
+      }
     },
   )
 

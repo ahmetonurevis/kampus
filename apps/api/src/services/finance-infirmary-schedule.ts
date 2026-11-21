@@ -33,6 +33,8 @@ import {
   type DoseState,
 } from '@kampus/school-core/lib/finance-infirmary-schedule.ts'
 
+import type { HealthAccessReason } from '@kampus/school-core/lib/finance-health-access.ts'
+
 import type { Database } from '../db/client.ts'
 import { loadIncidentMembers } from '../db/finance-incidents.ts'
 import { findConsent, listApprovedConsentsOn, type StoredConsent } from '../db/finance-infirmary.ts'
@@ -57,6 +59,7 @@ import { ConflictError, NotFoundError } from '../errors.ts'
 import type { FieldBinding } from '../lib/field-crypto.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { administrationBinding, consentHealthOf, type InfirmaryDeps } from './finance-infirmary.ts'
+import { recordHealthRead } from './finance-health-access.ts'
 import { loadDoseSlots } from './finance-infirmary-schedule-slots.ts'
 import { istanbulDayStart } from './list-filters.ts'
 import { getInstitutionModules } from './modules.ts'
@@ -400,9 +403,15 @@ export interface DoseChartItem {
 /**
  * Günlük ilaç çizelgesi (K-511): günü kapsayan onaylı taleplerin her doz saati; durum etkin
  * kayıttan ve gecikme payından türetilir, geciken dozlar üstte. Her talep
- * `finance.infirmary.chart_read` denetimine düşer.
+ * `finance.infirmary.chart_read` denetimine ve verildiyse gerekçesiyle sağlık erişim günlüğüne
+ * düşer (DOM-FIN-156).
  */
-export function getMedicationChartFor(ctx: ServiceContext, deps: InfirmaryDeps, day: string) {
+export function getMedicationChartFor(
+  ctx: ServiceContext,
+  deps: InfirmaryDeps,
+  day: string,
+  reason: HealthAccessReason | null,
+) {
   return ctx.db.transaction(async (tx) => {
     const [consents, settings] = await Promise.all([
       listApprovedConsentsOn(tx, ctx.institutionId, day),
@@ -447,13 +456,13 @@ export function getMedicationChartFor(ctx: ServiceContext, deps: InfirmaryDeps, 
       }
     })
     for (const row of consents)
-      await auditWork(tx, ctx, 'finance.infirmary.chart_read', { type: CONSENTS, id: row.id }, [
-        'medicationName',
-        'dose',
-        'administrations',
-        'skips',
-        'corrections',
-      ])
+      await recordHealthRead(tx, ctx, {
+        action: 'finance.infirmary.chart_read',
+        entity: { type: CONSENTS, id: row.id },
+        fields: ['medicationName', 'dose', 'administrations', 'skips', 'corrections'],
+        studentId: row.studentId,
+        reason,
+      })
     return {
       date: day,
       lateToleranceMinutes: settings.lateToleranceMinutes,

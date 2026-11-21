@@ -15485,7 +15485,7 @@ export interface paths {
         };
         /**
          * Günlük ilaç çizelgesi
-         * @description Günü (Europe/Istanbul; boşsa bugün) kapsayan onaylı taleplerin her doz saati: öğrenci, ilaç, onaydaki doz, doz anı ve durum (`administered` uygulandı, `skipped` atlandı; sonuç yoksa doz anı + kurumun gecikme payı geçtiyse `overdue`, değilse `pending`). Geciken dozlar üstte, sonra bekleyenler, sonra sonuçlananlar; grup içinde saat sırası. Satır doz saatinin bütün kayıtlarını (iptal edilenler ve düzeltmeler dahil) ve o günkü yoklamada yok/izinli işaretini (yoklama yalnız okunur; alınmadıysa ya da `academic` kapalıysa boş) taşır. Her talep `finance.infirmary.chart_read` denetimine düşer. Rol: `yonetici` ve `onburo` (revir görevlisi rolü yok). Öğretmen, veli ve öğrenci 403. Modül `finance`.
+         * @description Günü (Europe/Istanbul; boşsa bugün) kapsayan onaylı taleplerin her doz saati: öğrenci, ilaç, onaydaki doz, doz anı ve durum (`administered` uygulandı, `skipped` atlandı; sonuç yoksa doz anı + kurumun gecikme payı geçtiyse `overdue`, değilse `pending`). Geciken dozlar üstte, sonra bekleyenler, sonra sonuçlananlar; grup içinde saat sırası. Satır doz saatinin bütün kayıtlarını (iptal edilenler ve düzeltmeler dahil) ve o günkü yoklamada yok/izinli işaretini (yoklama yalnız okunur; alınmadıysa ya da `academic` kapalıysa boş) taşır. Her talep `finance.infirmary.chart_read` denetimine düşer. Erişim gerekçesi zorunlu (`X-Access-Reason`; DOM-FIN-156, K-523): yoksa 400 `health_access_reason_required`; okuma gerekçesiyle sağlık erişim günlüğüne düşer. Rol: `yonetici` ve `onburo` (revir görevlisi rolü yok). Öğretmen, veli ve öğrenci 403. Modül `finance`.
          */
         get: operations["getMedicationChart"];
         put?: never;
@@ -162987,7 +162987,12 @@ export interface operations {
                 /** @description Gün (YYYY-MM-DD, Europe/Istanbul); boşsa bugün */
                 date?: string;
             };
-            header?: never;
+            header: {
+                /** @description Zorunlu. Sağlık verisi erişim gerekçesi: `emergency` acil durum, `first_aid` ilk yardım / revir işlemi, `guardian_meeting` veli görüşmesi, `incident_report` tutanak hazırlama, `official_request` resmî talep, `other` diğer. Yoksa 400 `health_access_reason_required`, geçersizse 400 `health_access_reason_invalid`. Gerekçe başlıkta taşınır, sorgu dizesine konmaz; istek logunda başlık yer almaz. */
+                "x-access-reason": "emergency" | "first_aid" | "guardian_meeting" | "incident_report" | "official_request" | "other";
+                /** @description Yalnız `other` gerekçede zorunlu açıklama: yüzde kodlu UTF-8 (`encodeURIComponent`), çözülmüş hâli kırpılınca 5–200 karakter. Kodlu gerekçede gönderilirse 400 `health_access_reason_invalid`. */
+                "x-access-reason-note"?: string;
+            };
             path?: never;
             cookie?: never;
         };

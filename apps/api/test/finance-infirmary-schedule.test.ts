@@ -8,6 +8,7 @@ import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
+import { healthAccessReasons } from '../src/db/schema/finance-health-access.ts'
 import { infirmaryMedicationAdministrations } from '../src/db/schema/finance-infirmary.ts'
 import {
   infirmaryMedicationDoseCorrections,
@@ -194,8 +195,10 @@ describe('DOM-FIN-152: ilaç çizelgesi, atlama ve düzeltme uçları', () => {
       .select()
       .from(infirmaryMedicationAdministrations)
       .where(eq(infirmaryMedicationAdministrations.institutionId, institutionId))
+  const reasoned = (url: string, cookie: string | null) =>
+    call('GET', url, cookie, undefined, { 'x-access-reason': 'first_aid' })
   const chartOf = async (cookie: string, query = '') =>
-    ok(await get(`${CHART}${query}`, cookie)) as {
+    ok(await reasoned(`${CHART}${query}`, cookie)) as {
       date: string
       lateToleranceMinutes: number
       items: Json[]
@@ -279,6 +282,13 @@ describe('DOM-FIN-152: ilaç çizelgesi, atlama ve düzeltme uçları', () => {
     assert.equal(record?.voided, false)
     assert.equal(record?.administeredByMembershipId, t.desk.membershipId)
     assert.ok((await audits(t.id, 'finance.infirmary.chart_read')).length >= 1)
+    // Sağlık verisi okuma gerekçesi zorunlu (DOM-FIN-156); gerekçe erişim günlüğüne düşer.
+    assertError(await get(CHART, t.desk.cookie), 400, 'health_access_reason_required')
+    const reasons = await db
+      .select()
+      .from(healthAccessReasons)
+      .where(eq(healthAccessReasons.institutionId, t.id))
+    assert.ok(reasons.some((row) => row.reasonCode === 'first_aid' && row.studentId === 's-1'))
 
     // Gecikme payı 90 dk olunca 11:00 dozu henüz gecikmiş sayılmaz.
     const settings = ok(await get(SETTINGS, t.desk.cookie))
@@ -302,8 +312,8 @@ describe('DOM-FIN-152: ilaç çizelgesi, atlama ve düzeltme uçları', () => {
     assert.equal((await chartOf(t.desk.cookie, '?date=2026-10-05')).items.length, 0)
     const tomorrow = await chartOf(t.desk.cookie, '?date=2026-10-07')
     assert.ok(tomorrow.items.every((item) => item.state === 'pending' && item.absent === null))
-    assertError(await get(`${CHART}?date=yarin`, t.desk.cookie), 400)
-    assertError(await get(`${CHART}?institutionId=${t.id}`, t.desk.cookie), 400)
+    assertError(await reasoned(`${CHART}?date=yarin`, t.desk.cookie), 400)
+    assertError(await reasoned(`${CHART}?institutionId=${t.id}`, t.desk.cookie), 400)
   })
 
   test('DOM-FIN-152: yoklama modülü kapalıysa işaret boş', async () => {

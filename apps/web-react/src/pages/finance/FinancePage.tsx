@@ -251,6 +251,9 @@ const FinanceTransportSection = lazy(async () => ({
 const FinanceClubsSection = lazy(async () => ({
   default: (await import('./FinanceClubsSection.tsx')).FinanceClubsSection,
 }))
+const FinanceInfirmarySection = lazy(async () => ({
+  default: (await import('./FinanceInfirmarySection.tsx')).FinanceInfirmarySection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -332,6 +335,7 @@ const VIEWS = {
   lostItems: { label: 'Kayıp eşya', param: 'kayip-esya' },
   transport: { label: 'Servis', param: 'servis' },
   clubs: { label: 'Kulüpler', param: 'kulupler' },
+  infirmary: { label: 'Revir', param: 'revir' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -404,6 +408,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * ek not ve PDF yöneticidedir (K-494).
  * Kayıp eşya (DOM-FIN-145) ikisine açıktır; ayar ve toplu bağış/imha yöneticide (K-490, K-492).
  * Servis ve Kulüpler (DOM-FIN-142) ikisine açıktır; kulüp yoklamasını yönetici alır (K-482, K-483).
+ * Revir (DOM-FIN-151) ikisine açıktır; revir görevlisi rolü yoktur (K-510).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -672,6 +677,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'lostItems' ? <FinanceLostItemsSection isManager={isManager} /> : null}
         {tab === 'transport' ? <FinanceTransportSection /> : null}
         {tab === 'clubs' ? <FinanceClubsSection /> : null}
+        {tab === 'infirmary' ? <FinanceInfirmarySection /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

@@ -1,0 +1,6 @@
+---
+etki: patch
+---
+
+- Ayrılış iletileri dil okulunda kayıtlı kişiyi "kursiyer" diye yazdı (ON-326, DOM-KAY-012, ADR 0008 karar 1): `quoteWithdrawal` ve `withdrawStudent` `student_not_found`, `withdrawal_contract_missing` ve `student_already_withdrawn` iletilerini ve etüt iptal gerekçesini bağlamdaki kurum türüyle yazar; `payerNameOf` ve `refundPayerName` isteğe bağlı tür alır, verilmezse okul metni. Hata kodları değişmedi, okulda metin aynı kaldı. Web kesin kayıt rıza notları, veli hesabı `member_exists` iletisi ve sonuç metni de türe göre yazılır; kursiyerin kendisi ödeyiciyse sonuç metni veli demez.
+- Tahsilat, paket, aday ve burs iletileri dil okulunda "kursiyer" der (ON-327, DOM-KAY-012): `PaymentContext` ve `requireAwardableProgram` bağlamı isteğe bağlı `institutionType` alır (verilmezse okul metni); `planPayment` `student_not_found`, `scholarship_promissory_note` ve `no_open_installments`, `createProspect` `referrer_required` ve `referrer_not_found`, burs `scholarship_already_awarded` iletilerini türle yazar; paket satışı yalnız dil okulunda olduğundan `student_not_found` doğrudan "Kursiyer bulunamadı." der. `learnerWords` `titleDative` ("Öğrenciye"/"Kursiyere") alanı kazandı. Kodlar ve okul metinleri değişmedi; yenileme yalnız okulda olduğundan değişmedi.

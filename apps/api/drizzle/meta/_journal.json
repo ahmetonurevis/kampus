@@ -1,0 +1,1182 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1793321338419,
+      "tag": "0000_create_identity_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793321350167,
+      "tag": "0001_add_memberships_unique",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793323129151,
+      "tag": "0002_create_records",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793324088475,
+      "tag": "0003_create_institution_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793325419154,
+      "tag": "0004_add_records_position",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793325420961,
+      "tag": "0005_archive_core_audit_records",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793327148994,
+      "tag": "0006_create_idempotency_keys",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793341309919,
+      "tag": "0007_backfill_conversation_parent_user",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793342723005,
+      "tag": "0008_add_audit_log_reason",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793344560394,
+      "tag": "0009_split_conversation_messages",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793357207615,
+      "tag": "0010_enable_btree_gin",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793357211908,
+      "tag": "0011_create_content_pool",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793360387099,
+      "tag": "0012_add_content_tag_checks",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793395893262,
+      "tag": "0013_create_skill_tasks",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793546227977,
+      "tag": "0014_add_second_rating_sampled_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1793548983189,
+      "tag": "0015_create_files",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1793552022390,
+      "tag": "0016_create_payments",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793552520059,
+      "tag": "0017_create_fee_tariffs",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793552840037,
+      "tag": "0018_add_enrollment_terms",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793553850415,
+      "tag": "0019_create_student_withdrawals",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1793555343403,
+      "tag": "0020_relax_identity_year",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1793561929985,
+      "tag": "0021_comment_finance_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1793562774377,
+      "tag": "0022_bank_accounts_mebbis",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1793574490440,
+      "tag": "0023_create_coordinator_duties",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1793583414491,
+      "tag": "0024_create_privacy_consents",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1793586167423,
+      "tag": "0025_index_notifications",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1793589335619,
+      "tag": "0026_create_academic_years",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1793592005828,
+      "tag": "0027_create_student_guardians",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1793594274649,
+      "tag": "0028_create_courses",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1793598388956,
+      "tag": "0029_create_groups",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1793603351966,
+      "tag": "0030_create_attempt_media_plays",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1793616727688,
+      "tag": "0031_add_submission_version_files",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1793622390727,
+      "tag": "0032_create_scholarship_programs",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1793624849268,
+      "tag": "0033_allow_file_transcode",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1793634219612,
+      "tag": "0034_create_cefr_decisions",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1793635579983,
+      "tag": "0035_allow_student_question_photo",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1793636493590,
+      "tag": "0036_create_resource_version_files",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1793638245092,
+      "tag": "0037_add_placement_section_entries",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1793640343207,
+      "tag": "0038_allow_prospect_notice_audience",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1793642084308,
+      "tag": "0039_add_resource_subskill",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1793645164319,
+      "tag": "0040_allow_promissory_note_payment",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1793651937220,
+      "tag": "0041_add_file_ready_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1793652844795,
+      "tag": "0042_scan_audio_files",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1793672874999,
+      "tag": "0043_make_audit_log_append_only",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1793681335594,
+      "tag": "0044_add_task_learner_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1793685261595,
+      "tag": "0045_allow_absence_document",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1793688653058,
+      "tag": "0046_deactivate_memberships",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1793689772862,
+      "tag": "0047_add_attempt_item_checks",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1793696399301,
+      "tag": "0048_invitation_teacher",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1793702412744,
+      "tag": "0049_create_finance_export_profiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1793703307627,
+      "tag": "0050_learning_outcomes",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1793706786426,
+      "tag": "0051_add_submission_version_draft_revision",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1793708732672,
+      "tag": "0052_create_course_assessments",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1793714104585,
+      "tag": "0053_create_course_certificates",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1793727490950,
+      "tag": "0054_allow_feedback_audio",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1793733079397,
+      "tag": "0055_invitation_guardian",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1793742157538,
+      "tag": "0056_protect_approved_contracts",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1793742877335,
+      "tag": "0057_create_price_index_rates",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1793745191572,
+      "tag": "0058_task_extra_time",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1793752498993,
+      "tag": "0059_notification_preferences",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1793757611120,
+      "tag": "0060_student_health_profiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1793775284182,
+      "tag": "0061_create_contracts_invoices",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1793807265780,
+      "tag": "0062_rename_parent_relationship_legal_guardian",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1793829455744,
+      "tag": "0063_copy_contracts_invoices",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1793975109233,
+      "tag": "0064_add_payment_terms",
+      "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1793996569232,
+      "tag": "0065_create_lesson_packages",
+      "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1794007757919,
+      "tag": "0066_create_finance_day_closings",
+      "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1794008483348,
+      "tag": "0067_create_referral_rewards",
+      "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1794009338752,
+      "tag": "0068_create_e_ozel_records",
+      "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1794010120010,
+      "tag": "0069_allow_opening_import_method",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1794018634230,
+      "tag": "0070_allow_manual_package_hours",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1794029549348,
+      "tag": "0071_withdrawal_reason_documented",
+      "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1794081978238,
+      "tag": "0072_invoices_fee_kind_check",
+      "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1794083288309,
+      "tag": "0073_validate_fee_kind_scrub_health_replays",
+      "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1794097104024,
+      "tag": "0074_create_corporate_customers",
+      "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1794100121120,
+      "tag": "0075_create_budget_cost_centers",
+      "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1794107571407,
+      "tag": "0076_create_scholarship_funds",
+      "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1794111023743,
+      "tag": "0077_create_bank_transactions",
+      "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1794114445959,
+      "tag": "0078_comment_bank_transaction_fingerprint",
+      "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1794118515115,
+      "tag": "0079_create_suppliers_purchase_requests",
+      "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "7",
+      "when": 1794120768396,
+      "tag": "0080_create_purchase_quotes_orders",
+      "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1794124943327,
+      "tag": "0081_create_purchase_receipts",
+      "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1794128267630,
+      "tag": "0082_create_supplier_ledger",
+      "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1794154740618,
+      "tag": "0083_refund_bank_account_day_closing",
+      "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1794158210700,
+      "tag": "0084_create_fixed_assets",
+      "breakpoints": true
+    },
+    {
+      "idx": 85,
+      "version": "7",
+      "when": 1794164043051,
+      "tag": "0085_create_stock_inventory",
+      "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1794165595909,
+      "tag": "0086_supplier_cash_day_closing",
+      "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1794166942837,
+      "tag": "0087_create_fixed_asset_assignments",
+      "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1794171517093,
+      "tag": "0088_create_material_sets",
+      "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1794306113956,
+      "tag": "0089_purchase_request_stock_link",
+      "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1794310716692,
+      "tag": "0090_create_fixed_asset_counts",
+      "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1794311343976,
+      "tag": "0091_fixed_asset_depreciation",
+      "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1794312162792,
+      "tag": "0092_create_stock_counts",
+      "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1794320289790,
+      "tag": "0093_create_chemical_inventory",
+      "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1794378872703,
+      "tag": "0094_create_supply_requests",
+      "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1794380188619,
+      "tag": "0095_create_maintenance_requests",
+      "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1794769775694,
+      "tag": "0096_create_campaign_codes",
+      "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1794779328465,
+      "tag": "0097_supplier_invoice_matching",
+      "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1794780673319,
+      "tag": "0098_create_purchase_approval_steps",
+      "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1794781721814,
+      "tag": "0099_scholarship_revocation",
+      "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "7",
+      "when": 1794783119984,
+      "tag": "0100_create_maintenance_plans",
+      "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1794784835889,
+      "tag": "0101_create_budget_drafts",
+      "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "7",
+      "when": 1794785706006,
+      "tag": "0102_create_free_tuition_awards",
+      "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "7",
+      "when": 1794786536121,
+      "tag": "0103_stock_followups",
+      "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "7",
+      "when": 1794825546275,
+      "tag": "0104_refund_invoices",
+      "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "7",
+      "when": 1794831455951,
+      "tag": "0105_create_payroll_parameters",
+      "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "7",
+      "when": 1794832760835,
+      "tag": "0106_create_donations",
+      "breakpoints": true
+    },
+    {
+      "idx": 107,
+      "version": "7",
+      "when": 1794834102861,
+      "tag": "0107_create_stakeholders",
+      "breakpoints": true
+    },
+    {
+      "idx": 108,
+      "version": "7",
+      "when": 1794835341362,
+      "tag": "0108_create_staff_pay_rates",
+      "breakpoints": true
+    },
+    {
+      "idx": 109,
+      "version": "7",
+      "when": 1794836563341,
+      "tag": "0109_create_paid_activities",
+      "breakpoints": true
+    },
+    {
+      "idx": 110,
+      "version": "7",
+      "when": 1794836571385,
+      "tag": "0110_validate_invoice_fee_kind_activity",
+      "breakpoints": true
+    },
+    {
+      "idx": 111,
+      "version": "7",
+      "when": 1794837577043,
+      "tag": "0111_create_alumni_document_requests",
+      "breakpoints": true
+    },
+    {
+      "idx": 112,
+      "version": "7",
+      "when": 1794838469020,
+      "tag": "0112_create_event_tickets",
+      "breakpoints": true
+    },
+    {
+      "idx": 113,
+      "version": "7",
+      "when": 1794840084428,
+      "tag": "0113_create_staff_deductions",
+      "breakpoints": true
+    },
+    {
+      "idx": 114,
+      "version": "7",
+      "when": 1795028244658,
+      "tag": "0114_create_prospect_documents",
+      "breakpoints": true
+    },
+    {
+      "idx": 115,
+      "version": "7",
+      "when": 1795030237390,
+      "tag": "0115_enrollment_documents_link",
+      "breakpoints": true
+    },
+    {
+      "idx": 116,
+      "version": "7",
+      "when": 1795030304947,
+      "tag": "0116_create_staff_certificates",
+      "breakpoints": true
+    },
+    {
+      "idx": 117,
+      "version": "7",
+      "when": 1795030339837,
+      "tag": "0117_payroll_exports",
+      "breakpoints": true
+    },
+    {
+      "idx": 118,
+      "version": "7",
+      "when": 1795030376859,
+      "tag": "0118_staff_cost_centers",
+      "breakpoints": true
+    },
+    {
+      "idx": 119,
+      "version": "7",
+      "when": 1795031574620,
+      "tag": "0119_event_ticket_followups",
+      "breakpoints": true
+    },
+    {
+      "idx": 120,
+      "version": "7",
+      "when": 1795031594130,
+      "tag": "0120_create_staff_medical_reports",
+      "breakpoints": true
+    },
+    {
+      "idx": 121,
+      "version": "7",
+      "when": 1795031610619,
+      "tag": "0121_create_payroll_periods",
+      "breakpoints": true
+    },
+    {
+      "idx": 122,
+      "version": "7",
+      "when": 1795032955820,
+      "tag": "0122_create_staff_leave",
+      "breakpoints": true
+    },
+    {
+      "idx": 123,
+      "version": "7",
+      "when": 1795032995941,
+      "tag": "0123_create_sgk_missing_days",
+      "breakpoints": true
+    },
+    {
+      "idx": 124,
+      "version": "7",
+      "when": 1795033042897,
+      "tag": "0124_create_teacher_work_permits",
+      "breakpoints": true
+    },
+    {
+      "idx": 125,
+      "version": "7",
+      "when": 1795033089311,
+      "tag": "0125_create_trip_plans",
+      "breakpoints": true
+    },
+    {
+      "idx": 126,
+      "version": "7",
+      "when": 1795033139779,
+      "tag": "0126_create_staff_documents",
+      "breakpoints": true
+    },
+    {
+      "idx": 127,
+      "version": "7",
+      "when": 1795033196738,
+      "tag": "0127_paid_activity_waitlist",
+      "breakpoints": true
+    },
+    {
+      "idx": 128,
+      "version": "7",
+      "when": 1795035962251,
+      "tag": "0128_create_payroll_runs",
+      "breakpoints": true
+    },
+    {
+      "idx": 129,
+      "version": "7",
+      "when": 1795046520807,
+      "tag": "0129_lesson_hour_approvals",
+      "breakpoints": true
+    },
+    {
+      "idx": 130,
+      "version": "7",
+      "when": 1795046586031,
+      "tag": "0130_create_leave_requests",
+      "breakpoints": true
+    },
+    {
+      "idx": 131,
+      "version": "7",
+      "when": 1795046607304,
+      "tag": "0131_create_staff_separations",
+      "breakpoints": true
+    },
+    {
+      "idx": 132,
+      "version": "7",
+      "when": 1795048097666,
+      "tag": "0132_create_staff_data_retention",
+      "breakpoints": true
+    },
+    {
+      "idx": 133,
+      "version": "7",
+      "when": 1795048120387,
+      "tag": "0133_create_staff_onboarding",
+      "breakpoints": true
+    },
+    {
+      "idx": 134,
+      "version": "7",
+      "when": 1795048154394,
+      "tag": "0134_leave_calendar_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 135,
+      "version": "7",
+      "when": 1795050449396,
+      "tag": "0135_create_performance_periods",
+      "breakpoints": true
+    },
+    {
+      "idx": 136,
+      "version": "7",
+      "when": 1795052532428,
+      "tag": "0136_create_policy_acknowledgements",
+      "breakpoints": true
+    },
+    {
+      "idx": 137,
+      "version": "7",
+      "when": 1795052542269,
+      "tag": "0137_create_staffing_plans",
+      "breakpoints": true
+    },
+    {
+      "idx": 138,
+      "version": "7",
+      "when": 1795052552397,
+      "tag": "0138_create_professional_development",
+      "breakpoints": true
+    },
+    {
+      "idx": 139,
+      "version": "7",
+      "when": 1795110031065,
+      "tag": "0139_create_self_evaluations",
+      "breakpoints": true
+    },
+    {
+      "idx": 140,
+      "version": "7",
+      "when": 1795208763519,
+      "tag": "0140_create_org_units",
+      "breakpoints": true
+    },
+    {
+      "idx": 141,
+      "version": "7",
+      "when": 1795209245874,
+      "tag": "0141_create_job_postings",
+      "breakpoints": true
+    },
+    {
+      "idx": 142,
+      "version": "7",
+      "when": 1795209999476,
+      "tag": "0142_create_department_meetings",
+      "breakpoints": true
+    },
+    {
+      "idx": 143,
+      "version": "7",
+      "when": 1795210091622,
+      "tag": "0143_create_lesson_observations",
+      "breakpoints": true
+    },
+    {
+      "idx": 144,
+      "version": "7",
+      "when": 1795211376791,
+      "tag": "0144_create_observation_debriefs",
+      "breakpoints": true
+    },
+    {
+      "idx": 145,
+      "version": "7",
+      "when": 1795213210626,
+      "tag": "0145_create_multi_source_feedback",
+      "breakpoints": true
+    },
+    {
+      "idx": 146,
+      "version": "7",
+      "when": 1795214784708,
+      "tag": "0146_create_performance_reports",
+      "breakpoints": true
+    },
+    {
+      "idx": 147,
+      "version": "7",
+      "when": 1795214909881,
+      "tag": "0147_create_teacher_mentorships",
+      "breakpoints": true
+    },
+    {
+      "idx": 148,
+      "version": "7",
+      "when": 1795215026512,
+      "tag": "0148_add_meeting_kinds",
+      "breakpoints": true
+    },
+    {
+      "idx": 149,
+      "version": "7",
+      "when": 1795217572432,
+      "tag": "0149_freeze_report_goals",
+      "breakpoints": true
+    },
+    {
+      "idx": 150,
+      "version": "7",
+      "when": 1795218989379,
+      "tag": "0150_create_staff_personnel_files",
+      "breakpoints": true
+    },
+    {
+      "idx": 151,
+      "version": "7",
+      "when": 1795220013354,
+      "tag": "0151_create_observation_plans",
+      "breakpoints": true
+    },
+    {
+      "idx": 152,
+      "version": "7",
+      "when": 1795220196820,
+      "tag": "0152_create_visitor_logs",
+      "breakpoints": true
+    },
+    {
+      "idx": 153,
+      "version": "7",
+      "when": 1795220385402,
+      "tag": "0153_create_candidate_interviews",
+      "breakpoints": true
+    },
+    {
+      "idx": 154,
+      "version": "7",
+      "when": 1795244243546,
+      "tag": "0154_create_staff_surveys",
+      "breakpoints": true
+    },
+    {
+      "idx": 155,
+      "version": "7",
+      "when": 1795245833987,
+      "tag": "0155_create_incident_reports",
+      "breakpoints": true
+    },
+    {
+      "idx": 156,
+      "version": "7",
+      "when": 1795245944021,
+      "tag": "0156_create_lost_items",
+      "breakpoints": true
+    },
+    {
+      "idx": 157,
+      "version": "7",
+      "when": 1795246166078,
+      "tag": "0157_create_professional_development_hours",
+      "breakpoints": true
+    },
+    {
+      "idx": 158,
+      "version": "7",
+      "when": 1795246425598,
+      "tag": "0158_create_transport_and_clubs",
+      "breakpoints": true
+    },
+    {
+      "idx": 159,
+      "version": "7",
+      "when": 1795248937889,
+      "tag": "0159_create_transport_trips",
+      "breakpoints": true
+    },
+    {
+      "idx": 160,
+      "version": "7",
+      "when": 1795250478821,
+      "tag": "0160_create_transport_documents",
+      "breakpoints": true
+    },
+    {
+      "idx": 161,
+      "version": "7",
+      "when": 1795250793278,
+      "tag": "0161_create_club_selection",
+      "breakpoints": true
+    },
+    {
+      "idx": 162,
+      "version": "7",
+      "when": 1795250994522,
+      "tag": "0162_create_infirmary",
+      "breakpoints": true
+    },
+    {
+      "idx": 163,
+      "version": "7",
+      "when": 1795252602695,
+      "tag": "0163_health_access_reasons",
+      "breakpoints": true
+    },
+    {
+      "idx": 164,
+      "version": "7",
+      "when": 1795254408284,
+      "tag": "0164_create_trip_day_checks",
+      "breakpoints": true
+    },
+    {
+      "idx": 165,
+      "version": "7",
+      "when": 1795261283099,
+      "tag": "0165_create_medication_schedule",
+      "breakpoints": true
+    },
+    {
+      "idx": 166,
+      "version": "7",
+      "when": 1795261439540,
+      "tag": "0166_create_health_screenings",
+      "breakpoints": true
+    },
+    {
+      "idx": 167,
+      "version": "7",
+      "when": 1795261560619,
+      "tag": "0167_create_emergency_summaries",
+      "breakpoints": true
+    }
+  ]
+}

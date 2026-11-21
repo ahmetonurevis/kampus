@@ -1,0 +1,2 @@
+CREATE INDEX "task_attempts_learner_idx" ON "task_attempts" USING btree ("institution_id","learner_id");--> statement-breakpoint
+CREATE INDEX "task_submissions_learner_idx" ON "task_submissions" USING btree ("institution_id","learner_id");

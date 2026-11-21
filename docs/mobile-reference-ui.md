@@ -6,18 +6,18 @@ Dört tasarım görseli, gerçek React Native bileşenleriyle uygulandı. Expo 5
 
 | Alan                                    | Kaynak                                                                    | Davranış                                                                                                      |
 | --------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Öğrenci, veli, öğretmen ana ekranları   | `apps/mobile/src/screens/RoleHome.jsx`                                    | Role göre günlük dersler, bekleyen işler, duyuru ve ödeme özeti                                               |
-| Ödev listesi, soru kuyruğu, ödeme planı | `apps/mobile/src/screens/SchoolLists.jsx`                                 | Liste yanında arama; panelde ders/sınıf/durum/sıralama; sonuç sayısı ve gerektiğinde 10 kayıtlık sayfalama    |
-| Ödev detayı ve teslimi                  | `apps/mobile/src/screens/SchoolDetails.jsx`                               | PDF/görsel seçimi, 10 MB sınırı, dosyasız doğrulama, dosyayı uygulama deposuna kopyalama ve teslim güncelleme |
-| Soru yanıtlama                          | `apps/mobile/src/screens/SchoolDetails.jsx`                               | Öğrenci/sınıf/konu/bekleme bağlamı, boş yanıt doğrulaması, yanıtı kaydetme ve düzenleme                       |
-| Yoklama                                 | `apps/mobile/src/screens/Attendance.jsx`                                  | Sınıf/tarih seçimi, mevcut/yok/mazeretli işaretleri, toplu mevcut, arama ve kayıt sonucu                      |
-| Çocuk seçici ve ortak düzen             | `apps/mobile/src/ui/SchoolLayout.jsx`                                     | Deniz/Ece seçim paneli, bölüm/liste/sekme/sonuç/durum bileşenleri, tema seçimi                                |
-| Menü, üst bar ve gezinme                | `apps/mobile/src/AppRoot.jsx`                                             | Kategorili düz menü, tek sayfa başlığı, rol değişince ana ekran; çocuk değişince mevcut ödeme ekranında kalma |
-| Tema ve kalıcılık                       | `apps/mobile/src/store/SchoolProvider.jsx`, `apps/mobile/src/ui/theme.js` | Açık/koyu/sistem tercihi, cihazda kalıcılık, depolama başarısızsa başarı göstermeme                           |
-| Belge işlemi                            | `apps/mobile/src/ui/DocumentLink.jsx`, `apps/mobile/src/lib/files.js`     | Ödev belgesini gerçek PDF olarak oluşturma, Android kaydetme/paylaşma/yazdırma                                |
-| Ortak yoklama kuralı                    | `packages/school-core/src/lib/domain.js`                                  | `excused` desteği, geçersiz/ileri tarihi reddetme; aynı gün kaydını güncelleme                                |
+| Öğrenci, veli, öğretmen ana ekranları   | `apps/mobile/src/screens/RoleHome.tsx`                                    | Role göre günlük dersler, bekleyen işler, duyuru ve ödeme özeti                                               |
+| Ödev listesi, soru kuyruğu, ödeme planı | `apps/mobile/src/screens/SchoolLists.tsx`                                 | Liste yanında arama; panelde ders/sınıf/durum/sıralama; sonuç sayısı ve gerektiğinde 10 kayıtlık sayfalama    |
+| Ödev detayı ve teslimi                  | `apps/mobile/src/screens/SchoolDetails.tsx`                               | PDF/görsel seçimi, 10 MB sınırı, dosyasız doğrulama, dosyayı uygulama deposuna kopyalama ve teslim güncelleme |
+| Soru yanıtlama                          | `apps/mobile/src/screens/SchoolDetails.tsx`                               | Öğrenci/sınıf/konu/bekleme bağlamı, boş yanıt doğrulaması, yanıtı kaydetme ve düzenleme                       |
+| Yoklama                                 | `apps/mobile/src/screens/Attendance.tsx`                                  | Sınıf/tarih seçimi, mevcut/yok/mazeretli işaretleri, toplu mevcut, arama ve kayıt sonucu                      |
+| Çocuk seçici ve ortak düzen             | `apps/mobile/src/ui/SchoolLayout.tsx`                                     | Deniz/Ece seçim paneli, bölüm/liste/sekme/sonuç/durum bileşenleri, tema seçimi                                |
+| Menü, üst bar ve gezinme                | `apps/mobile/src/AppRoot.tsx`                                             | Kategorili düz menü, tek sayfa başlığı, rol değişince ana ekran; çocuk değişince mevcut ödeme ekranında kalma |
+| Tema ve kalıcılık                       | `apps/mobile/src/store/SchoolProvider.tsx`, `apps/mobile/src/ui/theme.ts` | Açık/koyu/sistem tercihi, cihazda kalıcılık, depolama başarısızsa başarı göstermeme                           |
+| Belge işlemi                            | `apps/mobile/src/ui/DocumentLink.tsx`, `apps/mobile/src/lib/files.ts`     | Ödev belgesini gerçek PDF olarak oluşturma, Android kaydetme/paylaşma/yazdırma                                |
+| Ortak yoklama kuralı                    | `packages/school-core/src/lib/domain.ts`                                  | `excused` desteği, geçersiz/ileri tarihi reddetme; aynı gün kaydını güncelleme                                |
 
-`Home.jsx`, `ModuleScreen.jsx` ve `Detail.jsx` yeni akışlara yönlendirir; kapsam dışındaki mevcut ekranlar kullanılmaya devam eder. Yönetici ve ön büro için yeni işlevsiz ekran üretilmedi. Ortak paket 1.0.2'ye yükseltildi; web tarafındaki yoklama etiketleri de “Mazeretli” durumunu tanır. Canlı web yayınına çıkılmadı.
+`Home.tsx`, `ModuleScreen.tsx` ve `Detail.tsx` yeni akışlara yönlendirir; kapsam dışındaki mevcut ekranlar kullanılmaya devam eder. Yönetici ve ön büro için yeni işlevsiz ekran üretilmedi. Ortak paket 1.0.2'ye yükseltildi; web tarafındaki yoklama etiketleri de “Mazeretli” durumunu tanır. Canlı web yayınına çıkılmadı.
 
 ## Tasarım kararları
 
@@ -29,7 +29,7 @@ Dört tasarım görseli, gerçek React Native bileşenleriyle uygulandı. Expo 5
 
 ## Veriler ve güncelleme
 
-`model/experience.js` denklemler ödevi, deney raporu ve Deniz'in denklem sorusunu yalnızca eksik olduklarında ekler. Sabit kimlikler sayesinde yeniden açılışta veya sürüm yükseltirken teslimler/yanıtlar sıfırlanmaz. Mevcut öğrenci, sınıf, öğretmen, ücret ve geçmişler korunur. Dosyalar sunucuya yüklenmez; ödeme entegrasyonu yoktur.
+`model/experience.ts` denklemler ödevi, deney raporu ve Deniz'in denklem sorusunu yalnızca eksik olduklarında ekler. Sabit kimlikler sayesinde yeniden açılışta veya sürüm yükseltirken teslimler/yanıtlar sıfırlanmaz. Mevcut öğrenci, sınıf, öğretmen, ücret ve geçmişler korunur. Dosyalar sunucuya yüklenmez; ödeme entegrasyonu yoktur.
 
 Mazeretli yoklama devamsızlık sayısına eklenmez. Önceden kaydedilmiş “geç geldi” kayıtları korunur; kullanıcı mevcut/yok/mazeretli seçeneklerinden biriyle değiştirebilir.
 

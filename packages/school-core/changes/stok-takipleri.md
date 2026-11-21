@@ -1,0 +1,8 @@
+---
+etki: minor
+---
+
+- Stok kartına isteğe bağlı barkod eklendi (`stockItemSchema.barcode`, DOM-FIN-077, K-284): boşluklar atılır, büyük harfe çevrilir; 8 ve 13 haneli sayısal kodda EAN sağlama basamağı denetlenir (`isValidEanCheckDigit`), barkod kurumda tekildir ve başka kartın koduyla çakışamaz (`stock_item_barcode_exists`). Stok sayımında okunan kod önce barkodla, sonra kart koduyla eşleşir (`findStockItemByScan`, K-229).
+- Stok sayımında okutma geri alma eklendi (DOM-FIN-081, K-285): `STOCK_COUNT_ENTRY_KINDS`, `countedStateFromEntries`, `planStockCountScanUndo` ve `canUndoStockCountEntry`; `planStockCountScan` sonucu eklenen miktarı (`scannedQuantity`) da taşır. Demirbaş sayımında okutma geri alma eklendi (`planFixedAssetCountScanUndo`, DOM-FIN-087, K-285).
+- Amortisman yöntem ve ömür değişikliği kısıtı eklendi (DOM-FIN-088, K-287): alım yılından sonra faydalı ömür değişmez (`fixed_asset_useful_life_locked`) ve normalden azalan bakiyelere geçilmez (`fixed_asset_depreciation_method_locked`); `assertDepreciationChange`, `depreciationChangeLocks`, `depreciationStarted` ve `FixedAssetChecks.currentDepreciation` eklendi.
+- Kritik stokta siparişte bekleyen miktar eklendi (DOM-FIN-079, K-286): `OPEN_PURCHASE_ORDER_STATUSES` ve `onOrderWarning`; `suggestedReorderQuantity` isteğe bağlı üçüncü parametreyle (`pending`) açık talep ve siparişte bekleyen miktarı düşer, karşılanan ihtiyaçta 0 döner.

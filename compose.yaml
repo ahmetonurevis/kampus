@@ -1,0 +1,40 @@
+# Yerel geliştirme veritabanı: `docker compose up -d`, kapatmak için `docker compose down`.
+# Host portu 5433 (Homebrew PostgreSQL'in 5432'siyle çakışmaz). Parola yalnız yerel geliştirme içindir.
+#
+# Dosya tarayıcısı (ADR 0003 karar 8) isteğe bağlı profildedir; varsayılan `up` onu başlatmaz:
+# `docker compose --profile clamav up -d`, ardından API'de `FILE_SCANNER=clamav`.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: kampus
+      POSTGRES_PASSWORD: kampus-yerel
+      POSTGRES_DB: kampus
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      - '127.0.0.1:5433:5432'
+    volumes:
+      - kampus-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U kampus -d kampus']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # Resmî ClamAV imajı: clamd (TCP 3310) ve imza güncellemesi (freshclam) aynı konteynerde. İlk
+  # açılışta imzaları indirir (birkaç dakika, ~1 GB bellek). Yapılandırma `deploy/clamav/clamd.conf`
+  # (makro, şifreli belge ve PDF sezgileri açık; akış sınırı en büyük yüklemeden büyük). Sağlık
+  # denetimi imajın kendi HEALTHCHECK'idir.
+  clamav:
+    image: clamav/clamav:stable
+    profiles: ['clamav']
+    ports:
+      - '127.0.0.1:3310:3310'
+    volumes:
+      - ./deploy/clamav/clamd.conf:/etc/clamav/clamd.conf:ro
+      - kampus-clamav:/var/lib/clamav
+
+volumes:
+  kampus-postgres:
+  kampus-clamav:

@@ -1,0 +1,350 @@
+# Değişiklikler
+
+API henüz sürümlenmemiş (`0.1.0`); değişiklikler en yenisi üstte listelenir.
+
+## Kayıt ve finans dalının birleştirilmesi
+
+- Onur'un `feature/ogrenci-kaydi-finans` dalı birleştirildi; aşağıdaki "Bildirilmiş banka hesabı ve MEBBİS işareti" ile "Kesin kayıt ucu (kayıt ve finans dalı)" arasındaki bölümler o daldandır. Kayıt ve finansın temeli o dalın yapısıdır.
+- Migration'lar yeniden numaralandı (SQL aynı): `0014_create_payments` → `0016`, `0015_create_fee_tariffs` → `0017`, `0016_add_enrollment_terms` → `0018`, `0017_create_student_withdrawals` → `0019`, `0018_relax_identity_year` → `0020`, `0019_comment_finance_tables` → `0021`, `0020_bank_accounts_mebbis` → `0022`. Snapshot zinciri `0014_add_second_rating_sampled_at` ve `0015_create_files`'ı içerir; `db:generate` yeni migration üretmez.
+- Kesin kayıt ucu tarifeli gövdeyi kullanır (aşağıda "Tarifeli kesin kayıt"); "Kesin kayıt core takipleri (D16d)" bölümündeki `totalCents`, `nationalId`, `birthDate`, `guardianRelation`, `payer` ve `parentId` gövde alanları kalktı. Kimlik no ve doğum tarihi `records.data`'ya yazılmaz, `student_identities`'tedir.
+- Tarifeli kesin kayıt gövdesi isteğe bağlı `allowOtherCampus` (boolean) alır; sınıf adayın kampüsünden değilse ve onay yoksa 422 `class_campus_mismatch` (`issues` yolu `classId`, kontenjandan önce).
+- Kesin kayıtta seçilen mevcut veli yetişkin kursiyerin kendi satırı (`relationship: 'self'`) ya da eski yer tutucuysa 422 `parent_not_guardian` (`issues` yolu `guardian`); `GET /prospects/:id/guardian-matches` bu satırları önermez.
+- Kesin kayıt (DOM-KAY-012): okul kurumunda veli her yaşta zorunludur (`guardian: null` 422 `guardian_required`; `guardian_not_applicable` dönmez); kurs türlerinde 18 yaş ve üstü kursiyer ödeyicidir. Gövde isteğe bağlı `studentContact` (`phone`, `email`) alır; geçersiz değer 400.
+- `POST /api/v1/invoices/:invoiceId/pay` kaldırıldı (`POST /api/v1/payments`); `commands.test.ts` içindeki eski ödeme testleri silindi, karşılıkları `payments.test.ts`'tedir.
+
+## Bildirilmiş banka hesabı ve MEBBİS işareti
+
+- `GET|POST /api/v1/bank-accounts`, `DELETE /api/v1/bank-accounts/:bankAccountId`, `POST /api/v1/payments/:paymentId/mebbis-record`; `GET /api/v1/payments?mebbis=pending` (DOM-FIN-032).
+- **Kırıcı:** Kurumda hesap tanımlıysa nakit dışı `POST /api/v1/payments` `bankAccountId` ister (422 `bank_account_required`, `bank_account_invalid`).
+- Migration: `bank_accounts` tablosu; `payments.bank_account_id`, `mebbis_recorded_at`, `mebbis_recorded_by_user_id`.
+
+## Yenilemede tarife denetimi
+
+- **Kırıcı:** `POST /api/v1/workflows/renewal` hedef yılın yayımlanmış tarifesini ister (422 `tariff_not_published`); öğrenim ücreti ilanı aşamaz (422 `renewal_above_tariff`), indirim %50 tavanındadır (DOM-FIN-002, -021). Artış tavanı (DOM-FIN-005) ÜFE/TÜFE verisi bekliyor.
+
+## Kesin kayıtta tarife doğrulaması
+
+- **Kırıcı:** `POST /api/v1/prospects/:prospectId/enroll` gövdesinde `tariffId` zorunludur; yayımdaki tarife değiştiyse 409 `tariff_changed`. Aynı ek hizmet iki kez seçilirse 422 `extra_duplicate`. OpenAPI ve `api-client` şeması yeniden üretildi.
+
+## Kısmi ödeme gösterimi
+
+- `GET /api/v1/finance/totals` eklendi: finans kartları kısmi ödemeyi sayar, gecikmiş tutar kalan kısımdır (DOM-FIN-030).
+- Taksit okuması (`/collections/invoices`) açık taksitte `record.paidCents` döner; saklanmaz, okunurken eklenir.
+- Benzersizlik ihlali 500 yerine 409 `conflict` döner. OpenAPI ve `api-client` şeması yeniden üretildi.
+
+## Ayrılış listesinde öğrenci adı
+
+- `GET /api/v1/withdrawals` ve `GET /api/v1/withdrawals/:withdrawalId` yanıtına `studentName` eklendi. OpenAPI ve `api-client` şeması yeniden üretildi.
+
+## Tahsilat listesi arama
+
+- `GET /api/v1/payments` `q` (öğrenci adı, işlem referansı) kabul eder, yanıtta `studentName` döner. Arama katlaması `db/text-search.ts`'e taşındı.
+- OpenAPI ve `api-client` şeması yeniden üretildi.
+
+## Eski taksit ödeme ucu kaldırıldı
+
+- **Kırıcı:** `POST /api/v1/invoices/:invoiceId/pay` kaldırıldı; tahsilat `POST /api/v1/payments` iledir ve nakit dışı yöntemde `reference` zorunludur (ADR 0006).
+- OpenAPI ve `api-client` şeması yeniden üretildi.
+
+## Kayıt ve finans inceleme düzeltmeleri
+
+- Ayrılış kaydı olan öğrencinin tahsilatı iptal edilemez: 409 `payment_student_withdrawn` (DOM-FIN-041).
+- İade hesabı öğrenim, ek hizmet ve dağıtılmamış tahsilatı netleştirir; iade ve borç birlikte oluşmaz (DOM-FIN-040).
+- `parents.phone` ve `parents.relationship` öğretmen ve öğrenciye dönmez.
+- `GET /finance/exports` hız sınırı çerez özeti yerine kullanıcı kimliğine bağlandı.
+- `GET /students/:studentId/identity` `crm` modülünü denetler.
+- Kimlik tekilliği eğitim yılından ayrıldı, pasif kaydın kimliği yeniden kullanılır (migration `0020_relax_identity_year`).
+- `PATCH /fee-tariffs/:tariffId` verilmeyen alanı korur.
+- Dil okulunda kesin kayıt fiyatı sınıfın CEFR düzeyinden (`level`) okunur.
+
+## Muhasebe dışa aktarımı
+
+- `GET /api/v1/finance/summary` ve `GET /api/v1/finance/exports` eklendi (ADR 0006 karar 11, IST-111). Dosya tahsilat, ödenmiş iade veya taksit satırlarını CSV olarak döner; toplamı özetle aynı satırlardan üretilir. Migration yok.
+- OpenAPI ve `api-client` şeması yeniden üretildi.
+
+## Ayrılış ve iade uçları
+
+- `student_withdrawals` tablosu (migration `0019_create_student_withdrawals`) ile `POST /api/v1/students/:studentId/withdrawal-quote`, `POST /api/v1/students/:studentId/withdraw`, `GET /api/v1/withdrawals`, `GET /api/v1/withdrawals/:withdrawalId`, `POST /api/v1/withdrawals/:withdrawalId/pay-refund` eklendi (ADR 0006 karar 10, DOM-FIN-040, -041, DOM-KAY-024, IST-110).
+- `requireFreshSession` eklendi; ayrılış ve iade ödemesi eski oturumda 403 `reauthentication_required` alır.
+- Log gizleme listesine `iban`, `accountHolder`, `targetSchool` eklendi. OpenAPI ve `api-client` şeması yeniden üretildi.
+
+## Tarifeli kesin kayıt
+
+- **Kırıcı:** `POST /api/v1/prospects/:prospectId/enroll` gövdesi değişti: `totalCents` kalktı; tutar yayımlanmış tarifeden hesaplanır. `identity` ve `guardian` zorunlu, `discounts`, `extras`, `lessonHours` eklendi.
+- `fee_tariffs.discounts` ve `student_identities` eklendi (migration `0018_add_enrollment_terms`). `GET /api/v1/prospects/:prospectId/guardian-matches` ve `GET /api/v1/students/:studentId/identity` eklendi.
+- Log gizleme listesine `identity`, `identityNumber`, `birthDate` eklendi. OpenAPI ve `api-client` şeması yeniden üretildi.
+
+## Ücret tarifesi uçları
+
+- `fee_tariffs` tablosu ve `GET`/`POST /api/v1/fee-tariffs`, `GET`/`PATCH /api/v1/fee-tariffs/:tariffId`, `POST /api/v1/fee-tariffs/:tariffId/publish` eklendi (ADR 0006 karar 8, DOM-FIN-002, -004, -006, IST-104). Migration `0017_create_fee_tariffs`.
+- Sözleşme ve tahsilat henüz tarifeye bağlı değildir. OpenAPI ve `api-client` şeması yeniden üretildi.
+
+## Tahsilat uçları
+
+- `payments`, `payment_allocations` ve `payment_settings` tabloları eklendi (ADR 0006, migration `0016_create_payments`).
+- `POST /api/v1/payments`, `GET /api/v1/payments`, `GET /api/v1/payments/:paymentId`, `POST /api/v1/payments/:paymentId/reverse`, `GET` ve `PATCH /api/v1/payment-settings` eklendi (DOM-FIN-030…033, DOM-FIN-052).
+- **Kırıcı:** `POST /api/v1/invoices/:invoiceId/pay` artık tahsilat kaydı da yazar; `Nakit` yöntemi kurumda nakit kapalıysa 422 `cash_payment_disabled` alır. Nakit varsayılan kapalıdır, örnek kurum tohumunda da.
+- Log gizleme listesine `reference` ve `reversalReason` eklendi. OpenAPI ve `api-client` şeması yeniden üretildi.
+
+## Kesin kayıt ucu (kayıt ve finans dalı)
+
+- `POST /api/v1/prospects/:prospectId/enroll` eklendi (201 + `Location`; `Idempotency-Key` ve `If-Match` zorunlu; yalnız `yonetici` ve `onburo`, modül `crm`). Öğrenci, veli, taksit, sözleşme ve aday aşaması tek transaction'da yazılır (DOM-KAY-001, DOM-KAY-011, DOM-KAY-035).
+- İlk sürümde tutar `totalCents` ile alındı; "Tarifeli kesin kayıt" değişikliğiyle kaldırıldı.
+
+## Dosya depolama inceleme düzeltmeleri (F3c2a)
+
+- İndirme ucu `Cross-Origin-Resource-Policy: cross-origin` gönderir: Helmet varsayılanı `same-origin` web'in başka kökenden `<img>`/`<audio>` ile açtığı bağlantıyı engellerdi. Yetki imzadadır; JSON uçları `same-origin`'de kalır.
+- Dosya okuma (`GET /files/:fileId`, `/url`) sırası kapsam → modüldür: modül kapalıyken kapsam dışı dosya 403 yerine 404 alır (varlık ipucu yok), 403 `module_disabled` yalnız dosyayı görebilecek kişiye döner.
+- Yüklemede tutulmayan nesnenin silme hatası asıl hatayı (413/422/veritabanı) örtmez; `file.discard_object_failed` olarak depo anahtarıyla loglanır (ad loga girmez). Satırsız kalan nesnelerin önek taraması `TODO(F3c2-orphans)`.
+- Bildirilen türün takma adları (`audio/x-m4a`, `audio/mp3`, `image/jpg`, `video/webm`, parametreli tür) core 2.24.0 `canonicalMimeType` ile çözülür; `react-shared` `checkFileBeforeUpload` aynı tabloyu kullanır, tanınmayan türde karar sunucuya kalır. Tüketiciler `workspace:2.24.0`. OpenAPI ve `api-client` şeması yeniden üretildi.
+
+## Dosya depolama temeli (F3c2a)
+
+- ADR 0003'ün ilk dilimi. Migration `0015_create_files`: kurum kapsamlı `files` tablosu (içerik kolonları tetikleyiciyle değişmez, silme yalnız imha oturumunda) ve `institution_settings.storage_quota_bytes` (boşsa 50 GB).
+- Depolama arayüzü (`src/storage`) ve yalnız disk sürücüsü: `STORAGE_DRIVER=disk`, `STORAGE_DIR` (üretimde zorunlu, geliştirmede `var/storage`). S3 sürücüsü, ClamAV taraması ve uygulama düzeyi şifreleme TODO.
+- `POST /api/v1/files` (201 + `Location`; `multipart/form-data`, `Idempotency-Key` zorunlu): akışta SHA-256 ve boyut; amaç sınırı aşılınca akış kesilir, nesne silinir, 413 `file_too_large`; içerikten tür (`file_type_not_allowed`, `file_type_mismatch`, `file_empty` 422); kurum kotası kurum kilidi altında (`storage_quota_exceeded` 422); konuşma kaydı 403 `consent_required`; multipart olmayan gövde 415.
+- `GET /api/v1/files/:fileId` ve `GET /api/v1/files/:fileId/url`: bağlı kaydın okuma kapsamı (karar 6); bağlanmamış dosyayı yalnız yükleyen görür, ötekiler 404. Bağlantı HMAC imzalı ve süreli (5 dk; konuşma kaydı 2 dk); teslim ve konuşma kaydında denetime `file.access`.
+- `GET /api/v1/files/download?token=` (açık uç, disk sürücüsü): bozuk imza 403 `invalid_signature`, süresi geçmiş 403 `link_expired`.
+- Servisler: `attachFile` (bağlama; amaç ve kayıt türü kaydı `defineFileAttachment`), `recordFileCheck` (gelecekteki tarama işinin girişi), `purgeUnattachedFiles` (24 saatte bağlanmayan dosyaların temizliği; zamanlayıcı TODO).
+- Yeni paketler `@fastify/multipart` 10.1.6 ve `file-type` 22.2.0. Özgün dosya adı log ve denetim kaydına girmez. Core değişmedi (2.22.0). OpenAPI ve `api-client` şeması yeniden üretildi.
+- `react-shared`: `useFileUpload` (`use-file-upload.ts`) ve `checkFileBeforeUpload`; komut dosyalarındaki `JsonBody` tipi ilk multipart uçla uyumlu koşullu türe çevrildi.
+
+## İkinci puanlayıcı, puanlama süresi ve itiraz uçları (F4b3b2a)
+
+- `POST /api/v1/task-assignments/:assignmentId/second-rating-sample` (201 + `Location` kuyruk `?assignmentId=…&awaiting=second`; `Idempotency-Key` ve `If-Match` zorunlu, `If-Match` atamanın `rowVersion`'ı): ikinci puanlama örneklemi (DOM-BEC-024; core `secondRatingQuota`, `pickSecondRatingSample`: en az %10 ve en az bir teslim, atama kimliğiyle tohumlu). Örneklem teslim penceresi kapanınca açık uçla bir kez çekilir; örneklemli görevde (`secondRatingPercent > 0`) çekilmeden ilk puan 409 `second_rating_sample_pending`. Karar `task_assignments.second_rating_sampled_at` kolonundadır.
+- `POST /api/v1/task-submissions/:submissionId/second-rating-requests` (201): elle ikinci puanlama istemi; yalnız kursiyer yeni sürüm gönderemezken (pencere kapalı veya hak dolu) ve puan kesinleşmeden. İstem, istendiği anda var olan sürümleri kapsar.
+- `POST /api/v1/task-submissions/:submissionId/second-scores` (201; `If-Match` teslimin `rowVersion`'ı): kör ikinci puan; ilk puanı görmeden, başka öğretmence. Yönetici koordinatör sayılmaz.
+- `POST /api/v1/task-submissions/:submissionId/appeals` (201; `If-Match` desteklenmez): kursiyer veya velisi, sonuç duyurusundan sonra 5 iş günü içinde gerekçeli itiraz eder (DOM-BEC-025; core `planAppeal`, `appealDeadline`). Kurum tatil takvimi gelene kadar tatil listesi boştur (`APPEAL_HOLIDAYS`, `TODO(institution-settings)`).
+- `POST /api/v1/task-submissions/:submissionId/appeals/:appealId/decision` (200; `If-Match` teslimin `rowVersion`'ı): itiraz kararı yalnız o sürümü puanlamamış, atamayı gören **öğretmendedir** (itiraz ilk puanlayıcı dışında bir öğretmene gider); yönetici itirazı okur ama karar veremez (403 `forbidden`). Kabulde yeni `final` puan eklenir, ilk puan kayıt geçmişinde kalır; sonuçlanmış itiraz 409 `appeal_decided`.
+- `GET /api/v1/task-submissions/grading-queue`: yeni süzgeçler `awaiting=first|second` ve `overdue=true|false`; satırda `grading { awaiting, awaitingResolution, samplePending, dueAt, overdue }` (süre: son teslim + 7 gün).
+- Teslim ayrıntısında sürüm başına `grading` (personel; kursiyere `null`), `appealDeadline` ve `appeal`. Uyuşmazlıklı sonuç kursiyere kapalıdır.
+- `PATCH /api/v1/task-assignments/:assignmentId`: ikinci puanlama başladıysa süre değişikliği 409 `second_rating_started`.
+- Yeni sürüm reddi kursiyerin gördüğü hakla yeniden hesaplanır: istem ve puan sonrası yanıt öncesiyle birebir aynıdır (F4b3b1 sızıntısı kapandı).
+- Migration `0014_add_second_rating_sampled_at`. Core değişmedi (2.22.0). OpenAPI ve `api-client` şeması yeniden üretildi.
+- `react-shared`: `use-task-grading.ts` içine `useDrawSecondRatingSample`, `useRequestSecondRating`, `useSecondScoreTaskSubmission`, `useFileTaskAppeal`, `useDecideTaskAppeal`; okunan `rowVersion` `If-Match` olur (itiraz hariç), hata kodları Türkçe metne çevrilir, örneklem atama sorgularını da tazeler.
+- İnceleme düzeltmeleri (R-F4b3b2a):
+  - Son tarihsiz görevde örneklem kilidi yok: pencere kapanmadığı için örneklem çekilemez ve ilk puan sonsuza dek 409 `second_rating_sample_pending` alıyordu. Artık ilk puan örneklemi beklemez, ikinci puan yalnız elle istenir; örneklem ucu 409 `second_rating_sample_unavailable` döner (`TODO(core-ikinci-puan-son-tarih)`: core oran > 0 iken son tarihi zorunlu tutabilir).
+  - Örneklemli görevde puanlama süresi örneklemin seçildiği andan (`secondRatingSampledAt`; sürümün son tesliminden erken değil) başlar; örneklem seçilmeden süre işlemez: `grading.dueAt` `null` (şema `nullable`), `overdue` `false`, `overdue=false` süzgecinde kalır. Örneklemsiz görev aynı. Core `gradingDueAt` değişmedi, başlangıç anı serviste (`gradingDeadlineOf`) verilir (`TODO(beceri-puanlama-suresi-orneklem)`).
+  - Son tarih kilidi daraldı: yalnız örneklem seçildiyse ya da teslim penceresi kapandıktan sonra ikinci puan istendiyse 409 `second_rating_started`. Pencere açıkken hakkı dolmuş teslim için yapılan elle istek sınıfın süre uzatmasını engellemez; o kursiyer yeni sürüm gönderemediği için yanıtı uzatmadan önce ve sonra aynıdır (DOM-BEC-045, testli).
+  - İtiraz yalnız son sürümün sonucuna: eski sürüme 409 `appeal_not_latest`.
+  - İtirazlı sürümde `appealDeadline` `null`: kabul edilen itirazın son puanı yeni itiraz süresi açmaz.
+  - Kuyruk: uyuşmazlıklı (koordinatör bekleyen) teslim düşmez; yönetici ve atamayı gören öğretmenler (puanlayıcılar dahil) `grading.awaitingResolution: true` ve boş `awaiting` ile görür, süre aşımı da görünür. `awaiting=first|second` süzgeci bu satırları dışarıda bırakır. İkinci puan verilmeden uyuşmazlık hesaplanmaz (kör puanlama).
+  - İtirazlar sayfadaki bütün teslimler için tek sorguda okunur (`loadAppealsBySubmission`; teslim başına sorgu kalktı).
+  - Personelin atama görünümüne `secondRatingSampledAt`; öğrenci ve veli görünümünde yok.
+  - `react-shared`: `second_rating_started` (süre değişikliği), `second_rating_sample_unavailable` ve `appeal_not_latest` Türkçe metinleri.
+  - OpenAPI ve `api-client` şeması yeniden üretildi. Migration yok; core değişmedi.
+- F4b3b2b'ye kalan: koordinatör ve uyuşmazlıkta son puan (DOM-YTK-027), yeniden puanlama ve anahtar düzeltmesi (DOM-BEC-011), not aktarımı, kurum takvimi (tatiller), itiraz kuyruğu/listesi, yeniden teslim turunda ikinci puanlama, kuyrukta `awaiting=resolution` süzgeci.
+
+## Kesin kayıt core takipleri (D16d)
+
+- `POST /api/v1/prospects/:prospectId/enroll`: tutar core'a kuruş olarak olduğu gibi geçer (school-core 2.23.0 `enrollmentSchema`); `totalCents / 100` dönüşümü ve 422 `amount_not_whole_lira` kalktı, kuruşlu tutar (ör. `3_600_050`) taksitlere kuruşu kuruşuna dağılır.
+- Gövdeye isteğe bağlı alanlar eklendi (katı gövde korunur): `allowOtherCampus` (boolean), `parentId`, `nationalId` (11 hane, T.C./yabancı kimlik no denetim haneleri; geçersiz 400), `birthDate` (`YYYY-MM-DD`), `guardianRelation` (`mother`, `father`, `legal_guardian`, `other`), `payer` (`guardian`, `student`). DOM-KAY-012 alanları şimdilik zorunlu değildir.
+- Sınıf adayın kampüsünden değilse 422 `class_campus_mismatch` (`issues` yolu `classId`); `allowOtherCampus: true` ile kabul edilir.
+- 18 yaş altında (`school` her zaman, `language_school`'da adayın seçimi) adayın telefonu, e-postası ve veli adı yeni veli kaydına yazılır, öğrenciye boş yazılır (DOM-KAY-003). Kardeş kaydında yeni veli açılmaz: `parentId` ya da kardeş adayın kayıtlı öğrencisinin velisi kullanılır, veli `studentIds` güncellenir (DOM-KAY-013); olmayan veya başka kurumun velisi 404. Veliler artık bütünüyle yüklenir.
+- İnceleme düzeltmesi: yetişkin kursiyer için açılan iletişimsiz veli kaydı (yer tutucu) 18 yaş altı kardeşe verilmez; kardeşte atlanıp yeni veli açılır, `parentId` ile seçilirse 422 `parent_not_guardian`. Mevcut velinin eksik telefonu ve e-postası adayınkiyle tamamlanır; var olan değer ve ad değişmez.
+- KVKK inceleme düzeltmesi: `GET /api/v1/collections/students` (liste, tek kayıt, bağlı ad ve sayım dahil core `scope.redact` kullanan her okuma) öğrencinin kimlik nosunu yalnız yönetici ve ön büroya maskeli (`*******1234`) döndürür; öğretmen kimlik no ve doğum tarihini, öğrenci ve veli kimlik noyu almaz. Kimlik no ve doğum tarihi `q` aramasına girmez (SQL ön süzgeci ve bellek içi eşleşme core `searchExcludedFields` ile).
+- Yaş ve ödeyici kuralları 422: `invalid_birth_date`, `birth_date_minor_mismatch`, `payer_must_be_guardian`, `payer_must_be_student`, `guardian_not_applicable`. Dil okulunda sözleşme başlığı "Dil kursu eğitim sözleşmesi"; sözleşme `payer` taşır.
+- Yanıt şeması `EnrollProspectResult`: `CommandResult` + `contractId` (oluşturulan sözleşme); idempotent tekrar aynı alanı döndürür. `sendCommand` uca özgü yanıt şeması alabilir; `commandBody` ek alanları yanıta yazar.
+- `nationalId` ve `birthDate` (üst düzey ve `*.`) log `redact` listesine eklendi; denetim kaydına yalnız alan adları yazılır.
+
+## Öğretmen puanlaması uçları (F4b3b1)
+
+- `POST /api/v1/task-submissions/:submissionId/scores` (201 + `Location: /api/v1/task-submissions/:id`; `Idempotency-Key` ve `If-Match` zorunlu, `If-Match` teslimin `rowVersion`'ı): yazma teslimi sürümünün rubrik puanı ve geri bildirimi (core `planRubricScore`; DOM-BEC-020…023). Gövde `{ versionNumber, criteria: [{ criterionId, band, comment }], overallComment }` (core `rubricScoreInputSchema`), katı: istemcinin toplamı, yüzdesi, rubrik sürümü ve rolü 400; kriter satırı da katıdır (core 2.22.0 `z.strictObject`), fazladan alan (ör. `weighted: 99`) 400 `validation_failed`. Rubrik atamanın sabitlediği sürümdür (DOM-BEC-022). Eksik kriter 422 `rubric_criterion_missing`, rubrikte olmayan/tekrar eden 422 `rubric_criterion_invalid`, hedefin altındaki banda yorumsuz 422 `criterion_comment_required`, son olmayan sürüm 409 `version_not_latest`, bilinmeyen sürüm 404, aynı sürümün ikinci ilk puanı 409 `rubric_score_exists`. Yalnız ilk puan (`first`) verilir.
+- `POST /api/v1/task-submissions/:submissionId/resubmission-requests` (201 + `Location`; `Idempotency-Key` ve `If-Match` zorunlu): yeniden teslim isteği (core `planResubmissionRequest`; DOM-BEC-040). Kesinleşmemiş puan 409 `resubmission_not_graded`, ikinci istek 409 `resubmission_exists`, 14 günü aşan veya geçmiş tarih 422 `resubmission_due_invalid`. Kursiyer sonra yeni sürüm gönderir (F4b3a `resubmission_not_requested` / `submission_locked` akışı değişmedi).
+- `GET /api/v1/task-submissions/grading-queue` (sayfalı, `assignmentId` süzgeci): puanlanmayı bekleyen teslimler; kişinin gördüğü arşivsiz, rubrikli atamalarda son sürümü ilk puanı almamış teslimler, en eski gönderim önce.
+- Puanlayan yönetici veya atamayı gören öğretmendir (atayan olmasa da; DOM-YTK-028); öğrenci, veli ve ön büro 403 (rota ve servis). Kural core yetki tablosunda olmadığından serviste `TODO(core-atama-yetki)` altındadır. Sıra kapsam 404 → rol 403 → `If-Match` 409 → kural. Puan ve istek değişmez satırlardır; teslim kaydının satır sürümü artar. Aynı sürüme eşzamanlı iki puandan yalnız biri yazılır (test:pg). Geri bildirim metni ve öğrenci kimliği loglanmaz; denetime `task_submission.score` (`criteria`, `overallComment`, `scoredAt`) ve `task_submission.request_resubmission` (`versionNumber`, `dueAt`) yalnız alan adlarıyla yazılır.
+- Teslim okumaları: `versions[].score` (kriter bantları, ağırlıklar, anlamlar, kriter yorumları, genel yorum, toplam, azami, yüzde, `settled`), `latestVersion.score` (özet) ve `resubmission` (son istek). Toplam her okumada bantlardan hesaplanır, saklanmaz. Kursiyer ve veli puanı yalnız kesinleşip geri bildirim açılınca görür (core `scoreResolution`, `teacherFeedbackReleased`; DOM-BEC-045); öncesinde `score: null`. Kesinleşmemiş puanı öğretmen ve yönetici yalnız kendininkini görür (core `scoresVisibleToRater`); yönetici koordinatör sayılmaz, ikinci puanlayıcı olursa ilk puanı görmemelidir (DOM-BEC-024; koordinatör rolü DOM-YTK-027 ile `TODO(F4b3b2)`). Otomatik puanlı deneme okumaları değişmedi (rubrik puanı yalnız yazma teslimindedir).
+- İnceleme düzeltmeleri (R-F4b3b1):
+  - Kursiyer ve veli teslim yanıtında `rowVersion: null` alır (şema `nullable`): puan ve yeniden teslim isteği satır sürümünü artırdığı için sürüm puanlandığını ele veriyordu (DOM-BEC-045). Öğrenci yazmaları (teslim, taslak) bu alanı kullanmaz.
+  - `allowance` kursiyer ve veliye geri bildirim açılmamış puan yokmuş gibi hesaplanır; yanıt puanlamadan öncekiyle birebir aynıdır. `blockedBy: 'locked'` artık yalnız puanlamadan bağımsız koşulda döner: sıradaki sürümün teslim penceresi (geç kabul veya yeniden teslim süresi dahil) kapandı. Açılmamış puanlı teslime yeni sürüm yine genel 409 `submission_locked` alır.
+  - Yönetici koordinatör sayılmaz: kesinleşmemiş puanlardan yalnız kendisininkini görür (DOM-BEC-024).
+  - Puanlama kuyruğunun `total` değeri satırlarla aynı kapsam koşuluyla (SQL `assignmentScopeFilter` = `visible`) sayılır; savunma amaçlı yeniden doğrulamada düşen satır sayıdan da çıkar.
+  - Arşivli atamanın teslimine puan ve yeniden teslim isteği 404 (F4b3a öğrenci yazmalarıyla aynı kapsam kalıbı); okumalar açık kalır.
+  - Kriter satırı katı (core 2.22.0): fazladan alan 400.
+  - `react-shared`: 404 `submission_version_not_found` Türkçe metne çevrilir ve teslimi tazeler (`submissionStale`).
+- OpenAPI ve `api-client` şeması yeniden üretildi. Migration yok; core 2.22.0 (kriter satırı katı).
+- `react-shared`: `use-task-grading.ts` (`useGradingQueue`, `useScoreTaskSubmission`, `useRequestTaskResubmission`); puan ve istek okunan `rowVersion`'ı `If-Match` olarak taşır, 409 ve 404'te teslim ve kuyruk tazelenir, hata kodları Türkçe metne çevrilir.
+- F4b3b2'ye kalan: ikinci puanlayıcı ve koordinatör (DOM-BEC-024), itiraz ve puanlama süresi (DOM-BEC-025), not aktarımı, yeniden puanlama ve anahtar düzeltmesi (DOM-BEC-011).
+
+## Deneme ve teslim uçları inceleme düzeltmeleri (F4b3a)
+
+- `PATCH /api/v1/task-assignments/:assignmentId`: otomatik puanlı değerlendirmenin cevap anahtarı açıldıysa (teslim kapandı) son teslim ve geç kabul uzatması 409 `answer_key_released` (core 2.21.0 `planAssignmentChange`, sunucu saatiyle; DOM-BEC-045). Yazma görevi kapanıştan sonra da uzar.
+- Görünürlük atamayı izler (DOM-YTK-028): atamayı gören personel o atamanın bütün deneme ve teslimlerini görür, kursiyerin güncel sınıfına bakılmaz (önce atayan olmayan öğretmen yalnız güncel kapsamındaki öğrencileri görüyordu). Sınıf değiştiren öğrencinin eski sınıftaki kaydını eski sınıfı gören öğretmen görmeye devam eder; yeni sınıfın öğretmeni, yeni sınıfı hedeflemeyen atamayı görmez. `readableLearners` ayrık birleşim döner (`all` / `some` / `none`).
+- Yazan uçlar (deneme başlatma, cevap, teslim; taslak okuma ve kaydı; yazma teslimi) serviste de yalnız `ogrenci`'ye açıktır: veli 403 (sıra kapsam 404 → rol 403). Taslak okuması core `canReadDraft`'ı uygular.
+- `POST …/attempts`: puanlama sürümünün veya sorularından birinin lisansı dolduysa 409 `resource_license_expired` (DOM-KYN-021); süren deneme kaydedilir ve teslim edilir.
+- Yazma teslimi: kursiyer ve veli, öğretmen geri bildirimi açılmadan (`scoreResolution` kesinleşmemiş) puanlandığını göremez; `allowance.blockedBy` `graded` yerine `locked`, yeni sürüm `resubmission_not_requested` yerine genel 409 `submission_locked` (DOM-BEC-045). Personel `graded` görür.
+- OpenAPI ve `api-client` şeması yeniden üretildi (`blockedBy` `locked` değeri, rota açıklamaları). Migration yok.
+- `react-shared`: taslak kaydı 400 `if_match_required` alınca (taslak başka pencerede ilk kez kaydedildi) taslağı yeniden çeker ve "Taslak başka bir pencerede kaydedildi, son hâli yüklendi." gösterir; cevap kaydı ve teslim 422'de (ör. `attempt_time_over`) denemeyi tazeler, `attempt_time_over` mesajı sunucuyla uyumludur ("Süre doldu; son cevaplarınız kaydedilmedi."). `submission_locked` Türkçe mesajı eklendi. Komut altyapısına isteğe bağlı `refreshOn` (409 dışında tazeleme) eklendi.
+
+## Yazma görevi taslak ve teslim uçları
+
+- `GET /api/v1/task-assignments/:assignmentId/draft` ve `PATCH …/draft` (IST-047; core `planDraftSave`): yalnız `ogrenci` kendi taslağını okur ve yazar (okuma core `canReadDraft` ile denetlenir); taslak yoksa `data: null`. `If-Match` taslağın `revision`'ıdır ve yalnız henüz taslak yokken atlanabilir (ilk kayıt); taslak varken başlıksız istek 400 `if_match_required`, eski revizyon 409 `draft_conflict` (eşzamanlı iki kayıttan biri; test:pg). Teslim kapandıysa 422 `submission_closed`, yazma dışı görev 422 `draft_not_supported`. Otomatik kayıt denetime yazılmaz.
+- `POST /api/v1/task-assignments/:assignmentId/submissions` (201 + `Location: /api/v1/task-submissions/:id`; `Idempotency-Key` zorunlu, `If-Match` 400 `if_match_not_supported`): core `planSubmissionVersion` (DOM-BEC-040, 044, 046). İlk gönderim kursiyerin tek teslim kaydını açar, sonrakiler değişmez sürüm ekler; sınır `maxVersions` (422 `version_limit_reached`), puanlanmış sürümden sonra öğretmen istemeden 409 `resubmission_not_requested`. Pencere ve geç kabul core'dandır (`deadlineForVersion`); geç kabuldeki sürüm `late`. Sözcük sınırı dışındaki metin uyarıyla kabul edilir. Otomatik puanlı görev 422 `submission_not_expected`, dosyalı ve sesli teslim 422 `submission_kind_unavailable`. Gövde katıdır (puan veya bilinmeyen alan 400). Denetime `task_submission.submit` yalnız alan adlarıyla yazılır.
+- `GET /api/v1/task-submissions?assignmentId=…` (sayfalı, `learnerId` süzgeci; son sürümün özeti, metin yok) ve `GET /api/v1/task-submissions/:submissionId` (sürümler eskiden yeniye metinleriyle, `late`, `wordCount`, `status`, `allowance`): deneme uçlarıyla aynı kapsam (DOM-YTK-028); öğrenci kendi, veli çocuğunun teslimini, sınıf değiştirse de görür; ön büro 403. Taslak hiçbir teslim okumasında dönmez. Yazma otomatik puanlanmaz: puan alanı yoktur (DOM-BEC-023; rubrik puanlaması F4b3b).
+- Sıra kapsam 404 → rol 403 → sürüm → kural; yazmalar kurum kilidi altında tek transaction'dadır, sürüm sınırı 1 iken eşzamanlı iki teslimden biri yazılır (test:pg). Metin ve öğrenci kimliği loglanmaz. Modül `learning`.
+- `react-shared`: `use-task-attempts.ts` (deneme listesi, ayrıntısı, başlatma, cevap kaydı, teslim) ve `use-task-submissions.ts` (taslak, teslim listesi, ayrıntısı, yeni sürüm) kancaları. OpenAPI ve `api-client` şeması yeniden üretildi. Migration yok.
+
+## Görev deneme uçları (otomatik puanlı görevler)
+
+- `POST /api/v1/task-assignments/:assignmentId/attempts` (201 + `Location: /api/v1/task-attempts/:id`; `Idempotency-Key` zorunlu, `If-Match` 400 `if_match_not_supported`, gövde `{}`): yalnız atamanın şu an hedeflediği `ogrenci` deneme başlatır (core `planAttemptStart`; DOM-BEC-042, 043, 044). Hak dolunca 422 `attempt_limit_reached`, süren deneme varken 409 `attempt_in_progress`, teslim kapandıysa 422 `submission_closed`, yazma görevi 422 `not_auto_scored`. Başlangıç sunucu saatidir; bitiş süre sınırı ile teslim kapanışından erken olanıdır.
+- `PATCH /api/v1/task-attempts/:attemptId` (`If-Match` zorunlu, deneme `rowVersion`'ı): süren denemeye cevap kaydı (core `planAnswerSave`); süre dolduysa 422 `attempt_time_over`, teslim edilmiş deneme 409 `attempt_already_submitted`, uyuşmayan cevap 422 `answer_invalid`. Denetim kaydına yazılmaz.
+- `POST /api/v1/task-attempts/:attemptId/submit` (`If-Match` ve `Idempotency-Key` zorunlu): core `planAttemptSubmit`; gövde `{ answers? }` katıdır, istemcinin puan veya durum alanı 400. Puan saklanmaz, her okumada `scoreAttempt` ile cevaplardan ve atamanın puanlama sürümünden hesaplanır (DOM-BEC-010). Süre dolduysa gönderilen cevaplar alınmaz, deneme kaydedilmiş cevaplarla bitiş anında teslim edilir (`autoSubmitted`); geç kabul süresindeki teslim `late`. İkinci teslim 409.
+- `GET /api/v1/task-attempts?assignmentId=…` (sayfalı, `learnerId` süzgeci) ve `GET /api/v1/task-attempts/:attemptId` (anahtarsız sorularla): yönetici bütün; atamayı gören öğretmen (atayan veya kapsamı yüzünden gören) atamanın bütün denemelerini, kursiyerin güncel sınıfına bakmadan; öğrenci kendi, veli çocuklarının denemelerini görür (DOM-YTK-028); ön büro 403. Sınıf değiştiren öğrenci eski sınıftaki denemesini ve puanını görmeye devam eder (`TODO(F4b3-sinif-degisimi)` kapandı). Kursiyer ve veli süren denemede sonuç görmez, tamamlanınca toplam puanı, anahtar açılınca madde sonuçlarını ve anahtarı görür (core `learnerResultLevel`, DOM-BEC-045); personele de anahtar yalnız açılınca döner. Sayılan deneme (`counted`) core `countedAttempt` ile.
+- Yazmalar kurum kilidi altında tek transaction'dadır: eşzamanlı iki başlatma hakkı aşmaz, aynı sürümle iki teslimden biri 409 alır (test:pg). Denetime yalnız `task_attempt.start` ve `task_attempt.submit`, alan adlarıyla yazılır; cevap içeriği ve öğrenci kimliği loglanmaz. Modül `learning`; kapalıysa 403 `module_disabled`.
+- Depo (`db/skills.ts`): `findAttempt`, `listAttempts`, `loadLearnersAttempts`, `saveAttemptAnswers`, `submitAttempt`, `findSubmission`, `listSubmissions`. Geçici: bireysel ek süre 0 dakika (`TODO(F4b3-ek-sure)`), quiz soru sırası karıştırılmaz (`TODO(F4b3-soru-sirasi)`).
+- OpenAPI ve `api-client` şeması yeniden üretildi. Migration yok.
+
+## Görev atama uçları
+
+- `GET /api/v1/task-assignments` (sayfalı, en yeni önce; `resourceId` ve `kind` süzgeci) ve `GET /api/v1/task-assignments/:assignmentId`: yönetici kurumun bütün atamalarını; öğretmen kendi atamalarını, kapsamındaki (ders verdiği veya rehberi olduğu) sınıfı/grubu ve o sınıfların öğrencilerini hedefleyenleri görür (DOM-YTK-028; atayan değilse hedef listesi kapsamına daraltılır); öğrenci kendisine, veli çocuklarına hedeflenenleri görür; ön büro 403. Öğrenci ve veli `learner` görünümünü alır (hedef listesi, puanlama/rubrik sürümü, ikinci puanlama oranı, atayan ve satır sürümü yok); cevap anahtarı hiçbir yanıtta yoktur. Modül `learning`; kapalıysa bütün uçlar 403 `module_disabled`.
+- `POST /api/v1/task-assignments` (201 + `Location`; idempotent tekrar da `Location` döner; `Idempotency-Key` zorunlu, `If-Match` 400 `if_match_not_supported`): core `planAssignment` içeriğin güncel yayındaki sürümünü, ayarları ve yayındaki rubrik sürümünü sabitler; `scoringVersionId` içerik sürümüyle başlar (ADR 0004 karar 4; DOM-KYN-032, DOM-BEC-041, 042). Öğretmen yalnız ders verdiği sınıfa ve öğrencilerine atar (403 `target_scope_denied`); kapsam dışı hedef taslak sürümden önce 403 alır. Lisansı dolmuş içerik core planından önce 409 `resource_license_expired` (DOM-KYN-021). Olmayan hedef veya rubrik sürümü 404 `not_found`, core mesajı ve `issues` yoluyla. Taslak/arşivli içerik veya rubrik sürümü 409; açık atamadaki kursiyere 409 `assignment_duplicate`/`assignment_overlap` (IST-034).
+- `PATCH /api/v1/task-assignments/:assignmentId` (`If-Match` zorunlu): yalnız son teslim ve geç kabul uzar (core `planAssignmentChange`; DOM-BEC-044); kısaltma 422 `deadline_shortened`, diğer alanlar 409 `assignment_setting_frozen`. Değiştiren yalnız atayan veya yöneticidir (DOM-YTK-028): kapsam dışı atama 404, görünür ama atayan olmayan öğretmen 403 `forbidden`, ardından sürüm 409. Eşzamanlı iki değişiklikten biri 409 `version_conflict` alır (test:pg).
+- Geçici sınırlar: dosyalı ve sesli teslim 422 `submission_kind_unavailable` (`files` gelene kadar). Dinleme görevi atanabilir: gönderilmeyen dinleme hakkı sınırsız (`null`) saklanır, 1 veya 2 seçimi `attempt_media_plays` gelene kadar 422 `listening_plays_unavailable`.
+- Sınıf/şube hedefli atama o sınıfın güncel öğrencilerine görünür; sınıf değiştiren öğrenci yeni sınıfının atamalarını görür (`TODO(F4b3-sinif-degisimi)`).
+- İçerik başlığı, yönerge, öğrenci ve hedef kimliği loglanmaz; içerik sürümü bulunamazsa yanıt boş başlıkla döner ve `task_assignment.content_missing` uyarısı (kimliksiz) loglanır; denetim kaydına yalnız alan adları yazılır (`task_assignment.create`, `task_assignment.update`). Yeniden puanlama ve atama arşivi açılmadı.
+- Depo (`db/skills.ts`): `assignmentContentRefs`, `listAssignments`, `updateAssignmentDeadline`, `resourceIdOfVersion` eklendi.
+- OpenAPI ve `api-client` şeması yeniden üretildi. Migration yok.
+
+## Kesin kayıt ucu
+
+- `POST /api/v1/prospects/:prospectId/enroll` (core `prospect.enroll`, `enrollProspect`; DOM-KAY-001, DOM-KAY-011, DOM-KAY-035): açık aşamadaki adayı kesin kayda alır. Öğrenci, veli, taksitler, sözleşme ve adayın `Kayıt oldu` durumu kurum kilidi altında tek transaction'da yazılır; yazım yarıda başarısız olursa hiçbir kayıt, denetim kaydı ve istek anahtarı kalmaz. Yetki core `requireAuthorized(…, 'prospect.enroll', …)` ile işlemden önce ayrıca denetlenir; roller `yonetici`, `onburo` (öteki roller 403 `forbidden`), modüller `crm` (core komut tablosu) ve `finance` (rota `EXTRA_MODULES`; taksit ve sözleşme yazıldığı için): biri kapalıysa rol ve gövdeden önce 403 `module_disabled`, hiçbir kayıt yazılmaz (DOM-YTK-040).
+- Başarı 201: `entity` yeni öğrencidir, `Location` öğrenci kaydını (`/api/v1/collections/students/:id`) gösterir; denetim kaydı adaya bağlanır ve yalnız alan adları ile kimlikleri taşır. Yol api-tasarimi.md §1 alan komutudur (`POST /:id/<fiil>`); yeni kaynak doğduğu için 200 yerine 201.
+- `If-Match` (adayın sürümü) ve `Idempotency-Key` zorunlu: eksikse 400 `if_match_required` / `idempotency_key_required`; aynı anahtar ilk yanıtı tekrarlar, ikinci öğrenci ve taksit yazılmaz. Sıra: kapsam 404 → yetki 403 → sürüm 409. Kayıtlı aday 409 `prospect_already_enrolled`, vazgeçmiş veya tanınmayan aşamadaki aday 409 `prospect_closed`; dolu sınıf 422 `class_capacity_full`, geçersiz ilk vade 422 `invalid_payment_date`; olmayan veya başka kurumun aday ya da sınıfı 404.
+- Gövde API'nin kendi şemasıdır (`enrollProspectBodySchema`, katı; core `registrationSchema` API'ye açılmaz): `classId`, `totalCents` (kuruş, tamsayı, 10.000–100.000.000, yani 100–1.000.000 ₺), `count` (1–12), `startDate` (`YYYY-MM-DD`). Sayısal alanlar zorlanmaz: `"3600000"` gibi metin, kesirli veya sınır dışı tutar 400 (`issues` yolu `totalCents`). Gövdede `prospectId`, `institutionId`, eski `total` veya bilinmeyen alan 400. Core şimdilik tam lira çalıştığı için 100'ün katı olmayan tutar 422 `amount_not_whole_lira` (`issues` yolu `["totalCents"]`); servis core'a `totalCents / 100` geçirir (`TODO(core-kurus)`). Core davranışı ve sürümü değişmedi.
+- Veli, taksit ve sözleşme koleksiyonları yüklenmez (core yalnız ekler; `loadScope` `{ ids: [] }`); kurumun bütün faturaları her kayıtta okunmaz. Aynı adayı eşzamanlı kayda alan iki istekten yalnız biri yazılır, öteki 409 alır (test:pg).
+- OpenAPI ve `api-client` şeması yeniden üretildi. Migration yok.
+
+## Rubrik uçları
+
+- `GET /api/v1/rubrics` (sayfalı; rubrik, son sürümün özeti ve yayındaki sürüm kimliği) ve `GET /api/v1/rubrics/:rubricId` (bütün sürümler, her biri atama ve puan kullanım sayısıyla); yalnız `yonetici` ve `ogretmen` (core `isContentStaff`, rubrik kurumundur, IST-048). Modül `learning`; kapalıysa 403 `module_disabled`.
+- `POST /rubrics` (yeni rubrik ve ilk taslak, 201 + `Location`) ve `POST /rubrics/:rubricId/versions` (yeni taslak sürüm, 201 + `Location`; açık taslak varken 409 `open_rubric_version_exists`). Oluşturma uçları `Idempotency-Key` kabul eder, `If-Match` 400 `if_match_not_supported` verir. Dil okulunda kazanıma bağlı bant 422 `rubric_alignment_invalid` (DOM-BEC-020).
+- `PATCH /rubrics/:rubricId/versions/:versionId` (taslak düzenleme; verilmeyen alan kalır, `criteria` bütün olarak değişir, birleşmiş içerik core şemasıyla yeniden doğrulanır), `POST …/publish` ve `POST …/archive`: `If-Match` sürümün `rowVersion`'ıdır ve zorunludur (eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`). Yayım önceki yayındaki sürümü aynı işlemde arşivler; taslak olmayan veya kullanılmış sürümün düzenlenmesi 409 `rubric_version_immutable`, yayında olmayan sürümün arşivi 409 `rubric_version_not_published` (DOM-BEC-022). Düzenleme, yayım ve arşiv yalnız rubriğin sahibine ve yöneticiye açıktır (core `canManageRubric`; diğer öğretmen 403). Sıra: kapsam (404) → yetki (403) → sürüm (409).
+- Depo (`db/skills.ts`): `findRubric`, `listRubrics`, `applyRubricPublish`, `applyRubricArchive`, `rubricUsageByVersion` eklendi. Yayım önce yayındaki sürümü arşivler, sonra taslağı yayımlar; satır sürümü tutmazsa 409 `version_conflict`, eşzamanlı ikinci yayım 409 `published_rubric_version_exists`. Bu ve `rubric_version_exists` kodları kurum kilidi yüzünden uçtan tetiklenemez; depo testinde doğrulanır.
+- Rubrik başlığı, bant tanımı ve kriter metni loglanmaz; denetim kaydına yalnız alan adları yazılır (`rubric.create`, `rubric.version_create`, `rubric.draft_update`, `rubric.publish`, `rubric.archive`).
+- OpenAPI ve `api-client` şeması yeniden üretildi. Migration yok.
+
+## Aday/CRM yazma uçları
+
+- `POST /api/v1/prospects` (aday ekle; 201 + `Location`; `Idempotency-Key` zorunlu, `If-Match` 400 `if_match_not_supported`), `PATCH /api/v1/prospects/:prospectId` (aşama; gövde `{ stage, lostReason?, siblingOfId? }`), `POST /api/v1/prospects/:prospectId/notes` (not; 201 + `Location`), `POST /api/v1/prospects/:prospectId/meetings` (tanışma görüşmesi; 200) ve `POST /api/v1/prospects/:prospectId/trial-lessons` (deneme dersi; 200; yalnız `language_school`, okulda her rol için 404). Var olan adayı değiştiren uçlarda `If-Match` zorunlu (eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`). Kurallar core 2.19.0 `lib/prospects.ts` (DOM-KAY-001…009, DOM-KAY-030…034, DOM-DIL-030); roller yalnız `yonetici` ve `onburo` (öteki roller 403 `forbidden`), modül `crm`.
+- Aşama değişikliği `/stage` alt yolu yerine adayın kendi `PATCH`'idir: api-tasarimi.md §1 iç içe yolu yalnız sahiplikte kabul eder; durum geçişi talep ve randevuda da kaynağın `PATCH`'idir.
+- Adaylar kısmi yüklenmez: tekillik (DOM-KAY-002, -031), kardeş doğrulaması, görüşme çakışması ve deneme dersi katılımcı/kapasite sayımı kurumun bütün adaylarına kurum kilidi altında bakar. Aynı adayı eşzamanlı açan iki istekten ve aynı odaya eşzamanlı iki görüşmeden yalnız biri yazılır, öteki 409 `prospect_duplicate` / `meeting_conflict` alır (test:pg).
+- Not yazarının gösterilen adı oturum kullanıcısından (`users.name`) okunur; gövdede `authorName` 400 `validation_failed`. Kullanıcı satırı bulunamazsa not boş yazarla yazılmaz: programlama hatası olarak düz `Error` fırlar (500 `internal_error`, ayrıntı yalnız logda).
+- Mükerrer reddi (`prospect_duplicate`, `prospect_contact_shared`) eşleşen adayın kimliğini, telefonunu, e-postasını ve adını taşımaz; yanıt yalnız kod, ileti ve alan yolu içerir, logda da kimlik yoktur.
+- Log gizleme listesine `phone` (üst düzey), `guardianName`, `*.guardianName`, `notes` ve `*.notes` eklendi (kvkk: K); `test/security-defaults.test.ts` gerçek logger yapılandırmasıyla doğrular. Denetim kaydına yalnız değişen alan adları yazılır.
+- Kesin kayıt ucu (`prospect.enroll`) bu adımda açılmadı; öğrenci, fatura ve sözleşme yazdığı için ayrı görevde eklendi (yukarıda "Kesin kayıt ucu").
+- OpenAPI ve `api-client` şeması yeniden üretildi. Migration yok.
+
+## Alınabilir randevu saatleri okuma ucu
+
+- `GET /api/v1/appointments/slots?studentId=…&from=…&to=…` (öğrenci, veli): öğrencinin sınıfına ders veren etkin öğretmenlerin gelecekteki uygunluk saatleri; her saat `slotId`, `teacherId`, `teacherName`, `startsAt`, `duration`, `campusName` (varsa), `subjectNames` ve `available` taşır (`BookableSlot`). Kural core 2.19.0 `bookableSlots` (DOM-ILT-105); `available: false` talepteki `appointment_conflict` kararıyla aynıdır, nedeni, saati tutan randevu ve kişisi ile saatin iç notu dönmez (DOM-ILT-073).
+- Aralık ISO 8601; verilmezse şimdiden itibaren 14 gün, `to` yalnız `from` ile, en çok 28 gün. Aşan, ters, başlangıçsız aralık, geçersiz tarih ve bilinmeyen parametre 400 `validation_failed`.
+- Başka velinin çocuğu, kapsam dışı veya olmayan öğrenci 404 `not_found` (talepteki 403 `student_scope_denied`'den farklı: okuma öğrencinin varlığını sızdırmaz); pasif öğrenci 422 `student_inactive`. Öğretmen, yönetici ve ön büro 403 `forbidden`; `communication` kapalıyken 403 `module_disabled` (mevcut modül kapısı).
+- Salt okunur (`runReadOnly`): kurum kilidi alınmaz, denetim kaydı ve sürüm yazılmaz. Ders programı, etüt, etkinlik ve randevular talep ucundaki gibi bütünüyle yüklenir (`TODO(perf)`).
+- OpenAPI ve `api-client` şeması yeniden üretildi. Migration yok.
+
+## Beceri görevi tabloları ve deposu
+
+- Migration `0013_create_skill_tasks` eklendi (ADR 0004 karar 4–7): `rubrics`, `rubric_versions`, `task_assignments`, `task_assignment_targets`, `task_attempts`, `task_submissions`, `submission_versions`, `submission_drafts`, `resubmission_requests`, `rubric_scores`, `second_rating_requests`, `score_appeals`, `score_transfers`. Bütün yabancı anahtarlar `(institution_id, …)` bileşiktir; başka kurumun satırına bağlanmak veritabanınca reddedilir. Tablolar yeni ve boştur; veri migration'ı yok.
+- Değişmez satırlar (`submission_versions`, `rubric_scores`, `resubmission_requests`, `score_transfers`) `kampus_reject_immutable_change()` tetikleyicisiyle korunur: `update`, `delete` ve `truncate` 55000 ile reddedilir; yalnız imha işi `set local kampus.allow_immutable_purge = 'on'` ile siler. Kullanılmış rubrik sürümü atama ve puan yabancı anahtarlarında `on delete restrict`'tir (DOM-BEC-022).
+- Not aktarımının kaynak denemesi aynı atama ve kursiyere bileşik yabancı anahtarla bağlıdır (`task_attempts_id_assignment_learner_key`). Serbest metinler core sınırlarıyla kısıtlıdır: rubrik başlığı 200, genel yorum 5000, itiraz ve karar gerekçesi 2000 karakter.
+- Kurum kapsamlı depo `src/db/skills.ts` eklendi; okumalar school-core `skills/*` satır tiplerini döndürür. Eşzamanlı ikinci yazma 409 ile reddedilir: `open_rubric_version_exists`, `attempt_in_progress`, `submission_exists`, `version_conflict`, `resubmission_exists`, `rubric_score_exists`, `appeal_exists`, `score_transfer_exists`; taslağın eski revizyonla yazılması `draft_conflict` (IST-047).
+- `schema/columns.ts` ortak kolon yardımcıları (`oneOf`, `keys`, `requiredColumns`) eklendi; `schema/resources.ts` bunları kullanır, şema farkı yoktur.
+- Depo kısıt adına göre hata döndürür: benzersizlik 409 (`rubric_version_exists`, `published_rubric_version_exists`, `assignment_target_exists` eklendi); not aktarımı, rubrik puanı ve itirazda sahiplik uyuşmazlığı 422 (`score_transfer_source_mismatch`, `rubric_version_mismatch`, `appeal_learner_mismatch`), kaynak yoksa 404. Okumalar arşivli deneme, teslim, taslak ve itirazı dışlar.
+- HTTP ucu yok; OpenAPI ve `api-client` değişmedi. Dosyalı ve sesli teslim sürümü (`TODO(F3c2-files)`) henüz saklanmaz: 422 `submission_kind_unavailable`.
+
+## Randevu yazma uçları
+
+- `POST /api/v1/appointments` (öğrenci, veli; uygunluk saati `slotId` seçilerek talep; 201 + `Location`; `Idempotency-Key` zorunlu, `If-Match` 400 `if_match_not_supported`) ve `PATCH /api/v1/appointments/:appointmentId` (öğretmen, öğrenci, veli; `Onaylandı`, `Reddedildi`, `İptal`, `Geri çekildi`; `If-Match` zorunlu). Kurallar core 2.18.0 `lib/appointments.ts` (DOM-ILT-100…104); modül `communication`. Yönetici ve ön büro yazamaz (403 `forbidden`).
+- Talepte uygunluk saatlerinden yalnız seçilen saat yüklenir (`loadScope`); ders, etüt, etkinlik ve randevular çakışma denetimi için bütünüyle yüklenir. Kurum kilidi aynı saate eşzamanlı iki talepten yalnız birini yazar, öteki 409 `appointment_conflict` alır (test:pg).
+- Durum değişikliğinde `If-Match` çalıştırıcının `expectedVersions` denetimiyle karşılaştırılır (önce kapsam ve yetki, sonra sürüm): olmayan veya kapsam dışı randevu yanlış sürümde de 404, görünür ama yetkisiz geçiş (ör. velinin öğrencinin açtığı talebi onaylaması) 403, yetkili kullanıcı 409 `version_conflict` alır. Serviste ayrı sürüm denetimi yoktur.
+- Çakışan randevuyu isteği yapan göremiyorsa 409 `appointment_conflict` iletisi genel kalır ("Bu saat uygun değil.", `issues` yolu `slotId`); başka velinin gizli görüşmesi sızmaz (DOM-ILT-073, DOM-ILT-103).
+- `POST /api/v1/assessment/slot-remove/:id`: bekleyen veya onaylı randevusu olan saat 409 `availability_has_appointments` (`issues` yolu `slotId`); komut randevuları da yükler (DOM-ILT-101).
+- Yeni hata kodları: `appointment_teacher_only`, `appointment_requester_only`, `appointment_cancel_forbidden` (403); `appointment_conflict`, `appointment_closed` (409); `appointment_slot_unavailable`, `appointment_in_past`, `appointment_type_invalid`, `appointment_transition_invalid` (422, `issues` alan yoluyla). Red ve iptalde gerekçe yoksa 400 `validation_failed` (`reason`).
+- Log gizleme listesine `note`, `*.note`, `reason`, `*.reason`, `history[*].reason` ve `*.history[*].reason` eklendi (kvkk: Ç); denetim kaydına yalnız değişen alan adları yazılır. pino `*.x` deseni yalnız ikinci düzeyi yakaladığı için üst düzey `answer`, `followUps` ve `reasonCategory` de listeye alındı. `test/security-defaults.test.ts` uygulamanın gerçek logger yapılandırmasıyla üst düzey, gövde içi ve geçmiş dizisindeki metnin loga düşmediğini doğrular.
+- OpenAPI ve `api-client` şeması yeniden üretildi. Migration yok.
+
+## Öğretmenime Sor yazma uçları
+
+- `POST /api/v1/questions` (öğrenci; kendi sınıfının o dersine atanmış öğretmene soru; 201 + `Location`), `POST /api/v1/questions/:questionId/answers` (atanmış öğretmen; ilk yanıt `answer`/`answeredAt`, sonrakiler `followUps`, en çok 10 yanıt; 201 + `Location`), `PATCH /api/v1/questions/:questionId` (öğrenci; yalnız `{ "withdrawn": true }`, yanıtlanmamış soruyu geri çeker, kayıt silinmez; 200). Kurallar core `lib/questions.ts`'tedir (DOM-ILT-090…092); rol ve kapsam core `requireAuthorized`, modül `learning`. Yazma `runCommand` ile kurum kilidi, `audit_log` (yalnız alan adları) ve kısmi yüklemeyle (`loadScope`: soru açarken hiçbir soru, yanıt ve geri çekmede hedef soru) tek transaction'dadır.
+- Soru oluşturmada `Idempotency-Key` zorunlu, `If-Match` 400 `if_match_not_supported`. Yanıt ve geri çekmede `If-Match` zorunlu (eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`); aynı sürümle eşzamanlı ikinci yanıt 409 olur ve ek yanıt açmaz (`test:pg`).
+- Başka öğretmenin veya öğrencinin sorusu, başka kurumun sorusu 404 (varlık sızdırılmaz). Veli, ön büro ve yönetici soru yazamaz (403); veli soruyu yalnız okur (DOM-ILT-093).
+- Yeni hata kodları: `question_scope_denied`, `question_teacher_reassigned` (403; ikincisi sınıfın dersinden alınan öğretmenin yanıtlanmış soruya ek yanıtında); `question_withdrawn`, `question_answered` (409); `question_teacher_unavailable`, `question_teacher_required`, `question_topic_unknown`, `question_files_unsupported`, `question_answer_limit` (422). Gövdede `studentId`, dosya ve bilinmeyen alan 400 `validation_failed`.
+- İşlem çalıştırıcı: `If-Match` sürüm farkı artık core yetki ve kapsam denetiminden sonra bildirilir. Önceden kapsam dışı kullanıcı var olan kayda yanlış sürümle 409 `version_conflict` alıyor, olmayan kayıtta 404 alıyordu; bu fark kaydın varlığını sızdırıyordu (soru yanıtı ve geri çekmede başka öğretmen/öğrenci). Şimdi core'un 403/404 reddi önce gelir; yetkili kullanıcı yanlış sürümde yine 409 alır, core'un 422/409 hataları sürüm tutmadığında 409 `version_conflict` olur. Runner'dan geçen bütün `If-Match`'li uçlar etkilenir (talep, duyuru, iş akışı, yoklama, kampüs/öğretmen/sınıf düzenlemesi, optik/etüt); içerik havuzu ve modül ayarı zaten okunabilirlik/rol denetiminden sonra karşılaştırıyordu.
+- Log `redact` listesine `*.answer` ve `*.followUps` eklendi; soru ve yanıt metni loglanmaz (DOM-ILT-014). OpenAPI ve `api-client` şeması yeniden üretildi. Migration yok.
+
+## Talep ve izin/mazeret yazma uçları
+
+- `POST /api/v1/requests` (veli; bağlı çocuğu için talep, şikayet veya öneri; 201 + `Location`), `PATCH /api/v1/requests/:requestId` (ön büro ve yönetici; durum, ilgili birim, eklenen yanıt; `If-Match` zorunlu), `POST /api/v1/absences` (veli; izin veya mazeret; 201 + `Location`). Oluşturma uçlarında `Idempotency-Key` zorunlu, `If-Match` 400 `if_match_not_supported`. Kurallar core `lib/requests.ts`'tedir (DOM-ILT-053, DOM-ILT-080); rol ve kapsam core `requireAuthorized`, modül talepte `communication`, bildirimde `academic`. Yazma `runCommand` ile kurum kilidi, `audit_log` (yalnız alan adları) ve kısmi yüklemeyle (`loadScope`: talep açarken hiçbir talep, güncellemede hedef talep, bildirimde aynı öğrencinin bildirimleri) tek transaction'dadır.
+- `POST /api/v1/absences` gövdesi katıdır: gerekçe yalnız zorunlu `reasonCategory` (`health`, `family`, `official`, `other`); serbest açıklama (`reason`), `category` ve bilinmeyen alan 400 `validation_failed` (KVKK md. 6, en az veri; özel nitelikli veri `records.data`'ya yazılmaz). Kayıt `reasonCategory` ve tür etiketini (`category`) taşır; eski kayıtların `reason` alanı okunmaya devam eder. Log `redact` listesine `*.reasonCategory` eklendi.
+- Yeni hata kodları: `student_scope_denied` (403, bu uçlarda); `request_unchanged`, `request_resolved`, `absence_overlap` (409); `request_status_invalid`, `student_inactive`, `absence_notice_late`, `absence_files_unsupported` (422, `issues` alan yoluyla).
+- `GET /api/v1/collections/absences`: öğretmenlerden yalnız öğrencinin sınıf rehber öğretmeni okur (core 2.13.0, DOM-ILT-053); önceden öğrenciye ders veren her öğretmen okuyordu. Ön büro yine 403.
+- OpenAPI ve `api-client` şeması yeniden üretildi. Migration yok.
+
+## Core iş kuralı hatalarında alan yolu (`issues`)
+
+- `mapOperationError`: `DomainError.path` varsa 422 (kind `rule`), 409 (`conflict`) ve 403 (`forbidden`, modül kapalı hariç) gövdesine 400 Zod yanıtıyla aynı `issues: [{ path, code, message }]` eklenir; `code` hatanın kodu, `message` core'un Türkçe iletisidir. `path` core'un sabit alan yoludur (kullanıcı girdisi değil). Yolsuz `DomainError`'da gövde eskisi gibidir (`issues` yok); 404 genel `not_found` kalır.
+- Örnek: sınıf kaydında `subject_teacher_required` → `issues[0].path = ["subjectTeachers", "<dersId>"]`; içerik yayım sorunu `subject_required` → `["tags", "subjectId"]`. Web formları iş kuralı hatasını alan altında gösterebilir (`fieldFor` ile açık tercih; bağlanmazsa yalnız toast).
+- `ErrorResponse.issues` açıklaması güncellendi; OpenAPI ve `api-client` şeması yeniden üretildi (biçim değişmedi). Yeni uç ve migration yok.
+
+## İçerik havuzu yazma uçları
+
+- `POST /api/v1/resources` (201 + `Location`), `PATCH /api/v1/resources/:resourceId/versions/:versionId` (kısmi; `If-Match` zorunlu), `POST /api/v1/resources/:resourceId/versions` (yeni sürüm), `POST /api/v1/resources/:resourceId/versions/:versionId/{submit,publish,withdraw,approve,reject,reopen,archive,report}`, `POST /api/v1/resources/:resourceId/{remove,share,copy}`. Roller yönetici ve öğretmen (kaldırma yalnız yönetici), modül `learning`. Kurallar core `content/*` plan fonksiyonlarıdır; yazma `runCommand` ile kurum kilidi, isteğe bağlı `Idempotency-Key`, `audit_log` ve geri okumayla tek transaction'dadır.
+- Yeni hata kodları: `if_match_required` (400); `review_required`, `resource_action_forbidden`, `share_target_out_of_scope`, `license_forbids_copy` (403); `version_immutable`, `open_version_exists`, `resource_transition_invalid`, `resource_removed`, `copy_source_not_published` (409); `content_type_immutable`, `quiz_item_missing`, `resource_files_unsupported`, `share_target_not_found`, `license_inherited`, `attribution_inherited`, `reason_required` (422).
+- Ayrıntı yanıtının `resource` nesnesi `archivedAt` ve `rowVersion` taşır. `resources.archived_at` bütün sürümler arşivlenince ve kaldırmada dolar, yeni sürüm açılınca boşalır. Şema değişikliği ve migration yok.
+- Bilinen sınırlar: onayı yalnız yönetici verir (`TODO(content-reviewer)`), telif bildirimi gerekçesi saklanmaz (`TODO(content-report-log)`), dosyalı içerik 422. OpenAPI ve `api-client` şeması yeniden üretildi. `test:pg`: eşzamanlı iki onayda biri 409.
+
+## Kampüs, öğretmen ve sınıf kaydetme uçları
+
+- `POST /api/v1/branches`, `POST /api/v1/teachers`, `POST /api/v1/classes`: kayıt oluşturur, 201 + `Location` (`/api/v1/collections/<koleksiyon>/<id>`). Gövde core şemasıdır (`branchSchema`, `teacherSchema`, `classInputSchema`: sınıf bilgisi + `subjectTeachers` ders → branş öğretmeni); sınıf ve ders atamaları tek işlemde yazılır. `Idempotency-Key` zorunlu; `If-Match` 400 `if_match_not_supported`.
+- `PATCH /api/v1/branches/:branchId`, `/teachers/:teacherId`, `/classes/:classId`: kısmi gövde (`branchPatchSchema`, `teacherPatchSchema`, `classPatchSchema`) kaydın güncel değerleriyle birleşip core `updateBranch`/`updateTeacher`/`updateClass` ile doğrulanır. `If-Match` zorunlu (yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`); arşivli, olmayan veya başka kurumun kaydı 404. Sınıf düzenlemesi aynı dersin ders atamasını yerinde günceller (kimlik ve sürüm korunur).
+- Yetki core `branch.save`, `teacher.save`, `class.save`: yalnız `yonetici` (DOM-YTK-001; ön büro sınıf ve kontenjanı yalnız okur). Diğer roller 403. Kontenjan, branş, derslik, ad/e-posta tekilliği ve program/etüt çakışmaları core kurallarıdır (422/409). Denetim kaydı `branches|teachers|classes.create|update`, `changes` yalnız alan adları. Kampüs, sınıf ve kadro çekirdek kayıttır; modül denetimi yoktur.
+- Öğretmen kaydı hesap ve `membership_links` açmaz; hesap kurum üyeleri ucunun işidir.
+- `commandHeadersSchema(…, { ifMatch: 'required' })` ve `requireIfMatch()` ön işleyicisi eklendi. OpenAPI ve `api-client` şeması yeniden üretildi; migration yok.
+
+## İçerik havuzu tabloları ve okuma uçları
+
+- Migration `0010_enable_btree_gin` (`btree_gin` eklentisi) ve `0011_create_content_pool`: `resources`, `resource_versions`, `resource_version_outcomes`, `resource_version_items`, `resource_shares` (bileşik kurum yabancı anahtarları, durum/sözlük `check`'leri, kaynak başına tek düzenlenen sürüm, `(institution_id, search_vector)` bileşik GIN). Ayrıntı `docs/muhendislik/veritabani.md` §4, §6.
+- `GET /api/v1/resources`, `GET /api/v1/resources/:resourceId`, `GET /api/v1/resources/:resourceId/versions/:versionId` (`learning` modülü; yönetici, öğretmen, öğrenci, veli; ön büro 403). Görünürlük core `canReadVersion`'dır (SQL ön süzgeci + core yeniden doğrulama); öğrenci/veli yalnız güncel yayın sürümünü cevap anahtarı ve lisans ayrıntısı olmadan görür. Arama Türkçe harf ve NFKD duyarsız önek araması; süzgeçler beyaz listede, bilinmeyen parametre 400.
+- Yazma uçları yok (sonraki dilim). OpenAPI ve `api-client` şeması yeniden üretildi. Test PGlite'ı `btree_gin` ile açılır (`newPGlite`).
+
+## Genel Bakış tek özet ucu
+
+- `GET /api/v1/dashboard` (beş rol): Genel Bakış'ın kartları, kısa listeleri ve mini grafik verisi tek yanıtta; yanıt `role` ayırıcılı. Web rol başına 6-17 `counts`/liste isteği yerine tek istek atar. Değerler `countCollection`/`listCollection` ile hesaplanır (rol/kurum kapsamı, alan ayıklama ve türetilmiş durum `counts` ucuyla aynıdır); sayım hâlâ bellekte (`TODO(perf)`).
+- Okuduğu koleksiyon aktöre kapalı olan bölüm (modül kapalı, kurum türünde yok, rol okuyamıyor) `null` döner. `studentId` yalnız öğrenci ve velide: velide verilmezse ilk çocuk, personelde 400, kapsam dışı öğrenci 404. Öğrenci özetinde ödeme alanı yoktur.
+- OpenAPI ve istemci şeması yeniden üretildi. Şema değişikliği ve migration yok; mevcut uçlar değişmedi.
+
+## R6 inceleme düzeltmeleri
+
+- Okuma kapsamı: öğrenci ve veli `opticalProfiles`'ta yalnız görebildiği denemelerin profilini alır (liste, arama, sıralama, ayrıntı ve `counts?groupBy=examId`); başka düzeyin profili artık yok. Kapsam kaynağı `mockExams`'i de yükler. Yanıt şekli değişmedi.
+- `GET /audit-events`: yeni `createdBefore` sorgu parametresi (ISO 8601 UTC, hariç üst zaman sınırı). Sayfalı dışa aktarma sınırı ilk istekte sabitler; sürerken yazılan yeni denetim kaydı offset sayfalarını kaydırıp CSV'de mükerrer satır üretmez. OpenAPI ve `api-client` şeması yeniden üretildi.
+- `GET /institution-members`: rolü tanınmayan (ör. sütun varsayılanı `member`) tek bir üyelik artık bütün listeyi 500'e düşürmez; satır `institution_members.role_unrecognized` uyarısıyla (yalnız üyelik kimliği) loglanıp listeden atlanır. `meta.total` satırı saymaya devam eder. Kimlik doğrulamadaki `safeParse` kalıbıyla aynıdır.
+
+## Ayarlar: kurum kullanıcıları ve işlem geçmişi
+
+- `GET /api/v1/institution-members` (yalnız yönetici): kurum üyeleri; ad, e-posta, rol, durum (bağlı kişi kaydından türetilir), bağlı kişi adı ve oluşturulma anı. `q`, `role`, `status`, `sort`, sayfalama. Telefon, parola, oturum ve IP dönmez. Yalnız okuma.
+- `GET /api/v1/audit-events` (yalnız yönetici): kurumun `audit_log` kayıtları en yeniden eskiye; zaman, işlem, varlık, yapan kişi (ad, rol), alan adları ve gerekçe. Tarih (Europe/Istanbul günü), yapan kişi ve varlık türü süzgeçleri. Değer, IP ve istek kimliği dönmez; rehberlik kayıtlarında alan adı ve kimlik de dönmez (DOM-YTK-020). Kimlik olayları (`auth.*`) güvenlik kaydı olduğundan listeden süzülür. Okuma denetim kaydı üretmez.
+- Şema değişikliği ve migration yok.
+
+## Optik ve etüt güvenlik incelemesi düzeltmeleri
+
+- `POST /assessment/plan`: `expectedPlan` artık dosya alanı gibi ölçülür; 1 MB üstü 413 `payload_too_large` (`issues[0].path = ["expectedPlan"]`) ve gövde tavanı 4 MiB'dir. Daha önce JSON kaçışlı büyük plan genel 1 MiB sınırına takılıp onayda hep 413 veriyordu. Boş `expectedPlan` (`""`) artık 400; alan verilirse en az 1 karakter olmalıdır (bayatlık denetimini atlatıyordu). OpenAPI yeniden üretildi.
+- Önizlemeler (`plan/preview`, `evaluate/preview`) kurum danışma kilidini almaz: `runReadOnly` (`REPEATABLE READ READ ONLY` transaction, yazma yok) ile çalışır; `PreviewRollback` ile geri alma kalktı. Ardışık büyük önizlemeler kurumun yazan işlemlerini sıraya sokmaz. Davranış (yanıt, "hiçbir şey yazmaz") değişmedi.
+- Testler: öğretmenin kendi branşında plan önizleme/onayı, Deneme Sınavları kapalıyken optik/plan uçları 403 `module_disabled`, başka kurumun sınavıyla plan 404, `test:pg` kilit tutulurken önizlemenin tamamlanması.
+- `docs/muhendislik/veritabani.md`: migration 0009 indeksleri ve transaction dışı indeks çalıştırıcı kararı notu (şema/migration değişikliği yok).
+
+## Optik değerlendirme ve otomatik etüt köprüsü
+
+- `POST /api/v1/assessment/<komut>[/:recordId]`: core `ASSESSMENT_COMMANDS`'ın yedi komutu (`profile`, `evaluate`, `plan`, `slot`, `slot-remove`, `cancel`, `attendance`) `runAssessment` ile tek transaction'da. Rol, kapsam ve modül (`optical`, `tutoring`) core'dadır; `evaluate` ve `plan` `Idempotency-Key` ister, kayıtlı komutlarda `If-Match` kaydın sürümüdür. Yanıt `CommandResult`; denetim eylemi `assessment.<komut>`.
+- Okuyucu dosyası gövdede metin (`text`, `keyCsv`): alan başına 1 MB (aşarsa 413 `payload_too_large`, gövde tavanı bu rotalarda 4 MiB), dosya hataları 422 ve `issues[0].path = [alan, "line", satır]`.
+- `POST /api/v1/assessment/plan/preview` ve `/evaluate/preview`: saf önizleme (işlem çalıştırıcının hattı, sonuç `after` kancasında transaction geri alınarak çıkarılır; satır, sürüm ve denetim kaydı değişmez). Plan yanıtı `sessions`, `unresolved` (neden), `covered`, `summary`, `expectedPlan`; değerlendirme yanıtı özet ve `digest`.
+- Onayda fark: `plan` + `expectedPlan` bayatsa 409 `tutoring_plan_stale` ve `issues` içinde plan farkı; `evaluate` + `expectedDigest` bayatsa 409 `evaluation_stale`. Hiçbir şey yazılmaz.
+- `services/commands.ts`: `execute`, `auditEntity`, `auditedEntity`, `Entity` dışa aktarıldı (yeni servis kullanır; davranış değişmedi). OpenAPI ve istemci şeması yeniden üretildi.
+- Eski `POST /tutor-sessions*` uçları değişmedi.
+- Şema değişikliği ve migration yok.
+
+## Kurum modül ayarı
+
+- `GET /api/v1/modules` (yönetici): kurum türünde bulunan modüller, açık/kapalı durumları ve `If-Match` için ayar sürümü.
+- `PATCH /api/v1/modules/:moduleKey` (yönetici, gövde `{ enabled }`): modülü açar/kapatır (DOM-YTK-040, DOM-YTK-042). `If-Match` (`institution_settings.version`) ve `Idempotency-Key` zorunludur. Tek transaction'da kurum kilidi, sürüm denetimi, school-core `setModuleEnabled`, `institutions.enabled_modules` ve sürüm güncellemesi, `audit_log` (`module.set`, `changes.fields: ['enabledModules']`). Kurum türünde olmayan modül 422 `module_unavailable_for_type`, değişmeyen durum 409 `module_unchanged`, eski sürüm 409 `version_conflict`. Kapatma veri silmez; kapalı modülün uçları 403 `module_disabled` döner, açılınca kayıtlar aynen görünür.
+- Hata mesajı `if_match_required` eklendi. Şema değişikliği ve migration yok.
+- `test/support/pg.ts`: `test:pg` dosyaları paralel migrate ederken benzersizlik hatası almasın diye migrate yeniden denenir.

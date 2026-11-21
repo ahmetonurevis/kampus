@@ -1,1 +1,1 @@
-export * from '@kampus/school-core/data/curriculum.js'
+export * from '@kampus/school-core/data/curriculum.ts'

@@ -1,0 +1,2 @@
+ALTER TABLE "submission_versions" ADD COLUMN "file_ids" uuid[] DEFAULT '{}'::uuid[] NOT NULL;--> statement-breakpoint
+ALTER TABLE "submission_versions" ADD CONSTRAINT "submission_versions_file_ids_check" CHECK (cardinality("submission_versions"."file_ids") <= 10);

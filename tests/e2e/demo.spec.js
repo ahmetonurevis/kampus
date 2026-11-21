@@ -16,13 +16,23 @@ test('Giriş ve beş rol arasında geçiş', async ({ page }) => {
     await expect(page.locator('main h1')).toBeVisible()
   }
 })
-for (const [role, pages] of Object.entries(navigation))
-  test(`${role}: tüm sayfalar masaüstünde ve mobilde açılır`, async ({ page }) => {
+// Her rolün sayfaları küçük gruplara bölünür: tek testte bütün sayfaları gezmek CI'daki 45 sn
+// sınırını aşıyordu (.claude/rules/testler.md).
+const PAGES_PER_GROUP = 6
+const extraRoutes = { onburo: ['/onburo/aday/pr1'], ogretmen: ['/ogretmen/ogrenci/s1'] }
+const routeGroups = Object.entries(navigation).flatMap(([role, pages]) => {
+  const routes = [...pages.map((p) => `/${role}/${p.path}`), ...(extraRoutes[role] ?? [])]
+  const count = Math.ceil(routes.length / PAGES_PER_GROUP)
+  return Array.from({ length: count }, (_, index) => ({
+    role,
+    label: `${index + 1}/${count}`,
+    routes: routes.slice(index * PAGES_PER_GROUP, (index + 1) * PAGES_PER_GROUP),
+  }))
+})
+for (const { role, label, routes } of routeGroups)
+  test(`${role}: tüm sayfalar masaüstünde ve mobilde açılır (grup ${label})`, async ({ page }) => {
     const errors = []
     page.on('pageerror', (error) => errors.push(error.message))
-    const routes = pages.map((p) => `/${role}/${p.path}`)
-    if (role === 'onburo') routes.push('/onburo/aday/pr1')
-    if (role === 'ogretmen') routes.push('/ogretmen/ogrenci/s1')
     for (const path of routes) {
       await page.setViewportSize({ width: 1440, height: 1000 })
       await page.goto(path)
@@ -454,7 +464,7 @@ test('Yönetici öğretmen oluşturur, iletişimini günceller ve arşivler', as
   await page.getByRole('button', { name: 'Arşiv', exact: true }).click()
   await expect(page.locator('tbody')).toContainText('Çağla Öğretmen')
 })
-test('Ders filtreleri, fen öğretmenine soru/mesaj ve gerçek iki video', async ({ page }) => {
+test('Analiz dersi filtresi ve materyal PDF indirme', async ({ page }) => {
   await page.goto('/ogrenci/sinav-analizi')
   await page.getByLabel('Analiz dersi').selectOption('math')
   await expect(page.getByRole('heading', { name: 'Matematik · Konu analizi' })).toBeVisible()
@@ -470,6 +480,8 @@ test('Ders filtreleri, fen öğretmenine soru/mesaj ve gerçek iki video', async
   expect((await readFile(await (await downloadPromise).path())).subarray(0, 4).toString()).toBe(
     '%PDF',
   )
+})
+test('Fen öğretmenine soru ve mesaj gönderme (ders seçimi)', async ({ page }) => {
   await page.goto('/ogrenci/soru-sor')
   await page.getByRole('button', { name: 'Yeni soru sor' }).click()
   await page.getByLabel('Ders ve öğretmen').selectOption('science')
@@ -484,11 +496,14 @@ test('Ders filtreleri, fen öğretmenine soru/mesaj ve gerçek iki video', async
   await page.getByLabel('Branş öğretmeni', { exact: true }).selectOption('t3')
   await page.getByLabel('Mesajınız', { exact: true }).fill('Fen deneyi için teşekkürler hocam.')
   await page.getByRole('button', { name: 'Mesajı gönder' }).click()
+  const saved = await stored(page)
+  const science = saved.conversations.find((c) => c.teacherId === 't3' && c.audience === 'student')
   expect(
-    (await stored(page)).conversations
-      .find((c) => c.teacherId === 't3' && c.audience === 'student')
-      .messages.at(-1).text,
+    saved.conversationMessages.filter((m) => m.conversationId === science.id).at(-1).text,
   ).toContain('Fen deneyi')
+})
+// Karantina (#12, OG-975): Linux CI Chromium'unda H.264/AAC oynatma ilerlemiyor; yerelde geçer.
+test.fixme('İki video gerçekten oynatılır (kararsız, kayıt #12)', async ({ page }) => {
   await page.goto('/ogrenci/videolar')
   await expect(page.locator('.video-card')).toHaveCount(2)
   for (let i = 0; i < 2; i++) {

@@ -1,0 +1,4 @@
+#!/bin/sh
+# Git commit-msg hook'u: mesaj standardını denetler (docs/muhendislik/git-ve-surum.md §2).
+# `pnpm install` kök `prepare` betiğiyle `core.hooksPath=.githooks` kurar. Mantık .claude/hooks/commit-mesaji.ts'te.
+exec node --no-warnings "$(git rev-parse --show-toplevel)/.claude/hooks/commit-mesaji.ts" "$1"

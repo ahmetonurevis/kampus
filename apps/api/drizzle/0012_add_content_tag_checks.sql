@@ -1,0 +1,5 @@
+-- Kalan sözlük kolonlarına (etkinlik biçimi, etkileşim kanalı, türetilmiş lisans türü) diğer etiket
+-- kolonları gibi `check`. Tablo 0011'de yeni açıldı ve henüz yazma ucu yok: `not valid` adımı gerekmez.
+ALTER TABLE "resource_versions" ADD CONSTRAINT "resource_versions_activity_mode_check" CHECK ("resource_versions"."activity_mode" is null or "resource_versions"."activity_mode" in ('reception', 'production', 'interaction', 'mediation'));--> statement-breakpoint
+ALTER TABLE "resource_versions" ADD CONSTRAINT "resource_versions_interaction_channel_check" CHECK ("resource_versions"."interaction_channel" is null or "resource_versions"."interaction_channel" in ('spoken', 'written', 'online'));--> statement-breakpoint
+ALTER TABLE "resource_versions" ADD CONSTRAINT "resource_versions_license_kind_check" CHECK ("resource_versions"."license_kind" is null or "resource_versions"."license_kind" in ('institution_original', 'contains_quotation', 'platform_derived', 'open_license', 'public_domain', 'licensed_publication', 'external_reference'));

@@ -13,7 +13,7 @@ import {
   notify,
 } from '../stores/demo.js'
 import { money, dateLabel, sum, invoiceStatus } from '../lib/format.js'
-import { payInvoice } from '../lib/domain.js'
+import { payInvoice } from '../lib/payments.js'
 import { previewPdf, exportCsv, pendingDocuments } from '../lib/download.js'
 import PageHeading from '../components/PageHeading.vue'
 import StatCard from '../components/StatCard.vue'

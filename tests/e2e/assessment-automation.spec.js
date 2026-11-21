@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { restoreSnapshot } from '../../packages/school-core/src/lib/demo-persistence.js'
+import { restoreSnapshot } from '../../packages/school-core/src/lib/demo-persistence.ts'
 const fixedTime = '2026-10-06T10:00:00.000Z'
 test.beforeEach(async ({ page }) => {
   await page.clock.setFixedTime(fixedTime)

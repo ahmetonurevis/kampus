@@ -1,6 +1,6 @@
 <script setup>
 import { useViewMemory } from '../lib/view-memory.js'
-import { tutoringCalendarEntries } from '@kampus/school-core/lib/assessment-automation.js'
+import { tutoringCalendarEntries } from '@kampus/school-core/lib/assessment-automation.ts'
 import { computed } from 'vue'
 import {
   state,

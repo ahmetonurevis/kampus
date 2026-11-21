@@ -1,0 +1,6 @@
+---
+etki: major
+---
+
+- **Kırıcı:** Satın alma raporuna teslim, fatura ve ödeme sütunları eklendi (ON-336; DOM-FIN-075, K-195…K-199): `PurchaseReportInput` zorunlu `receiptLines` (kabul kalemleri), `invoices` (tedarikçi faturaları), `payments` (ödemeler) ve `invoiceDays` (siparişsiz faturanın günleri) alanlarını alır. Her kırılım ve toplam satırı teslim alınan (`receivedNetCents`, KDV hariç), faturalanan, ödenen ve açık tutarı (`invoicedGrossCents`, `paidCents`, `openCents`, KDV dahil) verir; siparişsiz faturalar `unlinkedInvoices`, iptal edilen siparişin faturası ve ödemesi `cancelled` altındadır. Geçiş: çağıran kapsamdaki siparişlerin kabul kalemlerini, bu siparişlere bağlı ve fatura tarihi kapsam günlerindeki siparişsiz faturaları ve bunların ödemelerini verir (kayıt yoksa boş dizi).
+- **Kırıcı:** `purchaseReportCsv` sütun başlıkları KDV esasını yazar: "Sipariş", "Net", "KDV", "Brüt" yerine "Sipariş sayısı", "Sipariş tutarı (KDV hariç)", "Sipariş KDV", "Sipariş tutarı (KDV dahil)"; sona "Teslim alınan (KDV hariç)", "Faturalanan (KDV dahil)", "Ödenen (KDV dahil)", "Açık (KDV dahil)" eklendi ve toplamın altına "Siparişsiz fatura" satırı geldi. Geçiş: CSV'yi sütun adıyla okuyan araçlar yeni adlara uyarlanır.

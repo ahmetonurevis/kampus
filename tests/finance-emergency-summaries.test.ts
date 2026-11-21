@@ -214,14 +214,14 @@ describe('DOM-FIN-155: acil iletişim (K-501)', () => {
         parentId: 'p-1',
         membershipId: null,
         relationship: 'mother',
-        custody: 'custodial',
+        custody: 'full',
         contactRestricted: false,
       },
       {
         parentId: 'p-2',
         membershipId: null,
         relationship: 'father',
-        custody: 'custodial',
+        custody: 'full',
         contactRestricted: true,
       },
       {

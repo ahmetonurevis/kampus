@@ -284,6 +284,15 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // Katılıma sertifika bağı yüklemeyle yeni özlük belgesi açabilir; çift tıklama ikinci belgeyi
   // açmaz (routes/finance-professional-development-hours.ts; DOM-FIN-144, ON-215).
   'POST /api/v1/finance/professional-development/{programId}/enrollments/{enrollmentId}/certificate',
+  // Servis aracı, güzergâh ve öğrenci ataması; kulüp, üyelik ve yoklama; çift tıklama ikinci
+  // aracı, güzergâhı, atamayı, üyeliği ya da oturumu açmaz (routes/finance-transport.ts,
+  // routes/finance-clubs.ts; DOM-FIN-142, ON-098).
+  'POST /api/v1/finance/transport/vehicles',
+  'POST /api/v1/finance/transport/routes',
+  'POST /api/v1/finance/transport/routes/{routeId}/assignments',
+  'POST /api/v1/finance/clubs',
+  'POST /api/v1/finance/clubs/{clubId}/members',
+  'POST /api/v1/finance/clubs/{clubId}/sessions',
 ]
 // Onur: kayıt ve finans sonu
 

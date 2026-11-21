@@ -245,6 +245,12 @@ const FinanceIncidentsSection = lazy(async () => ({
 const FinanceLostItemsSection = lazy(async () => ({
   default: (await import('./FinanceLostItemsSection.tsx')).FinanceLostItemsSection,
 }))
+const FinanceTransportSection = lazy(async () => ({
+  default: (await import('./FinanceTransportSection.tsx')).FinanceTransportSection,
+}))
+const FinanceClubsSection = lazy(async () => ({
+  default: (await import('./FinanceClubsSection.tsx')).FinanceClubsSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -324,6 +330,8 @@ const VIEWS = {
   staffSurveys: { label: 'Personel anketleri', param: 'personel-anketleri' },
   incidents: { label: 'Kaza tutanakları', param: 'kaza-tutanaklari' },
   lostItems: { label: 'Kayıp eşya', param: 'kayip-esya' },
+  transport: { label: 'Servis', param: 'servis' },
+  clubs: { label: 'Kulüpler', param: 'kulupler' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -395,6 +403,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Kaza tutanakları (DOM-FIN-146) ikisine açıktır; ön büro yalnız açtığını görür, sağlık bilgisi,
  * ek not ve PDF yöneticidedir (K-494).
  * Kayıp eşya (DOM-FIN-145) ikisine açıktır; ayar ve toplu bağış/imha yöneticide (K-490, K-492).
+ * Servis ve Kulüpler (DOM-FIN-142) ikisine açıktır; kulüp yoklamasını yönetici alır (K-482, K-483).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -661,6 +670,8 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'staffSurveys' ? <FinanceStaffSurveysSection isManager={isManager} /> : null}
         {tab === 'incidents' ? <FinanceIncidentsSection isManager={isManager} /> : null}
         {tab === 'lostItems' ? <FinanceLostItemsSection isManager={isManager} /> : null}
+        {tab === 'transport' ? <FinanceTransportSection /> : null}
+        {tab === 'clubs' ? <FinanceClubsSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

@@ -4166,6 +4166,77 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: servis güzergâhı (ON-098; DOM-FIN-142).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/transport/my', 'get(MY, aParent)'],
+        ['liste', 'GET /api/v1/finance/transport/vehicles', 'get(VEHICLES, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/transport/vehicles', 'institutionId: b.id'],
+        ['kayıt', 'PATCH /api/v1/finance/transport/vehicles/:vehicleId', 'patch(bVehicleUrl'],
+        ['kayıt', 'DELETE /api/v1/finance/transport/vehicles/:vehicleId', 'remove(bVehicleUrl'],
+        ['liste', 'GET /api/v1/finance/transport/routes', 'get(ROUTES, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/transport/routes', 'routeBody(bSetup.vehicle.id)'],
+        ['kayıt', 'GET /api/v1/finance/transport/routes/:routeId', 'get(bRouteUrl'],
+        ['kayıt', 'PATCH /api/v1/finance/transport/routes/:routeId', 'patch(bRouteUrl'],
+        ['kayıt', 'DELETE /api/v1/finance/transport/routes/:routeId', 'remove(bRouteUrl'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/transport/routes/:routeId/assignments',
+          'assignUrl(bSetup.route.id)',
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/transport/assignments/:assignmentId',
+          '`${BASE}/assignments/${String(bAssignment.id)}`',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-transport.test.ts',
+        'başka kurumun aracı, güzergâhı ve ataması 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: kulüp ve kulüp yoklaması (ON-098; DOM-FIN-142).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/clubs/my', 'get(MY, aParent)'],
+        ['liste', 'GET /api/v1/finance/clubs', 'get(BASE, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/clubs', 'institutionId: b.id'],
+        ['kayıt', 'GET /api/v1/finance/clubs/:clubId', 'get(bUrl, a.admin)'],
+        ['kayıt', 'PATCH /api/v1/finance/clubs/:clubId', 'patch(bUrl'],
+        ['kayıt', 'DELETE /api/v1/finance/clubs/:clubId', 'remove(bUrl'],
+        ['kayıt', 'POST /api/v1/finance/clubs/:clubId/members', '`${bUrl}/members`'],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/clubs/:clubId/members/:memberId',
+          '`${bUrl}/members/${bMember.id}`',
+        ],
+        ['kayıt', 'POST /api/v1/finance/clubs/:clubId/sessions', '`${bUrl}/sessions`'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/clubs/:clubId/sessions/:sessionId',
+          '`${bUrl}/sessions/${String(bSession.id)}`',
+        ],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/clubs/:clubId/sessions/:sessionId',
+          '`${bUrl}/sessions/${String(bSession.id)}`',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-clubs.test.ts',
+        'başka kurumun kulübü, üyeliği ve oturumu 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

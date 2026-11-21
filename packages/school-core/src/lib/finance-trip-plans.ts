@@ -127,7 +127,7 @@ export const TRIP_STUDENTS_PER_STAFF = 15
 
 const PHONE_PATTERN = /^0\d{10}$/
 /** Plaka: il kodu (01–81), 1–3 harf, 2–5 rakam; boşluksuz büyük harfle saklanır. */
-const PLATE_PATTERN = /^(0[1-9]|[1-7]\d|8[01])[A-Z]{1,3}\d{2,5}$/
+export const TRIP_PLATE_PATTERN = /^(0[1-9]|[1-7]\d|8[01])[A-Z]{1,3}\d{2,5}$/
 
 /** Plan numarası kurum sırasından türetilir (`GZ-0007`); saklanan yalnız sıradır. */
 export function tripPlanNumber(sequence: number): string {
@@ -223,7 +223,7 @@ const transportSchema = z.strictObject({
     .string()
     .transform(normalizeTripPlate)
     .transform((value) => (value === '' ? null : value))
-    .pipe(z.string().regex(PLATE_PATTERN, 'Plakayı 34 ABC 123 biçiminde girin.').nullable())
+    .pipe(z.string().regex(TRIP_PLATE_PATTERN, 'Plakayı 34 ABC 123 biçiminde girin.').nullable())
     .nullable()
     .default(null)
     .describe('Araç plakası; boşluksuz büyük harfle saklanır'),

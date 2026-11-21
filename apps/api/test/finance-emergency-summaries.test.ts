@@ -72,7 +72,7 @@ describe('DOM-FIN-155: acil durum özeti uçları', () => {
     })
   }
   const get = (url: string, cookie: string | null) => call('GET', url, cookie)
-  const post = (url: string, cookie: string | null, body: unknown, key = randomUUID()) =>
+  const post = (url: string, cookie: string | null, body: unknown, key: string = randomUUID()) =>
     call('POST', url, cookie, body, { 'idempotency-key': key })
   const versioned = (
     method: 'POST' | 'PATCH' | 'DELETE',

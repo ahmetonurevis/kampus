@@ -54,6 +54,8 @@ import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { notify } from '@/lib/notify.ts'
 import { RootError } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
+import { CandidateInterviewsSection } from './FinanceCandidateInterviewsPanel.tsx'
+import { InterviewTemplatesView } from './FinanceInterviewTemplatesView.tsx'
 import {
   applicationCountText,
   channelText,
@@ -94,6 +96,7 @@ const TABS = [
   { value: 'ilanlar', label: 'İlanlar' },
   { value: 'basvurular', label: 'Başvurular' },
   { value: 'saklama', label: 'Saklama' },
+  { value: 'formlar', label: 'Mülakat formları' },
 ] as const
 type Tab = (typeof TABS)[number]['value']
 const isTab = (value: string | null): value is Tab => TABS.some((tab) => tab.value === value)
@@ -151,7 +154,9 @@ type PostingTarget = { posting: JobPostingRow | null }
  * "İlanlar" taslak → yayında → kapandı akışını, "Başvurular" personelin girdiği başvuru havuzunu
  * aşamalarıyla, "Saklama" süresi dolan başvuruları ve kurum ayarını gösterir (K-441). Başvuru
  * ayrıntısı sağ panelde: iletişim, özgeçmiş, aydınlatma kaydı, aşama geçmişi ve aday talebiyle
- * anonimleştirme. Oturumsuz başvuru formu yoktur; başvuruyu personel girer.
+ * anonimleştirme. Oturumsuz başvuru formu yoktur; başvuruyu personel girer. Başvuru panelinde
+ * mülakatlar ve değerlendirmeler, "Mülakat formları" görünümünde mülakat formu şablonları
+ * (DOM-FIN-138; ON-178).
  */
 export function FinanceJobPostingsSection() {
   const [params, setParams] = useSearchParams()
@@ -198,6 +203,7 @@ export function FinanceJobPostingsSection() {
       {tab === 'ilanlar' ? <PostingList onEdit={(posting) => setPostingForm({ posting })} /> : null}
       {tab === 'basvurular' ? <ApplicationList onOpen={panel.open} /> : null}
       {tab === 'saklama' ? <RetentionView onOpen={panel.open} /> : null}
+      {tab === 'formlar' ? <InterviewTemplatesView /> : null}
       <SidePanel
         open={panel.selectedId !== ''}
         onOpenChange={(open) => (open ? undefined : panel.close())}
@@ -896,6 +902,7 @@ function ApplicationPanel({ applicationId }: { applicationId: string }) {
           ))}
         </ol>
       </div>
+      <CandidateInterviewsSection application={application} />
       {!anonymized && stages.length > 0 ? (
         <StageForm application={application} stages={stages} />
       ) : null}

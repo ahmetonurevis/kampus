@@ -3,6 +3,9 @@ import test from 'node:test'
 
 import {
   performanceDevelopmentGoalRows,
+  performanceFeedbackAnswerText,
+  performanceFeedbackPeerRows,
+  performanceFeedbackProgressText,
   performanceGoalRows,
   performanceObservationRows,
   performanceReportDocument,
@@ -113,6 +116,12 @@ test('DOM-FIN-137 K-466: rapor PDF bölümleri, gözlemleri, görüşü ve okuma
     'Veli iletişimi güçlü',
     'Ders gözlemleri',
     '%86,5',
+    'Çok kaynaklı geri bildirim',
+    'Yönetici değerlendirmesi: Murat Yılmaz',
+    'Planlı ve özenli',
+    'Meslektaş yanıtlarının toplu sonucu.',
+    '4,33 / 5',
+    'Düzenli · Sabırlı · Yardımsever',
     'Gelişim hedefleri',
     'Ölçme araçlarını çeşitlendir',
     '2 hedef · 1 ulaşıldı',
@@ -182,4 +191,51 @@ test('DOM-FIN-137 K-467: taslak rapor "TASLAK", gönderilmemiş öz değerlendir
       text,
     )
   assert.ok(!all.some((item) => item.includes('Veli iletişimi güçlü')))
+})
+
+test('DOM-FIN-137 K-468 K-459: geri bildirim metinleri; eşik altında yalnız "yeterli yanıt yok"', () => {
+  const feedback = reportFixture().staffFeedback
+  assert.equal(
+    performanceFeedbackProgressText(feedback),
+    'Yönetici 1/1 · meslektaş 3/4 yanıt · anonimlik eşiği 3',
+  )
+  assert.deepEqual(performanceFeedbackPeerRows(feedback), [
+    ['Ekip çalışmasına katkısı', '3', '4,33 / 5'],
+    ['Güçlü yanları', '3', 'Düzenli · Sabırlı · Yardımsever'],
+  ])
+  const [first, second] = feedback.manager.responses[0]?.items ?? []
+  assert.ok(first && second)
+  assert.equal(performanceFeedbackAnswerText(first), '5 / 5')
+  assert.equal(performanceFeedbackAnswerText(second), 'Planlı ve özenli')
+  assert.equal(performanceFeedbackAnswerText({ ...first, score: null }), '—')
+  const hiddenQuestion = { ...feedback.peer.questions[1]!, hidden: true, texts: [] }
+  assert.deepEqual(
+    performanceFeedbackPeerRows({
+      ...feedback,
+      peer: { ...feedback.peer, questions: [hiddenQuestion] },
+    }),
+    [['Güçlü yanları', '3', 'Yeterli yanıt yok']],
+  )
+
+  const below = reportFixture({
+    staffFeedback: {
+      ...feedback,
+      state: 'below_threshold',
+      peer: { assigned: 3, responded: 2, questions: [] },
+    },
+  })
+  const all = allTexts(performanceReportDocument(measurer, below, OPTIONS))
+  assert.ok(all.some((item) => item.includes('Yeterli meslektaş yanıtı yok')))
+  assert.ok(!all.some((item) => item.includes('Yardımsever')))
+  const none = reportFixture({
+    staffFeedback: {
+      ...feedback,
+      state: 'not_collected',
+      manager: { assigned: 0, responded: 0, responses: [] },
+      peer: { assigned: 0, responded: 0, questions: [] },
+    },
+  })
+  const noneTexts = allTexts(performanceReportDocument(measurer, none, OPTIONS))
+  assert.ok(noneTexts.some((item) => item.includes('geri bildirim toplanmadı')))
+  assert.ok(!noneTexts.some((item) => item.includes('Murat Yılmaz')))
 })

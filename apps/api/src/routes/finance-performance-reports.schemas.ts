@@ -4,6 +4,7 @@ import { PERFORMANCE_PERIOD_STATUSES } from '@kampus/school-core/lib/finance-per
 import { DEVELOPMENT_GOAL_SOURCES } from '@kampus/school-core/lib/finance-observation-debriefs.ts'
 import {
   PERFORMANCE_REPORT_ACK_CHANNELS,
+  PERFORMANCE_REPORT_FEEDBACK_STATES,
   PERFORMANCE_REPORT_GOAL_STATUSES,
   PERFORMANCE_REPORT_SECTIONS,
   PERFORMANCE_REPORT_SELF_STATUSES,
@@ -49,6 +50,69 @@ const goalSchema = z.object({
   weight: z.number().int().describe('Ağırlık, yüzde'),
   score: z.number().int().nullable().describe('Dönem sonu puanı (1–5)'),
 })
+
+const feedbackProgressShape = {
+  assigned: z.number().int().describe('Atanan değerlendiren'),
+  responded: z.number().int().describe('Yanıtı girilen değerlendiren'),
+}
+
+const staffFeedbackSchema = z
+  .object({
+    state: z
+      .enum(PERFORMANCE_REPORT_FEEDBACK_STATES)
+      .describe(
+        '`not_collected` dönemde şablon ya da atama yok, `period_open` dönem değerlendirme aşamasına geçmedi, `below_threshold` yeterli meslektaş yanıtı yok, `visible` meslektaş toplu sonucu görünür',
+      ),
+    threshold: z
+      .number()
+      .int()
+      .describe('Meslektaş anonimlik eşiği; kesinleşmiş raporda kesinleştirme anındaki (K-468)'),
+    questionCount: z.number().int(),
+    manager: z
+      .object({
+        ...feedbackProgressShape,
+        responses: z.array(
+          z.object({
+            // kvkk: K
+            reviewerName: z.string().describe('Yönetici değerlendiren (anonim değil, K-459)'),
+            submittedAt: z.string().nullable(),
+            items: z.array(
+              z.object({
+                question: z.string(),
+                kind: z.enum(SELF_EVALUATION_QUESTION_KINDS),
+                score: z.number().int().nullable(),
+                // kvkk: K (serbest metin)
+                text: z.string().nullable(),
+              }),
+            ),
+          }),
+        ),
+      })
+      .describe('Yönetici yanıtları adıyla ve soru metniyle'),
+    peer: z
+      .object({
+        ...feedbackProgressShape,
+        questions: z
+          .array(
+            z.object({
+              question: z.string(),
+              kind: z.enum(SELF_EVALUATION_QUESTION_KINDS),
+              answered: z.number().int().describe('Soruyu cevaplayan meslektaş sayısı'),
+              hidden: z.boolean().describe('Eşik altında cevaplanan soru gizlidir'),
+              average: z.number().nullable().describe('Puanlı soruda ortalama, iki ondalık'),
+              // kvkk: K (anonim serbest metin, alfabetik)
+              texts: z
+                .array(z.string())
+                .describe('Açık uçlu cevaplar, alfabetik; kimden geldiği yok'),
+            }),
+          )
+          .describe('Yalnız `visible` durumunda dolu; tek meslektaş yanıtı hiç dönmez (K-459)'),
+      })
+      .describe('Meslektaş yanıtlarının toplu sonucu'),
+  })
+  .describe(
+    'Çok kaynaklı geri bildirim (DOM-FIN-134): yalnız eşik üstünde toplu meslektaş sonucu (K-459, K-468)',
+  )
 
 const reportSchema = z.object({
   reviewId: z.string().describe('Personel × dönem performans kaydı'),
@@ -120,6 +184,8 @@ const reportSchema = z.object({
     })
     .describe('Dönemdeki tamamlanmış ders gözlemleri (DOM-FIN-130)'),
   // kvkk: K
+  staffFeedback: staffFeedbackSchema,
+  // kvkk: K
   developmentGoals: z
     .object({
       count: z.number().int(),
@@ -143,7 +209,7 @@ const reportSchema = z.object({
       ),
     })
     .describe(
-      'Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez (K-468)',
+      'Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez. Kesinleşmiş raporda kesinleştirme anındaki anlık görüntü (K-468)',
     ),
   // kvkk: K (serbest metin)
   managerOpinion: z.string().nullable().describe('Yönetici görüşü; kesinleştirmede yazılır'),

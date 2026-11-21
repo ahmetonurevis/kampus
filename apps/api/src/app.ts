@@ -123,6 +123,9 @@ import { registerFinanceObservationDebriefRoutes } from './routes/finance-observ
 import { registerFinanceStaffFeedbackRoutes } from './routes/finance-staff-feedback.ts'
 import { registerFinancePerformanceReportRoutes } from './routes/finance-performance-reports.ts'
 import { registerFinanceTeacherMentorshipRoutes } from './routes/finance-teacher-mentorships.ts'
+import { registerFinancePersonnelFileRoutes } from './routes/finance-personnel-files.ts'
+import { registerFinanceObservationPlanRoutes } from './routes/finance-observation-plans.ts'
+import { registerFinanceVisitorRoutes } from './routes/finance-visitors.ts'
 import { registerFinanceCandidateInterviewRoutes } from './routes/finance-candidate-interviews.ts'
 // Onur: kayıt ve finans sonu
 import { createFfmpegTranscoder, type AudioTranscoder } from './services/audio-transcoder.ts'
@@ -264,6 +267,11 @@ export const REDACTED_PATHS = [
   // kvkk: K — gezi katılımında izni veren velinin adı (DOM-FIN-112, K-370).
   'grantorName',
   '*.grantorName',
+  // kvkk: K — ziyaretçinin adı soyadı ve amaç açıklaması (DOM-FIN-141, K-478); telefonu `phone`.
+  'visitorName',
+  '*.visitorName',
+  'purposeNote',
+  '*.purposeNote',
   'consentGrantorName',
   '*.consentGrantorName',
   // kvkk: K — sözleşme satırının imza yetkilisi adı ve kesin kayıtta yeni velinin adı
@@ -315,6 +323,10 @@ export const REDACTED_PATHS = [
   '*.rationale',
   'rejectionReason',
   '*.rejectionReason',
+  // kvkk: K — gözlem planının erteleme gerekçesi (DOM-FIN-139); iptal gerekçesi ve not
+  // yukarıdaki `cancelReason`, `note` ile gizlenir.
+  'postponeReason',
+  '*.postponeReason',
   // kvkk: K — toplu personel aktarımının CSV içeriği: ad ve e-posta satırları (IST-007).
   'csv',
   '*.csv',
@@ -640,6 +652,9 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceStaffFeedbackRoutes(app)
   registerFinancePerformanceReportRoutes(app)
   registerFinanceTeacherMentorshipRoutes(app)
+  registerFinancePersonnelFileRoutes(app)
+  registerFinanceObservationPlanRoutes(app)
+  registerFinanceVisitorRoutes(app)
   registerFinanceCandidateInterviewRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)

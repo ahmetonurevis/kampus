@@ -249,6 +249,16 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // (routes/finance-teacher-mentorships.ts; DOM-FIN-136, ON-219).
   'POST /api/v1/finance/teacher-mentorships',
   'POST /api/v1/finance/teacher-mentorships/{mentorshipId}/meetings',
+  // Özlük kartı açma; çift tıklama ikinci kartı açmaz (routes/finance-personnel-files.ts;
+  // DOM-FIN-140, ON-172).
+  'POST /api/v1/finance/personnel-files',
+  // Gözlem planı açma; çift tıklama ikinci planı ve bildirimi açmaz
+  // (routes/finance-observation-plans.ts; DOM-FIN-139, ON-207).
+  'POST /api/v1/finance/observation-plans',
+  // Ziyaretçi girişi ve toplu anonimleştirme; çift tıklama ikinci girişi yazmaz, anonimleştirme
+  // geri alınamaz (routes/finance-visitors.ts; DOM-FIN-141, ON-166).
+  'POST /api/v1/finance/visitors',
+  'POST /api/v1/finance/visitor-anonymizations',
   // Mülakat formu, mülakat planı ve değerlendirici formu; çift tıklama ikinci formu ya da mülakatı
   // açmaz, değerlendirme bir kez gönderilir (routes/finance-candidate-interviews.ts; DOM-FIN-138,
   // ON-178).

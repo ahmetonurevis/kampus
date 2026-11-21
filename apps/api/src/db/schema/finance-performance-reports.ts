@@ -3,6 +3,8 @@ import {
   check,
   date,
   foreignKey,
+  integer,
+  jsonb,
   pgTable,
   primaryKey,
   text,
@@ -16,7 +18,12 @@ import {
   PERFORMANCE_REPORT_OPINION_MAX,
   PERFORMANCE_REPORT_OPINION_MIN,
   type PerformanceReportAckChannel,
+  type PerformanceReportGoalItem,
 } from '@kampus/school-core/lib/finance-performance-reports.ts'
+import {
+  STAFF_FEEDBACK_THRESHOLD_MAX,
+  STAFF_FEEDBACK_THRESHOLD_MIN,
+} from '@kampus/school-core/lib/finance-staff-feedback.ts'
 
 import { institutions } from './auth.ts'
 import { oneOf, requiredColumns } from './columns.ts'
@@ -26,9 +33,11 @@ const n = (value: number) => sql.raw(String(value))
 
 /**
  * Performans raporu kesinleştirme ve "okudum" kaydı (DOM-FIN-137; ON-220). Rapor içeriği
- * saklanmaz, kaynak kayıtlardan (performans kaydı, öz değerlendirme, ders gözlemi) okunur; satır
+ * kaynak kayıtlardan (performans kaydı, öz değerlendirme, ders gözlemi, geri bildirim) okunur; satır
  * yalnız kesinleştirmede açılır ve yöneticinin görüşünü, kesinleştireni ve personelin okuma
- * kaydını (gün, kanal, giren) taşır (K-467). Performans kaydı başına tek satır.
+ * kaydını (gün, kanal, giren) taşır (K-467). Kaynağı kesinleştirmeden sonra değişebilen iki bilgi
+ * kesinleştirmede sabitlenir (K-468; ON-350): gelişim hedefi özeti ve geri bildirim eşiği. Performans
+ * kaydı başına tek satır.
  */
 export const performanceReports = pgTable(
   'performance_reports',
@@ -52,6 +61,9 @@ export const performanceReports = pgTable(
     acknowledgementRecordedByUserId: text('acknowledgement_recorded_by_user_id'),
     // kvkk: K
     acknowledgementRecordedByName: text('acknowledgement_recorded_by_name'),
+    // kvkk: K (hedef ve ölçüt metni; denetime ve loga yazılmaz)
+    developmentGoals: jsonb('development_goals').$type<PerformanceReportGoalItem[]>(),
+    feedbackThreshold: integer('feedback_threshold'),
     ...requiredColumns(),
   },
   (table) => [
@@ -75,6 +87,14 @@ export const performanceReports = pgTable(
         and ((${table.acknowledgedDate} is null) = (${table.acknowledgementRecordedAt} is null))
         and ((${table.acknowledgedDate} is null) = (${table.acknowledgementRecordedByUserId} is null))
         and ((${table.acknowledgedDate} is null) = (${table.acknowledgementRecordedByName} is null))`,
+    ),
+    check(
+      'performance_reports_goals_check',
+      sql`${table.developmentGoals} is null or jsonb_typeof(${table.developmentGoals}) = 'array'`,
+    ),
+    check(
+      'performance_reports_feedback_threshold_check',
+      sql`${table.feedbackThreshold} is null or ${table.feedbackThreshold} between ${n(STAFF_FEEDBACK_THRESHOLD_MIN)} and ${n(STAFF_FEEDBACK_THRESHOLD_MAX)}`,
     ),
     uniqueIndex('performance_reports_review_key').on(table.institutionId, table.reviewId),
   ],

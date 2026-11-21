@@ -66,6 +66,31 @@ const enrollmentSchema = z.object({
   origin: z.enum(PROFESSIONAL_DEVELOPMENT_ENROLLMENT_ORIGINS),
   status: z.enum(PROFESSIONAL_DEVELOPMENT_ENROLLMENT_STATUSES),
   attendedHours: z.number().nullable().describe('Katılım saati; yalnız `attended`'),
+  document: z
+    .object({
+      fileId: z.string(),
+      // kvkk: K
+      name: z.string().describe('Dosya adı'),
+      byteSize: z.number().int().nullable().describe('Boyut; dosya hazır değilse boş'),
+    })
+    .nullable()
+    .describe('Katılım belgesi (DOM-FIN-144, K-488); yalnız yöneticiye döner, ön büroya `null`'),
+  certificate: z
+    .object({
+      staffDocumentId: z.string().describe('Sertifika özlük belgesi (DOM-FIN-113)'),
+      documentDate: z.string().nullable().describe('Sertifika günü (YYYY-MM-DD)'),
+      validUntil: z.string().nullable().describe('Geçerlilik bitişi; süresizse boş'),
+    })
+    .nullable()
+    .describe('Bağlı sertifika (K-488); yalnız yöneticiye döner, ön büroya `null`'),
+  developmentGoal: z
+    .object({
+      id: z.string(),
+      // kvkk: K
+      title: z.string(),
+    })
+    .nullable()
+    .describe('Katkı verdiği gelişim hedefi (K-489); yalnız yöneticiye döner, ön büroya `null`'),
   statusChangedAt: z.string(),
   createdAt: z.string(),
   version: z.number().int(),

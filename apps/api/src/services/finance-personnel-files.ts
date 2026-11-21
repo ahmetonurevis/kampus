@@ -32,6 +32,7 @@ import { auditLog } from '../db/schema/audit-log.ts'
 import { ConflictError, ForbiddenError, NotFoundError } from '../errors.ts'
 import type { FieldBinding, FieldCipher } from '../lib/field-crypto.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
+import { personnelDevelopmentSummary } from './finance-professional-development-hours.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
 import { auditWork } from './task-work.ts'
 
@@ -171,6 +172,13 @@ async function fileBody(
             ctx.institutionId,
             membershipId,
             dayKey(ctx.now),
+          ),
+          // Mesleki gelişim saati özeti (DOM-FIN-144, K-489): içinde bulunulan öğretim yılı.
+          professionalDevelopment: await personnelDevelopmentSummary(
+            ctx,
+            db,
+            membershipId,
+            staff.role,
           ),
         }),
   }

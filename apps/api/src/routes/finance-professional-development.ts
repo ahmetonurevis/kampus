@@ -256,7 +256,7 @@ export function registerFinanceProfessionalDevelopmentRoutes(app: FastifyInstanc
         operationId: 'updateProfessionalDevelopmentEnrollment',
         tags,
         summary: 'Katılım durumunu işaretle',
-        description: `Atandı, katıldı ya da tamamlamadı (K-432). "Katıldı" katılım saati ister (yarım saat adımlı, eğitim süresini aşamaz: 422 \`professional_development_hours_exceed\`); diğer durumlarda saat girilmez. Arşivdeki eğitimin katılımı değişmez (409 \`professional_development_archived\`). Sertifika ayrı iştir (ON-215). \`If-Match\` zorunlu. Başka kurumun kaydı 404. ${WRITE}`,
+        description: `Atandı, katıldı ya da tamamlamadı (K-432). "Katıldı" katılım saati ister (yarım saat adımlı, eğitim süresini aşamaz: 422 \`professional_development_hours_exceed\`); diğer durumlarda saat girilmez. Arşivdeki eğitimin katılımı değişmez (409 \`professional_development_archived\`). Belgesi ya da sertifikası olan katılım "katıldı"dan çıkarılamaz (409 \`professional_development_attendance_has_documents\`; DOM-FIN-144). İsteğe bağlı \`developmentGoalId\` katılımı aynı personelin açık ya da süren gelişim hedefine katkı olarak işaretler (başka personelin ya da yoksa 422 \`professional_development_goal_not_found\`, kapanmış 422 \`professional_development_goal_closed\`; K-489); verilmezse bağ değişmez, \`null\` kaldırır. \`If-Match\` zorunlu. Başka kurumun kaydı 404. ${WRITE}`,
         headers: transitionHeaders,
         params: enrollmentParams,
         body: professionalDevelopmentEnrollmentUpdateSchema,

@@ -46,6 +46,8 @@ import { useListState } from '@/hooks/use-list-state.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { notify } from '@/lib/notify.ts'
 import { RootError } from '../management/FormParts.tsx'
+import { FinanceProfessionalDevelopmentHours } from './FinanceProfessionalDevelopmentHours.tsx'
+import { EnrollmentRecords, useGoalOptions } from './FinanceProfessionalDevelopmentRecords.tsx'
 import { staffOptionText } from './finance-staff-certificate-forms.ts'
 import {
   capacityText,
@@ -110,7 +112,8 @@ type Row = {
  * Mesleki gelişim kataloğu (DOM-FIN-125; ON-214): Finans "Mesleki gelişim" sekmesi. Yönetici
  * eğitim ekler, düzeltir, yayına alır, arşivler ve personel atar; ön büro yayındaki ve arşivdeki
  * eğitimleri ve katılımcılarını yalnız okur (K-430). Katılımcı penceresinde "katıldı" işareti ve
- * saat girilir (K-432); sertifika ayrı iştir.
+ * saat girilir (K-432). Yönetici katıldı işaretli katılıma belge ve sertifika ekler, katılımı gelişim
+ * hedefine bağlar; altta öğretim yılı hedef saati ve personel saat özeti durur (DOM-FIN-144; ON-215).
  */
 export function FinanceProfessionalDevelopmentSection({ canManage }: { canManage: boolean }) {
   const list = useListState('mesleki-gelisim', { urlPrefix: 'mg_' })
@@ -230,64 +233,68 @@ export function FinanceProfessionalDevelopmentSection({ canManage }: { canManage
   }, [canManage, changeStatus])
 
   return (
-    <section
-      aria-labelledby="mesleki-gelisim"
-      className="panel overflow-hidden rounded-card border bg-surface"
-    >
-      <header className="panel-heading flex flex-wrap items-start justify-between gap-3 px-6 pt-6 pb-2">
-        <div className="grid gap-1">
-          <h2 id="mesleki-gelisim" className="text-lg font-semibold">
-            Mesleki gelişim
-          </h2>
-          <p className="text-sm text-muted-foreground">
-            Personele açılan kurs, seminer, konferans, kurum içi ve çevrim içi eğitimler. Yeni
-            eğitim taslak açılır; yayına alınan eğitime personel atanır, katılım saati işaretlenir.
-          </p>
-        </div>
-        {canManage ? <Button onClick={() => setEditing('new')}>Yeni eğitim</Button> : null}
-      </header>
-      <ServerDataTable
-        list={list}
-        rows={rows}
-        total={programs.data?.meta.total ?? 0}
-        sortable={NO_SORT}
-        columns={columns}
-        filters={FILTERS}
-        mobileColumns={MOBILE}
-        caption="Mesleki gelişim kataloğu"
-        empty={canManage ? 'Katalogda henüz eğitim yok.' : 'Yayında eğitim yok.'}
-        emptyFiltered="Bu seçimle eşleşen eğitim yok."
-        loading={programs.isPending}
-        fetching={programs.isFetching && !programs.isPending}
-        error={
-          programs.error ? (
-            <QueryError error={programs.error} onRetry={() => void programs.refetch()} />
-          ) : undefined
-        }
-      />
-      <Modal
-        open={editing !== null}
-        onOpenChange={(open) => (open ? undefined : setEditing(null))}
-        title={editing === 'new' ? 'Yeni eğitim' : 'Eğitimi düzelt'}
-        description="Süre yarım saat adımlıdır. Sürekli açık eğitimde tarih girilmez; yer ya da çevrim içi bağlantıdan biri gerekir."
-        size="wide"
+    <div className="grid gap-6">
+      <section
+        aria-labelledby="mesleki-gelisim"
+        className="panel overflow-hidden rounded-card border bg-surface"
       >
-        {editing !== null ? (
-          <ProgramForm
-            program={editing === 'new' ? null : editing}
-            onDone={() => setEditing(null)}
-          />
-        ) : null}
-      </Modal>
-      <Modal
-        open={roster !== null}
-        onOpenChange={(open) => (open ? undefined : setRoster(null))}
-        title={roster === null ? 'Katılımcılar' : `${roster.name} katılımcıları`}
-        size="wide"
-      >
-        {roster !== null ? <Roster program={roster} canManage={canManage} /> : null}
-      </Modal>
-    </section>
+        <header className="panel-heading flex flex-wrap items-start justify-between gap-3 px-6 pt-6 pb-2">
+          <div className="grid gap-1">
+            <h2 id="mesleki-gelisim" className="text-lg font-semibold">
+              Mesleki gelişim
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              Personele açılan kurs, seminer, konferans, kurum içi ve çevrim içi eğitimler. Yeni
+              eğitim taslak açılır; yayına alınan eğitime personel atanır, katılım saati
+              işaretlenir.
+            </p>
+          </div>
+          {canManage ? <Button onClick={() => setEditing('new')}>Yeni eğitim</Button> : null}
+        </header>
+        <ServerDataTable
+          list={list}
+          rows={rows}
+          total={programs.data?.meta.total ?? 0}
+          sortable={NO_SORT}
+          columns={columns}
+          filters={FILTERS}
+          mobileColumns={MOBILE}
+          caption="Mesleki gelişim kataloğu"
+          empty={canManage ? 'Katalogda henüz eğitim yok.' : 'Yayında eğitim yok.'}
+          emptyFiltered="Bu seçimle eşleşen eğitim yok."
+          loading={programs.isPending}
+          fetching={programs.isFetching && !programs.isPending}
+          error={
+            programs.error ? (
+              <QueryError error={programs.error} onRetry={() => void programs.refetch()} />
+            ) : undefined
+          }
+        />
+        <Modal
+          open={editing !== null}
+          onOpenChange={(open) => (open ? undefined : setEditing(null))}
+          title={editing === 'new' ? 'Yeni eğitim' : 'Eğitimi düzelt'}
+          description="Süre yarım saat adımlıdır. Sürekli açık eğitimde tarih girilmez; yer ya da çevrim içi bağlantıdan biri gerekir."
+          size="wide"
+        >
+          {editing !== null ? (
+            <ProgramForm
+              program={editing === 'new' ? null : editing}
+              onDone={() => setEditing(null)}
+            />
+          ) : null}
+        </Modal>
+        <Modal
+          open={roster !== null}
+          onOpenChange={(open) => (open ? undefined : setRoster(null))}
+          title={roster === null ? 'Katılımcılar' : `${roster.name} katılımcıları`}
+          size="wide"
+        >
+          {roster !== null ? <Roster program={roster} canManage={canManage} /> : null}
+        </Modal>
+      </section>
+      {canManage ? <FinanceProfessionalDevelopmentHours /> : null}
+    </div>
   )
 }
 
@@ -539,6 +546,9 @@ function Roster({
                 />
               </div>
               {writable ? <AttendanceForm program={program} enrollment={item} /> : null}
+              {canManage && item.status === 'attended' ? (
+                <EnrollmentRecords program={program} enrollment={item} />
+              ) : null}
             </li>
           ))}
         </ul>
@@ -646,8 +656,11 @@ function AttendanceForm({
       : String(enrollment.attendedHours).replace('.', ','),
   )
   const [error, setError] = useState<string | undefined>(undefined)
+  const goals = useGoalOptions(enrollment, true)
+  const [goalId, setGoalId] = useState(enrollment.developmentGoal?.id ?? '')
   const busy = update.isPending
   const prefix = `mg-katilim-${enrollment.id}`
+  const goalChanged = goalId !== (enrollment.developmentGoal?.id ?? '')
   const submit = async () => {
     setError(undefined)
     const attendedHours = status === 'attended' ? parseDecimal(hours) : null
@@ -660,7 +673,11 @@ function AttendanceForm({
         programId: program.id,
         enrollmentId: enrollment.id,
         version: enrollment.version,
-        body: { status, attendedHours },
+        body: {
+          status,
+          attendedHours,
+          ...(goalChanged ? { developmentGoalId: goalId === '' ? null : goalId } : {}),
+        },
       },
       { setError: (_name, issue) => setError(issue.message) },
     )
@@ -730,6 +747,28 @@ function AttendanceForm({
       >
         Kaydet
       </Button>
+      {goals.length > 0 ? (
+        <div className="sm:col-span-3">
+          <FormField id={`${prefix}-hedef`} label="Katkı verdiği gelişim hedefi (isteğe bağlı)">
+            {(control) => (
+              <NativeSelect
+                {...control}
+                value={goalId}
+                onChange={(event) => setGoalId(event.target.value)}
+                className="w-full"
+                disabled={busy}
+              >
+                <NativeSelectOption value="">Hedefe bağlı değil</NativeSelectOption>
+                {goals.map((goal) => (
+                  <NativeSelectOption key={goal.id} value={goal.id}>
+                    {goal.title}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+            )}
+          </FormField>
+        </div>
+      ) : null}
     </form>
   )
 }

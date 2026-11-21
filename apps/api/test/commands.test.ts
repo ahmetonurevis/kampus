@@ -265,6 +265,25 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/interview-templates',
   'POST /api/v1/finance/job-applications/{applicationId}/interviews',
   'POST /api/v1/finance/candidate-interviews/{interviewId}/evaluation',
+  // Personel anketi taslağı, yeni sürüm ve personelin yanıtı; çift tıklama ikinci taslağı ya da
+  // ikinci yanıtı yazmaz, yanıtın özeti gövdesizdir (routes/finance-staff-surveys.ts; DOM-FIN-143,
+  // ON-191).
+  'POST /api/v1/finance/staff-surveys',
+  'POST /api/v1/finance/staff-surveys/{surveyId}/copy',
+  'POST /api/v1/finance/staff-surveys/{surveyId}/responses',
+  // Kaza tutanağı, veli bildirimi ve ek not; çift tıklama ikinci tutanağı ya da kaydı yazmaz
+  // (routes/finance-incidents.ts; DOM-FIN-146, ON-162).
+  'POST /api/v1/finance/incidents',
+  'POST /api/v1/finance/incidents/{incidentId}/notifications',
+  'POST /api/v1/finance/incidents/{incidentId}/addenda',
+  // Bulunan eşya, kayıp bildirimi ve toplu bağış/imha; çift tıklama ikinci kaydı açmaz, bağış/imha
+  // geri alınamaz (routes/finance-lost-items.ts; DOM-FIN-145, ON-171).
+  'POST /api/v1/finance/lost-items',
+  'POST /api/v1/finance/lost-item-reports',
+  'POST /api/v1/finance/lost-item-disposals',
+  // Katılıma sertifika bağı yüklemeyle yeni özlük belgesi açabilir; çift tıklama ikinci belgeyi
+  // açmaz (routes/finance-professional-development-hours.ts; DOM-FIN-144, ON-215).
+  'POST /api/v1/finance/professional-development/{programId}/enrollments/{enrollmentId}/certificate',
   // Servis aracı, güzergâh ve öğrenci ataması; kulüp, üyelik ve yoklama; çift tıklama ikinci
   // aracı, güzergâhı, atamayı, üyeliği ya da oturumu açmaz (routes/finance-transport.ts,
   // routes/finance-clubs.ts; DOM-FIN-142, ON-098).

@@ -1,3 +1,6 @@
+import { randomUUID } from 'node:crypto'
+
+import { apiRequest, createApiClient, switchInstitutionApi, type ApiResult } from './support/api.ts'
 import { expect, test } from './support/fixtures.ts'
 import { expectNoHorizontalOverflow } from './support/ui.ts'
 
@@ -5,7 +8,9 @@ import { expectNoHorizontalOverflow } from './support/ui.ts'
 // testlerindedir (`tests/finance-professional-development.test.ts`,
 // `apps/api/test/finance-professional-development.test.ts`); burada yönetici eğitimi taslak ekler,
 // yayına alır, öğretmeni atar ve katıldı işaretler; ön büro yayındaki eğitimi ve katılımcısını
-// yalnız okur.
+// yalnız okur. ON-215 (DOM-FIN-144, K-487): yönetici öğretim yılı hedefini yazar, saat özetinde
+// tamamlanan, hedef ve eksik saati görür, eksik listesini süzer; belge ve sertifika dalları API
+// testindedir (`apps/api/test/finance-professional-development-hours.test.ts`).
 
 const ADMIN_URL = '/yonetici/finans?gorunum=mesleki-gelisim'
 const DESK_URL = '/onburo/tahsilat-takip?gorunum=mesleki-gelisim'
@@ -80,5 +85,105 @@ test.describe('ON-214: mesleki gelişim kataloğu', () => {
       'Katıldı',
     )
     await expect(deskRoster.getByRole('form', { name: 'Personel ata' })).toHaveCount(0)
+  })
+})
+
+const ONLINE = 'Kendi hızında dijital okuryazarlık'
+
+function data<T>(result: ApiResult, status = 200): T {
+  expect(result.status, JSON.stringify(result.body)).toBe(status)
+  return (result.body as { data: T }).data
+}
+
+test.describe('ON-215: mesleki gelişim saati', () => {
+  test('DOM-FIN-144: K-487 yönetici hedef saati yazar; özet eksik saati gösterir ve süzülür', async ({
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['ogretmen'] })
+    const teacher = school.user('ogretmen').name
+    const api = await createApiClient({ email: school.user('yonetici').email }, { fresh: true })
+    try {
+      expect((await switchInstitutionApi(api, school.institutionId)).ok).toBe(true)
+      // Sürekli eğitimde katılım günü işaretin İstanbul günüdür: içinde bulunulan öğretim yılına düşer.
+      const draft = data<{ id: string; version: number }>(
+        await api.post(
+          '/api/v1/finance/professional-development',
+          {
+            name: ONLINE,
+            kind: 'online',
+            provider: 'Öğretmen Akademisi',
+            durationHours: 6,
+            ongoing: true,
+            onlineUrl: 'https://egitim.ornek.test',
+          },
+          { 'idempotency-key': randomUUID() },
+        ),
+        201,
+      )
+      const url = `/api/v1/finance/professional-development/${draft.id}`
+      data(
+        await api.post(
+          `${url}/status`,
+          { status: 'published' },
+          { 'idempotency-key': randomUUID(), 'if-match': `"${String(draft.version)}"` },
+        ),
+      )
+      const staff = data<{ membershipId: string; name: string }[]>(
+        await api.get('/api/v1/finance/professional-development-hours?pageSize=100'),
+      )
+      const membershipId = staff.find((row) => row.name === teacher)?.membershipId
+      expect(membershipId).toBeDefined()
+      const enrollment = data<{ id: string; version: number }>(
+        await api.post(`${url}/enrollments`, { membershipId }, { 'idempotency-key': randomUUID() }),
+        201,
+      )
+      data(
+        await apiRequest(
+          api.context,
+          'PATCH',
+          `${url}/enrollments/${enrollment.id}`,
+          { status: 'attended', attendedHours: 4 },
+          { 'idempotency-key': randomUUID(), 'if-match': `"${String(enrollment.version)}"` },
+        ),
+      )
+    } finally {
+      await api.dispose()
+    }
+
+    const page = await loginAs(school.user('yonetici'))
+    await page.goto(ADMIN_URL)
+    const section = page.getByRole('region', { name: 'Gelişim saati' })
+    const row = section.getByRole('row', { name: new RegExp(teacher) })
+    await expect(row).toContainText('4 saat')
+    await expect(row).toContainText('—')
+
+    const target = section.getByRole('form', { name: 'Hedef saat' })
+    await target.getByLabel('Yıllık hedef (saat)').fill('1,5')
+    await target.getByRole('button', { name: 'Hedefi kaydet' }).click()
+    await expect(target.getByText('Hedef saat 1–500 arasında tam sayı olmalı.')).toBeVisible()
+    await target.getByLabel('Yıllık hedef (saat)').fill('10')
+    await target.getByRole('button', { name: 'Hedefi kaydet' }).click()
+    await expect(page.getByText('Hedef saat kaydedildi.')).toBeVisible()
+    await expect(row).toContainText('10 saat')
+    await expect(row).toContainText('6 saat')
+
+    await section.getByRole('button', { name: 'Filtreler', exact: true }).click()
+    await section.getByLabel('Durum', { exact: true }).selectOption({ label: 'Hedefi tamamlayan' })
+    await expect(section.getByText('Bu seçimle eşleşen personel yok.')).toBeVisible()
+    await section.getByLabel('Durum', { exact: true }).selectOption({ label: 'Eksik saati olan' })
+    await expect(row).toBeVisible()
+    await expectNoHorizontalOverflow(page)
+
+    // Katıldı işaretli katılımda belge ve sertifika alanları açılır (K-488).
+    const catalog = page.getByRole('region', { name: 'Mesleki gelişim' })
+    await catalog
+      .getByRole('row', { name: new RegExp(ONLINE) })
+      .getByRole('button', { name: `${ONLINE} katılımcıları` })
+      .click()
+    const roster = page.getByRole('dialog', { name: `${ONLINE} katılımcıları` })
+    const item = roster.getByRole('listitem').filter({ hasText: teacher })
+    await expect(item.getByText('Katılım belgesi', { exact: true })).toBeVisible()
+    await expect(item.getByRole('form', { name: `${teacher} sertifikası` })).toBeVisible()
   })
 })

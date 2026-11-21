@@ -3975,6 +3975,38 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: personel memnuniyet anketi (ON-191; DOM-FIN-143, K-484…K-486).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/staff-surveys', 'list(a.admin)'],
+        ['gövde', 'POST /api/v1/finance/staff-surveys', 'institutionId: b.id'],
+        ['liste', 'GET /api/v1/finance/staff-surveys/assigned', 'assigned(aTeacher.cookie)'],
+        ['kayıt', 'GET /api/v1/finance/staff-surveys/:surveyId', 'detail(a.admin, bDraft)'],
+        ['kayıt', 'PATCH /api/v1/finance/staff-surveys/:surveyId', 'patch(a.admin, bDraft'],
+        ['kayıt', 'DELETE /api/v1/finance/staff-surveys/:surveyId', 'archive(a.admin, bDraft)'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-surveys/:surveyId/publish',
+          'publish(a.admin, bDraft)',
+        ],
+        ['kayıt', 'POST /api/v1/finance/staff-surveys/:surveyId/copy', 'copy(a.admin, bLive)'],
+        ['kayıt', 'GET /api/v1/finance/staff-surveys/:surveyId/results', 'results(a.admin, bLive)'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/staff-surveys/:surveyId/responses',
+          'respond(aTeacher.cookie, bLive',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-staff-surveys.test.ts',
+        'DOM-FIN-143: başka kurumun anketi 404 ve B değişmez; listede yok; gövdedeki institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

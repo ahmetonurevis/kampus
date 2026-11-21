@@ -1079,6 +1079,13 @@
       "when": 1795220385402,
       "tag": "0153_create_candidate_interviews",
       "breakpoints": true
+    },
+    {
+      "idx": 154,
+      "version": "7",
+      "when": 1795244243546,
+      "tag": "0154_create_staff_surveys",
+      "breakpoints": true
     }
   ]
 }

@@ -13760,6 +13760,158 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/staff-surveys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Personel anketleri
+         * @description Kurumun anketleri (kaldırılmış taslak hariç), en yeni açılış önce: aşama (`draft`, `scheduled`, `open`, `closed`; Europe/Istanbul gününden), tarihler, hedef kitle, eşik, soru sayısı ve yayımlanmışta katılım oranı (K-486). Aşama ve başlıkla süzülür. Rol: yalnız `yonetici` (K-484). Modül `finance`.
+         */
+        get: operations["listStaffSurveys"];
+        put?: never;
+        /**
+         * Anket taslağı aç
+         * @description Başlık (3–150), açılış ve kapanış günü (uçlar dahil, en çok 90 gün), isteğe bağlı eşik (3–10; verilmezse kurumun anonimlik eşiği), hedef kitle (rol ve birim süzgeci; bilinmeyen birim 422 `staff_survey_unit_not_found`) ve 1–30 soru (Likert 1–5, eNPS 0–10, açık uçlu) (K-484). `Idempotency-Key` zorunlu. Gövdedeki `institutionId` 400. Rol: yalnız `yonetici` (K-484). Modül `finance`.
+         */
+        post: operations["createStaffSurvey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staff-surveys/assigned": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Yanıtlayacağım anketler
+         * @description Oturumdaki personelin katılımcısı olduğu, kapanmamış yayımlanmış anketler, kapanışı yakın önce: sorular ve yanıtladınız mı (K-485). Başka personelin katılımı dönmez. Rol: personel (`yonetici`, `ogretmen`, `onburo`); yalnız kendi katılımcısı olduğu anket (K-485). Modül `finance`.
+         */
+        get: operations["listAssignedStaffSurveys"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staff-surveys/{surveyId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Anket ayrıntısı
+         * @description Sorular, hedef kitle birimlerinin adları, hedef kitle büyüklüğü (taslakta bugünkü personelle, yayımlanmışta donan liste) ve katılım oranı. Katılımcıların adı dönmez. Başka kurumun anketi 404. Rol: yalnız `yonetici` (K-484). Modül `finance`.
+         */
+        get: operations["getStaffSurvey"];
+        put?: never;
+        post?: never;
+        /**
+         * Taslağı kaldır
+         * @description Taslak arşivlenir; yayımlanmış anket 409 `staff_survey_not_draft` (K-484). `If-Match` zorunlu. Başka kurumun anketi 404. Rol: yalnız `yonetici` (K-484). Modül `finance`.
+         */
+        delete: operations["archiveStaffSurvey"];
+        options?: never;
+        head?: never;
+        /**
+         * Taslağı düzelt
+         * @description Gönderilen alanlar değişir (en az bir alan). Yalnız taslak (409 `staff_survey_not_draft`); birleşen tarihler ters ya da 90 günden uzunsa 422 `staff_survey_dates_invalid`; bilinmeyen birim 422 `staff_survey_unit_not_found` (K-484). `If-Match` zorunlu; sürüm tutmazsa 409. Başka kurumun anketi 404. Rol: yalnız `yonetici` (K-484). Modül `finance`.
+         */
+        patch: operations["updateStaffSurvey"];
+        trace?: never;
+    };
+    "/api/v1/finance/staff-surveys/{surveyId}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Anketi yayımla
+         * @description Bugün hedef kitleye uyan etkin personel katılımcı listesi olarak donar; sorular, tarihler, hedef kitle ve eşik artık değişmez (K-484). Yalnız taslak (409 `staff_survey_not_draft`); kapanış günü geçtiyse 422 `staff_survey_closes_past`; katılımcı eşikten azsa 422 `staff_survey_audience_below_threshold` (K-486). `If-Match` zorunlu. Başka kurumun anketi 404. Rol: yalnız `yonetici` (K-484). Modül `finance`.
+         */
+        post: operations["publishStaffSurvey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staff-surveys/{surveyId}/copy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Yeni sürüm aç
+         * @description Yayımlanmış anketin soruları, hedef kitlesi, tarihleri ve eşiğiyle yeni taslak açılır; sürüm numarası bir artar (K-484). Taslaktan 409 `staff_survey_copy_draft`; ankette etkin yeni sürüm varsa 409 `staff_survey_copy_exists`. `Idempotency-Key` zorunlu. Başka kurumun anketi 404. Rol: yalnız `yonetici` (K-484). Modül `finance`.
+         */
+        post: operations["copyStaffSurvey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staff-surveys/{surveyId}/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Anketin toplu sonucu
+         * @description Katılım oranı her zaman; sonuç yalnız anket kapandıktan sonra (`hiddenReason: not_closed`) ve en az eşik kadar yanıtla (`below_threshold`). Birim kırılımı (`unit`) eşik ve tamamlayıcı gizlemeyi geçmezse gösterilmez (`unit_below_threshold`); soru başına cevap da eşik altındaysa soru gizli. Puanlı soruda dağılım ve ortalama, eNPS sorusunda eNPS puanı; açık uçlu cevaplar karışık sırada, tarih/saat ve yanıtlayan olmadan (K-486). Okuma aynı transaction'da denetime yazılır (`finance.staff_survey_result.read`, alan adları). Başka kurumun anketi 404. Rol: yalnız `yonetici` (K-484). Modül `finance`.
+         */
+        get: operations["getStaffSurveyResult"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/staff-surveys/{surveyId}/responses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Anketi yanıtla
+         * @description Soru sırasıyla cevaplar (Likert 1–5, eNPS 0–10, açık uçlu metin ≤ 2000). Anket yanıta açık olmalı (açılmadıysa 422 `staff_survey_not_open`, kapandıysa 422 `staff_survey_closed`); kişi bir kez yanıtlar (409 `staff_survey_already_responded`); cevap sayısı, türü ya da ölçeği uymazsa 422 `staff_survey_answers_mismatch` / `staff_survey_answer_kind` / `staff_survey_answer_range`; zorunlu soru boşsa 422 `staff_survey_incomplete` (K-485). Yanıt kişiye bağlanmaz ve yanıt anı saklanmaz; denetime yalnız katılım yazılır, cevaplar yanıtta dönmez. `Idempotency-Key` zorunlu; özet gövdesiz hesaplanır, aynı anahtar ilk yanıtı tekrarlar. Katılımcısı olmadığı ya da başka kurumun anketi 404. Rol: personel (`yonetici`, `ogretmen`, `onburo`); yalnız kendi katılımcısı olduğu anket (K-485). Modül `finance`.
+         */
+        post: operations["respondStaffSurvey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -145256,6 +145408,1498 @@ export interface operations {
                             updatedAt: string;
                             /** @description `If-Match` için mülakat sürümü */
                             version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listStaffSurveys: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Başlıkta arama */
+                q?: string;
+                /** @description Aşama süzgeci */
+                phase?: "draft" | "scheduled" | "open" | "closed";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Anket başlığı */
+                            title: string;
+                            /** @description Sürüm numarası (ilk anket 1) */
+                            revision: number;
+                            /** @description Yeni sürümün kopyalandığı anket */
+                            sourceSurveyId: string | null;
+                            /**
+                             * @description `draft` taslak, `published` yayımlandı
+                             * @enum {string}
+                             */
+                            status: "draft" | "published" | "archived";
+                            /**
+                             * @description `draft`, `scheduled` açılmadı, `open` yanıta açık, `closed` kapandı (bugünden)
+                             * @enum {string}
+                             */
+                            phase: "draft" | "scheduled" | "open" | "closed";
+                            /** @description Açılış günü (Europe/Istanbul, dahil) */
+                            openDate: string;
+                            /** @description Kapanış günü (Europe/Istanbul, dahil) */
+                            closeDate: string;
+                            /** @description Sonuç için en az yanıt (3–10) */
+                            anonymityThreshold: number;
+                            audience: {
+                                /** @description Rol süzgeci; boş = bütün personel */
+                                roles: ("yonetici" | "ogretmen" | "onburo")[];
+                                /** @description Birim süzgeci; boş = birim süzgeci yok */
+                                unitIds: string[];
+                            };
+                            questionCount: number;
+                            /** @description Katılım oranı; taslakta boş (K-486) */
+                            participation: {
+                                /** @description Yayımda donan katılımcı sayısı */
+                                participants: number;
+                                /** @description Yanıtlayan sayısı (kimin yanıtladığı dönmez) */
+                                responded: number;
+                                /** @description Yanıtlayan / katılımcı, yüzde (bir ondalık) */
+                                rate: number | null;
+                            } | null;
+                            publishedAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için anket sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createStaffSurvey: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Anket başlığı */
+                    title: string;
+                    /** @description Açılış günü (Europe/Istanbul, dahil) */
+                    openDate: string;
+                    /** @description Kapanış günü (Europe/Istanbul, dahil); ertesi gün yanıt alınmaz */
+                    closeDate: string;
+                    /** @description Sonucun gösterilmesi için gereken en az yanıt (3–10; verilmezse kurumun anonimlik eşiği, K-486) */
+                    anonymityThreshold?: number;
+                    /** @description Hedef kitle (K-484) */
+                    audience: {
+                        /** @description Rol süzgeci (`yonetici`, `ogretmen`, `onburo`); boş = bütün personel rolleri */
+                        roles: ("yonetici" | "ogretmen" | "onburo")[];
+                        /** @description Organizasyon birimi süzgeci (DOM-FIN-129); yayım günü birimde süren ataması olan personel. Boş = birim süzgeci yok */
+                        unitIds: string[];
+                    };
+                    /** @description Sorular, sırasıyla; yayımdan sonra değişmez (K-484) */
+                    questions: {
+                        /**
+                         * @description `likert` 1–5, `enps` 0–10 (tavsiye etme olasılığı), `open` açık uçlu
+                         * @enum {string}
+                         */
+                        kind: "likert" | "enps" | "open";
+                        /** @description Soru metni */
+                        text: string;
+                        /** @description Yanıtta cevap zorunlu mu */
+                        required: boolean;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Anket başlığı */
+                            title: string;
+                            /** @description Sürüm numarası (ilk anket 1) */
+                            revision: number;
+                            /** @description Yeni sürümün kopyalandığı anket */
+                            sourceSurveyId: string | null;
+                            /**
+                             * @description `draft` taslak, `published` yayımlandı
+                             * @enum {string}
+                             */
+                            status: "draft" | "published" | "archived";
+                            /**
+                             * @description `draft`, `scheduled` açılmadı, `open` yanıta açık, `closed` kapandı (bugünden)
+                             * @enum {string}
+                             */
+                            phase: "draft" | "scheduled" | "open" | "closed";
+                            /** @description Açılış günü (Europe/Istanbul, dahil) */
+                            openDate: string;
+                            /** @description Kapanış günü (Europe/Istanbul, dahil) */
+                            closeDate: string;
+                            /** @description Sonuç için en az yanıt (3–10) */
+                            anonymityThreshold: number;
+                            audience: {
+                                /** @description Rol süzgeci; boş = bütün personel */
+                                roles: ("yonetici" | "ogretmen" | "onburo")[];
+                                /** @description Birim süzgeci; boş = birim süzgeci yok */
+                                unitIds: string[];
+                            };
+                            questionCount: number;
+                            /** @description Katılım oranı; taslakta boş (K-486) */
+                            participation: {
+                                /** @description Yayımda donan katılımcı sayısı */
+                                participants: number;
+                                /** @description Yanıtlayan sayısı (kimin yanıtladığı dönmez) */
+                                responded: number;
+                                /** @description Yanıtlayan / katılımcı, yüzde (bir ondalık) */
+                                rate: number | null;
+                            } | null;
+                            publishedAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için anket sürümü */
+                            version: number;
+                            /** @description Sorular, sırasıyla */
+                            questions: {
+                                /**
+                                 * @description `likert` 1–5, `enps` 0–10, `open` açık uçlu
+                                 * @enum {string}
+                                 */
+                                kind: "likert" | "enps" | "open";
+                                /** @description Soru metni */
+                                text: string;
+                                /** @description Yanıtta cevap zorunlu mu */
+                                required: boolean;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listAssignedStaffSurveys: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            title: string;
+                            openDate: string;
+                            closeDate: string;
+                            /**
+                             * @description `scheduled` açılmadı ya da `open` yanıta açık
+                             * @enum {string}
+                             */
+                            phase: "draft" | "scheduled" | "open" | "closed";
+                            anonymityThreshold: number;
+                            questions: {
+                                /**
+                                 * @description `likert` 1–5, `enps` 0–10, `open` açık uçlu
+                                 * @enum {string}
+                                 */
+                                kind: "likert" | "enps" | "open";
+                                /** @description Soru metni */
+                                text: string;
+                                /** @description Yanıtta cevap zorunlu mu */
+                                required: boolean;
+                            }[];
+                            /** @description Bu anketi yanıtladınız mı */
+                            responded: boolean;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getStaffSurvey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                surveyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Anket başlığı */
+                            title: string;
+                            /** @description Sürüm numarası (ilk anket 1) */
+                            revision: number;
+                            /** @description Yeni sürümün kopyalandığı anket */
+                            sourceSurveyId: string | null;
+                            /**
+                             * @description `draft` taslak, `published` yayımlandı
+                             * @enum {string}
+                             */
+                            status: "draft" | "published" | "archived";
+                            /**
+                             * @description `draft`, `scheduled` açılmadı, `open` yanıta açık, `closed` kapandı (bugünden)
+                             * @enum {string}
+                             */
+                            phase: "draft" | "scheduled" | "open" | "closed";
+                            /** @description Açılış günü (Europe/Istanbul, dahil) */
+                            openDate: string;
+                            /** @description Kapanış günü (Europe/Istanbul, dahil) */
+                            closeDate: string;
+                            /** @description Sonuç için en az yanıt (3–10) */
+                            anonymityThreshold: number;
+                            audience: {
+                                /** @description Rol süzgeci; boş = bütün personel */
+                                roles: ("yonetici" | "ogretmen" | "onburo")[];
+                                /** @description Birim süzgeci; boş = birim süzgeci yok */
+                                unitIds: string[];
+                            };
+                            questionCount: number;
+                            /** @description Katılım oranı; taslakta boş (K-486) */
+                            participation: {
+                                /** @description Yayımda donan katılımcı sayısı */
+                                participants: number;
+                                /** @description Yanıtlayan sayısı (kimin yanıtladığı dönmez) */
+                                responded: number;
+                                /** @description Yanıtlayan / katılımcı, yüzde (bir ondalık) */
+                                rate: number | null;
+                            } | null;
+                            publishedAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için anket sürümü */
+                            version: number;
+                            /** @description Sorular, sırasıyla */
+                            questions: {
+                                /**
+                                 * @description `likert` 1–5, `enps` 0–10, `open` açık uçlu
+                                 * @enum {string}
+                                 */
+                                kind: "likert" | "enps" | "open";
+                                /** @description Soru metni */
+                                text: string;
+                                /** @description Yanıtta cevap zorunlu mu */
+                                required: boolean;
+                            }[];
+                            /** @description Hedef kitle: taslakta bugünkü personelle hesaplanır, yayımlanmışta donan liste */
+                            audienceSize: number;
+                            /** @description Birim süzgecindeki birimlerin adları */
+                            audienceUnits: {
+                                id: string;
+                                name: string;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveStaffSurvey: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                surveyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateStaffSurvey: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                surveyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Anket başlığı */
+                    title?: string;
+                    /** @description Açılış günü */
+                    openDate?: string;
+                    /** @description Kapanış günü */
+                    closeDate?: string;
+                    /** @description Sonucun gösterilmesi için gereken en az yanıt (3–10; verilmezse kurumun anonimlik eşiği, K-486) */
+                    anonymityThreshold?: number;
+                    /** @description Hedef kitle */
+                    audience?: {
+                        /** @description Rol süzgeci (`yonetici`, `ogretmen`, `onburo`); boş = bütün personel rolleri */
+                        roles: ("yonetici" | "ogretmen" | "onburo")[];
+                        /** @description Organizasyon birimi süzgeci (DOM-FIN-129); yayım günü birimde süren ataması olan personel. Boş = birim süzgeci yok */
+                        unitIds: string[];
+                    };
+                    /** @description Sorular, sırasıyla; yayımdan sonra değişmez (K-484) */
+                    questions?: {
+                        /**
+                         * @description `likert` 1–5, `enps` 0–10 (tavsiye etme olasılığı), `open` açık uçlu
+                         * @enum {string}
+                         */
+                        kind: "likert" | "enps" | "open";
+                        /** @description Soru metni */
+                        text: string;
+                        /** @description Yanıtta cevap zorunlu mu */
+                        required: boolean;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Anket başlığı */
+                            title: string;
+                            /** @description Sürüm numarası (ilk anket 1) */
+                            revision: number;
+                            /** @description Yeni sürümün kopyalandığı anket */
+                            sourceSurveyId: string | null;
+                            /**
+                             * @description `draft` taslak, `published` yayımlandı
+                             * @enum {string}
+                             */
+                            status: "draft" | "published" | "archived";
+                            /**
+                             * @description `draft`, `scheduled` açılmadı, `open` yanıta açık, `closed` kapandı (bugünden)
+                             * @enum {string}
+                             */
+                            phase: "draft" | "scheduled" | "open" | "closed";
+                            /** @description Açılış günü (Europe/Istanbul, dahil) */
+                            openDate: string;
+                            /** @description Kapanış günü (Europe/Istanbul, dahil) */
+                            closeDate: string;
+                            /** @description Sonuç için en az yanıt (3–10) */
+                            anonymityThreshold: number;
+                            audience: {
+                                /** @description Rol süzgeci; boş = bütün personel */
+                                roles: ("yonetici" | "ogretmen" | "onburo")[];
+                                /** @description Birim süzgeci; boş = birim süzgeci yok */
+                                unitIds: string[];
+                            };
+                            questionCount: number;
+                            /** @description Katılım oranı; taslakta boş (K-486) */
+                            participation: {
+                                /** @description Yayımda donan katılımcı sayısı */
+                                participants: number;
+                                /** @description Yanıtlayan sayısı (kimin yanıtladığı dönmez) */
+                                responded: number;
+                                /** @description Yanıtlayan / katılımcı, yüzde (bir ondalık) */
+                                rate: number | null;
+                            } | null;
+                            publishedAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için anket sürümü */
+                            version: number;
+                            /** @description Sorular, sırasıyla */
+                            questions: {
+                                /**
+                                 * @description `likert` 1–5, `enps` 0–10, `open` açık uçlu
+                                 * @enum {string}
+                                 */
+                                kind: "likert" | "enps" | "open";
+                                /** @description Soru metni */
+                                text: string;
+                                /** @description Yanıtta cevap zorunlu mu */
+                                required: boolean;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    publishStaffSurvey: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                surveyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Anket başlığı */
+                            title: string;
+                            /** @description Sürüm numarası (ilk anket 1) */
+                            revision: number;
+                            /** @description Yeni sürümün kopyalandığı anket */
+                            sourceSurveyId: string | null;
+                            /**
+                             * @description `draft` taslak, `published` yayımlandı
+                             * @enum {string}
+                             */
+                            status: "draft" | "published" | "archived";
+                            /**
+                             * @description `draft`, `scheduled` açılmadı, `open` yanıta açık, `closed` kapandı (bugünden)
+                             * @enum {string}
+                             */
+                            phase: "draft" | "scheduled" | "open" | "closed";
+                            /** @description Açılış günü (Europe/Istanbul, dahil) */
+                            openDate: string;
+                            /** @description Kapanış günü (Europe/Istanbul, dahil) */
+                            closeDate: string;
+                            /** @description Sonuç için en az yanıt (3–10) */
+                            anonymityThreshold: number;
+                            audience: {
+                                /** @description Rol süzgeci; boş = bütün personel */
+                                roles: ("yonetici" | "ogretmen" | "onburo")[];
+                                /** @description Birim süzgeci; boş = birim süzgeci yok */
+                                unitIds: string[];
+                            };
+                            questionCount: number;
+                            /** @description Katılım oranı; taslakta boş (K-486) */
+                            participation: {
+                                /** @description Yayımda donan katılımcı sayısı */
+                                participants: number;
+                                /** @description Yanıtlayan sayısı (kimin yanıtladığı dönmez) */
+                                responded: number;
+                                /** @description Yanıtlayan / katılımcı, yüzde (bir ondalık) */
+                                rate: number | null;
+                            } | null;
+                            publishedAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için anket sürümü */
+                            version: number;
+                            /** @description Sorular, sırasıyla */
+                            questions: {
+                                /**
+                                 * @description `likert` 1–5, `enps` 0–10, `open` açık uçlu
+                                 * @enum {string}
+                                 */
+                                kind: "likert" | "enps" | "open";
+                                /** @description Soru metni */
+                                text: string;
+                                /** @description Yanıtta cevap zorunlu mu */
+                                required: boolean;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    copyStaffSurvey: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                surveyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Anket başlığı */
+                            title: string;
+                            /** @description Sürüm numarası (ilk anket 1) */
+                            revision: number;
+                            /** @description Yeni sürümün kopyalandığı anket */
+                            sourceSurveyId: string | null;
+                            /**
+                             * @description `draft` taslak, `published` yayımlandı
+                             * @enum {string}
+                             */
+                            status: "draft" | "published" | "archived";
+                            /**
+                             * @description `draft`, `scheduled` açılmadı, `open` yanıta açık, `closed` kapandı (bugünden)
+                             * @enum {string}
+                             */
+                            phase: "draft" | "scheduled" | "open" | "closed";
+                            /** @description Açılış günü (Europe/Istanbul, dahil) */
+                            openDate: string;
+                            /** @description Kapanış günü (Europe/Istanbul, dahil) */
+                            closeDate: string;
+                            /** @description Sonuç için en az yanıt (3–10) */
+                            anonymityThreshold: number;
+                            audience: {
+                                /** @description Rol süzgeci; boş = bütün personel */
+                                roles: ("yonetici" | "ogretmen" | "onburo")[];
+                                /** @description Birim süzgeci; boş = birim süzgeci yok */
+                                unitIds: string[];
+                            };
+                            questionCount: number;
+                            /** @description Katılım oranı; taslakta boş (K-486) */
+                            participation: {
+                                /** @description Yayımda donan katılımcı sayısı */
+                                participants: number;
+                                /** @description Yanıtlayan sayısı (kimin yanıtladığı dönmez) */
+                                responded: number;
+                                /** @description Yanıtlayan / katılımcı, yüzde (bir ondalık) */
+                                rate: number | null;
+                            } | null;
+                            publishedAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için anket sürümü */
+                            version: number;
+                            /** @description Sorular, sırasıyla */
+                            questions: {
+                                /**
+                                 * @description `likert` 1–5, `enps` 0–10, `open` açık uçlu
+                                 * @enum {string}
+                                 */
+                                kind: "likert" | "enps" | "open";
+                                /** @description Soru metni */
+                                text: string;
+                                /** @description Yanıtta cevap zorunlu mu */
+                                required: boolean;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getStaffSurveyResult: {
+        parameters: {
+            query?: {
+                /** @description Birim kırılımı: birim kimliği ya da `none` (birimsiz); verilmezse bütün yanıtlar */
+                unit?: string | "none";
+            };
+            header?: never;
+            path: {
+                surveyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Yayımda donan katılımcı sayısı */
+                            participants: number;
+                            /** @description Yanıtlayan sayısı (kimin yanıtladığı dönmez) */
+                            responded: number;
+                            /** @description Yanıtlayan / katılımcı, yüzde (bir ondalık) */
+                            rate: number | null;
+                            surveyId: string;
+                            title: string;
+                            /** @enum {string} */
+                            phase: "draft" | "scheduled" | "open" | "closed";
+                            closeDate: string;
+                            /** @description Uygulanan anonimlik eşiği */
+                            threshold: number;
+                            /** @description Seçilen birim kırılımı; `none` birimsiz, boş = hepsi */
+                            unit: string | null;
+                            /** @description Sonuç gösteriliyor mu */
+                            visible: boolean;
+                            /** @description `not_closed` anket kapanmadı, `below_threshold` yanıt eşiğin altında, `unit_below_threshold` seçilen birim eşik ya da tamamlayıcı gizlemeye takıldı */
+                            hiddenReason: ("not_closed" | "below_threshold" | "unit_below_threshold") | null;
+                            /** @description Seçilebilen birimler (eşik ve tamamlayıcı gizlemeyi geçen), yanıt sayısıyla */
+                            units: {
+                                unit: string;
+                                name: string;
+                                responses: number;
+                            }[];
+                            questions: {
+                                /** @enum {string} */
+                                kind: "likert" | "enps" | "open";
+                                text: string;
+                                required: boolean;
+                                /** @description Cevaplayan sayısı; gizliyse boş */
+                                answered: number | null;
+                                /** @description Eşik ya da tamamlayıcı gizleme nedeniyle gizli */
+                                hidden: boolean;
+                                /** @description Puanlı soruda ortalama (iki ondalık) */
+                                average: number | null;
+                                /** @description Puanlı soruda ölçeğin her değerinin yanıt sayısı, küçükten büyüğe */
+                                distribution: number[];
+                                enps: {
+                                    /** @description eNPS: tavsiye eden % − kötüleyen % (−100…100) */
+                                    score: number;
+                                    /** @description 9–10 */
+                                    promoters: number;
+                                    /** @description 7–8 */
+                                    passives: number;
+                                    /** @description 0–6 */
+                                    detractors: number;
+                                } | null;
+                                /** @description Açık uçlu cevaplar, karışık sırada */
+                                texts: string[];
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    respondStaffSurvey: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                surveyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Soru sırasıyla cevaplar; dizi soru sayısı kadardır */
+                    answers: {
+                        /** @description Likert 1–5 ya da eNPS 0–10; boş = cevaplanmadı */
+                        value?: number | null;
+                        /** @description Açık uçlu soru için cevap; boş = cevaplanmadı */
+                        text?: string | null;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            surveyId: string;
+                            /** @enum {boolean} */
+                            responded: true;
                         };
                     };
                 };

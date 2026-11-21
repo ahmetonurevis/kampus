@@ -585,6 +585,8 @@ export async function insertAdministration(
     administeredByMembershipId: string
     healthCiphertext: string
     healthKeyVersion: number
+    /** İptal edilen aynı doz saati uygulamasının yerine geçiyorsa onun kimliği (DOM-FIN-152). */
+    replacesAdministrationId?: string | null
     userId: string
     now: Date
   },
@@ -601,6 +603,7 @@ export async function insertAdministration(
     recordedByUserId: input.userId,
     healthCiphertext: input.healthCiphertext,
     healthKeyVersion: input.healthKeyVersion,
+    replacesAdministrationId: input.replacesAdministrationId ?? null,
     createdAt: input.now,
     updatedAt: input.now,
   })

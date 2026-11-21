@@ -70,6 +70,21 @@ export const STAFF_FEEDBACK_THRESHOLD_MIN = 3
 export const STAFF_FEEDBACK_THRESHOLD_MAX = 10
 export const STAFF_FEEDBACK_THRESHOLD_DEFAULT = 3
 
+/**
+ * Anonim toplu sonuç eşiği geçti mi (K-459): en az `threshold` yanıt ya da cevap. Personel
+ * memnuniyet anketi (DOM-FIN-143, K-486) aynı sınırları ve bu yardımcıyı kullanır.
+ */
+export const meetsAnonymityThreshold = (count: number, threshold: number) => count >= threshold
+
+/** Anonimlik eşiği alanı: 3–10 tam sayı (K-459; anket eşiği K-486). */
+export const anonymityThresholdSchema = (description: string) =>
+  z
+    .number('Eşiği girin.')
+    .int('Eşik tam sayı olmalı.')
+    .min(STAFF_FEEDBACK_THRESHOLD_MIN, 'Eşik en az 3 olabilir.')
+    .max(STAFF_FEEDBACK_THRESHOLD_MAX, 'Eşik en çok 10 olabilir.')
+    .describe(description)
+
 /** Değerlendiren planlama, yürürlük ve ara görüşmede atanır ve kaldırılır (K-458). */
 export const STAFF_FEEDBACK_ASSIGN_STATUSES = [
   'planning',
@@ -184,12 +199,9 @@ export const staffFeedbackWithdrawSchema = z.strictObject({
 })
 
 export const staffFeedbackSettingsSchema = z.strictObject({
-  peerAnonymityThreshold: z
-    .number('Eşiği girin.')
-    .int('Eşik tam sayı olmalı.')
-    .min(STAFF_FEEDBACK_THRESHOLD_MIN, 'Eşik en az 3 olabilir.')
-    .max(STAFF_FEEDBACK_THRESHOLD_MAX, 'Eşik en çok 10 olabilir.')
-    .describe('Meslektaş sonucunun gösterilmesi için gereken en az yanıt (3–10; K-459)'),
+  peerAnonymityThreshold: anonymityThresholdSchema(
+    'Meslektaş sonucunun gösterilmesi için gereken en az yanıt (3–10; K-459)',
+  ),
 })
 export type StaffFeedbackSettings = z.output<typeof staffFeedbackSettingsSchema>
 
@@ -562,7 +574,7 @@ export function multiSourceFeedbackResult(input: {
     input.periodStatus,
   )
     ? 'period_open'
-    : peers.length < input.threshold
+    : !meetsAnonymityThreshold(peers.length, input.threshold)
       ? 'below_threshold'
       : null
   const peerQuestions =
@@ -572,7 +584,7 @@ export function multiSourceFeedbackResult(input: {
           const answers = peers
             .map((row) => row.answers?.[index])
             .filter((answer) => isSelfEvaluationAnswered(question, answer))
-          const hidden = answers.length < input.threshold
+          const hidden = !meetsAnonymityThreshold(answers.length, input.threshold)
           const scores = answers.flatMap((answer) =>
             answer === undefined || answer.score === null ? [] : [answer.score],
           )

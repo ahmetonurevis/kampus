@@ -39,6 +39,8 @@ import type { HealthProfileDeps } from '../services/health-profiles.ts'
 import type { CommandResponse } from '../services/operation-runner.ts'
 import { captureInput, options, rejectIfMatch, requireIfMatch } from './commands.ts'
 import { commandErrors, commandHeadersSchema } from './commands.schemas.ts'
+import { healthAccessReasonOf, requireHealthAccessReason } from './finance-health-access.ts'
+import { healthAccessHeadersSchema } from './finance-health-access.schemas.ts'
 import {
   myTripDaysResponse,
   tripDayCardQuery,
@@ -363,12 +365,13 @@ export function registerFinanceTripDayRoutes(app: FastifyInstance) {
             `trip-day-card:${request.auth?.userId ?? request.ip}`,
         },
       },
-      preValidation: [...operators, app.requireFreshSession],
+      preValidation: [...operators, app.requireFreshSession, requireHealthAccessReason()],
       schema: {
         operationId: 'getTripDayEmergencyCard',
         tags,
         summary: 'Grubun acil kartı (PDF verisi)',
-        description: `Grubun öğrencileri ada göre: sınıf, acil iletişim (velayetli ve iletişim kısıtı olmayan veli bağları, bağ yoksa öğrenci kaydındaki veli; en çok iki kişi; K-501) ve en az bilgiyle sağlık uyarısı: yalnız "alerji / kronik durum / ilaç var" türü, kısaltılmış acil talimat ve revirde kart günü için onaylı ilaç işareti; alerjen, ilaç adı ve doz yok (K-518). Sağlık bilgisi sağlık profili servisinden okunur (her öğrencide \`health_profile.read\` ya da \`health_profile.read_emergency\` denetimi); okuyanın profil erişimi yoksa \`source: unavailable\` ve yalnız revir işareti. \`purpose=office\` (varsayılan) veli telefonu maskeli; \`purpose=emergency\` tam telefon: yönetici her zaman, grup sorumlusu yalnız gezi günlerinde (403 \`trip_day_card_full_forbidden\`). Taze oturum ister (403 \`reauthentication_required\`), kullanıcı başına 10/dk. Her açılış denetime düşer: \`finance.trip_day.emergency_card\` ya da \`finance.trip_day.emergency_card_full\` (alan adları ve sayılar). Web PDF'i bu veriden üretir. ${OPERATE}`,
+        description: `Grubun öğrencileri ada göre: sınıf, acil iletişim (velayetli ve iletişim kısıtı olmayan veli bağları, bağ yoksa öğrenci kaydındaki veli; en çok iki kişi; K-501) ve en az bilgiyle sağlık uyarısı: yalnız "alerji / kronik durum / ilaç var" türü, kısaltılmış acil talimat ve revirde kart günü için onaylı ilaç işareti; alerjen, ilaç adı ve doz yok (K-518). Sağlık bilgisi sağlık profili servisinden okunur (her öğrencide \`health_profile.read\` ya da \`health_profile.read_emergency\` denetimi); okuyanın profil erişimi yoksa \`source: unavailable\` ve yalnız revir işareti. \`purpose=office\` (varsayılan) veli telefonu maskeli; \`purpose=emergency\` tam telefon: yönetici her zaman, grup sorumlusu yalnız gezi günlerinde (403 \`trip_day_card_full_forbidden\`). Taze oturum ister (403 \`reauthentication_required\`), kullanıcı başına 10/dk. Sağlık verisi erişim gerekçesi zorunludur (\`X-Access-Reason\`; web \`emergency\` önerir; DOM-FIN-156). Her açılış gerekçesiyle denetime ve sağlık erişim günlüğüne düşer: \`finance.trip_day.emergency_card\` ya da \`finance.trip_day.emergency_card_full\` (alan adları). Web PDF'i bu veriden üretir. ${OPERATE}`,
+        headers: healthAccessHeadersSchema(true),
         params: tripDayGroupParams,
         querystring: tripDayCardQuery,
         response: { 200: tripDayCardResponse, ...commandErrors },
@@ -381,6 +384,7 @@ export function registerFinanceTripDayRoutes(app: FastifyInstance) {
         request.params.planId,
         request.params.groupId,
         request.query.purpose,
+        healthAccessReasonOf(request),
       ),
     }),
   )

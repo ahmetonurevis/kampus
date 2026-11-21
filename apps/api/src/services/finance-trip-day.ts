@@ -33,6 +33,7 @@ import {
   type RosterParentRecord,
 } from '@kampus/school-core/lib/finance-transport-roster.ts'
 import { tripPlanNumber } from '@kampus/school-core/lib/finance-trip-plans.ts'
+import type { HealthAccessReason } from '@kampus/school-core/lib/finance-health-access.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 
 import type { Database } from '../db/client.ts'
@@ -67,10 +68,10 @@ import {
 import { findTripPlan, loadTripPlanStaff, type StoredTripPlan } from '../db/finance-trip-plans.ts'
 import { memberNames } from '../db/finance-visitors.ts'
 import { loadRecords, loadRecordsByIds } from '../db/records.ts'
-import { auditLog } from '../db/schema/audit-log.ts'
 import { loadGuardianAccounts } from '../db/student-guardians.ts'
 import { AppError, ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
+import { recordHealthRead } from './finance-health-access.ts'
 import { getHealthProfile, type HealthProfileDeps } from './health-profiles.ts'
 import {
   mapOperationError,
@@ -395,7 +396,8 @@ async function healthProfileOf(ctx: ServiceContext, deps: HealthProfileDeps, stu
 /**
  * Grubun acil kartı (K-518): öğrenci, sınıf, acil iletişim (K-501; telefon `office` amacında
  * maskeli, `emergency` amacında tam) ve en az bilgiyle sağlık uyarısı. Yönetici ve grubun sorumlusu
- * açar; her açılış amacıyla denetime yazılır (değer, öğrenci kimliği ve telefon yazılmaz).
+ * açar; her açılış amacı ve erişim gerekçesiyle denetime yazılır (değer, öğrenci kimliği ve
+ * telefon yazılmaz; DOM-FIN-156).
  */
 export async function getTripDayCardFor(
   ctx: ServiceContext,
@@ -403,6 +405,7 @@ export async function getTripDayCardFor(
   planId: string,
   groupId: string,
   purpose: TripDayCardPurpose,
+  reason: HealthAccessReason | null,
 ) {
   const state = await loadDay(ctx.db, ctx, planId)
   const { group, access } = groupScope(state, ctx, groupId)
@@ -476,19 +479,14 @@ export async function getTripDayCardFor(
   }
   rows.sort((a, b) => a.studentName.localeCompare(b.studentName, 'tr'))
   const action = CARD_ACTIONS[purpose]
-  await ctx.db.insert(auditLog).values({
-    institutionId: ctx.institutionId,
-    actorUserId: ctx.actor.userId,
-    actorRole: ctx.actor.role,
+  // Gerekçeli sağlık okuması (DOM-FIN-156): denetim satırı ve gerekçe günlüğü; değer yazılmaz.
+  // Öğrenci başına profil okuması ayrıca `health_profile.read*` denetimini bırakır.
+  await recordHealthRead(ctx.db, ctx, {
     action,
-    entityType: GROUP,
-    entityId: group.id,
-    // kvkk: değer yazılmaz; alan adları ve satır sayısı, amaç eylem adındadır (K-518).
-    changes: {
-      fields: [...CARD_FIELDS],
-      counts: { students: rows.length, alerts: rows.filter((row) => row.health.alert).length },
-    },
-    createdAt: ctx.now,
+    entity: { type: GROUP, id: group.id },
+    fields: [...CARD_FIELDS],
+    studentId: null,
+    reason,
   })
   ctx.log.info({ event: action, groupId: group.id, count: rows.length })
   return {

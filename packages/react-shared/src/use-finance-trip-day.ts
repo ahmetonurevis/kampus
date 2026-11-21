@@ -1,4 +1,8 @@
 import type { operations } from '@kampus/api-client/schema.d.ts'
+import {
+  healthAccessReasonHeaders,
+  type HealthAccessReason,
+} from '@kampus/school-core/lib/finance-health-access.ts'
 
 import { requireIfMatch, type CommandHeaders } from './commands.ts'
 import { useApiCommand } from './use-api-command.ts'
@@ -8,7 +12,8 @@ import { useApiQuery } from './use-api-query.ts'
 // ON-157). Grup açma, dağıtım, tur açma ve işaret `Idempotency-Key` ile gider: belirsiz hatadan
 // sonra yeniden gönderim aynı anahtarı kullanır (çift grup, tur ya da işaret yazılmaz). Düzeltme,
 // kaldırma ve tur bitirme `If-Match` ister. Acil kart PDF verisidir: taze oturum ister, her çağrı
-// denetime düşer; önbelleğe alınmaz, düğmeyle bir kez çağrılır (K-518).
+// erişim gerekçesiyle denetime düşer (DOM-FIN-156); önbelleğe alınmaz, düğmeyle bir kez çağrılır
+// (K-518).
 
 type JsonBody<TOperation extends keyof operations> =
   NonNullable<operations[TOperation]['requestBody']> extends {
@@ -219,12 +224,18 @@ export function useTripDayCard() {
   return useApiCommand({
     request: (
       client,
-      input: { planId: string; groupId: string; purpose: TripDayCardPurposeInput },
+      input: {
+        planId: string
+        groupId: string
+        purpose: TripDayCardPurposeInput
+        reason: HealthAccessReason
+      },
     ) =>
       client.GET('/api/v1/finance/trip-plans/{planId}/day/groups/{groupId}/emergency-card', {
         params: {
           path: { planId: input.planId, groupId: input.groupId },
           query: { purpose: input.purpose },
+          header: healthAccessReasonHeaders(input.reason),
         },
       }),
     invalidates: [],

@@ -15689,7 +15689,7 @@ export interface paths {
         };
         /**
          * Grubun acil kartı (PDF verisi)
-         * @description Grubun öğrencileri ada göre: sınıf, acil iletişim (velayetli ve iletişim kısıtı olmayan veli bağları, bağ yoksa öğrenci kaydındaki veli; en çok iki kişi; K-501) ve en az bilgiyle sağlık uyarısı: yalnız "alerji / kronik durum / ilaç var" türü, kısaltılmış acil talimat ve revirde kart günü için onaylı ilaç işareti; alerjen, ilaç adı ve doz yok (K-518). Sağlık bilgisi sağlık profili servisinden okunur (her öğrencide `health_profile.read` ya da `health_profile.read_emergency` denetimi); okuyanın profil erişimi yoksa `source: unavailable` ve yalnız revir işareti. `purpose=office` (varsayılan) veli telefonu maskeli; `purpose=emergency` tam telefon: yönetici her zaman, grup sorumlusu yalnız gezi günlerinde (403 `trip_day_card_full_forbidden`). Taze oturum ister (403 `reauthentication_required`), kullanıcı başına 10/dk. Her açılış denetime düşer: `finance.trip_day.emergency_card` ya da `finance.trip_day.emergency_card_full` (alan adları ve sayılar). Web PDF'i bu veriden üretir. Rol: `yonetici`, `ogretmen`; turu yönetici ve grubun sorumlusu yürütür, sorumlusu olmadığı grup öğretmene 404 (K-517). Modül `finance`.
+         * @description Grubun öğrencileri ada göre: sınıf, acil iletişim (velayetli ve iletişim kısıtı olmayan veli bağları, bağ yoksa öğrenci kaydındaki veli; en çok iki kişi; K-501) ve en az bilgiyle sağlık uyarısı: yalnız "alerji / kronik durum / ilaç var" türü, kısaltılmış acil talimat ve revirde kart günü için onaylı ilaç işareti; alerjen, ilaç adı ve doz yok (K-518). Sağlık bilgisi sağlık profili servisinden okunur (her öğrencide `health_profile.read` ya da `health_profile.read_emergency` denetimi); okuyanın profil erişimi yoksa `source: unavailable` ve yalnız revir işareti. `purpose=office` (varsayılan) veli telefonu maskeli; `purpose=emergency` tam telefon: yönetici her zaman, grup sorumlusu yalnız gezi günlerinde (403 `trip_day_card_full_forbidden`). Taze oturum ister (403 `reauthentication_required`), kullanıcı başına 10/dk. Sağlık verisi erişim gerekçesi zorunludur (`X-Access-Reason`; web `emergency` önerir; DOM-FIN-156). Her açılış gerekçesiyle denetime ve sağlık erişim günlüğüne düşer: `finance.trip_day.emergency_card` ya da `finance.trip_day.emergency_card_full` (alan adları). Web PDF'i bu veriden üretir. Rol: `yonetici`, `ogretmen`; turu yönetici ve grubun sorumlusu yürütür, sorumlusu olmadığı grup öğretmene 404 (K-517). Modül `finance`.
          */
         get: operations["getTripDayEmergencyCard"];
         put?: never;
@@ -165181,7 +165181,12 @@ export interface operations {
                 /** @description `office` veli telefonu maskeli (varsayılan); `emergency` tam telefon (yönetici her zaman, grup sorumlusu yalnız gezi günlerinde; K-518) */
                 purpose?: "office" | "emergency";
             };
-            header?: never;
+            header: {
+                /** @description Zorunlu. Sağlık verisi erişim gerekçesi: `emergency` acil durum, `first_aid` ilk yardım / revir işlemi, `guardian_meeting` veli görüşmesi, `incident_report` tutanak hazırlama, `official_request` resmî talep, `other` diğer. Yoksa 400 `health_access_reason_required`, geçersizse 400 `health_access_reason_invalid`. Gerekçe başlıkta taşınır, sorgu dizesine konmaz; istek logunda başlık yer almaz. */
+                "x-access-reason": "emergency" | "first_aid" | "guardian_meeting" | "incident_report" | "official_request" | "other";
+                /** @description Yalnız `other` gerekçede zorunlu açıklama: yüzde kodlu UTF-8 (`encodeURIComponent`), çözülmüş hâli kırpılınca 5–200 karakter. Kodlu gerekçede gönderilirse 400 `health_access_reason_invalid`. */
+                "x-access-reason-note"?: string;
+            };
             path: {
                 planId: string;
                 groupId: string;

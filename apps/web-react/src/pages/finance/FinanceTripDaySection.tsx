@@ -23,6 +23,12 @@ import {
   type TripDayCardPurpose,
   type TripDayMarkStatus,
 } from '@kampus/school-core/lib/finance-trip-day.ts'
+import {
+  HEALTH_ACCESS_REASON_CODES,
+  HEALTH_ACCESS_REASON_LABELS,
+  healthAccessReasonSchema,
+  type HealthAccessReasonCode,
+} from '@kampus/school-core/lib/finance-health-access.ts'
 import { useAuth } from '@/auth/use-auth.ts'
 import { useReauthRetry } from '@/auth/use-reauth-retry.tsx'
 import { FormField } from '@/components/FormField.tsx'
@@ -712,14 +718,29 @@ function CardForm({
     ? ['office', 'emergency']
     : ['office']
   const [purpose, setPurpose] = useState<TripDayCardPurpose>('office')
+  // Acil kart gezide acil müdahale içindir: gerekçe "Acil durum" önerilir, değiştirilebilir
+  // (DOM-FIN-156; K-518).
+  const [reasonCode, setReasonCode] = useState<HealthAccessReasonCode>('emergency')
+  const [reasonNote, setReasonNote] = useState('')
+  const [reasonError, setReasonError] = useState<string | null>(null)
   const [printing, setPrinting] = useState(false)
   const busy = printing || card.isPending
 
   async function download() {
+    const parsed = healthAccessReasonSchema.safeParse({
+      code: reasonCode,
+      note: reasonCode === 'other' ? reasonNote : null,
+    })
+    if (!parsed.success) {
+      setReasonError(parsed.error.issues[0]?.message ?? 'Erişim gerekçesini seçin.')
+      return
+    }
+    setReasonError(null)
+    const reason = parsed.data
     setPrinting(true)
     try {
       const outcome = await run(() =>
-        card.submit({ planId: day.planId, groupId: group.id, purpose }),
+        card.submit({ planId: day.planId, groupId: group.id, purpose, reason }),
       )
       if (outcome.status !== 'done' || outcome.result.status !== 'success') return
       const data = outcome.result.data.data
@@ -787,6 +808,50 @@ function CardForm({
             ))}
           </RadioGroup>
         </FieldSet>
+        <div className="grid gap-1">
+          <label htmlFor="acil-kart-gerekce" className="text-sm font-medium">
+            Erişim gerekçesi
+          </label>
+          <NativeSelect
+            id="acil-kart-gerekce"
+            className="w-full"
+            value={reasonCode}
+            disabled={busy}
+            onChange={(event) => {
+              const next = HEALTH_ACCESS_REASON_CODES.find((code) => code === event.target.value)
+              if (next !== undefined) setReasonCode(next)
+            }}
+          >
+            {HEALTH_ACCESS_REASON_CODES.map((code) => (
+              <NativeSelectOption key={code} value={code}>
+                {HEALTH_ACCESS_REASON_LABELS[code]}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+          <p className="text-sm text-muted-foreground">
+            Kart sağlık uyarısı içerir; açılış gerekçesiyle kayda geçer.
+          </p>
+        </div>
+        {reasonCode === 'other' ? (
+          <div className="grid gap-1">
+            <label htmlFor="acil-kart-aciklama" className="text-sm font-medium">
+              Açıklama
+            </label>
+            <Textarea
+              id="acil-kart-aciklama"
+              value={reasonNote}
+              rows={2}
+              disabled={busy}
+              aria-invalid={reasonError === null ? undefined : true}
+              onChange={(event) => setReasonNote(event.target.value)}
+            />
+          </div>
+        ) : null}
+        {reasonError === null ? null : (
+          <p role="alert" className="text-sm text-danger">
+            {reasonError}
+          </p>
+        )}
         {purposes.includes('emergency') ? null : (
           <p className="text-sm text-muted-foreground">
             Tam telefonlu kartı grup sorumlusu gezi günü, yönetici her zaman indirebilir.

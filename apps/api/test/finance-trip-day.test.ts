@@ -8,6 +8,7 @@ import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
+import { healthAccessReasons } from '../src/db/schema/finance-health-access.ts'
 import {
   paidActivities,
   paidActivityParticipants,
@@ -97,6 +98,9 @@ describe('DOM-FIN-154: gezi günü yoklaması ve acil kart uçları', () => {
     })
   }
   const get = (url: string, cookie: string | null) => call('GET', url, cookie)
+  /** Acil kart sağlık verisi taşır: personel okuması erişim gerekçesi ister (DOM-FIN-156). */
+  const card = (url: string, cookie: string | null, reason: string | null = 'emergency') =>
+    call('GET', url, cookie, undefined, reason === null ? {} : { 'x-access-reason': reason })
   const post = (url: string, cookie: string | null, body: unknown, key = randomUUID()) =>
     call('POST', url, cookie, body, { 'idempotency-key': key })
   const versioned = (
@@ -315,7 +319,7 @@ describe('DOM-FIN-154: gezi günü yoklaması ve acil kart uçları', () => {
     assertError(await post(`${checkUrl(id, id)}/marks`, null, {}), 401)
     assertError(await versioned('POST', `${checkUrl(id, id)}/complete`, null, {}, 1), 401)
     assertError(await versioned('POST', `${checkUrl(id, id)}/proceed`, null, {}, 1), 401)
-    assertError(await get(cardUrl(id, id), null), 401)
+    assertError(await card(cardUrl(id, id), null), 401)
   })
 
   test('DOM-FIN-154: rol ve modül süzgeci 403 (K-517)', async () => {
@@ -326,7 +330,7 @@ describe('DOM-FIN-154: gezi günü yoklaması ve acil kart uçları', () => {
     assertError(await post(groupsUrl(id), t.homeroom.cookie, { name: 'X' }), 403)
     assertError(await post(assignUrl(id), t.homeroom.cookie, {}), 403)
     assertError(await post(checksUrl(id, id), t.desk, { checkpoint: 'Varış' }), 403)
-    assertError(await get(cardUrl(id, id), t.desk), 403)
+    assertError(await card(cardUrl(id, id), t.desk), 403)
     const closed = await institution({ enabledModules: { finance: false } })
     assertError(await get(dayUrl(id), closed.admin), 403, 'module_disabled')
     assertError(await post(groupsUrl(id), closed.admin, {}), 403, 'module_disabled')
@@ -523,7 +527,7 @@ describe('DOM-FIN-154: gezi günü yoklaması ve acil kart uçları', () => {
     assertError(await get(dayUrl(planId), t.stranger), 404)
     now = ON_TRIP
     assertError(await post(checksUrl(planId, bus), t.outsider.cookie, { checkpoint: 'Varış' }), 404)
-    assertError(await get(cardUrl(planId, bus), t.outsider.cookie), 404)
+    assertError(await card(cardUrl(planId, bus), t.outsider.cookie), 404)
   })
 
   test('DOM-FIN-154: tur gezi günü açılır; eksik varken tamam olmaz, gerekçeyle eksikle devam (K-517)', async () => {
@@ -799,8 +803,15 @@ describe('DOM-FIN-154: gezi günü yoklaması ve acil kart uçları', () => {
         version: 1,
       }),
     )
+    // Gerekçesiz okuma 400; denetim yazılmaz (DOM-FIN-156).
+    assertError(
+      await card(cardUrl(planId, bus), t.homeroom.cookie, null),
+      400,
+      'health_access_reason_required',
+    )
+    assert.equal((await audits(t.id, 'finance.trip_day.emergency_card')).length, 0)
     // Gezi öncesi: sorumlu maskeli kartı açar, tam telefonlu kartı açamaz.
-    const office = ok(await get(cardUrl(planId, bus), t.homeroom.cookie))
+    const office = ok(await card(cardUrl(planId, bus), t.homeroom.cookie))
     assert.equal(office.phonesMasked, true)
     assert.equal(office.cardDay, TRIP_DAY)
     const students = office.students as {
@@ -828,11 +839,11 @@ describe('DOM-FIN-154: gezi günü yoklaması ve acil kart uçları', () => {
     assert.equal(JSON.stringify(office).includes('Yerfıstığı'), false)
     assert.equal(JSON.stringify(office).includes('Salbutamol'), false)
     assertError(
-      await get(cardUrl(planId, bus, 'emergency'), t.homeroom.cookie),
+      await card(cardUrl(planId, bus, 'emergency'), t.homeroom.cookie),
       403,
       'trip_day_card_full_forbidden',
     )
-    const full = ok(await get(cardUrl(planId, bus, 'emergency'), t.admin))
+    const full = ok(await card(cardUrl(planId, bus, 'emergency'), t.admin))
     assert.equal(full.phonesMasked, false)
     assert.equal(
       (full.students as { studentId: string; contacts: { phone: string }[] }[]).find(
@@ -841,7 +852,7 @@ describe('DOM-FIN-154: gezi günü yoklaması ve acil kart uçları', () => {
       '05321234567',
     )
     now = ON_TRIP
-    ok(await get(cardUrl(planId, bus, 'emergency'), t.homeroom.cookie))
+    ok(await card(cardUrl(planId, bus, 'emergency'), t.homeroom.cookie))
 
     // Sağlık profiline erişimi olmayan sorumlu: yalnız revirdeki onaylı ilaç işareti.
     const mother = t.mother
@@ -866,7 +877,7 @@ describe('DOM-FIN-154: gezi günü yoklaması ve acil kart uçları', () => {
       ),
     )
     ok(await post(assignUrl(planId), t.desk, { groupId: blue, studentIds: ['s-1'] }))
-    const blind = ok(await get(cardUrl(planId, blue), t.outsider.cookie))
+    const blind = ok(await card(cardUrl(planId, blue), t.outsider.cookie))
     const row = (blind.students as { studentId: string; health: Json }[]).find(
       (item) => item.studentId === 's-1',
     )
@@ -885,8 +896,14 @@ describe('DOM-FIN-154: gezi günü yoklaması ve acil kart uçları', () => {
     assert.equal(full1.length, 2)
     assert.deepEqual(office1[0]?.changes, {
       fields: ['studentName', 'className', 'contactName', 'contactPhone', 'healthAlert'],
-      counts: { students: 2, alerts: 1 },
     })
+    // Her açılış gerekçesiyle sağlık erişim günlüğüne düşer (DOM-FIN-156).
+    const reasons = await db
+      .select()
+      .from(healthAccessReasons)
+      .where(eq(healthAccessReasons.institutionId, t.id))
+    assert.equal(reasons.length, 4)
+    assert.ok(reasons.every((row) => row.reasonCode === 'emergency' && row.studentId === null))
     assert.equal(JSON.stringify(full1).includes('0532'), false)
     // Sağlık profili okuması kendi denetimini bırakır (IST-020).
     assert.ok((await audits(t.id, 'health_profile.read')).length >= 1)
@@ -974,7 +991,7 @@ describe('DOM-FIN-154: gezi günü yoklaması ve acil kart uçları', () => {
       ),
       404,
     )
-    assertError(await get(cardUrl(bSetup.planId, bSetup.bus), a.admin), 404)
+    assertError(await card(cardUrl(bSetup.planId, bSetup.bus), a.admin), 404)
     assertError(
       await post(groupsUrl(aSetup.planId), a.admin, {
         name: 'Gövdede kurum',

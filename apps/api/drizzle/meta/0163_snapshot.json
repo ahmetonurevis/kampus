@@ -1,5 +1,5 @@
 {
-  "id": "8458862d-7218-475c-a2e9-f46243c63357",
+  "id": "40a17804-c1bc-4cea-98a9-54ceaad5462d",
   "prevId": "f66a7bdb-38c6-4121-b190-9b0858bbdafe",
   "version": "7",
   "dialect": "postgresql",
@@ -17114,6 +17114,180 @@
         "free_tuition_rounds_quota_check": {
           "name": "free_tuition_rounds_quota_check",
           "value": "(\"free_tuition_rounds\".\"confirmed_quota\" is null) = (\"free_tuition_rounds\".\"quota_confirmed_at\" is null)\n        and (\"free_tuition_rounds\".\"confirmed_quota\" is null) = (\"free_tuition_rounds\".\"student_count\" is null)\n        and (\"free_tuition_rounds\".\"confirmed_quota\" is null) = (\"free_tuition_rounds\".\"computed_quota\" is null)\n        and (\"free_tuition_rounds\".\"confirmed_quota\" is null) = (\"free_tuition_rounds\".\"quota_confirmed_by_user_id\" is null)\n        and (\"free_tuition_rounds\".\"confirmed_quota\" is null or (\"free_tuition_rounds\".\"student_count\" >= 0\n          and \"free_tuition_rounds\".\"computed_quota\" >= 0 and \"free_tuition_rounds\".\"confirmed_quota\" >= \"free_tuition_rounds\".\"computed_quota\"))"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.health_access_reasons": {
+      "name": "health_access_reasons",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "audit_log_id": {
+          "name": "audit_log_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actor_membership_id": {
+          "name": "actor_membership_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "student_id": {
+          "name": "student_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reason_code": {
+          "name": "reason_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "health_access_reasons_created_idx": {
+          "name": "health_access_reasons_created_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "\"created_at\" desc",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "health_access_reasons_actor_idx": {
+          "name": "health_access_reasons_actor_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "actor_membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "\"created_at\" desc",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "health_access_reasons_student_idx": {
+          "name": "health_access_reasons_student_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "student_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "\"created_at\" desc",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"health_access_reasons\".\"student_id\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "health_access_reasons_institution_id_institutions_id_fk": {
+          "name": "health_access_reasons_institution_id_institutions_id_fk",
+          "tableFrom": "health_access_reasons",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "health_access_reasons_pkey": {
+          "name": "health_access_reasons_pkey",
+          "columns": [
+            "institution_id",
+            "audit_log_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "health_access_reasons_reason_code_check": {
+          "name": "health_access_reasons_reason_code_check",
+          "value": "\"health_access_reasons\".\"reason_code\" in ('emergency', 'first_aid', 'guardian_meeting', 'incident_report', 'official_request', 'other')"
         }
       },
       "isRLSEnabled": false
@@ -49319,858 +49493,6 @@
           "value": "\"transport_vehicles\".\"driver_phone\" ~ '^0[0-9]{10}$'"
         }
       },
-      "isRLSEnabled": false
-    },
-    "public.trip_day_check_marks": {
-      "name": "trip_day_check_marks",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "check_id": {
-          "name": "check_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "student_id": {
-          "name": "student_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "marked_at": {
-          "name": "marked_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "marked_by_user_id": {
-          "name": "marked_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "trip_day_check_marks_student_key": {
-          "name": "trip_day_check_marks_student_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "check_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "student_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"trip_day_check_marks\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "trip_day_check_marks_check_idx": {
-          "name": "trip_day_check_marks_check_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "check_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "trip_day_check_marks_student_idx": {
-          "name": "trip_day_check_marks_student_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "student_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "trip_day_check_marks_institution_id_institutions_id_fk": {
-          "name": "trip_day_check_marks_institution_id_institutions_id_fk",
-          "tableFrom": "trip_day_check_marks",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "trip_day_check_marks_check_fkey": {
-          "name": "trip_day_check_marks_check_fkey",
-          "tableFrom": "trip_day_check_marks",
-          "tableTo": "trip_day_checks",
-          "columnsFrom": [
-            "institution_id",
-            "check_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "trip_day_check_marks_pkey": {
-          "name": "trip_day_check_marks_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "trip_day_check_marks_status_check": {
-          "name": "trip_day_check_marks_status_check",
-          "value": "\"trip_day_check_marks\".\"status\" in ('present', 'absent')"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.trip_day_checks": {
-      "name": "trip_day_checks",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "plan_id": {
-          "name": "plan_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "group_id": {
-          "name": "group_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "sequence": {
-          "name": "sequence",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "checkpoint": {
-          "name": "checkpoint",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "started_at": {
-          "name": "started_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "started_by_user_id": {
-          "name": "started_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "closed_at": {
-          "name": "closed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "closed_by_user_id": {
-          "name": "closed_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "missing_count": {
-          "name": "missing_count",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "missing_reason": {
-          "name": "missing_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "trip_day_checks_sequence_key": {
-          "name": "trip_day_checks_sequence_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "group_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "sequence",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "trip_day_checks_open_key": {
-          "name": "trip_day_checks_open_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "group_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"trip_day_checks\".\"status\" = 'open' and \"trip_day_checks\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "trip_day_checks_plan_idx": {
-          "name": "trip_day_checks_plan_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "plan_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "group_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "trip_day_checks_institution_id_institutions_id_fk": {
-          "name": "trip_day_checks_institution_id_institutions_id_fk",
-          "tableFrom": "trip_day_checks",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "trip_day_checks_group_fkey": {
-          "name": "trip_day_checks_group_fkey",
-          "tableFrom": "trip_day_checks",
-          "tableTo": "trip_day_groups",
-          "columnsFrom": [
-            "institution_id",
-            "group_id",
-            "plan_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id",
-            "plan_id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "trip_day_checks_pkey": {
-          "name": "trip_day_checks_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "trip_day_checks_status_check": {
-          "name": "trip_day_checks_status_check",
-          "value": "\"trip_day_checks\".\"status\" in ('open', 'complete', 'incomplete')"
-        },
-        "trip_day_checks_text_check": {
-          "name": "trip_day_checks_text_check",
-          "value": "\"trip_day_checks\".\"sequence\" >= 1\n        and char_length(\"trip_day_checks\".\"checkpoint\") between 2 and 60\n        and (\"trip_day_checks\".\"missing_reason\" is null\n          or char_length(\"trip_day_checks\".\"missing_reason\") between 5 and 500)"
-        },
-        "trip_day_checks_closed_check": {
-          "name": "trip_day_checks_closed_check",
-          "value": "(\"trip_day_checks\".\"status\" = 'open') = (\"trip_day_checks\".\"closed_at\" is null)\n        and (\"trip_day_checks\".\"closed_at\" is null) = (\"trip_day_checks\".\"closed_by_user_id\" is null)\n        and (\"trip_day_checks\".\"closed_at\" is null) = (\"trip_day_checks\".\"missing_count\" is null)\n        and (\"trip_day_checks\".\"status\" <> 'complete' or \"trip_day_checks\".\"missing_count\" = 0)\n        and (\"trip_day_checks\".\"status\" = 'incomplete') = (\"trip_day_checks\".\"missing_reason\" is not null)\n        and (\"trip_day_checks\".\"status\" <> 'incomplete' or \"trip_day_checks\".\"missing_count\" > 0)"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.trip_day_groups": {
-      "name": "trip_day_groups",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "plan_id": {
-          "name": "plan_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "vehicle_plate": {
-          "name": "vehicle_plate",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "leader_membership_id": {
-          "name": "leader_membership_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "position": {
-          "name": "position",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "trip_day_groups_name_key": {
-          "name": "trip_day_groups_name_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "plan_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "lower(\"name\")",
-              "asc": true,
-              "isExpression": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"trip_day_groups\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "trip_day_groups_plan_idx": {
-          "name": "trip_day_groups_plan_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "plan_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "position",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "trip_day_groups_leader_idx": {
-          "name": "trip_day_groups_leader_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "leader_membership_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "trip_day_groups_institution_id_institutions_id_fk": {
-          "name": "trip_day_groups_institution_id_institutions_id_fk",
-          "tableFrom": "trip_day_groups",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "trip_day_groups_plan_fkey": {
-          "name": "trip_day_groups_plan_fkey",
-          "tableFrom": "trip_day_groups",
-          "tableTo": "trip_plans",
-          "columnsFrom": [
-            "institution_id",
-            "plan_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "trip_day_groups_leader_fkey": {
-          "name": "trip_day_groups_leader_fkey",
-          "tableFrom": "trip_day_groups",
-          "tableTo": "memberships",
-          "columnsFrom": [
-            "institution_id",
-            "leader_membership_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "trip_day_groups_pkey": {
-          "name": "trip_day_groups_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {
-        "trip_day_groups_plan_key": {
-          "name": "trip_day_groups_plan_key",
-          "nullsNotDistinct": false,
-          "columns": [
-            "institution_id",
-            "id",
-            "plan_id"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {
-        "trip_day_groups_text_check": {
-          "name": "trip_day_groups_text_check",
-          "value": "char_length(\"trip_day_groups\".\"name\") between 2 and 60\n        and (\"trip_day_groups\".\"vehicle_plate\" is null or \"trip_day_groups\".\"vehicle_plate\" ~ '^[0-9]{2}[A-Z]{1,3}[0-9]{2,5}$')"
-        },
-        "trip_day_groups_position_check": {
-          "name": "trip_day_groups_position_check",
-          "value": "\"trip_day_groups\".\"position\" >= 0"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.trip_day_members": {
-      "name": "trip_day_members",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "plan_id": {
-          "name": "plan_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "group_id": {
-          "name": "group_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "student_id": {
-          "name": "student_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "trip_day_members_student_key": {
-          "name": "trip_day_members_student_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "plan_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "student_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"trip_day_members\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "trip_day_members_group_idx": {
-          "name": "trip_day_members_group_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "group_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "trip_day_members_student_idx": {
-          "name": "trip_day_members_student_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "student_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "trip_day_members_institution_id_institutions_id_fk": {
-          "name": "trip_day_members_institution_id_institutions_id_fk",
-          "tableFrom": "trip_day_members",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "trip_day_members_group_fkey": {
-          "name": "trip_day_members_group_fkey",
-          "tableFrom": "trip_day_members",
-          "tableTo": "trip_day_groups",
-          "columnsFrom": [
-            "institution_id",
-            "group_id",
-            "plan_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id",
-            "plan_id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "trip_day_members_pkey": {
-          "name": "trip_day_members_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.trip_plan_events": {

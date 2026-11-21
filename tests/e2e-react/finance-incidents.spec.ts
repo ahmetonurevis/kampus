@@ -4,14 +4,15 @@ import { expectNoHorizontalOverflow } from './support/ui.ts'
 // Kaza ve yaralanma tutanağı (ON-162; DOM-FIN-146). Kural dalları birim ve API testlerindedir
 // (`tests/finance-incidents.test.ts`, `apps/api/test/finance-incidents.test.ts`); burada ön büro dar
 // ekranda ağır yaralanma tutanağı açar, bildirimsiz kesinleştiremez, veli bildirimini kaydedip
-// kesinleştirir ve sağlık bilgisini artık görmez (K-493, K-494); yönetici ek not yazar ve PDF
-// düğmesini görür.
+// kesinleştirir ve sağlık bilgisini artık görmez (K-493, K-494); yönetici tutanağı erişim
+// gerekçesiyle açar, ek not yazar, PDF düğmesini görür ve açılışı sağlık erişim günlüğünde bulur
+// (DOM-FIN-156, K-523…K-525).
 
 const ADMIN = '/yonetici/finans'
 const DESK = '/onburo/tahsilat-takip'
 
 test.describe('DOM-FIN-146: kaza tutanakları', () => {
-  test('DOM-FIN-146: ağır olay bildirimle kesinleşir; sağlık bilgisi ve ek not yöneticide (K-493, K-494)', async ({
+  test('DOM-FIN-146, DOM-FIN-156: ağır olay bildirimle kesinleşir; sağlık bilgisi gerekçeyle yöneticide (K-493, K-494, K-523)', async ({
     loginAs,
     tenant,
   }) => {
@@ -67,6 +68,13 @@ test.describe('DOM-FIN-146: kaza tutanakları', () => {
       .getByRole('button', { name: /tutanağını aç/ })
       .first()
       .click()
+    const reason = admin.getByRole('dialog', { name: 'Sağlık bilgisine erişim gerekçesi' })
+    const reasonForm = reason.getByRole('form', { name: 'Erişim gerekçesi' })
+    await reasonForm.getByRole('button', { name: 'Bilgiyi aç' }).click()
+    await expect(reasonForm.getByText('Erişim gerekçesini seçin.')).toBeVisible()
+    await reasonForm.getByLabel('Erişim gerekçesi').selectOption({ label: 'Veli görüşmesi' })
+    await reasonForm.getByRole('button', { name: 'Bilgiyi aç' }).click()
+    await expect(reason).toBeHidden()
     const adminPanel = admin.getByRole('dialog', { name: 'Kaza tutanağı' })
     await expect(adminPanel.getByText('Hastane')).toBeVisible()
     await expect(adminPanel.getByRole('button', { name: 'Tutanak PDF' })).toBeVisible()
@@ -76,5 +84,11 @@ test.describe('DOM-FIN-146: kaza tutanakları', () => {
     await expect(adminPanel.getByRole('list', { name: 'Ek notlar' })).toContainText(
       'Hastane kontrolünde kırık görülmedi.',
     )
+
+    await admin.goto(`${ADMIN}?gorunum=saglik-erisim`)
+    const log = admin.getByRole('region', { name: 'Sağlık erişim günlüğü' })
+    // Dar ekranda satır kart olur; okuyan ve gerekçe kartın ilk bilgileridir.
+    await expect(log.getByText('Veli görüşmesi').first()).toBeVisible()
+    await expect(log.getByText('Tutanak hazırlama').first()).toBeVisible()
   })
 })

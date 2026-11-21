@@ -39,6 +39,8 @@ import {
 import type { CommandResponse } from '../services/operation-runner.ts'
 import { captureInput, options, rejectIfMatch, requireIfMatch } from './commands.ts'
 import { commandErrors, commandHeadersSchema } from './commands.schemas.ts'
+import { healthAccessReasonOf, requireHealthAccessReason } from './finance-health-access.ts'
+import { healthAccessHeadersSchema } from './finance-health-access.schemas.ts'
 import {
   consentListQuery,
   consentListResponse,
@@ -62,7 +64,7 @@ import {
  * Modül `finance`. Revir görevlisi rolü olmadığından revir işini yönetici ve ön büro yürütür. Sınıf
  * öğretmeni yalnız sınıfının "revirde / döndü" durumunu görür. Veli kendi çocuğu için ilaç talebi
  * açar, geri çeker ve çocuğunun ziyaret özetini, taleplerini ve uygulamalarını okur. Sağlık ayrıntısı
- * dönen her okuma denetimdedir. Ziyaret, talep ve uygulama açma `Idempotency-Key`; düzeltme, kapatma,
+ * dönen her okuma denetimdedir; okulun okuması gerekçe ister (DOM-FIN-156). Ziyaret, talep ve uygulama açma `Idempotency-Key`; düzeltme, kapatma,
  * onay, ret ve geri çekme `If-Match` ister. Veliye ya da öğretmene bildirim gönderilmez.
  */
 
@@ -158,18 +160,24 @@ export function registerFinanceInfirmaryRoutes(app: FastifyInstance) {
   typed.get(
     `${VISITS}/:visitId`,
     {
-      preValidation: school,
+      preValidation: [...school, requireHealthAccessReason()],
       schema: {
         operationId: 'getInfirmaryVisit',
         tags,
         summary: 'Revir ziyareti ayrıntısı',
-        description: `Şikâyet, yapılanlar ve not dahil. Okuma aynı transaction'da \`finance.infirmary.visit_read\` denetimine düşer (alan adları; değer yok). Olmayan ya da başka kurumun ziyareti 404. ${SCHOOL}`,
+        description: `Şikâyet, yapılanlar ve not dahil. Okuma aynı transaction'da \`finance.infirmary.visit_read\` denetimine düşer (alan adları; değer yok). Erişim gerekçesi zorunlu (\`X-Access-Reason\`; DOM-FIN-156, K-523): yoksa 400 \`health_access_reason_required\`; okuma gerekçesiyle sağlık erişim günlüğüne düşer. Olmayan ya da başka kurumun ziyareti 404. ${SCHOOL}`,
+        headers: healthAccessHeadersSchema(true),
         params: visitParams,
         response: { 200: visitResponse, ...commandErrors },
       },
     },
     async (request) => ({
-      data: await getVisitFor(contextOf(request), deps, request.params.visitId),
+      data: await getVisitFor(
+        contextOf(request),
+        deps,
+        request.params.visitId,
+        healthAccessReasonOf(request),
+      ),
     }),
   )
 
@@ -278,24 +286,25 @@ export function registerFinanceInfirmaryRoutes(app: FastifyInstance) {
   typed.get(
     CONSENTS,
     {
-      preValidation: readers,
+      preValidation: [...readers, requireHealthAccessReason()],
       schema: {
         operationId: 'listMedicationConsents',
         tags,
         summary: 'İlaç onayı talepleri',
-        description: `En yeni talep önce; süzgeç durum ve öğrenci. Satır ilaç adı ve doz taşıdığından her dönen talep \`finance.infirmary.consent_read\` denetimine düşer. ${READERS}`,
+        description: `En yeni talep önce; süzgeç durum ve öğrenci. Satır ilaç adı ve doz taşıdığından her dönen talep \`finance.infirmary.consent_read\` denetimine düşer. Okulda erişim gerekçesi zorunlu (\`X-Access-Reason\`; DOM-FIN-156, K-523): yoksa 400 \`health_access_reason_required\`; okuma gerekçesiyle sağlık erişim günlüğüne düşer. Veliden gerekçe istenmez. ${READERS}`,
+        headers: healthAccessHeadersSchema(false),
         querystring: consentListQuery,
         response: { 200: consentListResponse, ...commandErrors },
       },
     },
     async (request) => {
       const { page, pageSize, status: state, studentId } = request.query
-      const { items, total } = await listConsentsFor(contextOf(request), deps, {
-        page,
-        pageSize,
-        status: state,
-        studentId,
-      })
+      const { items, total } = await listConsentsFor(
+        contextOf(request),
+        deps,
+        { page, pageSize, status: state, studentId },
+        healthAccessReasonOf(request),
+      )
       return { data: items, meta: { page, pageSize, total } }
     },
   )
@@ -330,18 +339,24 @@ export function registerFinanceInfirmaryRoutes(app: FastifyInstance) {
   typed.get(
     `${CONSENTS}/:consentId`,
     {
-      preValidation: readers,
+      preValidation: [...readers, requireHealthAccessReason()],
       schema: {
         operationId: 'getMedicationConsent',
         tags,
         summary: 'İlaç onayı ve uygulamaları',
-        description: `Talep ve ilaç uygulamaları (an, saat, doz, uygulayan). Okuma \`finance.infirmary.consent_read\` denetimine düşer. Olmayan, başka kurumun ya da velinin kapsamı dışındaki talep 404. ${READERS}`,
+        description: `Talep ve ilaç uygulamaları (an, saat, doz, uygulayan). Okuma \`finance.infirmary.consent_read\` denetimine düşer. Okulda erişim gerekçesi zorunlu (\`X-Access-Reason\`; DOM-FIN-156, K-523): yoksa 400 \`health_access_reason_required\`; okuma gerekçesiyle sağlık erişim günlüğüne düşer. Veliden gerekçe istenmez. Olmayan, başka kurumun ya da velinin kapsamı dışındaki talep 404. ${READERS}`,
+        headers: healthAccessHeadersSchema(false),
         params: consentParams,
         response: { 200: consentResponse, ...commandErrors },
       },
     },
     async (request) => ({
-      data: await getConsentFor(contextOf(request), deps, request.params.consentId),
+      data: await getConsentFor(
+        contextOf(request),
+        deps,
+        request.params.consentId,
+        healthAccessReasonOf(request),
+      ),
     }),
   )
 
@@ -457,12 +472,13 @@ export function registerFinanceInfirmaryRoutes(app: FastifyInstance) {
   typed.get(
     `${BASE}/medication-schedule`,
     {
-      preValidation: school,
+      preValidation: [...school, requireHealthAccessReason()],
       schema: {
         operationId: 'getMedicationSchedule',
         tags,
         summary: 'Günün ilaç uygulama listesi',
-        description: `Günü (Europe/Istanbul; boşsa bugün) kapsayan onaylı taleplerin her doz saati, saat sırasıyla; o gün verildiyse uygulama. Her talep \`finance.infirmary.schedule_read\` denetimine düşer. ${SCHOOL}`,
+        description: `Günü (Europe/Istanbul; boşsa bugün) kapsayan onaylı taleplerin her doz saati, saat sırasıyla; o gün verildiyse uygulama. Her talep \`finance.infirmary.schedule_read\` denetimine düşer. Erişim gerekçesi zorunlu (\`X-Access-Reason\`; DOM-FIN-156, K-523): yoksa 400 \`health_access_reason_required\`; okuma gerekçesiyle sağlık erişim günlüğüne düşer. ${SCHOOL}`,
+        headers: healthAccessHeadersSchema(true),
         querystring: dayQuery,
         response: { 200: scheduleResponse, ...commandErrors },
       },
@@ -470,7 +486,12 @@ export function registerFinanceInfirmaryRoutes(app: FastifyInstance) {
     async (request) => {
       const ctx = contextOf(request)
       return {
-        data: await getMedicationScheduleFor(ctx, deps, request.query.date ?? dayKey(ctx.now)),
+        data: await getMedicationScheduleFor(
+          ctx,
+          deps,
+          request.query.date ?? dayKey(ctx.now),
+          healthAccessReasonOf(request),
+        ),
       }
     },
   )

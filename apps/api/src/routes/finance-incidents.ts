@@ -30,6 +30,8 @@ import {
 import type { CommandResponse } from '../services/operation-runner.ts'
 import { captureInput, options, rejectIfMatch, requireIfMatch } from './commands.ts'
 import { commandErrors, commandHeadersSchema } from './commands.schemas.ts'
+import { healthAccessReasonOf, requireHealthAccessReason } from './finance-health-access.ts'
+import { healthAccessHeadersSchema } from './finance-health-access.schemas.ts'
 import {
   guardianIncidentListResponse,
   guardianIncidentQuery,
@@ -46,7 +48,7 @@ import {
  * Modül `finance`. Tutanağı yönetici, öğretmen ve ön büro açar; yönetici bütün tutanakları, diğerleri
  * yalnız açtıklarını görür (başkasınınki 404). Sağlık grubu açana yalnız taslakta döner; ek not
  * yalnız yöneticide. Veli kendi çocuğunun kesinleşmiş tutanak özetini ayrı uçtan okur. Ayrıntı ve
- * özet okumaları denetimdedir. Açma, bildirim ve ek not `Idempotency-Key`; düzeltme ve
+ * özet okumaları denetimdedir; personelin ayrıntı okuması gerekçe ister (DOM-FIN-156). Açma, bildirim ve ek not `Idempotency-Key`; düzeltme ve
  * kesinleştirme `If-Match` ister.
  */
 
@@ -138,18 +140,24 @@ export function registerFinanceIncidentRoutes(app: FastifyInstance) {
   typed.get(
     `${INCIDENTS}/:incidentId`,
     {
-      preValidation: staff,
+      preValidation: [...staff, requireHealthAccessReason()],
       schema: {
         operationId: 'getIncidentReport',
         tags,
         summary: 'Kaza tutanağı ayrıntısı',
-        description: `Açıklama, tanıklar, veli bildirimleri; sağlık grubu (\`health\`) yöneticiye her zaman, açana yalnız taslakta; ek notlar (\`addenda\`) yalnız yöneticiye (K-494). Okuma aynı transaction'da \`finance.incident.read\` denetimine düşer (dönen alanların adları; değer yok). Olmayan, başka kurumun ya da başkasının açtığı tutanak 404. ${STAFF}`,
+        description: `Açıklama, tanıklar, veli bildirimleri; sağlık grubu (\`health\`) yöneticiye her zaman, açana yalnız taslakta; ek notlar (\`addenda\`) yalnız yöneticiye (K-494). Erişim gerekçesi zorunlu (\`X-Access-Reason\`; DOM-FIN-156, K-523): yoksa 400 \`health_access_reason_required\`. Okuma aynı transaction'da \`finance.incident.read\` denetimine (dönen alanların adları; değer yok) ve gerekçesiyle sağlık erişim günlüğüne düşer. Olmayan, başka kurumun ya da başkasının açtığı tutanak 404. ${STAFF}`,
+        headers: healthAccessHeadersSchema(true),
         params: incidentParams,
         response: { 200: incidentResponse, ...commandErrors },
       },
     },
     async (request) => ({
-      data: await getIncidentFor(contextOf(request), deps, request.params.incidentId),
+      data: await getIncidentFor(
+        contextOf(request),
+        deps,
+        request.params.incidentId,
+        healthAccessReasonOf(request),
+      ),
     }),
   )
 

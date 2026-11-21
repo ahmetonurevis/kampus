@@ -4581,7 +4581,7 @@ const FINANCE: Readonly<Record<string, Proof>> = {
         ],
         ['liste', 'GET /api/v1/finance/emergency-summaries/classes', 'get(CLASSES, a.admin)'],
         [
-          'liste',
+          'kayıt',
           'GET /api/v1/finance/emergency-summaries/classes/:classId',
           "get(classUrl('9-A'), a.admin)",
         ],

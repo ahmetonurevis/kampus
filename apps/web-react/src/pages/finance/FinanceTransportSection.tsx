@@ -39,6 +39,8 @@ import { notify } from '@/lib/notify.ts'
 import { RootError } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { FinanceStudentSearch } from './FinanceStudentSearch.tsx'
+import { FinanceTransportRosterButton } from './FinanceTransportRosterButton.tsx'
+import { TransportTripsView } from './FinanceTransportTripsSection.tsx'
 import {
   FinanceTransportDocumentsSection,
   TransportVehicleFitnessBadge,
@@ -69,6 +71,7 @@ const TAB_PARAM = 'servis_sekme'
 const TABS = [
   { value: 'guzergahlar', label: 'Güzergâhlar' },
   { value: 'araclar', label: 'Araçlar' },
+  { value: 'seferler', label: 'Seferler' },
   { value: 'belgeler', label: 'Belgeler' },
 ] as const
 type Tab = (typeof TABS)[number]['value']
@@ -132,6 +135,7 @@ export function FinanceTransportSection() {
       </div>
       {tab === 'guzergahlar' ? <RouteList /> : null}
       {tab === 'araclar' ? <VehicleList /> : null}
+      {tab === 'seferler' ? <TransportTripsView /> : null}
       {tab === 'belgeler' ? <FinanceTransportDocumentsSection /> : null}
     </section>
   )
@@ -188,14 +192,17 @@ function RouteList() {
         key: ACTIONS_KEY,
         label: 'İşlemler',
         cell: (row) => (
-          <Button
-            className="min-h-11"
-            variant="ghost"
-            aria-label={`${row.name} güzergâhını aç`}
-            onClick={() => panel.open(row.id)}
-          >
-            Aç
-          </Button>
+          <div className="flex flex-wrap gap-1">
+            <Button
+              className="min-h-11"
+              variant="ghost"
+              aria-label={`${row.name} güzergâhını aç`}
+              onClick={() => panel.open(row.id)}
+            >
+              Aç
+            </Button>
+            <FinanceTransportRosterButton route={row.row} />
+          </div>
         ),
       },
     ],

@@ -4237,6 +4237,72 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: servis listesi (ON-148; DOM-FIN-148).
+  'GET /api/v1/finance/transport/routes/:routeId/roster': kayit(
+    'finance-transport-roster.test.ts',
+    'DOM-FIN-148: başka kurumun ya da arşivli güzergâhı 404',
+    'get(rosterUrl(route.id), a.admin)',
+  ),
+  // Onur: servis seferi ve biniş-iniş (ON-145; DOM-FIN-149).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/transport/trips/my', 'get(MY, aParent)'],
+        ['liste', 'GET /api/v1/finance/transport/trips', 'get(TRIPS, a.admin)'],
+        ['kayıt', 'GET /api/v1/finance/transport/trips/:tripId', 'get(bTripUrl, a.admin)'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/transport/routes/:routeId/trips',
+          'startUrl(bSetup.route.id), a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/transport/trips/:tripId/marks',
+          'markUrl(bTrip.id), a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/transport/trips/:tripId/close',
+          'closeTripAs(a.admin, bTrip.id',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-transport-trips.test.ts',
+        'DOM-FIN-149: başka kurumun seferi ve işareti 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: servis aracı ve personeli belgeleri (ON-147; DOM-FIN-147).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/transport/documents', 'listOf(a.admin)'],
+        ['gövde', 'POST /api/v1/finance/transport/documents', 'institutionId: b.id'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/transport/documents/:documentId/file-url',
+          '`${DOCS}/${String(bDoc.id)}/file-url`',
+        ],
+        ['liste', 'GET /api/v1/finance/transport/document-alerts', 'get(ALERTS, a.admin)'],
+        ['liste', 'GET /api/v1/finance/transport/document-settings', 'get(SETTINGS, a.admin)'],
+        [
+          'gövde',
+          'PATCH /api/v1/finance/transport/document-settings',
+          'warningDays: 20, institutionId: b.id',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-transport-documents.test.ts',
+        'DOM-FIN-147: başka kurumun aracı ve belgesi 404 ve B değişmez; listede yok; gövdedeki institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

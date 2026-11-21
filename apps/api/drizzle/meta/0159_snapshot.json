@@ -1,5 +1,5 @@
 {
-  "id": "157f1f1f-c9d6-4a26-b7fb-e52ec9219e08",
+  "id": "3142b87d-0bd1-4b1c-af40-f2d4aaf650aa",
   "prevId": "bacaf33b-27c9-4129-820f-c1dde2f563a4",
   "version": "7",
   "dialect": "postgresql",
@@ -45540,80 +45540,8 @@
       },
       "isRLSEnabled": false
     },
-    "public.transport_document_settings": {
-      "name": "transport_document_settings",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "warning_days": {
-          "name": "warning_days",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 30
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "transport_document_settings_institution_id_institutions_id_fk": {
-          "name": "transport_document_settings_institution_id_institutions_id_fk",
-          "tableFrom": "transport_document_settings",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "transport_document_settings_warning_days_check": {
-          "name": "transport_document_settings_warning_days_check",
-          "value": "\"transport_document_settings\".\"warning_days\" between 1 and 180"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.transport_documents": {
-      "name": "transport_documents",
+    "public.transport_trip_mark_corrections": {
+      "name": "transport_trip_mark_corrections",
       "schema": "",
       "columns": {
         "institution_id": {
@@ -45628,80 +45556,56 @@
           "primaryKey": false,
           "notNull": true
         },
-        "subject_kind": {
-          "name": "subject_kind",
+        "mark_id": {
+          "name": "mark_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "previous_status": {
+          "name": "previous_status",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "vehicle_id": {
-          "name": "vehicle_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "membership_id": {
-          "name": "membership_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "driver_name": {
-          "name": "driver_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "document_type": {
-          "name": "document_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "document_number": {
-          "name": "document_number",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "license_class": {
-          "name": "license_class",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "start_date": {
-          "name": "start_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "end_date": {
-          "name": "end_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "file_id": {
-          "name": "file_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "replaces_id": {
-          "name": "replaces_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "superseded_at": {
-          "name": "superseded_at",
+        "previous_boarded_at": {
+          "name": "previous_boarded_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
+        "previous_alighted_at": {
+          "name": "previous_alighted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "boarded_at": {
+          "name": "boarded_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "alighted_at": {
+          "name": "alighted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "corrected_by_user_id": {
+          "name": "corrected_by_user_id",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -45735,8 +45639,8 @@
         }
       },
       "indexes": {
-        "transport_documents_vehicle_current_key": {
-          "name": "transport_documents_vehicle_current_key",
+        "transport_trip_mark_corrections_mark_idx": {
+          "name": "transport_trip_mark_corrections_mark_idx",
           "columns": [
             {
               "expression": "institution_id",
@@ -45745,171 +45649,22 @@
               "nulls": "last"
             },
             {
-              "expression": "vehicle_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "subject_kind",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "document_type",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"transport_documents\".\"superseded_at\" is null and \"transport_documents\".\"document_type\" <> 'other' and \"transport_documents\".\"vehicle_id\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "transport_documents_membership_current_key": {
-          "name": "transport_documents_membership_current_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "membership_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "document_type",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"transport_documents\".\"superseded_at\" is null and \"transport_documents\".\"document_type\" <> 'other' and \"transport_documents\".\"membership_id\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "transport_documents_file_key": {
-          "name": "transport_documents_file_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "file_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"transport_documents\".\"file_id\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "transport_documents_replaces_key": {
-          "name": "transport_documents_replaces_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "replaces_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"transport_documents\".\"replaces_id\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "transport_documents_vehicle_idx": {
-          "name": "transport_documents_vehicle_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "vehicle_id",
+              "expression": "mark_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             }
           ],
           "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "transport_documents_membership_idx": {
-          "name": "transport_documents_membership_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "membership_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "transport_documents_end_date_idx": {
-          "name": "transport_documents_end_date_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "end_date",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"transport_documents\".\"superseded_at\" is null and \"transport_documents\".\"end_date\" is not null",
           "concurrently": false,
           "method": "btree",
           "with": {}
         }
       },
       "foreignKeys": {
-        "transport_documents_institution_id_institutions_id_fk": {
-          "name": "transport_documents_institution_id_institutions_id_fk",
-          "tableFrom": "transport_documents",
+        "transport_trip_mark_corrections_institution_id_institutions_id_fk": {
+          "name": "transport_trip_mark_corrections_institution_id_institutions_id_fk",
+          "tableFrom": "transport_trip_mark_corrections",
           "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
@@ -45920,9 +45675,524 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
-        "transport_documents_vehicle_fkey": {
-          "name": "transport_documents_vehicle_fkey",
-          "tableFrom": "transport_documents",
+        "transport_trip_mark_corrections_mark_fkey": {
+          "name": "transport_trip_mark_corrections_mark_fkey",
+          "tableFrom": "transport_trip_mark_corrections",
+          "tableTo": "transport_trip_marks",
+          "columnsFrom": [
+            "institution_id",
+            "mark_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "transport_trip_mark_corrections_pkey": {
+          "name": "transport_trip_mark_corrections_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "transport_trip_mark_corrections_status_check": {
+          "name": "transport_trip_mark_corrections_status_check",
+          "value": "\"transport_trip_mark_corrections\".\"status\" in ('boarded', 'alighted', 'absent') and \"transport_trip_mark_corrections\".\"previous_status\" in ('boarded', 'alighted', 'absent')"
+        },
+        "transport_trip_mark_corrections_reason_check": {
+          "name": "transport_trip_mark_corrections_reason_check",
+          "value": "char_length(\"transport_trip_mark_corrections\".\"reason\") between 5 and 500"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.transport_trip_marks": {
+      "name": "transport_trip_marks",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "trip_id": {
+          "name": "trip_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "route_id": {
+          "name": "route_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "stop_id": {
+          "name": "stop_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "student_id": {
+          "name": "student_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "boarded_at": {
+          "name": "boarded_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "alighted_at": {
+          "name": "alighted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "marked_by_user_id": {
+          "name": "marked_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "transport_trip_marks_student_key": {
+          "name": "transport_trip_marks_student_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "trip_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "student_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"transport_trip_marks\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "transport_trip_marks_trip_idx": {
+          "name": "transport_trip_marks_trip_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "trip_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "route_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "transport_trip_marks_stop_idx": {
+          "name": "transport_trip_marks_stop_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "route_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "stop_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "transport_trip_marks_student_idx": {
+          "name": "transport_trip_marks_student_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "student_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "transport_trip_marks_institution_id_institutions_id_fk": {
+          "name": "transport_trip_marks_institution_id_institutions_id_fk",
+          "tableFrom": "transport_trip_marks",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "transport_trip_marks_trip_fkey": {
+          "name": "transport_trip_marks_trip_fkey",
+          "tableFrom": "transport_trip_marks",
+          "tableTo": "transport_trips",
+          "columnsFrom": [
+            "institution_id",
+            "trip_id",
+            "route_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id",
+            "route_id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "transport_trip_marks_stop_fkey": {
+          "name": "transport_trip_marks_stop_fkey",
+          "tableFrom": "transport_trip_marks",
+          "tableTo": "transport_stops",
+          "columnsFrom": [
+            "institution_id",
+            "route_id",
+            "stop_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "route_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "transport_trip_marks_pkey": {
+          "name": "transport_trip_marks_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "transport_trip_marks_status_check": {
+          "name": "transport_trip_marks_status_check",
+          "value": "\"transport_trip_marks\".\"status\" in ('boarded', 'alighted', 'absent')"
+        },
+        "transport_trip_marks_times_check": {
+          "name": "transport_trip_marks_times_check",
+          "value": "(\"transport_trip_marks\".\"status\" = 'absent' and \"transport_trip_marks\".\"boarded_at\" is null and \"transport_trip_marks\".\"alighted_at\" is null) or (\"transport_trip_marks\".\"status\" = 'boarded' and \"transport_trip_marks\".\"boarded_at\" is not null and \"transport_trip_marks\".\"alighted_at\" is null) or (\"transport_trip_marks\".\"status\" = 'alighted' and \"transport_trip_marks\".\"boarded_at\" is not null and \"transport_trip_marks\".\"alighted_at\" >= \"transport_trip_marks\".\"boarded_at\")"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.transport_trips": {
+      "name": "transport_trips",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "route_id": {
+          "name": "route_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "direction": {
+          "name": "direction",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vehicle_id": {
+          "name": "vehicle_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "trip_date": {
+          "name": "trip_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "started_by_user_id": {
+          "name": "started_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "closed_at": {
+          "name": "closed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closed_by_user_id": {
+          "name": "closed_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "transport_trips_route_day_key": {
+          "name": "transport_trips_route_day_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "route_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "trip_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "direction",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"transport_trips\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "transport_trips_day_idx": {
+          "name": "transport_trips_day_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "trip_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "transport_trips_vehicle_idx": {
+          "name": "transport_trips_vehicle_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "vehicle_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "transport_trips_institution_id_institutions_id_fk": {
+          "name": "transport_trips_institution_id_institutions_id_fk",
+          "tableFrom": "transport_trips",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "transport_trips_route_fkey": {
+          "name": "transport_trips_route_fkey",
+          "tableFrom": "transport_trips",
+          "tableTo": "transport_routes",
+          "columnsFrom": [
+            "institution_id",
+            "route_id",
+            "direction"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id",
+            "direction"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "transport_trips_vehicle_fkey": {
+          "name": "transport_trips_vehicle_fkey",
+          "tableFrom": "transport_trips",
           "tableTo": "transport_vehicles",
           "columnsFrom": [
             "institution_id",
@@ -45934,88 +46204,41 @@
           ],
           "onDelete": "restrict",
           "onUpdate": "no action"
-        },
-        "transport_documents_membership_fkey": {
-          "name": "transport_documents_membership_fkey",
-          "tableFrom": "transport_documents",
-          "tableTo": "memberships",
-          "columnsFrom": [
-            "institution_id",
-            "membership_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "transport_documents_file_fkey": {
-          "name": "transport_documents_file_fkey",
-          "tableFrom": "transport_documents",
-          "tableTo": "files",
-          "columnsFrom": [
-            "institution_id",
-            "file_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "transport_documents_replaces_fkey": {
-          "name": "transport_documents_replaces_fkey",
-          "tableFrom": "transport_documents",
-          "tableTo": "transport_documents",
-          "columnsFrom": [
-            "institution_id",
-            "replaces_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
-        "transport_documents_pkey": {
-          "name": "transport_documents_pkey",
+        "transport_trips_pkey": {
+          "name": "transport_trips_pkey",
           "columns": [
             "institution_id",
             "id"
           ]
         }
       },
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "transport_trips_route_key": {
+          "name": "transport_trips_route_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "institution_id",
+            "id",
+            "route_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {
-        "transport_documents_subject_check": {
-          "name": "transport_documents_subject_check",
-          "value": "\"transport_documents\".\"subject_kind\" in ('vehicle', 'driver', 'staff')\n        and ((\"transport_documents\".\"subject_kind\" in ('vehicle', 'driver')) = (\"transport_documents\".\"vehicle_id\" is not null))\n        and ((\"transport_documents\".\"subject_kind\" = 'staff') = (\"transport_documents\".\"membership_id\" is not null))\n        and ((\"transport_documents\".\"subject_kind\" = 'driver') = (\"transport_documents\".\"driver_name\" is not null))"
+        "transport_trips_direction_check": {
+          "name": "transport_trips_direction_check",
+          "value": "\"transport_trips\".\"direction\" in ('morning', 'evening')"
         },
-        "transport_documents_driver_name_check": {
-          "name": "transport_documents_driver_name_check",
-          "value": "\"transport_documents\".\"driver_name\" is null or char_length(\"transport_documents\".\"driver_name\") between 2 and 120"
+        "transport_trips_status_check": {
+          "name": "transport_trips_status_check",
+          "value": "\"transport_trips\".\"status\" in ('open', 'closed')"
         },
-        "transport_documents_type_check": {
-          "name": "transport_documents_type_check",
-          "value": "\"transport_documents\".\"document_type\" in ('inspection', 'traffic_insurance', 'seat_insurance', 'school_bus_permit', 'driving_license', 'src_certificate', 'psychotechnical', 'criminal_record', 'other')\n        and (\"transport_documents\".\"document_type\" = 'other'\n          or (\"transport_documents\".\"subject_kind\" = 'vehicle') = (\"transport_documents\".\"document_type\" in ('inspection', 'traffic_insurance', 'seat_insurance', 'school_bus_permit')))\n        and (\"transport_documents\".\"document_type\" = 'other'\n          or (\"transport_documents\".\"subject_kind\" <> 'vehicle') = (\"transport_documents\".\"document_type\" in ('driving_license', 'src_certificate', 'psychotechnical', 'criminal_record')))"
-        },
-        "transport_documents_license_check": {
-          "name": "transport_documents_license_check",
-          "value": "((\"transport_documents\".\"document_type\" = 'driving_license') = (\"transport_documents\".\"license_class\" is not null))\n        and (\"transport_documents\".\"license_class\" is null or \"transport_documents\".\"license_class\" in ('M', 'A1', 'A2', 'A', 'B1', 'B', 'BE', 'C1', 'C1E', 'C', 'CE', 'D1', 'D1E', 'D', 'DE', 'F', 'G'))"
-        },
-        "transport_documents_number_check": {
-          "name": "transport_documents_number_check",
-          "value": "\"transport_documents\".\"document_number\" is null\n        or (\"transport_documents\".\"subject_kind\" = 'vehicle'\n          and char_length(\"transport_documents\".\"document_number\") between 1 and 50)"
-        },
-        "transport_documents_end_date_check": {
-          "name": "transport_documents_end_date_check",
-          "value": "(\"transport_documents\".\"end_date\" is null or \"transport_documents\".\"end_date\" >= \"transport_documents\".\"start_date\")\n        and (\"transport_documents\".\"end_date\" is not null or not \"transport_documents\".\"document_type\" in ('inspection', 'traffic_insurance', 'seat_insurance', 'school_bus_permit', 'driving_license', 'psychotechnical'))"
+        "transport_trips_closed_check": {
+          "name": "transport_trips_closed_check",
+          "value": "(\"transport_trips\".\"status\" = 'closed') = (\"transport_trips\".\"closed_at\" is not null) and (\"transport_trips\".\"closed_at\" is null) = (\"transport_trips\".\"closed_by_user_id\" is null)"
         }
       },
       "isRLSEnabled": false

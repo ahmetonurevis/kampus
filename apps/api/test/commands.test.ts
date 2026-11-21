@@ -255,6 +255,10 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // Gözlem planı açma; çift tıklama ikinci planı ve bildirimi açmaz
   // (routes/finance-observation-plans.ts; DOM-FIN-139, ON-207).
   'POST /api/v1/finance/observation-plans',
+  // Ziyaretçi girişi ve toplu anonimleştirme; çift tıklama ikinci girişi yazmaz, anonimleştirme
+  // geri alınamaz (routes/finance-visitors.ts; DOM-FIN-141, ON-166).
+  'POST /api/v1/finance/visitors',
+  'POST /api/v1/finance/visitor-anonymizations',
 ]
 // Onur: kayıt ve finans sonu
 

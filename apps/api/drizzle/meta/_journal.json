@@ -1065,6 +1065,13 @@
       "when": 1795220013354,
       "tag": "0151_create_observation_plans",
       "breakpoints": true
+    },
+    {
+      "idx": 152,
+      "version": "7",
+      "when": 1795220196820,
+      "tag": "0152_create_visitor_logs",
+      "breakpoints": true
     }
   ]
 }

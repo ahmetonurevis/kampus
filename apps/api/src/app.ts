@@ -125,6 +125,7 @@ import { registerFinancePerformanceReportRoutes } from './routes/finance-perform
 import { registerFinanceTeacherMentorshipRoutes } from './routes/finance-teacher-mentorships.ts'
 import { registerFinancePersonnelFileRoutes } from './routes/finance-personnel-files.ts'
 import { registerFinanceObservationPlanRoutes } from './routes/finance-observation-plans.ts'
+import { registerFinanceVisitorRoutes } from './routes/finance-visitors.ts'
 // Onur: kayıt ve finans sonu
 import { createFfmpegTranscoder, type AudioTranscoder } from './services/audio-transcoder.ts'
 import { MAX_UPLOAD_BYTES } from './services/files.ts'
@@ -265,6 +266,11 @@ export const REDACTED_PATHS = [
   // kvkk: K — gezi katılımında izni veren velinin adı (DOM-FIN-112, K-370).
   'grantorName',
   '*.grantorName',
+  // kvkk: K — ziyaretçinin adı soyadı ve amaç açıklaması (DOM-FIN-141, K-478); telefonu `phone`.
+  'visitorName',
+  '*.visitorName',
+  'purposeNote',
+  '*.purposeNote',
   'consentGrantorName',
   '*.consentGrantorName',
   // kvkk: K — sözleşme satırının imza yetkilisi adı ve kesin kayıtta yeni velinin adı
@@ -647,6 +653,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceTeacherMentorshipRoutes(app)
   registerFinancePersonnelFileRoutes(app)
   registerFinanceObservationPlanRoutes(app)
+  registerFinanceVisitorRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

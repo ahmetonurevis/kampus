@@ -3876,6 +3876,43 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: ziyaretçi kaydı (ON-166; DOM-FIN-141).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/visitors', 'get(VISITORS, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/visitors', 'visitorBody({ institutionId: b.id })'],
+        ['kayıt', 'GET /api/v1/finance/visitors/:visitorId', 'get(bUrl, a.admin)'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/visitors/:visitorId/check-out',
+          '`${bUrl}/check-out`, a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/visitors/:visitorId/badge-release',
+          '`${bUrl}/badge-release`',
+        ],
+        ['liste', 'GET /api/v1/finance/visitor-summary', 'get(SUMMARY, a.admin)'],
+        ['liste', 'GET /api/v1/finance/visitor-hosts', 'get(`${HOSTS}?pageSize=100`, a.admin)'],
+        ['liste', 'GET /api/v1/finance/visitor-retention', 'get(RETENTION, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/visitor-anonymizations', 'visitorIds: [bVisitor.id]'],
+        ['liste', 'GET /api/v1/finance/visitor-settings', 'get(SETTINGS, a.admin)'],
+        [
+          'gövde',
+          'PATCH /api/v1/finance/visitor-settings',
+          'retentionDays: 10, institutionId: b.id',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-visitors.test.ts',
+        'DOM-FIN-141: başka kurumun ziyaret kaydı 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

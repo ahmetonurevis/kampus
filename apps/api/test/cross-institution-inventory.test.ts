@@ -4046,6 +4046,76 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: kayıp eşya (ON-171; DOM-FIN-145).
+  ...Object.fromEntries(
+    (
+      [
+        [
+          'liste',
+          'GET /api/v1/finance/lost-items',
+          '(await get(ITEMS, a.admin)).json().meta.total',
+        ],
+        ['gövde', 'POST /api/v1/finance/lost-items', 'itemBody({ institutionId: b.id })'],
+        ['kayıt', 'GET /api/v1/finance/lost-items/:itemId', 'get(bUrl, a.admin)'],
+        ['kayıt', 'PATCH /api/v1/finance/lost-items/:itemId', "'PATCH', bUrl, a.admin"],
+        ['kayıt', 'POST /api/v1/finance/lost-items/:itemId/photos', '`${bUrl}/photos`, a.admin'],
+        [
+          'kayıt',
+          'DELETE /api/v1/finance/lost-items/:itemId/photos/:fileId',
+          '`${bUrl}/photos/${randomUUID()}`',
+        ],
+        ['kayıt', 'POST /api/v1/finance/lost-items/:itemId/handover', '`${bUrl}/handover`'],
+        ['liste', 'GET /api/v1/finance/lost-item-summary', 'get(SUMMARY, a.admin)'],
+        [
+          'liste',
+          'GET /api/v1/finance/lost-item-finders',
+          'get(`${FINDERS}?pageSize=100`, a.admin)',
+        ],
+        [
+          'liste',
+          'GET /api/v1/finance/lost-item-recipients',
+          'get(`${RECIPIENTS}?studentId=s1`, a.admin)',
+        ],
+        [
+          'liste',
+          'GET /api/v1/finance/lost-item-reports',
+          '(await get(REPORTS, a.admin)).json().meta.total',
+        ],
+        ['gövde', 'POST /api/v1/finance/lost-item-reports', 'post(REPORTS, aParent, reportBody)'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/lost-item-reports/:reportId/match',
+          '`${reportUrl(bReport.id)}/match`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/lost-item-reports/:reportId/unmatch',
+          '`${reportUrl(bReport.id)}/unmatch`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/lost-item-reports/:reportId/close',
+          '`${reportUrl(bReport.id)}/close`',
+        ],
+        ['liste', 'GET /api/v1/finance/lost-item-gallery', 'get(GALLERY, aParent)'],
+        ['liste', 'GET /api/v1/finance/lost-item-retention', 'get(RETENTION, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/lost-item-disposals', 'itemIds: [bItem.id]'],
+        ['liste', 'GET /api/v1/finance/lost-item-settings', 'get(SETTINGS, a.admin)'],
+        [
+          'gövde',
+          'PATCH /api/v1/finance/lost-item-settings',
+          'retentionDays: 10, institutionId: b.id',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-lost-items.test.ts',
+        'DOM-FIN-145: başka kurumun eşyası ve bildirimi 404, B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

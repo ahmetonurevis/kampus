@@ -242,6 +242,9 @@ const FinanceStaffSurveysSection = lazy(async () => ({
 const FinanceIncidentsSection = lazy(async () => ({
   default: (await import('./FinanceIncidentsSection.tsx')).FinanceIncidentsSection,
 }))
+const FinanceLostItemsSection = lazy(async () => ({
+  default: (await import('./FinanceLostItemsSection.tsx')).FinanceLostItemsSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -320,6 +323,7 @@ const VIEWS = {
   visitors: { label: 'Ziyaretçiler', param: 'ziyaretciler' },
   staffSurveys: { label: 'Personel anketleri', param: 'personel-anketleri' },
   incidents: { label: 'Kaza tutanakları', param: 'kaza-tutanaklari' },
+  lostItems: { label: 'Kayıp eşya', param: 'kayip-esya' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -390,6 +394,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * sonucu yalnız yönetici yönetir (K-484…K-486).
  * Kaza tutanakları (DOM-FIN-146) ikisine açıktır; ön büro yalnız açtığını görür, sağlık bilgisi,
  * ek not ve PDF yöneticidedir (K-494).
+ * Kayıp eşya (DOM-FIN-145) ikisine açıktır; ayar ve toplu bağış/imha yöneticide (K-490, K-492).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -655,6 +660,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'visitors' ? <FinanceVisitorsSection isManager={isManager} /> : null}
         {tab === 'staffSurveys' ? <FinanceStaffSurveysSection isManager={isManager} /> : null}
         {tab === 'incidents' ? <FinanceIncidentsSection isManager={isManager} /> : null}
+        {tab === 'lostItems' ? <FinanceLostItemsSection isManager={isManager} /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

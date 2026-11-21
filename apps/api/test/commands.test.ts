@@ -276,6 +276,11 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/incidents',
   'POST /api/v1/finance/incidents/{incidentId}/notifications',
   'POST /api/v1/finance/incidents/{incidentId}/addenda',
+  // Bulunan eşya, kayıp bildirimi ve toplu bağış/imha; çift tıklama ikinci kaydı açmaz, bağış/imha
+  // geri alınamaz (routes/finance-lost-items.ts; DOM-FIN-145, ON-171).
+  'POST /api/v1/finance/lost-items',
+  'POST /api/v1/finance/lost-item-reports',
+  'POST /api/v1/finance/lost-item-disposals',
 ]
 // Onur: kayıt ve finans sonu
 

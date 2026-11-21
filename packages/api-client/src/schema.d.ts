@@ -14060,6 +14060,342 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/lost-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bulunan eşyalar
+         * @description Bekleyenler önce, sonra en yeni bulunan önce. Süzgeç durum ve kategori; arama tanımda, bulunduğu ve saklandığı yerde. Satırda fotoğraf sayısı, eşlenen bildirim ve saklama sonu (K-490, K-492). Rol: `yonetici` ve `onburo`. Modül `finance`.
+         */
+        get: operations["listLostItems"];
+        put?: never;
+        /**
+         * Bulunan eşyayı kaydet
+         * @description Tanım (2–300), kategori, bulunduğu yer ve gün, saklama yeri, isteğe bağlı bulan personel ve 0–3 fotoğraf (önce `POST /files`, amaç `question_image`: jpg/png/webp, 2 MB; geçişte yalnız yönetici yükler). Bulunma günü gelecekte 422 `lost_item_found_future`, 90 günden eski 422 `lost_item_found_too_old`; bulan kişi yok 422 `lost_item_finder_not_found`, personel değil `lost_item_finder_not_staff`, pasif `lost_item_finder_inactive`; fotoğraf başkasının ya da hazır değilse dosya altyapısının hatası (422 `file_unavailable`, `file_not_ready`, `file_purpose_mismatch`, 409 `file_already_attached`) (K-490). Yanıtta fotoğraf bağlantısı boştur. Denetim `finance.lost_item.create` (alan adları). `Idempotency-Key` zorunlu. Rol: `yonetici` ve `onburo`. Modül `finance`.
+         */
+        post: operations["createLostItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/lost-items/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bulunan eşya ayrıntısı
+         * @description Eşya, teslim ya da bağış/imha ayrıntısı ve fotoğrafların kısa ömürlü imzalı bağlantıları (bağış/imha edilen eşyanın fotoğrafı açılmaz, bağlantı boş). Başka kurumun eşyası 404. Rol: `yonetici` ve `onburo`. Modül `finance`.
+         */
+        get: operations["getLostItem"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Bulunan eşyayı düzelt
+         * @description Tanım, kategori, yerler, gün ve bulan personel; gönderilmeyen alan korunur. Teslim edilen, bağışlanan ya da imha edilen eşya 422 `lost_item_closed`; değişiklik yoksa 422 `lost_item_unchanged`. `If-Match` zorunlu. Denetim `finance.lost_item.update`. Rol: `yonetici` ve `onburo`. Modül `finance`.
+         */
+        patch: operations["updateLostItem"];
+        trace?: never;
+    };
+    "/api/v1/finance/lost-items/{itemId}/photos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Eşyaya fotoğraf ekle
+         * @description Yüklenmiş (`ready`) fotoğraf eşyaya bağlanır; en çok 3 (422 `lost_item_photo_limit`), kapanmış eşya 422 `lost_item_closed`. Eşyanın sürümü artar. `If-Match` eşya sürümü. Denetim `finance.lost_item.photo_add`. Rol: `yonetici` ve `onburo`. Modül `finance`.
+         */
+        post: operations["addLostItemPhoto"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/lost-items/{itemId}/photos/{fileId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Eşyadan fotoğraf çıkar
+         * @description Fotoğrafın bağı kalkar; dosyayı platformun bağsız dosya temizliği siler. Eşyanın olmayan fotoğrafı 404, kapanmış eşya 422 `lost_item_closed`. `If-Match` eşya sürümü. Denetim `finance.lost_item.photo_remove`. Rol: `yonetici` ve `onburo`. Modül `finance`.
+         */
+        delete: operations["removeLostItemPhoto"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/lost-items/{itemId}/handover": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Eşyayı teslim et
+         * @description Teslim alan öğrenci (`studentId`), öğrencinin velisi (`studentId` + `guardianLinkId`, `GET /finance/lost-item-recipients`) ya da adıyla başka kişi (`recipientName`); teslim eden oturumdaki üyeliktir, an şimdidir. Öğrenci yok 422 `lost_item_student_not_found`, bağ yok 422 `lost_item_guardian_not_found`, iletişim kısıtlı veli 422 `lost_item_guardian_restricted` (DOM-ILT-072), kapanmış eşya 422 `lost_item_closed`. Eşlenen bildirim `returned` olur; fotoğraflar 30 gün sonra imhaya işaretlenir. Teslimden sonra eşya değişmez (K-490). `If-Match` zorunlu. Denetim `finance.lost_item.handover`. Rol: `yonetici` ve `onburo`. Modül `finance`.
+         */
+        post: operations["handOverLostItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/lost-item-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kayıp eşya özeti
+         * @description Bekleyen, saklama süresi dolan, aranan ve teslim bekleyen eşleşmiş bildirim sayısı ile saklama süresi. Kişisel veri taşımaz. Rol: `yonetici` ve `onburo`. Modül `finance`.
+         */
+        get: operations["getLostItemSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/lost-item-finders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bulan kişi seçimi
+         * @description Kurumun etkin yönetici, öğretmen ve ön büro üyelikleri, ada göre. Rol: `yonetici` ve `onburo`. Modül `finance`.
+         */
+        get: operations["listLostItemFinders"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/lost-item-recipients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Teslim alabilecek aile
+         * @description Öğrenci ve etkin veli bağları (ad, yakınlık, teslim alabilir mi); iletişim kısıtlı veli `canReceive: false`. Olmayan ya da başka kurumun öğrencisi 404. Rol: `yonetici` ve `onburo`. Modül `finance`.
+         */
+        get: operations["getLostItemRecipients"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/lost-item-reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kayıp bildirimleri
+         * @description Açıklar önce, sonra eşlenmişler ve kapananlar; süzgeç durum, arama tanımda. Personel bütün bildirimleri ve eşlenen eşyayı (yer dahil) görür; veli yalnız kapsamındaki çocuklarının, öğrenci yalnız kendi bildirimlerini, eşya ayrıntısı olmadan görür (K-491). Roller: `yonetici`, `onburo`, `veli`, `ogrenci`. Modül `finance`.
+         */
+        get: operations["listLostItemReports"];
+        put?: never;
+        /**
+         * Kayıp bildirimi aç
+         * @description Öğrenci, tanım (2–300), isteğe bağlı kategori ve kaybolduğu gün. Kapsam dışı ya da olmayan öğrenci 404; gün gelecekte 422 `lost_report_future`, 90 günden eski 422 `lost_report_too_old` (K-491). Denetim `finance.lost_report.create`. `Idempotency-Key` zorunlu. Rol: `veli` (yalnız kapsamındaki çocuğu) ve `ogrenci` (yalnız kendisi). Modül `finance`.
+         */
+        post: operations["createLostItemReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/lost-item-reports/{reportId}/match": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bildirimi bulunan eşyayla eşle
+         * @description Açık bildirim bekleyen eşyayla eşlenir; eşleme teslim değildir. Bildirim açık değil 422 `lost_report_not_open`, eşya yok 422 `lost_item_not_found`, kapanmış 422 `lost_item_closed`, başka bildirimle eşli 409 `lost_item_already_matched` (K-491). `If-Match` bildirim sürümü. Denetim `finance.lost_report.match`. Rol: `yonetici` ve `onburo`. Modül `finance`.
+         */
+        post: operations["matchLostItemReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/lost-item-reports/{reportId}/unmatch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Eşlemeyi kaldır
+         * @description Yanlış eşleme kalkar, bildirim yeniden açılır; eşlenmemiş bildirim 422 `lost_report_not_matched`. Gövde yok. `If-Match` bildirim sürümü. Denetim `finance.lost_report.unmatch`. Rol: `yonetici` ve `onburo`. Modül `finance`.
+         */
+        post: operations["unmatchLostItemReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/lost-item-reports/{reportId}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bildirimi kapat
+         * @description Açık ya da eşlenmiş bildirim kapanır (aile vazgeçti ya da buldu, ön büro bulunamadı dedi); eşleme varsa kalkar. Teslim edilmiş ya da kapalı bildirim 422 `lost_report_not_open`; ailenin kapsamı dışındaki bildirim 404. Gövde yok. `If-Match` bildirim sürümü. Denetim `finance.lost_report.close`. Roller: `yonetici`, `onburo`, `veli`, `ogrenci`. Modül `finance`.
+         */
+        post: operations["closeLostItemReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/lost-item-gallery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bekleyen eşya galerisi
+         * @description Bekleyen eşyaların yalnız kategorisi, bulunduğu gün ve fotoğraflarının kısa ömürlü bağlantıları; tanım, yer ve bulan kişi dönmez (K-491). Kurum galeriyi kapattıysa liste boş ve `meta.enabled: false`. Rol: `veli` (yalnız kapsamındaki çocuğu) ve `ogrenci` (yalnız kendisi). Modül `finance`.
+         */
+        get: operations["listLostItemGallery"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/lost-item-retention": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Saklama süresi dolan eşyalar
+         * @description Bekleyen ve bulunma günü + kurum ayarlı süre (gün) bugün ya da önce olan eşyalar, en eski önce (K-492). Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.
+         */
+        get: operations["listLostItemRetention"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/lost-item-disposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Süresi dolan eşyaları bağışla ya da imha et
+         * @description 1–100 eşya tek işlemde, `donated` ya da `destroyed` ve zorunlu gerekçe (2–300); biri reddedilirse hiçbiri değişmez. Olmayan ya da başka kurumun 422 `lost_item_not_found`, kapanmış 422 `lost_item_closed`, bildirimle eşli 422 `lost_item_matched`, süresi dolmamış 422 `lost_item_retention_not_due`. Fotoğraflar hemen imhaya işaretlenir; nesneyi platform imha işi siler (K-492). Eşya başına `finance.lost_item.dispose` denetimi (gerekçe yazılmaz). Taze oturum (403 `reauthentication_required`) ve `Idempotency-Key` zorunlu. Geri alınamaz. Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.
+         */
+        post: operations["disposeLostItems"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/lost-item-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kayıp eşya ayarı
+         * @description Saklama süresi (gün; varsayılan 30) ve aile galerisi (varsayılan açık); hiç kaydedilmediyse varsayılan ve sürüm 1 (K-491, K-492). Rol: `yonetici` ve `onburo`. Modül `finance`.
+         */
+        get: operations["getLostItemSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Kayıp eşya ayarını kaydet
+         * @description Saklama süresi (7–365 gün, 400) ve aile galerisi; gönderilmeyen alan korunur, değişiklik yoksa 422 `lost_item_settings_unchanged`. `If-Match` zorunlu (hiç kaydedilmediyse 1). Denetim `finance.lost_item.settings`. Rol: yalnız `yonetici` (ön büro 403). Modül `finance`.
+         */
+        patch: operations["setLostItemSettings"];
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -148743,6 +149079,2792 @@ export interface operations {
                             }[];
                         }[];
                         meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listLostItems: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Tanımda, bulunduğu ve saklandığı yerde arama */
+                q?: string;
+                /** @description `pending` bekliyor, `handed_over` teslim edildi, `donated` bağışlandı, `destroyed` imha edildi */
+                status?: "pending" | "handed_over" | "donated" | "destroyed";
+                /** @description `clothing` giysi, `electronics` elektronik, `stationery` kırtasiye, `valuable` değerli eşya, `other` diğer */
+                category?: "clothing" | "electronics" | "stationery" | "valuable" | "other";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            description: string;
+                            /**
+                             * @description `clothing` giysi, `electronics` elektronik, `stationery` kırtasiye, `valuable` değerli eşya, `other` diğer
+                             * @enum {string}
+                             */
+                            category: "clothing" | "electronics" | "stationery" | "valuable" | "other";
+                            foundLocation: string;
+                            /** @description Bulunduğu gün (YYYY-MM-DD) */
+                            foundOn: string;
+                            storageLocation: string;
+                            /**
+                             * @description `pending` bekliyor, `handed_over` teslim edildi, `donated` bağışlandı, `destroyed` imha edildi
+                             * @enum {string}
+                             */
+                            status: "pending" | "handed_over" | "donated" | "destroyed";
+                            finderMembershipId: string | null;
+                            /** @description Bulan personelin adı */
+                            finderName: string | null;
+                            photoCount: number;
+                            /** @description Eşyayla eşlenmiş, teslim bekleyen kayıp bildirimi */
+                            matchedReport: {
+                                id: string;
+                                studentId: string;
+                                studentName: string | null;
+                                version: number;
+                            } | null;
+                            /** @description Saklama süresinin dolduğu gün (bulunma günü + süre) */
+                            retentionDueOn: string;
+                            /** @description Bekliyor ve saklama süresi doldu */
+                            retentionDue: boolean;
+                            recipientType: ("student" | "guardian" | "other") | null;
+                            /** @description Teslim alanın adı (teslim anındaki kopya) */
+                            recipientName: string | null;
+                            handedOverAt: string | null;
+                            disposedAt: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createLostItem: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Eşyanın tanımı (2–300); aile galerisinde gösterilmez */
+                    description: string;
+                    /**
+                     * @description `clothing` giysi, `electronics` elektronik, `stationery` kırtasiye, `valuable` değerli eşya, `other` diğer
+                     * @enum {string}
+                     */
+                    category: "clothing" | "electronics" | "stationery" | "valuable" | "other";
+                    /** @description Bulunduğu yer (≤ 120) */
+                    foundLocation: string;
+                    /** @description Gün (YYYY-MM-DD, Europe/Istanbul) */
+                    foundOn: string;
+                    /** @description Saklandığı yer (≤ 120; ör. ön büro dolabı) */
+                    storageLocation: string;
+                    /**
+                     * @description Bulan ya da eşyayı teslim alan personelin kurum üyeliği (isteğe bağlı; etkin personel)
+                     * @default null
+                     */
+                    finderMembershipId?: string | null;
+                    /**
+                     * @description Fotoğraflar (0–3; önce `POST /files` ile yüklenmiş, `ready` dosya kimlikleri)
+                     * @default []
+                     */
+                    photoFileIds?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            description: string;
+                            /**
+                             * @description `clothing` giysi, `electronics` elektronik, `stationery` kırtasiye, `valuable` değerli eşya, `other` diğer
+                             * @enum {string}
+                             */
+                            category: "clothing" | "electronics" | "stationery" | "valuable" | "other";
+                            foundLocation: string;
+                            /** @description Bulunduğu gün (YYYY-MM-DD) */
+                            foundOn: string;
+                            storageLocation: string;
+                            /**
+                             * @description `pending` bekliyor, `handed_over` teslim edildi, `donated` bağışlandı, `destroyed` imha edildi
+                             * @enum {string}
+                             */
+                            status: "pending" | "handed_over" | "donated" | "destroyed";
+                            finderMembershipId: string | null;
+                            /** @description Bulan personelin adı */
+                            finderName: string | null;
+                            photoCount: number;
+                            /** @description Eşyayla eşlenmiş, teslim bekleyen kayıp bildirimi */
+                            matchedReport: {
+                                id: string;
+                                studentId: string;
+                                studentName: string | null;
+                                version: number;
+                            } | null;
+                            /** @description Saklama süresinin dolduğu gün (bulunma günü + süre) */
+                            retentionDueOn: string;
+                            /** @description Bekliyor ve saklama süresi doldu */
+                            retentionDue: boolean;
+                            recipientType: ("student" | "guardian" | "other") | null;
+                            /** @description Teslim alanın adı (teslim anındaki kopya) */
+                            recipientName: string | null;
+                            handedOverAt: string | null;
+                            disposedAt: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                            photos: {
+                                fileId: string;
+                                contentType: string;
+                                byteSize: number;
+                                /** @description Kısa ömürlü imzalı bağlantı; yazma yanıtlarında ve açılamayan dosyada boş */
+                                url: string | null;
+                                expiresAt: string | null;
+                            }[];
+                            recipientStudentId: string | null;
+                            recipientStudentName: string | null;
+                            recipientGuardianLinkId: string | null;
+                            /** @description Teslim eden personel */
+                            handedOverByName: string | null;
+                            disposalReason: string | null;
+                            disposedByName: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getLostItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            description: string;
+                            /**
+                             * @description `clothing` giysi, `electronics` elektronik, `stationery` kırtasiye, `valuable` değerli eşya, `other` diğer
+                             * @enum {string}
+                             */
+                            category: "clothing" | "electronics" | "stationery" | "valuable" | "other";
+                            foundLocation: string;
+                            /** @description Bulunduğu gün (YYYY-MM-DD) */
+                            foundOn: string;
+                            storageLocation: string;
+                            /**
+                             * @description `pending` bekliyor, `handed_over` teslim edildi, `donated` bağışlandı, `destroyed` imha edildi
+                             * @enum {string}
+                             */
+                            status: "pending" | "handed_over" | "donated" | "destroyed";
+                            finderMembershipId: string | null;
+                            /** @description Bulan personelin adı */
+                            finderName: string | null;
+                            photoCount: number;
+                            /** @description Eşyayla eşlenmiş, teslim bekleyen kayıp bildirimi */
+                            matchedReport: {
+                                id: string;
+                                studentId: string;
+                                studentName: string | null;
+                                version: number;
+                            } | null;
+                            /** @description Saklama süresinin dolduğu gün (bulunma günü + süre) */
+                            retentionDueOn: string;
+                            /** @description Bekliyor ve saklama süresi doldu */
+                            retentionDue: boolean;
+                            recipientType: ("student" | "guardian" | "other") | null;
+                            /** @description Teslim alanın adı (teslim anındaki kopya) */
+                            recipientName: string | null;
+                            handedOverAt: string | null;
+                            disposedAt: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                            photos: {
+                                fileId: string;
+                                contentType: string;
+                                byteSize: number;
+                                /** @description Kısa ömürlü imzalı bağlantı; yazma yanıtlarında ve açılamayan dosyada boş */
+                                url: string | null;
+                                expiresAt: string | null;
+                            }[];
+                            recipientStudentId: string | null;
+                            recipientStudentName: string | null;
+                            recipientGuardianLinkId: string | null;
+                            /** @description Teslim eden personel */
+                            handedOverByName: string | null;
+                            disposalReason: string | null;
+                            disposedByName: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateLostItem: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Eşyanın tanımı (2–300); aile galerisinde gösterilmez */
+                    description?: string;
+                    /**
+                     * @description `clothing` giysi, `electronics` elektronik, `stationery` kırtasiye, `valuable` değerli eşya, `other` diğer
+                     * @enum {string}
+                     */
+                    category?: "clothing" | "electronics" | "stationery" | "valuable" | "other";
+                    /** @description Bulunduğu yer (≤ 120) */
+                    foundLocation?: string;
+                    /** @description Gün (YYYY-MM-DD, Europe/Istanbul) */
+                    foundOn?: string;
+                    /** @description Saklandığı yer (≤ 120; ör. ön büro dolabı) */
+                    storageLocation?: string;
+                    /** @description Bulan personel; `null` kaldırır */
+                    finderMembershipId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            description: string;
+                            /**
+                             * @description `clothing` giysi, `electronics` elektronik, `stationery` kırtasiye, `valuable` değerli eşya, `other` diğer
+                             * @enum {string}
+                             */
+                            category: "clothing" | "electronics" | "stationery" | "valuable" | "other";
+                            foundLocation: string;
+                            /** @description Bulunduğu gün (YYYY-MM-DD) */
+                            foundOn: string;
+                            storageLocation: string;
+                            /**
+                             * @description `pending` bekliyor, `handed_over` teslim edildi, `donated` bağışlandı, `destroyed` imha edildi
+                             * @enum {string}
+                             */
+                            status: "pending" | "handed_over" | "donated" | "destroyed";
+                            finderMembershipId: string | null;
+                            /** @description Bulan personelin adı */
+                            finderName: string | null;
+                            photoCount: number;
+                            /** @description Eşyayla eşlenmiş, teslim bekleyen kayıp bildirimi */
+                            matchedReport: {
+                                id: string;
+                                studentId: string;
+                                studentName: string | null;
+                                version: number;
+                            } | null;
+                            /** @description Saklama süresinin dolduğu gün (bulunma günü + süre) */
+                            retentionDueOn: string;
+                            /** @description Bekliyor ve saklama süresi doldu */
+                            retentionDue: boolean;
+                            recipientType: ("student" | "guardian" | "other") | null;
+                            /** @description Teslim alanın adı (teslim anındaki kopya) */
+                            recipientName: string | null;
+                            handedOverAt: string | null;
+                            disposedAt: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                            photos: {
+                                fileId: string;
+                                contentType: string;
+                                byteSize: number;
+                                /** @description Kısa ömürlü imzalı bağlantı; yazma yanıtlarında ve açılamayan dosyada boş */
+                                url: string | null;
+                                expiresAt: string | null;
+                            }[];
+                            recipientStudentId: string | null;
+                            recipientStudentName: string | null;
+                            recipientGuardianLinkId: string | null;
+                            /** @description Teslim eden personel */
+                            handedOverByName: string | null;
+                            disposalReason: string | null;
+                            disposedByName: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    addLostItemPhoto: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * Format: uuid
+                     * @description Yüklenmiş (`ready`) fotoğraf dosyası
+                     */
+                    fileId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            description: string;
+                            /**
+                             * @description `clothing` giysi, `electronics` elektronik, `stationery` kırtasiye, `valuable` değerli eşya, `other` diğer
+                             * @enum {string}
+                             */
+                            category: "clothing" | "electronics" | "stationery" | "valuable" | "other";
+                            foundLocation: string;
+                            /** @description Bulunduğu gün (YYYY-MM-DD) */
+                            foundOn: string;
+                            storageLocation: string;
+                            /**
+                             * @description `pending` bekliyor, `handed_over` teslim edildi, `donated` bağışlandı, `destroyed` imha edildi
+                             * @enum {string}
+                             */
+                            status: "pending" | "handed_over" | "donated" | "destroyed";
+                            finderMembershipId: string | null;
+                            /** @description Bulan personelin adı */
+                            finderName: string | null;
+                            photoCount: number;
+                            /** @description Eşyayla eşlenmiş, teslim bekleyen kayıp bildirimi */
+                            matchedReport: {
+                                id: string;
+                                studentId: string;
+                                studentName: string | null;
+                                version: number;
+                            } | null;
+                            /** @description Saklama süresinin dolduğu gün (bulunma günü + süre) */
+                            retentionDueOn: string;
+                            /** @description Bekliyor ve saklama süresi doldu */
+                            retentionDue: boolean;
+                            recipientType: ("student" | "guardian" | "other") | null;
+                            /** @description Teslim alanın adı (teslim anındaki kopya) */
+                            recipientName: string | null;
+                            handedOverAt: string | null;
+                            disposedAt: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                            photos: {
+                                fileId: string;
+                                contentType: string;
+                                byteSize: number;
+                                /** @description Kısa ömürlü imzalı bağlantı; yazma yanıtlarında ve açılamayan dosyada boş */
+                                url: string | null;
+                                expiresAt: string | null;
+                            }[];
+                            recipientStudentId: string | null;
+                            recipientStudentName: string | null;
+                            recipientGuardianLinkId: string | null;
+                            /** @description Teslim eden personel */
+                            handedOverByName: string | null;
+                            disposalReason: string | null;
+                            disposedByName: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    removeLostItemPhoto: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                itemId: string;
+                fileId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            description: string;
+                            /**
+                             * @description `clothing` giysi, `electronics` elektronik, `stationery` kırtasiye, `valuable` değerli eşya, `other` diğer
+                             * @enum {string}
+                             */
+                            category: "clothing" | "electronics" | "stationery" | "valuable" | "other";
+                            foundLocation: string;
+                            /** @description Bulunduğu gün (YYYY-MM-DD) */
+                            foundOn: string;
+                            storageLocation: string;
+                            /**
+                             * @description `pending` bekliyor, `handed_over` teslim edildi, `donated` bağışlandı, `destroyed` imha edildi
+                             * @enum {string}
+                             */
+                            status: "pending" | "handed_over" | "donated" | "destroyed";
+                            finderMembershipId: string | null;
+                            /** @description Bulan personelin adı */
+                            finderName: string | null;
+                            photoCount: number;
+                            /** @description Eşyayla eşlenmiş, teslim bekleyen kayıp bildirimi */
+                            matchedReport: {
+                                id: string;
+                                studentId: string;
+                                studentName: string | null;
+                                version: number;
+                            } | null;
+                            /** @description Saklama süresinin dolduğu gün (bulunma günü + süre) */
+                            retentionDueOn: string;
+                            /** @description Bekliyor ve saklama süresi doldu */
+                            retentionDue: boolean;
+                            recipientType: ("student" | "guardian" | "other") | null;
+                            /** @description Teslim alanın adı (teslim anındaki kopya) */
+                            recipientName: string | null;
+                            handedOverAt: string | null;
+                            disposedAt: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                            photos: {
+                                fileId: string;
+                                contentType: string;
+                                byteSize: number;
+                                /** @description Kısa ömürlü imzalı bağlantı; yazma yanıtlarında ve açılamayan dosyada boş */
+                                url: string | null;
+                                expiresAt: string | null;
+                            }[];
+                            recipientStudentId: string | null;
+                            recipientStudentName: string | null;
+                            recipientGuardianLinkId: string | null;
+                            /** @description Teslim eden personel */
+                            handedOverByName: string | null;
+                            disposalReason: string | null;
+                            disposedByName: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    handOverLostItem: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description `student` öğrenci, `guardian` öğrencinin velisi, `other` adıyla başka kişi
+                     * @enum {string}
+                     */
+                    recipientType: "student" | "guardian" | "other";
+                    /**
+                     * @description Eşyanın sahibi öğrenci (`student` ve `guardian` için zorunlu)
+                     * @default null
+                     */
+                    studentId?: string | null;
+                    /**
+                     * @description Öğrencinin veli bağı (`GET /finance/lost-item-recipients`; yalnız `guardian`)
+                     * @default null
+                     */
+                    guardianLinkId?: string | null;
+                    /** @description Teslim alanın adı (yalnız `other`, 2–120) */
+                    recipientName?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            description: string;
+                            /**
+                             * @description `clothing` giysi, `electronics` elektronik, `stationery` kırtasiye, `valuable` değerli eşya, `other` diğer
+                             * @enum {string}
+                             */
+                            category: "clothing" | "electronics" | "stationery" | "valuable" | "other";
+                            foundLocation: string;
+                            /** @description Bulunduğu gün (YYYY-MM-DD) */
+                            foundOn: string;
+                            storageLocation: string;
+                            /**
+                             * @description `pending` bekliyor, `handed_over` teslim edildi, `donated` bağışlandı, `destroyed` imha edildi
+                             * @enum {string}
+                             */
+                            status: "pending" | "handed_over" | "donated" | "destroyed";
+                            finderMembershipId: string | null;
+                            /** @description Bulan personelin adı */
+                            finderName: string | null;
+                            photoCount: number;
+                            /** @description Eşyayla eşlenmiş, teslim bekleyen kayıp bildirimi */
+                            matchedReport: {
+                                id: string;
+                                studentId: string;
+                                studentName: string | null;
+                                version: number;
+                            } | null;
+                            /** @description Saklama süresinin dolduğu gün (bulunma günü + süre) */
+                            retentionDueOn: string;
+                            /** @description Bekliyor ve saklama süresi doldu */
+                            retentionDue: boolean;
+                            recipientType: ("student" | "guardian" | "other") | null;
+                            /** @description Teslim alanın adı (teslim anındaki kopya) */
+                            recipientName: string | null;
+                            handedOverAt: string | null;
+                            disposedAt: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                            photos: {
+                                fileId: string;
+                                contentType: string;
+                                byteSize: number;
+                                /** @description Kısa ömürlü imzalı bağlantı; yazma yanıtlarında ve açılamayan dosyada boş */
+                                url: string | null;
+                                expiresAt: string | null;
+                            }[];
+                            recipientStudentId: string | null;
+                            recipientStudentName: string | null;
+                            recipientGuardianLinkId: string | null;
+                            /** @description Teslim eden personel */
+                            handedOverByName: string | null;
+                            disposalReason: string | null;
+                            disposedByName: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getLostItemSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Bugün (Europe/Istanbul) */
+                            date: string;
+                            /** @description Bekleyen eşya */
+                            pending: number;
+                            /** @description Saklama süresi dolan bekleyen eşya */
+                            retentionDue: number;
+                            /** @description Aranan (eşlenmemiş) kayıp bildirimi */
+                            openReports: number;
+                            /** @description Eşlenmiş, teslim bekleyen bildirim */
+                            matchedReports: number;
+                            retentionDays: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listLostItemFinders: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Personel adında arama */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            membershipId: string;
+                            name: string;
+                            /** @description `yonetici`, `ogretmen` ya da `onburo` */
+                            role: string;
+                            active: boolean;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getLostItemRecipients: {
+        parameters: {
+            query: {
+                /** @description Eşyanın sahibi öğrenci */
+                studentId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            studentId: string;
+                            studentName: string | null;
+                            guardians: {
+                                guardianLinkId: string;
+                                name: string | null;
+                                /** @enum {string} */
+                                relationship: "mother" | "father" | "legal_guardian" | "other";
+                                /** @description İletişim kısıtı yok; teslim alabilir (DOM-ILT-072) */
+                                canReceive: boolean;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listLostItemReports: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Bildirim tanımında arama */
+                q?: string;
+                /** @description `open` aranıyor, `matched` bulunan eşyayla eşlendi (teslim bekliyor), `returned` teslim edildi, `closed` kapatıldı */
+                status?: "open" | "matched" | "returned" | "closed";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            studentName: string | null;
+                            description: string;
+                            category: ("clothing" | "electronics" | "stationery" | "valuable" | "other") | null;
+                            /** @description Kaybolduğu gün (YYYY-MM-DD) */
+                            lostOn: string;
+                            /**
+                             * @description `open` aranıyor, `matched` bulunan eşyayla eşlendi (teslim bekliyor), `returned` teslim edildi, `closed` kapatıldı
+                             * @enum {string}
+                             */
+                            status: "open" | "matched" | "returned" | "closed";
+                            /** @description Bildiren: `veli` ya da `ogrenci` */
+                            reporterRole: string;
+                            createdAt: string;
+                            returnedAt: string | null;
+                            /** @description Eşlenen eşya; yalnız personel yanıtında dolu */
+                            matchedItem: {
+                                id: string;
+                                description: string;
+                                /**
+                                 * @description `clothing` giysi, `electronics` elektronik, `stationery` kırtasiye, `valuable` değerli eşya, `other` diğer
+                                 * @enum {string}
+                                 */
+                                category: "clothing" | "electronics" | "stationery" | "valuable" | "other";
+                                storageLocation: string;
+                                /**
+                                 * @description `pending` bekliyor, `handed_over` teslim edildi, `donated` bağışlandı, `destroyed` imha edildi
+                                 * @enum {string}
+                                 */
+                                status: "pending" | "handed_over" | "donated" | "destroyed";
+                            } | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createLostItemReport: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Eşyası kaybolan öğrenci: veli kendi çocuğu, öğrenci kendisi */
+                    studentId: string;
+                    /** @description Eşyanın tanımı (2–300) */
+                    description: string;
+                    /**
+                     * @description Kategori (isteğe bağlı)
+                     * @default null
+                     */
+                    category?: ("clothing" | "electronics" | "stationery" | "valuable" | "other") | null;
+                    /** @description Gün (YYYY-MM-DD, Europe/Istanbul) */
+                    lostOn: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            studentName: string | null;
+                            description: string;
+                            category: ("clothing" | "electronics" | "stationery" | "valuable" | "other") | null;
+                            /** @description Kaybolduğu gün (YYYY-MM-DD) */
+                            lostOn: string;
+                            /**
+                             * @description `open` aranıyor, `matched` bulunan eşyayla eşlendi (teslim bekliyor), `returned` teslim edildi, `closed` kapatıldı
+                             * @enum {string}
+                             */
+                            status: "open" | "matched" | "returned" | "closed";
+                            /** @description Bildiren: `veli` ya da `ogrenci` */
+                            reporterRole: string;
+                            createdAt: string;
+                            returnedAt: string | null;
+                            /** @description Eşlenen eşya; yalnız personel yanıtında dolu */
+                            matchedItem: {
+                                id: string;
+                                description: string;
+                                /**
+                                 * @description `clothing` giysi, `electronics` elektronik, `stationery` kırtasiye, `valuable` değerli eşya, `other` diğer
+                                 * @enum {string}
+                                 */
+                                category: "clothing" | "electronics" | "stationery" | "valuable" | "other";
+                                storageLocation: string;
+                                /**
+                                 * @description `pending` bekliyor, `handed_over` teslim edildi, `donated` bağışlandı, `destroyed` imha edildi
+                                 * @enum {string}
+                                 */
+                                status: "pending" | "handed_over" | "donated" | "destroyed";
+                            } | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    matchLostItemReport: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                reportId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * Format: uuid
+                     * @description Eşlenecek bekleyen eşya
+                     */
+                    itemId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            studentName: string | null;
+                            description: string;
+                            category: ("clothing" | "electronics" | "stationery" | "valuable" | "other") | null;
+                            /** @description Kaybolduğu gün (YYYY-MM-DD) */
+                            lostOn: string;
+                            /**
+                             * @description `open` aranıyor, `matched` bulunan eşyayla eşlendi (teslim bekliyor), `returned` teslim edildi, `closed` kapatıldı
+                             * @enum {string}
+                             */
+                            status: "open" | "matched" | "returned" | "closed";
+                            /** @description Bildiren: `veli` ya da `ogrenci` */
+                            reporterRole: string;
+                            createdAt: string;
+                            returnedAt: string | null;
+                            /** @description Eşlenen eşya; yalnız personel yanıtında dolu */
+                            matchedItem: {
+                                id: string;
+                                description: string;
+                                /**
+                                 * @description `clothing` giysi, `electronics` elektronik, `stationery` kırtasiye, `valuable` değerli eşya, `other` diğer
+                                 * @enum {string}
+                                 */
+                                category: "clothing" | "electronics" | "stationery" | "valuable" | "other";
+                                storageLocation: string;
+                                /**
+                                 * @description `pending` bekliyor, `handed_over` teslim edildi, `donated` bağışlandı, `destroyed` imha edildi
+                                 * @enum {string}
+                                 */
+                                status: "pending" | "handed_over" | "donated" | "destroyed";
+                            } | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    unmatchLostItemReport: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                reportId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            studentName: string | null;
+                            description: string;
+                            category: ("clothing" | "electronics" | "stationery" | "valuable" | "other") | null;
+                            /** @description Kaybolduğu gün (YYYY-MM-DD) */
+                            lostOn: string;
+                            /**
+                             * @description `open` aranıyor, `matched` bulunan eşyayla eşlendi (teslim bekliyor), `returned` teslim edildi, `closed` kapatıldı
+                             * @enum {string}
+                             */
+                            status: "open" | "matched" | "returned" | "closed";
+                            /** @description Bildiren: `veli` ya da `ogrenci` */
+                            reporterRole: string;
+                            createdAt: string;
+                            returnedAt: string | null;
+                            /** @description Eşlenen eşya; yalnız personel yanıtında dolu */
+                            matchedItem: {
+                                id: string;
+                                description: string;
+                                /**
+                                 * @description `clothing` giysi, `electronics` elektronik, `stationery` kırtasiye, `valuable` değerli eşya, `other` diğer
+                                 * @enum {string}
+                                 */
+                                category: "clothing" | "electronics" | "stationery" | "valuable" | "other";
+                                storageLocation: string;
+                                /**
+                                 * @description `pending` bekliyor, `handed_over` teslim edildi, `donated` bağışlandı, `destroyed` imha edildi
+                                 * @enum {string}
+                                 */
+                                status: "pending" | "handed_over" | "donated" | "destroyed";
+                            } | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    closeLostItemReport: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                reportId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            studentName: string | null;
+                            description: string;
+                            category: ("clothing" | "electronics" | "stationery" | "valuable" | "other") | null;
+                            /** @description Kaybolduğu gün (YYYY-MM-DD) */
+                            lostOn: string;
+                            /**
+                             * @description `open` aranıyor, `matched` bulunan eşyayla eşlendi (teslim bekliyor), `returned` teslim edildi, `closed` kapatıldı
+                             * @enum {string}
+                             */
+                            status: "open" | "matched" | "returned" | "closed";
+                            /** @description Bildiren: `veli` ya da `ogrenci` */
+                            reporterRole: string;
+                            createdAt: string;
+                            returnedAt: string | null;
+                            /** @description Eşlenen eşya; yalnız personel yanıtında dolu */
+                            matchedItem: {
+                                id: string;
+                                description: string;
+                                /**
+                                 * @description `clothing` giysi, `electronics` elektronik, `stationery` kırtasiye, `valuable` değerli eşya, `other` diğer
+                                 * @enum {string}
+                                 */
+                                category: "clothing" | "electronics" | "stationery" | "valuable" | "other";
+                                storageLocation: string;
+                                /**
+                                 * @description `pending` bekliyor, `handed_over` teslim edildi, `donated` bağışlandı, `destroyed` imha edildi
+                                 * @enum {string}
+                                 */
+                                status: "pending" | "handed_over" | "donated" | "destroyed";
+                            } | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listLostItemGallery: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description `clothing` giysi, `electronics` elektronik, `stationery` kırtasiye, `valuable` değerli eşya, `other` diğer */
+                category?: "clothing" | "electronics" | "stationery" | "valuable" | "other";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description `clothing` giysi, `electronics` elektronik, `stationery` kırtasiye, `valuable` değerli eşya, `other` diğer
+                             * @enum {string}
+                             */
+                            category: "clothing" | "electronics" | "stationery" | "valuable" | "other";
+                            foundOn: string;
+                            photos: {
+                                fileId: string;
+                                /** @description Kısa ömürlü imzalı bağlantı */
+                                url: string | null;
+                                expiresAt: string | null;
+                            }[];
+                        }[];
+                        meta: {
+                            /** @description Sayfa numarası (1’den başlar) */
+                            page: number;
+                            /** @description Sayfa boyutu */
+                            pageSize: number;
+                            /** @description Filtre uygulanmış toplam kayıt sayısı */
+                            total: number;
+                            /** @description Kurum aile galerisini açmış mı; kapalıysa liste boş */
+                            enabled: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listLostItemRetention: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            description: string;
+                            /**
+                             * @description `clothing` giysi, `electronics` elektronik, `stationery` kırtasiye, `valuable` değerli eşya, `other` diğer
+                             * @enum {string}
+                             */
+                            category: "clothing" | "electronics" | "stationery" | "valuable" | "other";
+                            foundLocation: string;
+                            /** @description Bulunduğu gün (YYYY-MM-DD) */
+                            foundOn: string;
+                            storageLocation: string;
+                            /**
+                             * @description `pending` bekliyor, `handed_over` teslim edildi, `donated` bağışlandı, `destroyed` imha edildi
+                             * @enum {string}
+                             */
+                            status: "pending" | "handed_over" | "donated" | "destroyed";
+                            finderMembershipId: string | null;
+                            /** @description Bulan personelin adı */
+                            finderName: string | null;
+                            photoCount: number;
+                            /** @description Eşyayla eşlenmiş, teslim bekleyen kayıp bildirimi */
+                            matchedReport: {
+                                id: string;
+                                studentId: string;
+                                studentName: string | null;
+                                version: number;
+                            } | null;
+                            /** @description Saklama süresinin dolduğu gün (bulunma günü + süre) */
+                            retentionDueOn: string;
+                            /** @description Bekliyor ve saklama süresi doldu */
+                            retentionDue: boolean;
+                            recipientType: ("student" | "guardian" | "other") | null;
+                            /** @description Teslim alanın adı (teslim anındaki kopya) */
+                            recipientName: string | null;
+                            handedOverAt: string | null;
+                            disposedAt: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                        }[];
+                        meta: {
+                            /** @description Sayfa numarası (1’den başlar) */
+                            page: number;
+                            /** @description Sayfa boyutu */
+                            pageSize: number;
+                            /** @description Filtre uygulanmış toplam kayıt sayısı */
+                            total: number;
+                            /** @description Kurumun saklama süresi (gün) */
+                            retentionDays: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    disposeLostItems: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Kapatılacak eşyalar (1–100) */
+                    itemIds: string[];
+                    /**
+                     * @description `donated` bağışlandı, `destroyed` imha edildi
+                     * @enum {string}
+                     */
+                    outcome: "donated" | "destroyed";
+                    /** @description Gerekçe (2–300; ör. bağış yapılan kurum); denetime ve loga yazılmaz */
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            disposedCount: number;
+                            /** @enum {string} */
+                            outcome: "donated" | "destroyed";
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getLostItemSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            retentionDays: number;
+                            familyGalleryEnabled: boolean;
+                            /** @description `If-Match` sürümü; hiç kaydedilmediyse 1 */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    setLostItemSettings: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Saklama süresi (gün, 7–365; varsayılan 30) */
+                    retentionDays?: number;
+                    /** @description Veli ve öğrenci bekleyen eşyaların kategori ve fotoğrafını görür (varsayılan açık) */
+                    familyGalleryEnabled?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            retentionDays: number;
+                            familyGalleryEnabled: boolean;
+                            /** @description `If-Match` sürümü; hiç kaydedilmediyse 1 */
+                            version: number;
+                        };
                     };
                 };
             };

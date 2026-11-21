@@ -4339,6 +4339,68 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: revir ve ilaç onayı (ON-101; DOM-FIN-151).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/infirmary/visits', 'get(VISITS, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/infirmary/visits', 'visitBody({ institutionId: b.id })'],
+        ['kayıt', 'GET /api/v1/finance/infirmary/visits/:visitId', 'get(bVisitUrl, a.admin)'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/infirmary/visits/:visitId',
+          "versioned('PATCH', bVisitUrl, a.admin",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/infirmary/visits/:visitId/discharge',
+          'discharge(bVisit.id, a.admin',
+        ],
+        ['liste', 'GET /api/v1/finance/infirmary/visit-states', 'get(STATES, a.admin)'],
+        ['liste', 'GET /api/v1/finance/infirmary/my-visits', 'get(MY_VISITS, a.mother)'],
+        ['liste', 'GET /api/v1/finance/infirmary/medication-consents', 'get(CONSENTS, a.admin)'],
+        [
+          'gövde',
+          'POST /api/v1/finance/infirmary/medication-consents',
+          'consentBody({ institutionId: b.id })',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/infirmary/medication-consents/:consentId',
+          'get(bConsentUrl, a.admin)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/infirmary/medication-consents/:consentId/approve',
+          'approve(bConsent.id, a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/infirmary/medication-consents/:consentId/reject',
+          '`${bConsentUrl}/reject`, a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/infirmary/medication-consents/:consentId/withdraw',
+          '`${bConsentUrl}/withdraw`, a.mother',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/infirmary/medication-consents/:consentId/administrations',
+          'administer(a, bConsent.id',
+        ],
+        ['liste', 'GET /api/v1/finance/infirmary/medication-schedule', 'get(SCHEDULE, a.admin)'],
+        ['liste', 'GET /api/v1/finance/infirmary/staff', 'get(`${STAFF}?pageSize=100`, a.admin)'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-infirmary.test.ts',
+        'DOM-FIN-151: başka kurumun ziyareti ve talebi 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

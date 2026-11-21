@@ -236,6 +236,12 @@ const FinancePersonnelFilesSection = lazy(async () => ({
 const FinanceVisitorsSection = lazy(async () => ({
   default: (await import('./FinanceVisitorsSection.tsx')).FinanceVisitorsSection,
 }))
+const FinanceTransportSection = lazy(async () => ({
+  default: (await import('./FinanceTransportSection.tsx')).FinanceTransportSection,
+}))
+const FinanceClubsSection = lazy(async () => ({
+  default: (await import('./FinanceClubsSection.tsx')).FinanceClubsSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -312,6 +318,8 @@ const VIEWS = {
   teacherMentorships: { label: 'Mentorluk', param: 'mentorluk' },
   personnelFiles: { label: 'Özlük kartları', param: 'ozluk-kartlari' },
   visitors: { label: 'Ziyaretçiler', param: 'ziyaretciler' },
+  transport: { label: 'Servis', param: 'servis' },
+  clubs: { label: 'Kulüpler', param: 'kulupler' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -378,6 +386,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Özlük kartları (DOM-FIN-140) yalnız yöneticidedir (muhasebe rolü açılınca o da); alanlar role
  * göre sunucuda süzülür (K-475).
  * Ziyaretçiler (DOM-FIN-141) ikisine açıktır; ayar ve saklama yöneticide (K-478, K-480).
+ * Servis ve Kulüpler (DOM-FIN-142) ikisine açıktır; kulüp yoklamasını yönetici alır (K-482, K-483).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -641,6 +650,8 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'teacherMentorships' ? <FinanceTeacherMentorshipsSection /> : null}
         {tab === 'personnelFiles' ? <FinancePersonnelFilesSection /> : null}
         {tab === 'visitors' ? <FinanceVisitorsSection isManager={isManager} /> : null}
+        {tab === 'transport' ? <FinanceTransportSection /> : null}
+        {tab === 'clubs' ? <FinanceClubsSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

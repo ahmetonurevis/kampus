@@ -22,9 +22,14 @@ import {
   type JobApplicationStage,
   type JobPostingFields,
 } from '@kampus/school-core/lib/finance-job-postings.ts'
+import { assertInterviewBeforeOffer } from '@kampus/school-core/lib/finance-candidate-interviews.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 
 import type { Database } from '../db/client.ts'
+import {
+  anonymizeApplicationInterviews,
+  countCompletedInterviews,
+} from '../db/finance-candidate-interviews.ts'
 import {
   anonymizeJobApplication,
   countApplicationsByPosting,
@@ -54,6 +59,7 @@ import {
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { scheduleDocumentPurge } from './enrollment-document-links.ts'
+import { interviewSummaryFor } from './finance-candidate-interviews.ts'
 import { defineFileAttachment } from './file-registry.ts'
 import { attachFile } from './files.ts'
 import { getInstitutionModules } from './modules.ts'
@@ -83,6 +89,14 @@ const ANONYMIZED_FIELDS = [
   'cvFileId',
   'anonymizedAt',
   'anonymizationReason',
+]
+
+/** Başvurunun mülakatlarında anonimleştirmede temizlenen alanlar (DOM-FIN-138, K-471). */
+const INTERVIEW_ANONYMIZED_FIELDS = [
+  'interviews.location',
+  'interviews.meetingUrl',
+  'interviews.evaluations.notes',
+  'interviews.evaluations.generalNote',
 ]
 
 defineFileAttachment('job_application', {
@@ -161,9 +175,10 @@ function applicationRow(application: StoredJobApplication, retentionMonths: numb
 async function applicationDetail(db: Database, ctx: ServiceContext, id: string) {
   const application = await findJobApplication(db, ctx.institutionId, id)
   if (application === null) throw new NotFoundError()
-  const [history, settings] = await Promise.all([
+  const [history, settings, interviewSummary] = await Promise.all([
     listStageChanges(db, ctx.institutionId, id),
     loadJobApplicationSettings(db, ctx.institutionId),
+    interviewSummaryFor(db, ctx, id),
   ])
   return {
     ...applicationRow(application, settings.retentionMonths),
@@ -184,6 +199,7 @@ async function applicationDetail(db: Database, ctx: ServiceContext, id: string) 
       changedOn: change.changedOn,
       changedByUserId: change.changedByUserId,
     })),
+    interviewSummary,
   }
 }
 
@@ -535,11 +551,14 @@ export function changeJobApplicationStageCommand(
         if (application === null) throw new NotFoundError()
         if (application.version !== expectedVersion) throw new ConflictError()
         const parsed = jobApplicationStageInputSchema.parse(input)
+        const completedInterviews = await countCompletedInterviews(tx, ctx.institutionId, id)
         return {
-          run: () => ({
-            from: application.stage,
-            ...planJobApplicationStage(application, parsed, dayKey(ctx.now)),
-          }),
+          run: () => {
+            const plan = planJobApplicationStage(application, parsed, dayKey(ctx.now))
+            // Teklif kapısı (DOM-FIN-138, K-469): teklif ve işe alım yapılmış mülakat ister.
+            assertInterviewBeforeOffer(plan.stage, completedInterviews)
+            return { from: application.stage, ...plan }
+          },
         }
       },
       after: async (tx, plan) => {
@@ -637,12 +656,20 @@ export function anonymizeJobApplicationsCommand(
             now: ctx.now,
           })
           if (!saved) throw new ConflictError()
+          // Mülakat notları, yer ve bağlantı da silinir; planlı mülakat iptal olur (K-471).
+          const interviews = await anonymizeApplicationInterviews(tx, ctx.institutionId, {
+            applicationId,
+            userId: ctx.actor.userId,
+            now: ctx.now,
+          })
           await auditWork(
             tx,
             ctx,
             'finance.job_application.anonymize',
             { type: APPLICATION, id: applicationId },
-            ANONYMIZED_FIELDS,
+            interviews.interviews === 0
+              ? ANONYMIZED_FIELDS
+              : [...ANONYMIZED_FIELDS, ...INTERVIEW_ANONYMIZED_FIELDS],
           )
         }
         body = {

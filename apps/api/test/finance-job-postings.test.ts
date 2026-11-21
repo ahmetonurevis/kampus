@@ -98,7 +98,11 @@ describe('DOM-FIN-128: iş ilanı ve başvuru uçları', () => {
   async function institution(overrides: Partial<InstitutionOverrides> = {}) {
     clientIp = `10.128.${String((tenantCount += 1))}.1`
     const created = await createInstitution(app, overrides)
-    return { id: created.id, admin: await signInAs(app, created.admin) }
+    return {
+      id: created.id,
+      admin: await signInAs(app, created.admin),
+      adminMembershipId: created.adminMembershipId,
+    }
   }
   type Tenant = Awaited<ReturnType<typeof institution>>
   const member = async (institutionId: string, role: Parameters<typeof createMember>[2]) =>
@@ -657,13 +661,48 @@ describe('DOM-FIN-128: iş ilanı ve başvuru uçları', () => {
     assert.equal(list.json().meta.total, 1)
     assert.equal('email' in (list.json().data as Json[])[0]!, false)
 
+    // İşe alım yapılmış mülakat ister (DOM-FIN-138, K-469).
+    const atInterview = ok(
+      await versioned(
+        'POST',
+        `${APPLICATIONS}/${String(created.id)}/stage`,
+        t.admin,
+        { stage: 'interview', changedOn: '2026-10-05' },
+        created.version,
+      ),
+    )
+    const interviewForm = ok(
+      await post(`${FINANCE}/interview-templates`, t.admin, {
+        name: 'Mülakat formu',
+        criteria: [{ title: 'Alan bilgisi' }],
+      }),
+      201,
+    )
+    const interview = ok(
+      await post(`${APPLICATIONS}/${String(created.id)}/interviews`, t.admin, {
+        type: 'pre_screen',
+        scheduledAt: '2026-10-05T10:00:00+03:00',
+        templateId: interviewForm.id,
+        evaluatorMembershipIds: [t.adminMembershipId],
+      }),
+      201,
+    )
+    ok(
+      await versioned(
+        'POST',
+        `${FINANCE}/candidate-interviews/${String(interview.id)}/complete`,
+        t.admin,
+        {},
+        interview.version,
+      ),
+    )
     const hired = ok(
       await versioned(
         'POST',
         `${APPLICATIONS}/${String(created.id)}/stage`,
         t.admin,
         { stage: 'hired', changedOn: '2026-10-06' },
-        created.version,
+        atInterview.version,
       ),
     )
     assertError(

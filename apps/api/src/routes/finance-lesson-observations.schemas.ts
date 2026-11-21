@@ -23,7 +23,11 @@ const templateSchema = z.object({
   name: z.string().describe('Form adı (son sürüm)'),
   criteria: z.array(criterionSchema).describe('Son sürümün ölçütleri'),
   observationCount: z.number().int().describe('Son sürümle açılmış gözlem sayısı'),
-  used: z.boolean().describe('Son sürüm gözlemde kullanıldı mı; kullanıldıysa düzeltilmez (K-445)'),
+  used: z
+    .boolean()
+    .describe(
+      'Son sürüm gözlemde ya da aday örnek dersinde kullanıldı mı; kullanıldıysa düzeltilmez (K-445, K-471)',
+    ),
   archivedAt: z.string().nullable().describe('Arşiv anı; arşivli form yeni gözlemde seçilmez'),
   createdAt: z.string(),
   updatedAt: z.string(),

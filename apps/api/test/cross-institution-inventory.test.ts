@@ -3913,6 +3913,68 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: aday mülakatı ve değerlendirme (ON-178; DOM-FIN-138).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/interview-templates', '(await get(TEMPLATES, a.admin))'],
+        ['gövde', 'POST /api/v1/finance/interview-templates', '...TEMPLATE, institutionId: b.id'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/interview-templates/:templateId',
+          "versioned('PATCH', bFormUrl, a.admin",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/interview-templates/:templateId/versions',
+          '`${bFormUrl}/versions`, a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/interview-templates/:templateId/archive',
+          '`${bFormUrl}/archive`, a.admin',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/job-applications/:applicationId/interviews',
+          'get(interviewsUrl(bApp), a.admin)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/job-applications/:applicationId/interviews',
+          'plan(a.admin, bApp, {',
+        ],
+        ['liste', 'GET /api/v1/finance/candidate-interviews/assigned', 'get(ASSIGNED, a.admin)'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/candidate-interviews/:interviewId',
+          "versioned('PATCH', bInterviewUrl, a.admin",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/candidate-interviews/:interviewId/complete',
+          'complete(a.admin, bInterview)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/candidate-interviews/:interviewId/cancel',
+          '`${bInterviewUrl}/cancel`, a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/candidate-interviews/:interviewId/evaluation',
+          'evaluate(a.admin, bInterview, {',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-candidate-interviews.test.ts',
+        'DOM-FIN-138: başka kurumun başvurusu, mülakatı ve formu 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

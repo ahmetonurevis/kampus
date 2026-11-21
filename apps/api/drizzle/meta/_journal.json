@@ -1072,6 +1072,13 @@
       "when": 1795220196820,
       "tag": "0152_create_visitor_logs",
       "breakpoints": true
+    },
+    {
+      "idx": 153,
+      "version": "7",
+      "when": 1795220385402,
+      "tag": "0153_create_candidate_interviews",
+      "breakpoints": true
     }
   ]
 }

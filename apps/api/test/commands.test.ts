@@ -259,6 +259,12 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // geri alınamaz (routes/finance-visitors.ts; DOM-FIN-141, ON-166).
   'POST /api/v1/finance/visitors',
   'POST /api/v1/finance/visitor-anonymizations',
+  // Mülakat formu, mülakat planı ve değerlendirici formu; çift tıklama ikinci formu ya da mülakatı
+  // açmaz, değerlendirme bir kez gönderilir (routes/finance-candidate-interviews.ts; DOM-FIN-138,
+  // ON-178).
+  'POST /api/v1/finance/interview-templates',
+  'POST /api/v1/finance/job-applications/{applicationId}/interviews',
+  'POST /api/v1/finance/candidate-interviews/{interviewId}/evaluation',
 ]
 // Onur: kayıt ve finans sonu
 

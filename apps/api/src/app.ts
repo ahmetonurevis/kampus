@@ -126,6 +126,7 @@ import { registerFinanceTeacherMentorshipRoutes } from './routes/finance-teacher
 import { registerFinancePersonnelFileRoutes } from './routes/finance-personnel-files.ts'
 import { registerFinanceObservationPlanRoutes } from './routes/finance-observation-plans.ts'
 import { registerFinanceVisitorRoutes } from './routes/finance-visitors.ts'
+import { registerFinanceCandidateInterviewRoutes } from './routes/finance-candidate-interviews.ts'
 // Onur: kayıt ve finans sonu
 import { createFfmpegTranscoder, type AudioTranscoder } from './services/audio-transcoder.ts'
 import { MAX_UPLOAD_BYTES } from './services/files.ts'
@@ -654,6 +655,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinancePersonnelFileRoutes(app)
   registerFinanceObservationPlanRoutes(app)
   registerFinanceVisitorRoutes(app)
+  registerFinanceCandidateInterviewRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

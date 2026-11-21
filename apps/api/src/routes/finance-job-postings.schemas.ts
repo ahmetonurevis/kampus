@@ -9,6 +9,7 @@ import {
 } from '@kampus/school-core/lib/finance-job-postings.ts'
 
 import { dataResponse, pageMetaSchema, pageQuerySchema } from './common.schemas.ts'
+import { candidateInterviewSummarySchema } from './finance-candidate-interviews.schemas.ts'
 
 /** İş ilanı ve başvuru havuzu şemaları (DOM-FIN-128; ON-177). */
 
@@ -101,6 +102,9 @@ const applicationDetailSchema = applicationRowSchema.extend({
       }),
     )
     .describe('Aşama geçmişi, eskiden yeniye; ilk satır kayıt'),
+  interviewSummary: candidateInterviewSummarySchema.describe(
+    'Mülakat özeti (DOM-FIN-138, K-469); ayrıntı `GET …/:applicationId/interviews`',
+  ),
 })
 export const jobApplicationResponse = dataResponse(applicationDetailSchema)
 

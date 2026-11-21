@@ -13188,6 +13188,214 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/interview-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Mülakat formlarını listele
+         * @description Formlar son sürümleriyle, ada göre (DOM-FIN-138): ad, ölçek, ölçütler ve ağırlıklar, son sürümle planlanmış mülakat sayısı ve kullanıldı mı. Arşivli formlar `includeArchived=true` ile gelir. Örnek derste ders gözlem formu (`/finance/lesson-observation-templates`) kullanılır. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        get: operations["listInterviewTemplates"];
+        put?: never;
+        /**
+         * Mülakat formu oluştur
+         * @description Ad (2–120), ölçek (3–10, varsayılan 5; puanlar 1–ölçek) ve 1–10 ölçüt: ad (2–120, formda tekil), isteğe bağlı açıklama, ağırlık (1–10, varsayılan 1). Ölçüt kimliğini sunucu verir (k1, k2, …). Sürüm 1 olarak açılır (K-470). Denetim `finance.interview_template.create`. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        post: operations["createInterviewTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/interview-templates/{templateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Kullanılmamış mülakat formunu düzelt
+         * @description Son sürümün adı, ölçeği ve ölçütleri yerinde düzeltilir; yalnız sürüm henüz mülakatta kullanılmadıysa. Kullanılmış sürüm 409 `interview_template_used` (yeni sürüm açın), arşivli form 409 `interview_template_archived` (K-470). `If-Match` şablon sürümü. Başka kurumun formu 404. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        patch: operations["updateInterviewTemplate"];
+        trace?: never;
+    };
+    "/api/v1/finance/interview-templates/{templateId}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mülakat formunun yeni sürümünü aç
+         * @description Tam gövde (ad, ölçek, ölçütler). Önceki sürümler ve onlarla yapılmış değerlendirmeler değişmez; yeni mülakat bu sürümü kullanır. Arşivli form 409 `interview_template_archived` (K-470). `If-Match` şablon sürümü. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        post: operations["createInterviewTemplateVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/interview-templates/{templateId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mülakat formunu arşivle
+         * @description Arşivli form yeni mülakatta seçilmez (422 `candidate_interview_template_archived`); eski mülakatlar sürümüyle okunur. Zaten arşivli 409 `interview_template_archived`. Gövde `{}`. `If-Match` şablon sürümü. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        post: operations["archiveInterviewTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/job-applications/{applicationId}/interviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Başvurunun mülakatları
+         * @description Mülakatlar ana göre: tür, an, yer ya da bağlantı, durum, form sürümü (ölçütler), değerlendiriciler ve gönderdikleri puan ve notlar (puan sunucuda hesaplanır), mülakat başına değerlendirici ortalaması ve başvurunun özeti (K-469, K-470). Başka kurumun başvurusu 404. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        get: operations["listApplicationInterviews"];
+        put?: never;
+        /**
+         * Mülakat planla
+         * @description Başvuru "mülakat" aşamasında olmalı (422 `candidate_interview_stage`; anonim 422 `candidate_interview_application_anonymized`). Tür, an (ISO 8601; geçmiş olabilir), yer (yüz yüze ve örnek derste zorunlu, 400), bağlantı (çevrim içide zorunlu, https, 400), form (örnek derste ders gözlem formu, diğerlerinde mülakat formu; son sürüm; yok 422 `candidate_interview_template_not_found`, arşivli 422 `candidate_interview_template_archived`) ve 1–5 değerlendirici (kurumun etkin yönetici ya da öğretmeni; yok 422 `candidate_interview_evaluator_not_found`, başka rol ya da pasif 422 `candidate_interview_evaluator_invalid`). Durum `planned` (K-469). Denetim `finance.candidate_interview.create`. `Idempotency-Key` zorunlu. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        post: operations["createCandidateInterview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/candidate-interviews/assigned": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Değerlendiricisi olduğum mülakatlar
+         * @description İsteği yapanın değerlendiricisi olduğu, iptal edilmemiş ve başvurusu anonimleştirilmemiş mülakatlar, yakın an önce: aday adı, ilan, tür, an, yer ya da bağlantı, form ve yalnız kendi değerlendirmesi (K-470). `pending=true` yalnız gönderilmemişler. Rol: `yonetici` ve `ogretmen`; yalnız değerlendiricisi olunan mülakat (öğretmen için diğerleri 404). Modül `finance`.
+         */
+        get: operations["listAssignedCandidateInterviews"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/candidate-interviews/{interviewId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Planlı mülakatı düzelt
+         * @description Gönderilen alanlar değişir: an, yer, bağlantı. Yalnız planlı mülakat (422 `candidate_interview_not_planned`); değişiklik yoksa 422 `candidate_interview_unchanged`; türün yeri ya da bağlantısı silinirse 422 `candidate_interview_location_required`, `candidate_interview_link_required` (K-469). `If-Match` mülakat sürümü. Denetim `finance.candidate_interview.update` (alan adları). Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        patch: operations["updateCandidateInterview"];
+        trace?: never;
+    };
+    "/api/v1/finance/candidate-interviews/{interviewId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mülakatı "yapıldı" işaretle
+         * @description Yalnız planlı mülakat (422 `candidate_interview_not_planned`) ve mülakat anı geldiyse (422 `candidate_interview_not_started`). Değerlendiriciler formu bundan sonra gönderir; başvuru "teklif"e bundan sonra geçebilir (K-469). Gövde `{}`. `If-Match` mülakat sürümü. Denetim `finance.candidate_interview.complete`. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        post: operations["completeCandidateInterview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/candidate-interviews/{interviewId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mülakatı iptal et
+         * @description Yalnız planlı mülakat (422 `candidate_interview_not_planned`); satır silinmez, değerlendirme açılmaz (K-469). Gövde `{}`. `If-Match` mülakat sürümü. Denetim `finance.candidate_interview.cancel`. Rol: yalnız `yonetici`. Modül `finance`.
+         */
+        post: operations["cancelCandidateInterview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/candidate-interviews/{interviewId}/evaluation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mülakat değerlendirmemi gönder
+         * @description Değerlendirici kendi formunu bir kez gönderir: formdaki her ölçüte bir puan (mülakat formunda 1–ölçek, örnek derste 0–5; 422 `candidate_evaluation_score_range`, `candidate_evaluation_criterion_invalid`, `candidate_evaluation_unrated`) ve not, genel değerlendirme (zorunlu, 400). Örnek derste hedefin altındaki (0–2) seviyeye not zorunlu (422 `candidate_evaluation_note_required`; gözlem kuralı, K-471). Mülakat yapılmış olmalı (422 `candidate_interview_not_completed`); gönderilmiş değerlendirme 409 `candidate_evaluation_submitted`; değerlendirici olmayan yönetici 422 `candidate_interview_not_evaluator`. Puan sunucuda hesaplanır (K-470). Denetim `finance.candidate_interview.evaluate` (alan adları; puan ve not yazılmaz). `Idempotency-Key` zorunlu. Rol: `yonetici` ve `ogretmen`; yalnız değerlendiricisi olunan mülakat (öğretmen için diğerleri 404). Modül `finance`.
+         */
+        post: operations["submitCandidateEvaluation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -127978,6 +128186,18 @@ export interface operations {
                                 changedOn: string;
                                 changedByUserId: string;
                             }[];
+                            /** @description Mülakat özeti (DOM-FIN-138, K-469); ayrıntı `GET …/:applicationId/interviews` */
+                            interviewSummary: {
+                                plannedCount: number;
+                                completedCount: number;
+                                cancelledCount: number;
+                                /** @description Yapılmış mülakatlardaki gönderilmiş değerlendirme */
+                                submittedCount: number;
+                                /** @description Mülakat formlu yapılmış mülakatların değerlendirici ortalamalarının ortalaması */
+                                interviewAveragePercent: number | null;
+                                /** @description Örnek derslerin gözlem puanı ortalaması (ölçek farklı olduğu için ayrı) */
+                                sampleLessonAveragePercent: number | null;
+                            };
                         };
                     };
                 };
@@ -128128,6 +128348,18 @@ export interface operations {
                                 changedOn: string;
                                 changedByUserId: string;
                             }[];
+                            /** @description Mülakat özeti (DOM-FIN-138, K-469); ayrıntı `GET …/:applicationId/interviews` */
+                            interviewSummary: {
+                                plannedCount: number;
+                                completedCount: number;
+                                cancelledCount: number;
+                                /** @description Yapılmış mülakatlardaki gönderilmiş değerlendirme */
+                                submittedCount: number;
+                                /** @description Mülakat formlu yapılmış mülakatların değerlendirici ortalamalarının ortalaması */
+                                interviewAveragePercent: number | null;
+                                /** @description Örnek derslerin gözlem puanı ortalaması (ölçek farklı olduğu için ayrı) */
+                                sampleLessonAveragePercent: number | null;
+                            };
                         };
                     };
                 };
@@ -128292,6 +128524,18 @@ export interface operations {
                                 changedOn: string;
                                 changedByUserId: string;
                             }[];
+                            /** @description Mülakat özeti (DOM-FIN-138, K-469); ayrıntı `GET …/:applicationId/interviews` */
+                            interviewSummary: {
+                                plannedCount: number;
+                                completedCount: number;
+                                cancelledCount: number;
+                                /** @description Yapılmış mülakatlardaki gönderilmiş değerlendirme */
+                                submittedCount: number;
+                                /** @description Mülakat formlu yapılmış mülakatların değerlendirici ortalamalarının ortalaması */
+                                interviewAveragePercent: number | null;
+                                /** @description Örnek derslerin gözlem puanı ortalaması (ölçek farklı olduğu için ayrı) */
+                                sampleLessonAveragePercent: number | null;
+                            };
                         };
                     };
                 };
@@ -128459,6 +128703,18 @@ export interface operations {
                                 changedOn: string;
                                 changedByUserId: string;
                             }[];
+                            /** @description Mülakat özeti (DOM-FIN-138, K-469); ayrıntı `GET …/:applicationId/interviews` */
+                            interviewSummary: {
+                                plannedCount: number;
+                                completedCount: number;
+                                cancelledCount: number;
+                                /** @description Yapılmış mülakatlardaki gönderilmiş değerlendirme */
+                                submittedCount: number;
+                                /** @description Mülakat formlu yapılmış mülakatların değerlendirici ortalamalarının ortalaması */
+                                interviewAveragePercent: number | null;
+                                /** @description Örnek derslerin gözlem puanı ortalaması (ölçek farklı olduğu için ayrı) */
+                                sampleLessonAveragePercent: number | null;
+                            };
                         };
                     };
                 };
@@ -131336,7 +131592,7 @@ export interface operations {
                             }[];
                             /** @description Son sürümle açılmış gözlem sayısı */
                             observationCount: number;
-                            /** @description Son sürüm gözlemde kullanıldı mı; kullanıldıysa düzeltilmez (K-445) */
+                            /** @description Son sürüm gözlemde ya da aday örnek dersinde kullanıldı mı; kullanıldıysa düzeltilmez (K-445, K-471) */
                             used: boolean;
                             /** @description Arşiv anı; arşivli form yeni gözlemde seçilmez */
                             archivedAt: string | null;
@@ -131492,7 +131748,7 @@ export interface operations {
                             }[];
                             /** @description Son sürümle açılmış gözlem sayısı */
                             observationCount: number;
-                            /** @description Son sürüm gözlemde kullanıldı mı; kullanıldıysa düzeltilmez (K-445) */
+                            /** @description Son sürüm gözlemde ya da aday örnek dersinde kullanıldı mı; kullanıldıysa düzeltilmez (K-445, K-471) */
                             used: boolean;
                             /** @description Arşiv anı; arşivli form yeni gözlemde seçilmez */
                             archivedAt: string | null;
@@ -131651,7 +131907,7 @@ export interface operations {
                             }[];
                             /** @description Son sürümle açılmış gözlem sayısı */
                             observationCount: number;
-                            /** @description Son sürüm gözlemde kullanıldı mı; kullanıldıysa düzeltilmez (K-445) */
+                            /** @description Son sürüm gözlemde ya da aday örnek dersinde kullanıldı mı; kullanıldıysa düzeltilmez (K-445, K-471) */
                             used: boolean;
                             /** @description Arşiv anı; arşivli form yeni gözlemde seçilmez */
                             archivedAt: string | null;
@@ -131810,7 +132066,7 @@ export interface operations {
                             }[];
                             /** @description Son sürümle açılmış gözlem sayısı */
                             observationCount: number;
-                            /** @description Son sürüm gözlemde kullanıldı mı; kullanıldıysa düzeltilmez (K-445) */
+                            /** @description Son sürüm gözlemde ya da aday örnek dersinde kullanıldı mı; kullanıldıysa düzeltilmez (K-445, K-471) */
                             used: boolean;
                             /** @description Arşiv anı; arşivli form yeni gözlemde seçilmez */
                             archivedAt: string | null;
@@ -131949,7 +132205,7 @@ export interface operations {
                             }[];
                             /** @description Son sürümle açılmış gözlem sayısı */
                             observationCount: number;
-                            /** @description Son sürüm gözlemde kullanıldı mı; kullanıldıysa düzeltilmez (K-445) */
+                            /** @description Son sürüm gözlemde ya da aday örnek dersinde kullanıldı mı; kullanıldıysa düzeltilmez (K-445, K-471) */
                             used: boolean;
                             /** @description Arşiv anı; arşivli form yeni gözlemde seçilmez */
                             archivedAt: string | null;
@@ -138974,6 +139230,2089 @@ export interface operations {
                                 /** @description Maddeyi işaretleyen */
                                 completedByName: string | null;
                             }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listInterviewTemplates: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Form adında arama */
+                q?: string;
+                /** @description Arşivli formları da listele */
+                includeArchived?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Son sürümün kimliği; yeni mülakat bunu kullanır */
+                            versionId: string;
+                            /** @description Son sürüm numarası */
+                            versionNumber: number;
+                            /** @description Form adı (son sürüm) */
+                            name: string;
+                            /** @description Puan ölçeğinin üst ucu (puanlar 1–scaleMax) */
+                            scaleMax: number;
+                            /** @description Son sürümün ölçütleri */
+                            criteria: {
+                                /** @description Ölçüt kimliği (sürüm içinde k1, k2, …) */
+                                id: string;
+                                title: string;
+                                description: string | null;
+                                /** @description Göreli ağırlık (1–10) */
+                                weight: number;
+                            }[];
+                            /** @description Son sürümle planlanmış mülakat sayısı */
+                            interviewCount: number;
+                            /** @description Son sürüm mülakatta kullanıldı mı; kullanıldıysa düzeltilmez (K-470) */
+                            used: boolean;
+                            /** @description Arşiv anı; arşivli form yeni mülakatta seçilmez */
+                            archivedAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için şablon sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createInterviewTemplate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Mülakat formunun adı (ör. "Öğretmen mülakat formu") */
+                    name: string;
+                    /**
+                     * @description Puan ölçeğinin üst ucu (3–10); puanlar 1 ile bu değer arasında verilir
+                     * @default 5
+                     */
+                    scaleMax?: number;
+                    /** @description Ölçütler, sırasıyla (1–10) */
+                    criteria: {
+                        /** @description Ölçüt (ör. "Alan bilgisi") */
+                        title: string;
+                        /** @description Ölçütün kısa açıklaması; boş olabilir */
+                        description?: string | null;
+                        /**
+                         * @description Göreli ağırlık (1–10)
+                         * @default 1
+                         */
+                        weight?: number;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Son sürümün kimliği; yeni mülakat bunu kullanır */
+                            versionId: string;
+                            /** @description Son sürüm numarası */
+                            versionNumber: number;
+                            /** @description Form adı (son sürüm) */
+                            name: string;
+                            /** @description Puan ölçeğinin üst ucu (puanlar 1–scaleMax) */
+                            scaleMax: number;
+                            /** @description Son sürümün ölçütleri */
+                            criteria: {
+                                /** @description Ölçüt kimliği (sürüm içinde k1, k2, …) */
+                                id: string;
+                                title: string;
+                                description: string | null;
+                                /** @description Göreli ağırlık (1–10) */
+                                weight: number;
+                            }[];
+                            /** @description Son sürümle planlanmış mülakat sayısı */
+                            interviewCount: number;
+                            /** @description Son sürüm mülakatta kullanıldı mı; kullanıldıysa düzeltilmez (K-470) */
+                            used: boolean;
+                            /** @description Arşiv anı; arşivli form yeni mülakatta seçilmez */
+                            archivedAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için şablon sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateInterviewTemplate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Mülakat formunun adı (ör. "Öğretmen mülakat formu") */
+                    name?: string;
+                    /** @description Puan ölçeğinin üst ucu (3–10); puanlar 1 ile bu değer arasında verilir */
+                    scaleMax?: number;
+                    /** @description Ölçütler, sırasıyla (1–10) */
+                    criteria?: {
+                        /** @description Ölçüt (ör. "Alan bilgisi") */
+                        title: string;
+                        /** @description Ölçütün kısa açıklaması; boş olabilir */
+                        description?: string | null;
+                        /**
+                         * @description Göreli ağırlık (1–10)
+                         * @default 1
+                         */
+                        weight?: number;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Son sürümün kimliği; yeni mülakat bunu kullanır */
+                            versionId: string;
+                            /** @description Son sürüm numarası */
+                            versionNumber: number;
+                            /** @description Form adı (son sürüm) */
+                            name: string;
+                            /** @description Puan ölçeğinin üst ucu (puanlar 1–scaleMax) */
+                            scaleMax: number;
+                            /** @description Son sürümün ölçütleri */
+                            criteria: {
+                                /** @description Ölçüt kimliği (sürüm içinde k1, k2, …) */
+                                id: string;
+                                title: string;
+                                description: string | null;
+                                /** @description Göreli ağırlık (1–10) */
+                                weight: number;
+                            }[];
+                            /** @description Son sürümle planlanmış mülakat sayısı */
+                            interviewCount: number;
+                            /** @description Son sürüm mülakatta kullanıldı mı; kullanıldıysa düzeltilmez (K-470) */
+                            used: boolean;
+                            /** @description Arşiv anı; arşivli form yeni mülakatta seçilmez */
+                            archivedAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için şablon sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createInterviewTemplateVersion: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Mülakat formunun adı (ör. "Öğretmen mülakat formu") */
+                    name: string;
+                    /**
+                     * @description Puan ölçeğinin üst ucu (3–10); puanlar 1 ile bu değer arasında verilir
+                     * @default 5
+                     */
+                    scaleMax?: number;
+                    /** @description Ölçütler, sırasıyla (1–10) */
+                    criteria: {
+                        /** @description Ölçüt (ör. "Alan bilgisi") */
+                        title: string;
+                        /** @description Ölçütün kısa açıklaması; boş olabilir */
+                        description?: string | null;
+                        /**
+                         * @description Göreli ağırlık (1–10)
+                         * @default 1
+                         */
+                        weight?: number;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Son sürümün kimliği; yeni mülakat bunu kullanır */
+                            versionId: string;
+                            /** @description Son sürüm numarası */
+                            versionNumber: number;
+                            /** @description Form adı (son sürüm) */
+                            name: string;
+                            /** @description Puan ölçeğinin üst ucu (puanlar 1–scaleMax) */
+                            scaleMax: number;
+                            /** @description Son sürümün ölçütleri */
+                            criteria: {
+                                /** @description Ölçüt kimliği (sürüm içinde k1, k2, …) */
+                                id: string;
+                                title: string;
+                                description: string | null;
+                                /** @description Göreli ağırlık (1–10) */
+                                weight: number;
+                            }[];
+                            /** @description Son sürümle planlanmış mülakat sayısı */
+                            interviewCount: number;
+                            /** @description Son sürüm mülakatta kullanıldı mı; kullanıldıysa düzeltilmez (K-470) */
+                            used: boolean;
+                            /** @description Arşiv anı; arşivli form yeni mülakatta seçilmez */
+                            archivedAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için şablon sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveInterviewTemplate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Son sürümün kimliği; yeni mülakat bunu kullanır */
+                            versionId: string;
+                            /** @description Son sürüm numarası */
+                            versionNumber: number;
+                            /** @description Form adı (son sürüm) */
+                            name: string;
+                            /** @description Puan ölçeğinin üst ucu (puanlar 1–scaleMax) */
+                            scaleMax: number;
+                            /** @description Son sürümün ölçütleri */
+                            criteria: {
+                                /** @description Ölçüt kimliği (sürüm içinde k1, k2, …) */
+                                id: string;
+                                title: string;
+                                description: string | null;
+                                /** @description Göreli ağırlık (1–10) */
+                                weight: number;
+                            }[];
+                            /** @description Son sürümle planlanmış mülakat sayısı */
+                            interviewCount: number;
+                            /** @description Son sürüm mülakatta kullanıldı mı; kullanıldıysa düzeltilmez (K-470) */
+                            used: boolean;
+                            /** @description Arşiv anı; arşivli form yeni mülakatta seçilmez */
+                            archivedAt: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için şablon sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listApplicationInterviews: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                applicationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            interviews: {
+                                id: string;
+                                jobApplicationId: string;
+                                /**
+                                 * @description `pre_screen` ön görüşme, `in_person` yüz yüze, `online` çevrim içi, `sample_lesson` örnek ders
+                                 * @enum {string}
+                                 */
+                                type: "pre_screen" | "in_person" | "online" | "sample_lesson";
+                                /** @description Mülakat anı (ISO 8601 UTC) */
+                                scheduledAt: string;
+                                location: string | null;
+                                meetingUrl: string | null;
+                                /**
+                                 * @description `planned` planlandı, `completed` yapıldı, `cancelled` iptal
+                                 * @enum {string}
+                                 */
+                                status: "planned" | "completed" | "cancelled";
+                                completedAt: string | null;
+                                cancelledAt: string | null;
+                                /** @description Mülakatın form sürümü */
+                                form: {
+                                    /**
+                                     * @description `interview` mülakat formu, `observation` örnek derste ders gözlem formu (K-471)
+                                     * @enum {string}
+                                     */
+                                    kind: "interview" | "observation";
+                                    templateId: string;
+                                    versionId: string;
+                                    versionNumber: number;
+                                    name: string;
+                                    /** @description En düşük puan (mülakat formunda 1, gözlemde 0) */
+                                    scaleMin: number;
+                                    /** @description En yüksek puan (mülakat formunun ölçeği, gözlemde 5) */
+                                    scaleMax: number;
+                                    criteria: {
+                                        /** @description Ölçüt kimliği (sürüm içinde k1, k2, …) */
+                                        id: string;
+                                        title: string;
+                                        description: string | null;
+                                        /** @description Göreli ağırlık (1–10) */
+                                        weight: number;
+                                        /** @description Gözlem formunda 0–5 seviye tanımları; mülakat formunda boş */
+                                        levels: {
+                                            level: number;
+                                            description: string;
+                                        }[];
+                                    }[];
+                                };
+                                evaluatorCount: number;
+                                /** @description Gönderilmiş değerlendirme sayısı */
+                                submittedCount: number;
+                                /** @description Gönderilmiş değerlendirmelerin 100’lük ortalaması; yoksa boş */
+                                averagePercent: number | null;
+                                /** @description Değerlendiriciler, ada göre */
+                                evaluations: {
+                                    id: string;
+                                    /** @description Değerlendiricinin kurum üyeliği */
+                                    evaluatorMembershipId: string;
+                                    evaluatorName: string;
+                                    /** @description Değerlendirici isteği yapan mı */
+                                    mine: boolean;
+                                    /** @description Gönderim anı; doluysa değişmez */
+                                    submittedAt: string | null;
+                                    /** @description Gönderilen puanlar, formun ölçüt sırasıyla; anonimleştirmede notlar boş */
+                                    ratings: {
+                                        criterionId: string;
+                                        score: number;
+                                        note: string | null;
+                                    }[] | null;
+                                    /** @description Genel değerlendirme; anonimleştirmede boş */
+                                    generalNote: string | null;
+                                    /** @description Sunucunun hesapladığı puan; gönderilmemişse boş */
+                                    score: {
+                                        /** @description Ağırlıklı puan toplamı */
+                                        total: number;
+                                        /** @description Azami ağırlıklı toplam */
+                                        max: number;
+                                        /** @description 100 üzerinden puan */
+                                        percent: number;
+                                    } | null;
+                                }[];
+                                createdAt: string;
+                                updatedAt: string;
+                                /** @description `If-Match` için mülakat sürümü */
+                                version: number;
+                            }[];
+                            /** @description Başvurunun mülakat özeti (K-469) */
+                            summary: {
+                                plannedCount: number;
+                                completedCount: number;
+                                cancelledCount: number;
+                                /** @description Yapılmış mülakatlardaki gönderilmiş değerlendirme */
+                                submittedCount: number;
+                                /** @description Mülakat formlu yapılmış mülakatların değerlendirici ortalamalarının ortalaması */
+                                interviewAveragePercent: number | null;
+                                /** @description Örnek derslerin gözlem puanı ortalaması (ölçek farklı olduğu için ayrı) */
+                                sampleLessonAveragePercent: number | null;
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createCandidateInterview: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                applicationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description `pre_screen` ön görüşme, `in_person` yüz yüze, `online` çevrim içi, `sample_lesson` örnek ders
+                     * @enum {string}
+                     */
+                    type: "pre_screen" | "in_person" | "online" | "sample_lesson";
+                    /**
+                     * Format: date-time
+                     * @description Mülakat anı (ISO 8601); gösterim Europe/Istanbul
+                     */
+                    scheduledAt: string;
+                    /** @description Yer (ör. "Müdür odası", "5-A sınıfı"); yüz yüze ve örnek derste zorunlu */
+                    location?: string | null;
+                    /** @description Görüşme bağlantısı (https://); çevrim içi mülakatta zorunlu */
+                    meetingUrl?: string | null;
+                    /**
+                     * Format: uuid
+                     * @description Mülakat formu (`/finance/interview-templates`); örnek derste ders gözlem formu (`/finance/lesson-observation-templates`). Son sürüm kullanılır
+                     */
+                    templateId: string;
+                    /** @description Değerlendiriciler: kurumun etkin yönetici ya da öğretmen üyelikleri (1–5) */
+                    evaluatorMembershipIds: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            jobApplicationId: string;
+                            /**
+                             * @description `pre_screen` ön görüşme, `in_person` yüz yüze, `online` çevrim içi, `sample_lesson` örnek ders
+                             * @enum {string}
+                             */
+                            type: "pre_screen" | "in_person" | "online" | "sample_lesson";
+                            /** @description Mülakat anı (ISO 8601 UTC) */
+                            scheduledAt: string;
+                            location: string | null;
+                            meetingUrl: string | null;
+                            /**
+                             * @description `planned` planlandı, `completed` yapıldı, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            status: "planned" | "completed" | "cancelled";
+                            completedAt: string | null;
+                            cancelledAt: string | null;
+                            /** @description Mülakatın form sürümü */
+                            form: {
+                                /**
+                                 * @description `interview` mülakat formu, `observation` örnek derste ders gözlem formu (K-471)
+                                 * @enum {string}
+                                 */
+                                kind: "interview" | "observation";
+                                templateId: string;
+                                versionId: string;
+                                versionNumber: number;
+                                name: string;
+                                /** @description En düşük puan (mülakat formunda 1, gözlemde 0) */
+                                scaleMin: number;
+                                /** @description En yüksek puan (mülakat formunun ölçeği, gözlemde 5) */
+                                scaleMax: number;
+                                criteria: {
+                                    /** @description Ölçüt kimliği (sürüm içinde k1, k2, …) */
+                                    id: string;
+                                    title: string;
+                                    description: string | null;
+                                    /** @description Göreli ağırlık (1–10) */
+                                    weight: number;
+                                    /** @description Gözlem formunda 0–5 seviye tanımları; mülakat formunda boş */
+                                    levels: {
+                                        level: number;
+                                        description: string;
+                                    }[];
+                                }[];
+                            };
+                            evaluatorCount: number;
+                            /** @description Gönderilmiş değerlendirme sayısı */
+                            submittedCount: number;
+                            /** @description Gönderilmiş değerlendirmelerin 100’lük ortalaması; yoksa boş */
+                            averagePercent: number | null;
+                            /** @description Değerlendiriciler, ada göre */
+                            evaluations: {
+                                id: string;
+                                /** @description Değerlendiricinin kurum üyeliği */
+                                evaluatorMembershipId: string;
+                                evaluatorName: string;
+                                /** @description Değerlendirici isteği yapan mı */
+                                mine: boolean;
+                                /** @description Gönderim anı; doluysa değişmez */
+                                submittedAt: string | null;
+                                /** @description Gönderilen puanlar, formun ölçüt sırasıyla; anonimleştirmede notlar boş */
+                                ratings: {
+                                    criterionId: string;
+                                    score: number;
+                                    note: string | null;
+                                }[] | null;
+                                /** @description Genel değerlendirme; anonimleştirmede boş */
+                                generalNote: string | null;
+                                /** @description Sunucunun hesapladığı puan; gönderilmemişse boş */
+                                score: {
+                                    /** @description Ağırlıklı puan toplamı */
+                                    total: number;
+                                    /** @description Azami ağırlıklı toplam */
+                                    max: number;
+                                    /** @description 100 üzerinden puan */
+                                    percent: number;
+                                } | null;
+                            }[];
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için mülakat sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listAssignedCandidateInterviews: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description `true` yalnız henüz gönderilmemiş değerlendirmeler */
+                pending?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            jobApplicationId: string;
+                            candidateName: string;
+                            postingTitle: string;
+                            /**
+                             * @description `pre_screen` ön görüşme, `in_person` yüz yüze, `online` çevrim içi, `sample_lesson` örnek ders
+                             * @enum {string}
+                             */
+                            type: "pre_screen" | "in_person" | "online" | "sample_lesson";
+                            scheduledAt: string;
+                            location: string | null;
+                            meetingUrl: string | null;
+                            /**
+                             * @description `planned` planlandı, `completed` yapıldı, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            status: "planned" | "completed" | "cancelled";
+                            /** @description Mülakatın form sürümü */
+                            form: {
+                                /**
+                                 * @description `interview` mülakat formu, `observation` örnek derste ders gözlem formu (K-471)
+                                 * @enum {string}
+                                 */
+                                kind: "interview" | "observation";
+                                templateId: string;
+                                versionId: string;
+                                versionNumber: number;
+                                name: string;
+                                /** @description En düşük puan (mülakat formunda 1, gözlemde 0) */
+                                scaleMin: number;
+                                /** @description En yüksek puan (mülakat formunun ölçeği, gözlemde 5) */
+                                scaleMax: number;
+                                criteria: {
+                                    /** @description Ölçüt kimliği (sürüm içinde k1, k2, …) */
+                                    id: string;
+                                    title: string;
+                                    description: string | null;
+                                    /** @description Göreli ağırlık (1–10) */
+                                    weight: number;
+                                    /** @description Gözlem formunda 0–5 seviye tanımları; mülakat formunda boş */
+                                    levels: {
+                                        level: number;
+                                        description: string;
+                                    }[];
+                                }[];
+                            };
+                            /** @description İsteği yapanın değerlendirme satırı */
+                            evaluation: {
+                                id: string;
+                                /** @description Değerlendiricinin kurum üyeliği */
+                                evaluatorMembershipId: string;
+                                evaluatorName: string;
+                                /** @description Değerlendirici isteği yapan mı */
+                                mine: boolean;
+                                /** @description Gönderim anı; doluysa değişmez */
+                                submittedAt: string | null;
+                                /** @description Gönderilen puanlar, formun ölçüt sırasıyla; anonimleştirmede notlar boş */
+                                ratings: {
+                                    criterionId: string;
+                                    score: number;
+                                    note: string | null;
+                                }[] | null;
+                                /** @description Genel değerlendirme; anonimleştirmede boş */
+                                generalNote: string | null;
+                                /** @description Sunucunun hesapladığı puan; gönderilmemişse boş */
+                                score: {
+                                    /** @description Ağırlıklı puan toplamı */
+                                    total: number;
+                                    /** @description Azami ağırlıklı toplam */
+                                    max: number;
+                                    /** @description 100 üzerinden puan */
+                                    percent: number;
+                                } | null;
+                            };
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateCandidateInterview: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                interviewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * Format: date-time
+                     * @description Mülakat anı (ISO 8601); gösterim Europe/Istanbul
+                     */
+                    scheduledAt?: string;
+                    /** @description Yer (ör. "Müdür odası", "5-A sınıfı"); yüz yüze ve örnek derste zorunlu */
+                    location?: string | null;
+                    /** @description Görüşme bağlantısı (https://); çevrim içi mülakatta zorunlu */
+                    meetingUrl?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            jobApplicationId: string;
+                            /**
+                             * @description `pre_screen` ön görüşme, `in_person` yüz yüze, `online` çevrim içi, `sample_lesson` örnek ders
+                             * @enum {string}
+                             */
+                            type: "pre_screen" | "in_person" | "online" | "sample_lesson";
+                            /** @description Mülakat anı (ISO 8601 UTC) */
+                            scheduledAt: string;
+                            location: string | null;
+                            meetingUrl: string | null;
+                            /**
+                             * @description `planned` planlandı, `completed` yapıldı, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            status: "planned" | "completed" | "cancelled";
+                            completedAt: string | null;
+                            cancelledAt: string | null;
+                            /** @description Mülakatın form sürümü */
+                            form: {
+                                /**
+                                 * @description `interview` mülakat formu, `observation` örnek derste ders gözlem formu (K-471)
+                                 * @enum {string}
+                                 */
+                                kind: "interview" | "observation";
+                                templateId: string;
+                                versionId: string;
+                                versionNumber: number;
+                                name: string;
+                                /** @description En düşük puan (mülakat formunda 1, gözlemde 0) */
+                                scaleMin: number;
+                                /** @description En yüksek puan (mülakat formunun ölçeği, gözlemde 5) */
+                                scaleMax: number;
+                                criteria: {
+                                    /** @description Ölçüt kimliği (sürüm içinde k1, k2, …) */
+                                    id: string;
+                                    title: string;
+                                    description: string | null;
+                                    /** @description Göreli ağırlık (1–10) */
+                                    weight: number;
+                                    /** @description Gözlem formunda 0–5 seviye tanımları; mülakat formunda boş */
+                                    levels: {
+                                        level: number;
+                                        description: string;
+                                    }[];
+                                }[];
+                            };
+                            evaluatorCount: number;
+                            /** @description Gönderilmiş değerlendirme sayısı */
+                            submittedCount: number;
+                            /** @description Gönderilmiş değerlendirmelerin 100’lük ortalaması; yoksa boş */
+                            averagePercent: number | null;
+                            /** @description Değerlendiriciler, ada göre */
+                            evaluations: {
+                                id: string;
+                                /** @description Değerlendiricinin kurum üyeliği */
+                                evaluatorMembershipId: string;
+                                evaluatorName: string;
+                                /** @description Değerlendirici isteği yapan mı */
+                                mine: boolean;
+                                /** @description Gönderim anı; doluysa değişmez */
+                                submittedAt: string | null;
+                                /** @description Gönderilen puanlar, formun ölçüt sırasıyla; anonimleştirmede notlar boş */
+                                ratings: {
+                                    criterionId: string;
+                                    score: number;
+                                    note: string | null;
+                                }[] | null;
+                                /** @description Genel değerlendirme; anonimleştirmede boş */
+                                generalNote: string | null;
+                                /** @description Sunucunun hesapladığı puan; gönderilmemişse boş */
+                                score: {
+                                    /** @description Ağırlıklı puan toplamı */
+                                    total: number;
+                                    /** @description Azami ağırlıklı toplam */
+                                    max: number;
+                                    /** @description 100 üzerinden puan */
+                                    percent: number;
+                                } | null;
+                            }[];
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için mülakat sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    completeCandidateInterview: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                interviewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            jobApplicationId: string;
+                            /**
+                             * @description `pre_screen` ön görüşme, `in_person` yüz yüze, `online` çevrim içi, `sample_lesson` örnek ders
+                             * @enum {string}
+                             */
+                            type: "pre_screen" | "in_person" | "online" | "sample_lesson";
+                            /** @description Mülakat anı (ISO 8601 UTC) */
+                            scheduledAt: string;
+                            location: string | null;
+                            meetingUrl: string | null;
+                            /**
+                             * @description `planned` planlandı, `completed` yapıldı, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            status: "planned" | "completed" | "cancelled";
+                            completedAt: string | null;
+                            cancelledAt: string | null;
+                            /** @description Mülakatın form sürümü */
+                            form: {
+                                /**
+                                 * @description `interview` mülakat formu, `observation` örnek derste ders gözlem formu (K-471)
+                                 * @enum {string}
+                                 */
+                                kind: "interview" | "observation";
+                                templateId: string;
+                                versionId: string;
+                                versionNumber: number;
+                                name: string;
+                                /** @description En düşük puan (mülakat formunda 1, gözlemde 0) */
+                                scaleMin: number;
+                                /** @description En yüksek puan (mülakat formunun ölçeği, gözlemde 5) */
+                                scaleMax: number;
+                                criteria: {
+                                    /** @description Ölçüt kimliği (sürüm içinde k1, k2, …) */
+                                    id: string;
+                                    title: string;
+                                    description: string | null;
+                                    /** @description Göreli ağırlık (1–10) */
+                                    weight: number;
+                                    /** @description Gözlem formunda 0–5 seviye tanımları; mülakat formunda boş */
+                                    levels: {
+                                        level: number;
+                                        description: string;
+                                    }[];
+                                }[];
+                            };
+                            evaluatorCount: number;
+                            /** @description Gönderilmiş değerlendirme sayısı */
+                            submittedCount: number;
+                            /** @description Gönderilmiş değerlendirmelerin 100’lük ortalaması; yoksa boş */
+                            averagePercent: number | null;
+                            /** @description Değerlendiriciler, ada göre */
+                            evaluations: {
+                                id: string;
+                                /** @description Değerlendiricinin kurum üyeliği */
+                                evaluatorMembershipId: string;
+                                evaluatorName: string;
+                                /** @description Değerlendirici isteği yapan mı */
+                                mine: boolean;
+                                /** @description Gönderim anı; doluysa değişmez */
+                                submittedAt: string | null;
+                                /** @description Gönderilen puanlar, formun ölçüt sırasıyla; anonimleştirmede notlar boş */
+                                ratings: {
+                                    criterionId: string;
+                                    score: number;
+                                    note: string | null;
+                                }[] | null;
+                                /** @description Genel değerlendirme; anonimleştirmede boş */
+                                generalNote: string | null;
+                                /** @description Sunucunun hesapladığı puan; gönderilmemişse boş */
+                                score: {
+                                    /** @description Ağırlıklı puan toplamı */
+                                    total: number;
+                                    /** @description Azami ağırlıklı toplam */
+                                    max: number;
+                                    /** @description 100 üzerinden puan */
+                                    percent: number;
+                                } | null;
+                            }[];
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için mülakat sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelCandidateInterview: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                interviewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            jobApplicationId: string;
+                            /**
+                             * @description `pre_screen` ön görüşme, `in_person` yüz yüze, `online` çevrim içi, `sample_lesson` örnek ders
+                             * @enum {string}
+                             */
+                            type: "pre_screen" | "in_person" | "online" | "sample_lesson";
+                            /** @description Mülakat anı (ISO 8601 UTC) */
+                            scheduledAt: string;
+                            location: string | null;
+                            meetingUrl: string | null;
+                            /**
+                             * @description `planned` planlandı, `completed` yapıldı, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            status: "planned" | "completed" | "cancelled";
+                            completedAt: string | null;
+                            cancelledAt: string | null;
+                            /** @description Mülakatın form sürümü */
+                            form: {
+                                /**
+                                 * @description `interview` mülakat formu, `observation` örnek derste ders gözlem formu (K-471)
+                                 * @enum {string}
+                                 */
+                                kind: "interview" | "observation";
+                                templateId: string;
+                                versionId: string;
+                                versionNumber: number;
+                                name: string;
+                                /** @description En düşük puan (mülakat formunda 1, gözlemde 0) */
+                                scaleMin: number;
+                                /** @description En yüksek puan (mülakat formunun ölçeği, gözlemde 5) */
+                                scaleMax: number;
+                                criteria: {
+                                    /** @description Ölçüt kimliği (sürüm içinde k1, k2, …) */
+                                    id: string;
+                                    title: string;
+                                    description: string | null;
+                                    /** @description Göreli ağırlık (1–10) */
+                                    weight: number;
+                                    /** @description Gözlem formunda 0–5 seviye tanımları; mülakat formunda boş */
+                                    levels: {
+                                        level: number;
+                                        description: string;
+                                    }[];
+                                }[];
+                            };
+                            evaluatorCount: number;
+                            /** @description Gönderilmiş değerlendirme sayısı */
+                            submittedCount: number;
+                            /** @description Gönderilmiş değerlendirmelerin 100’lük ortalaması; yoksa boş */
+                            averagePercent: number | null;
+                            /** @description Değerlendiriciler, ada göre */
+                            evaluations: {
+                                id: string;
+                                /** @description Değerlendiricinin kurum üyeliği */
+                                evaluatorMembershipId: string;
+                                evaluatorName: string;
+                                /** @description Değerlendirici isteği yapan mı */
+                                mine: boolean;
+                                /** @description Gönderim anı; doluysa değişmez */
+                                submittedAt: string | null;
+                                /** @description Gönderilen puanlar, formun ölçüt sırasıyla; anonimleştirmede notlar boş */
+                                ratings: {
+                                    criterionId: string;
+                                    score: number;
+                                    note: string | null;
+                                }[] | null;
+                                /** @description Genel değerlendirme; anonimleştirmede boş */
+                                generalNote: string | null;
+                                /** @description Sunucunun hesapladığı puan; gönderilmemişse boş */
+                                score: {
+                                    /** @description Ağırlıklı puan toplamı */
+                                    total: number;
+                                    /** @description Azami ağırlıklı toplam */
+                                    max: number;
+                                    /** @description 100 üzerinden puan */
+                                    percent: number;
+                                } | null;
+                            }[];
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için mülakat sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    submitCandidateEvaluation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                interviewId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Ölçüt başına puan ve not; formdaki her ölçüt bir kez */
+                    ratings: {
+                        criterionId: string;
+                        /** @description Mülakat formunda 1–ölçek; örnek derste 0–5 seviye */
+                        score: number;
+                        /** @description Ölçüt notu; örnek derste hedefin altındaki (0–2) seviyede zorunlu */
+                        note?: string | null;
+                    }[];
+                    /** @description Değerlendiricinin genel görüşü (2–4000) */
+                    generalNote: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            jobApplicationId: string;
+                            /**
+                             * @description `pre_screen` ön görüşme, `in_person` yüz yüze, `online` çevrim içi, `sample_lesson` örnek ders
+                             * @enum {string}
+                             */
+                            type: "pre_screen" | "in_person" | "online" | "sample_lesson";
+                            /** @description Mülakat anı (ISO 8601 UTC) */
+                            scheduledAt: string;
+                            location: string | null;
+                            meetingUrl: string | null;
+                            /**
+                             * @description `planned` planlandı, `completed` yapıldı, `cancelled` iptal
+                             * @enum {string}
+                             */
+                            status: "planned" | "completed" | "cancelled";
+                            completedAt: string | null;
+                            cancelledAt: string | null;
+                            /** @description Mülakatın form sürümü */
+                            form: {
+                                /**
+                                 * @description `interview` mülakat formu, `observation` örnek derste ders gözlem formu (K-471)
+                                 * @enum {string}
+                                 */
+                                kind: "interview" | "observation";
+                                templateId: string;
+                                versionId: string;
+                                versionNumber: number;
+                                name: string;
+                                /** @description En düşük puan (mülakat formunda 1, gözlemde 0) */
+                                scaleMin: number;
+                                /** @description En yüksek puan (mülakat formunun ölçeği, gözlemde 5) */
+                                scaleMax: number;
+                                criteria: {
+                                    /** @description Ölçüt kimliği (sürüm içinde k1, k2, …) */
+                                    id: string;
+                                    title: string;
+                                    description: string | null;
+                                    /** @description Göreli ağırlık (1–10) */
+                                    weight: number;
+                                    /** @description Gözlem formunda 0–5 seviye tanımları; mülakat formunda boş */
+                                    levels: {
+                                        level: number;
+                                        description: string;
+                                    }[];
+                                }[];
+                            };
+                            evaluatorCount: number;
+                            /** @description Gönderilmiş değerlendirme sayısı */
+                            submittedCount: number;
+                            /** @description Gönderilmiş değerlendirmelerin 100’lük ortalaması; yoksa boş */
+                            averagePercent: number | null;
+                            /** @description Değerlendiriciler, ada göre */
+                            evaluations: {
+                                id: string;
+                                /** @description Değerlendiricinin kurum üyeliği */
+                                evaluatorMembershipId: string;
+                                evaluatorName: string;
+                                /** @description Değerlendirici isteği yapan mı */
+                                mine: boolean;
+                                /** @description Gönderim anı; doluysa değişmez */
+                                submittedAt: string | null;
+                                /** @description Gönderilen puanlar, formun ölçüt sırasıyla; anonimleştirmede notlar boş */
+                                ratings: {
+                                    criterionId: string;
+                                    score: number;
+                                    note: string | null;
+                                }[] | null;
+                                /** @description Genel değerlendirme; anonimleştirmede boş */
+                                generalNote: string | null;
+                                /** @description Sunucunun hesapladığı puan; gönderilmemişse boş */
+                                score: {
+                                    /** @description Ağırlıklı puan toplamı */
+                                    total: number;
+                                    /** @description Azami ağırlıklı toplam */
+                                    max: number;
+                                    /** @description 100 üzerinden puan */
+                                    percent: number;
+                                } | null;
+                            }[];
+                            createdAt: string;
+                            updatedAt: string;
+                            /** @description `If-Match` için mülakat sürümü */
+                            version: number;
                         };
                     };
                 };

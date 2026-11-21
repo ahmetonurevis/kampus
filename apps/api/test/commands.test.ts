@@ -249,6 +249,12 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // (routes/finance-teacher-mentorships.ts; DOM-FIN-136, ON-219).
   'POST /api/v1/finance/teacher-mentorships',
   'POST /api/v1/finance/teacher-mentorships/{mentorshipId}/meetings',
+  // Mülakat formu, mülakat planı ve değerlendirici formu; çift tıklama ikinci formu ya da mülakatı
+  // açmaz, değerlendirme bir kez gönderilir (routes/finance-candidate-interviews.ts; DOM-FIN-138,
+  // ON-178).
+  'POST /api/v1/finance/interview-templates',
+  'POST /api/v1/finance/job-applications/{applicationId}/interviews',
+  'POST /api/v1/finance/candidate-interviews/{interviewId}/evaluation',
 ]
 // Onur: kayıt ve finans sonu
 

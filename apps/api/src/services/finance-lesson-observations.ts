@@ -20,6 +20,7 @@ import {
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 
 import type { Database } from '../db/client.ts'
+import { sampleLessonCountsByVersion } from '../db/finance-candidate-interviews.ts'
 import {
   archiveLessonObservation,
   archiveObservationTemplate,
@@ -74,8 +75,12 @@ function only<T>(items: readonly T[]): T {
 
 // --- Şablon --------------------------------------------------------------------------------------
 
-function templateView(template: StoredObservationTemplate, usedCount: number) {
-  return { ...template, observationCount: usedCount, used: usedCount > 0 }
+function templateView(
+  template: StoredObservationTemplate,
+  usedCount: number,
+  sampleLessons: number,
+) {
+  return { ...template, observationCount: usedCount, used: usedCount + sampleLessons > 0 }
 }
 
 async function templateViews(
@@ -83,12 +88,14 @@ async function templateViews(
   ctx: ServiceContext,
   items: StoredObservationTemplate[],
 ) {
-  const counts = await observationCountsByVersion(
-    db,
-    ctx.institutionId,
-    items.map((item) => item.versionId),
+  const versionIds = items.map((item) => item.versionId)
+  const [counts, sampleLessons] = await Promise.all([
+    observationCountsByVersion(db, ctx.institutionId, versionIds),
+    sampleLessonCountsByVersion(db, ctx.institutionId, versionIds),
+  ])
+  return items.map((item) =>
+    templateView(item, counts.get(item.versionId) ?? 0, sampleLessons.get(item.versionId) ?? 0),
   )
-  return items.map((item) => templateView(item, counts.get(item.versionId) ?? 0))
 }
 
 export async function listObservationTemplatesFor(
@@ -150,12 +157,17 @@ async function loadTemplateForWrite(
   const template = await findObservationTemplate(tx, ctx.institutionId, id)
   if (template === null) throw new NotFoundError()
   if (template.version !== expectedVersion) throw new ConflictError()
-  const counts = await observationCountsByVersion(tx, ctx.institutionId, [template.versionId])
+  const [counts, sampleLessons] = await Promise.all([
+    observationCountsByVersion(tx, ctx.institutionId, [template.versionId]),
+    // Aday örnek dersinde kullanılmış sürüm de değişmez (DOM-FIN-138, K-471).
+    sampleLessonCountsByVersion(tx, ctx.institutionId, [template.versionId]),
+  ])
   return {
     template,
     facts: {
       archived: template.archivedAt !== null,
-      used: (counts.get(template.versionId) ?? 0) > 0,
+      used:
+        (counts.get(template.versionId) ?? 0) + (sampleLessons.get(template.versionId) ?? 0) > 0,
     },
   }
 }

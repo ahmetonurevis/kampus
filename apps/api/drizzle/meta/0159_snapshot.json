@@ -1,5 +1,5 @@
 {
-  "id": "21625a7b-5513-4ab4-bbe3-b867e3254e60",
+  "id": "3142b87d-0bd1-4b1c-af40-f2d4aaf650aa",
   "prevId": "bacaf33b-27c9-4129-820f-c1dde2f563a4",
   "version": "7",
   "dialect": "postgresql",
@@ -16967,856 +16967,6 @@
         "incident_reports_finalized_check": {
           "name": "incident_reports_finalized_check",
           "value": "((\"incident_reports\".\"status\" = 'finalized') = (\"incident_reports\".\"finalized_at\" is not null))\n        and ((\"incident_reports\".\"finalized_at\" is null) = (\"incident_reports\".\"finalized_by_user_id\" is null))"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.infirmary_medication_administrations": {
-      "name": "infirmary_medication_administrations",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "consent_id": {
-          "name": "consent_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "student_id": {
-          "name": "student_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "dose_day": {
-          "name": "dose_day",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "scheduled_time": {
-          "name": "scheduled_time",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "administered_at": {
-          "name": "administered_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "administered_by_membership_id": {
-          "name": "administered_by_membership_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "recorded_by_user_id": {
-          "name": "recorded_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "health_ciphertext": {
-          "name": "health_ciphertext",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "health_key_version": {
-          "name": "health_key_version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "infirmary_medication_administrations_dose_key": {
-          "name": "infirmary_medication_administrations_dose_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "consent_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "dose_day",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "scheduled_time",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "infirmary_medication_administrations_student_idx": {
-          "name": "infirmary_medication_administrations_student_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "student_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "administered_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "infirmary_medication_administrations_day_idx": {
-          "name": "infirmary_medication_administrations_day_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "dose_day",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "infirmary_medication_administrations_administered_by_idx": {
-          "name": "infirmary_medication_administrations_administered_by_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "administered_by_membership_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "infirmary_medication_administrations_institution_id_institutions_id_fk": {
-          "name": "infirmary_medication_administrations_institution_id_institutions_id_fk",
-          "tableFrom": "infirmary_medication_administrations",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "infirmary_medication_administrations_consent_fkey": {
-          "name": "infirmary_medication_administrations_consent_fkey",
-          "tableFrom": "infirmary_medication_administrations",
-          "tableTo": "infirmary_medication_consents",
-          "columnsFrom": [
-            "institution_id",
-            "consent_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "infirmary_medication_administrations_administered_by_fkey": {
-          "name": "infirmary_medication_administrations_administered_by_fkey",
-          "tableFrom": "infirmary_medication_administrations",
-          "tableTo": "memberships",
-          "columnsFrom": [
-            "institution_id",
-            "administered_by_membership_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "infirmary_medication_administrations_pkey": {
-          "name": "infirmary_medication_administrations_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "infirmary_medication_administrations_time_check": {
-          "name": "infirmary_medication_administrations_time_check",
-          "value": "\"infirmary_medication_administrations\".\"scheduled_time\" ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'"
-        },
-        "infirmary_medication_administrations_key_version_check": {
-          "name": "infirmary_medication_administrations_key_version_check",
-          "value": "\"infirmary_medication_administrations\".\"health_key_version\" > 0"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.infirmary_medication_consents": {
-      "name": "infirmary_medication_consents",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "student_id": {
-          "name": "student_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'pending'"
-        },
-        "start_date": {
-          "name": "start_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "end_date": {
-          "name": "end_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "dose_times": {
-          "name": "dose_times",
-          "type": "text[]",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "health_ciphertext": {
-          "name": "health_ciphertext",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "health_key_version": {
-          "name": "health_key_version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "requested_by_membership_id": {
-          "name": "requested_by_membership_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "requested_by_user_id": {
-          "name": "requested_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "decided_at": {
-          "name": "decided_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "decided_by_user_id": {
-          "name": "decided_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "decision_ciphertext": {
-          "name": "decision_ciphertext",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "decision_key_version": {
-          "name": "decision_key_version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "withdrawn_at": {
-          "name": "withdrawn_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "infirmary_medication_consents_student_idx": {
-          "name": "infirmary_medication_consents_student_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "student_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "start_date",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "infirmary_medication_consents_period_idx": {
-          "name": "infirmary_medication_consents_period_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "start_date",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "end_date",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "infirmary_medication_consents_requested_by_idx": {
-          "name": "infirmary_medication_consents_requested_by_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "requested_by_membership_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "infirmary_medication_consents_institution_id_institutions_id_fk": {
-          "name": "infirmary_medication_consents_institution_id_institutions_id_fk",
-          "tableFrom": "infirmary_medication_consents",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "infirmary_medication_consents_requested_by_fkey": {
-          "name": "infirmary_medication_consents_requested_by_fkey",
-          "tableFrom": "infirmary_medication_consents",
-          "tableTo": "memberships",
-          "columnsFrom": [
-            "institution_id",
-            "requested_by_membership_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "infirmary_medication_consents_pkey": {
-          "name": "infirmary_medication_consents_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "infirmary_medication_consents_status_check": {
-          "name": "infirmary_medication_consents_status_check",
-          "value": "\"infirmary_medication_consents\".\"status\" in ('pending', 'approved', 'rejected', 'withdrawn')"
-        },
-        "infirmary_medication_consents_period_check": {
-          "name": "infirmary_medication_consents_period_check",
-          "value": "\"infirmary_medication_consents\".\"end_date\" >= \"infirmary_medication_consents\".\"start_date\""
-        },
-        "infirmary_medication_consents_times_check": {
-          "name": "infirmary_medication_consents_times_check",
-          "value": "cardinality(\"infirmary_medication_consents\".\"dose_times\") between 1 and 6"
-        },
-        "infirmary_medication_consents_key_version_check": {
-          "name": "infirmary_medication_consents_key_version_check",
-          "value": "\"infirmary_medication_consents\".\"health_key_version\" > 0 and (\"infirmary_medication_consents\".\"decision_key_version\" is null or \"infirmary_medication_consents\".\"decision_key_version\" > 0)"
-        },
-        "infirmary_medication_consents_decision_check": {
-          "name": "infirmary_medication_consents_decision_check",
-          "value": "((\"infirmary_medication_consents\".\"decided_at\" is null) = (\"infirmary_medication_consents\".\"decided_by_user_id\" is null))\n        and ((\"infirmary_medication_consents\".\"status\" = 'pending') or (\"infirmary_medication_consents\".\"status\" = 'withdrawn') or (\"infirmary_medication_consents\".\"decided_at\" is not null))\n        and ((\"infirmary_medication_consents\".\"status\" = 'rejected') = (\"infirmary_medication_consents\".\"decision_ciphertext\" is not null))\n        and ((\"infirmary_medication_consents\".\"decision_ciphertext\" is null) = (\"infirmary_medication_consents\".\"decision_key_version\" is null))\n        and ((\"infirmary_medication_consents\".\"status\" = 'withdrawn') = (\"infirmary_medication_consents\".\"withdrawn_at\" is not null))"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.infirmary_visits": {
-      "name": "infirmary_visits",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "student_id": {
-          "name": "student_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'open'"
-        },
-        "arrived_at": {
-          "name": "arrived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "returned_at": {
-          "name": "returned_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "outcome": {
-          "name": "outcome",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "referred_by_membership_id": {
-          "name": "referred_by_membership_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "incident_report_id": {
-          "name": "incident_report_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "health_ciphertext": {
-          "name": "health_ciphertext",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "health_key_version": {
-          "name": "health_key_version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "closed_by_user_id": {
-          "name": "closed_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "infirmary_visits_open_student_key": {
-          "name": "infirmary_visits_open_student_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "student_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"infirmary_visits\".\"status\" = 'open' and \"infirmary_visits\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "infirmary_visits_arrived_idx": {
-          "name": "infirmary_visits_arrived_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "arrived_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "infirmary_visits_student_idx": {
-          "name": "infirmary_visits_student_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "student_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "arrived_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "infirmary_visits_referred_by_idx": {
-          "name": "infirmary_visits_referred_by_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "referred_by_membership_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"infirmary_visits\".\"referred_by_membership_id\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "infirmary_visits_incident_report_idx": {
-          "name": "infirmary_visits_incident_report_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "incident_report_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"infirmary_visits\".\"incident_report_id\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "infirmary_visits_institution_id_institutions_id_fk": {
-          "name": "infirmary_visits_institution_id_institutions_id_fk",
-          "tableFrom": "infirmary_visits",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "infirmary_visits_referred_by_fkey": {
-          "name": "infirmary_visits_referred_by_fkey",
-          "tableFrom": "infirmary_visits",
-          "tableTo": "memberships",
-          "columnsFrom": [
-            "institution_id",
-            "referred_by_membership_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "infirmary_visits_incident_report_fkey": {
-          "name": "infirmary_visits_incident_report_fkey",
-          "tableFrom": "infirmary_visits",
-          "tableTo": "incident_reports",
-          "columnsFrom": [
-            "institution_id",
-            "incident_report_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "infirmary_visits_pkey": {
-          "name": "infirmary_visits_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "infirmary_visits_status_check": {
-          "name": "infirmary_visits_status_check",
-          "value": "\"infirmary_visits\".\"status\" in ('open', 'closed')"
-        },
-        "infirmary_visits_outcome_check": {
-          "name": "infirmary_visits_outcome_check",
-          "value": "\"infirmary_visits\".\"outcome\" is null or \"infirmary_visits\".\"outcome\" in ('returned_to_class', 'went_home', 'referred')"
-        },
-        "infirmary_visits_closed_check": {
-          "name": "infirmary_visits_closed_check",
-          "value": "((\"infirmary_visits\".\"status\" = 'closed') = (\"infirmary_visits\".\"returned_at\" is not null))\n        and ((\"infirmary_visits\".\"returned_at\" is null) = (\"infirmary_visits\".\"outcome\" is null))\n        and ((\"infirmary_visits\".\"returned_at\" is null) = (\"infirmary_visits\".\"closed_by_user_id\" is null))\n        and (\"infirmary_visits\".\"returned_at\" is null or \"infirmary_visits\".\"returned_at\" >= \"infirmary_visits\".\"arrived_at\")"
-        },
-        "infirmary_visits_key_version_check": {
-          "name": "infirmary_visits_key_version_check",
-          "value": "\"infirmary_visits\".\"health_key_version\" > 0"
         }
       },
       "isRLSEnabled": false
@@ -46386,6 +45536,709 @@
         "teacher_mentorships_closed_check": {
           "name": "teacher_mentorships_closed_check",
           "value": "((\"teacher_mentorships\".\"status\" = 'active') = (\"teacher_mentorships\".\"closed_on\" is null))\n        and ((\"teacher_mentorships\".\"closed_on\" is null) = (\"teacher_mentorships\".\"closed_by_user_id\" is null))\n        and ((\"teacher_mentorships\".\"status\" = 'ended_early') = (\"teacher_mentorships\".\"end_reason\" is not null))\n        and (\"teacher_mentorships\".\"end_reason\" is null\n          or char_length(\"teacher_mentorships\".\"end_reason\") between 5 and 500)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.transport_trip_mark_corrections": {
+      "name": "transport_trip_mark_corrections",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mark_id": {
+          "name": "mark_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "previous_status": {
+          "name": "previous_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "previous_boarded_at": {
+          "name": "previous_boarded_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "previous_alighted_at": {
+          "name": "previous_alighted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "boarded_at": {
+          "name": "boarded_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "alighted_at": {
+          "name": "alighted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "corrected_by_user_id": {
+          "name": "corrected_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "transport_trip_mark_corrections_mark_idx": {
+          "name": "transport_trip_mark_corrections_mark_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "mark_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "transport_trip_mark_corrections_institution_id_institutions_id_fk": {
+          "name": "transport_trip_mark_corrections_institution_id_institutions_id_fk",
+          "tableFrom": "transport_trip_mark_corrections",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "transport_trip_mark_corrections_mark_fkey": {
+          "name": "transport_trip_mark_corrections_mark_fkey",
+          "tableFrom": "transport_trip_mark_corrections",
+          "tableTo": "transport_trip_marks",
+          "columnsFrom": [
+            "institution_id",
+            "mark_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "transport_trip_mark_corrections_pkey": {
+          "name": "transport_trip_mark_corrections_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "transport_trip_mark_corrections_status_check": {
+          "name": "transport_trip_mark_corrections_status_check",
+          "value": "\"transport_trip_mark_corrections\".\"status\" in ('boarded', 'alighted', 'absent') and \"transport_trip_mark_corrections\".\"previous_status\" in ('boarded', 'alighted', 'absent')"
+        },
+        "transport_trip_mark_corrections_reason_check": {
+          "name": "transport_trip_mark_corrections_reason_check",
+          "value": "char_length(\"transport_trip_mark_corrections\".\"reason\") between 5 and 500"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.transport_trip_marks": {
+      "name": "transport_trip_marks",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "trip_id": {
+          "name": "trip_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "route_id": {
+          "name": "route_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "stop_id": {
+          "name": "stop_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "student_id": {
+          "name": "student_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "boarded_at": {
+          "name": "boarded_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "alighted_at": {
+          "name": "alighted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "marked_by_user_id": {
+          "name": "marked_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "transport_trip_marks_student_key": {
+          "name": "transport_trip_marks_student_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "trip_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "student_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"transport_trip_marks\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "transport_trip_marks_trip_idx": {
+          "name": "transport_trip_marks_trip_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "trip_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "route_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "transport_trip_marks_stop_idx": {
+          "name": "transport_trip_marks_stop_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "route_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "stop_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "transport_trip_marks_student_idx": {
+          "name": "transport_trip_marks_student_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "student_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "transport_trip_marks_institution_id_institutions_id_fk": {
+          "name": "transport_trip_marks_institution_id_institutions_id_fk",
+          "tableFrom": "transport_trip_marks",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "transport_trip_marks_trip_fkey": {
+          "name": "transport_trip_marks_trip_fkey",
+          "tableFrom": "transport_trip_marks",
+          "tableTo": "transport_trips",
+          "columnsFrom": [
+            "institution_id",
+            "trip_id",
+            "route_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id",
+            "route_id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "transport_trip_marks_stop_fkey": {
+          "name": "transport_trip_marks_stop_fkey",
+          "tableFrom": "transport_trip_marks",
+          "tableTo": "transport_stops",
+          "columnsFrom": [
+            "institution_id",
+            "route_id",
+            "stop_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "route_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "transport_trip_marks_pkey": {
+          "name": "transport_trip_marks_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "transport_trip_marks_status_check": {
+          "name": "transport_trip_marks_status_check",
+          "value": "\"transport_trip_marks\".\"status\" in ('boarded', 'alighted', 'absent')"
+        },
+        "transport_trip_marks_times_check": {
+          "name": "transport_trip_marks_times_check",
+          "value": "(\"transport_trip_marks\".\"status\" = 'absent' and \"transport_trip_marks\".\"boarded_at\" is null and \"transport_trip_marks\".\"alighted_at\" is null) or (\"transport_trip_marks\".\"status\" = 'boarded' and \"transport_trip_marks\".\"boarded_at\" is not null and \"transport_trip_marks\".\"alighted_at\" is null) or (\"transport_trip_marks\".\"status\" = 'alighted' and \"transport_trip_marks\".\"boarded_at\" is not null and \"transport_trip_marks\".\"alighted_at\" >= \"transport_trip_marks\".\"boarded_at\")"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.transport_trips": {
+      "name": "transport_trips",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "route_id": {
+          "name": "route_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "direction": {
+          "name": "direction",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vehicle_id": {
+          "name": "vehicle_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "trip_date": {
+          "name": "trip_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "started_by_user_id": {
+          "name": "started_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "closed_at": {
+          "name": "closed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closed_by_user_id": {
+          "name": "closed_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "transport_trips_route_day_key": {
+          "name": "transport_trips_route_day_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "route_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "trip_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "direction",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"transport_trips\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "transport_trips_day_idx": {
+          "name": "transport_trips_day_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "trip_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "transport_trips_vehicle_idx": {
+          "name": "transport_trips_vehicle_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "vehicle_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "transport_trips_institution_id_institutions_id_fk": {
+          "name": "transport_trips_institution_id_institutions_id_fk",
+          "tableFrom": "transport_trips",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "transport_trips_route_fkey": {
+          "name": "transport_trips_route_fkey",
+          "tableFrom": "transport_trips",
+          "tableTo": "transport_routes",
+          "columnsFrom": [
+            "institution_id",
+            "route_id",
+            "direction"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id",
+            "direction"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "transport_trips_vehicle_fkey": {
+          "name": "transport_trips_vehicle_fkey",
+          "tableFrom": "transport_trips",
+          "tableTo": "transport_vehicles",
+          "columnsFrom": [
+            "institution_id",
+            "vehicle_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "transport_trips_pkey": {
+          "name": "transport_trips_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "transport_trips_route_key": {
+          "name": "transport_trips_route_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "institution_id",
+            "id",
+            "route_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "transport_trips_direction_check": {
+          "name": "transport_trips_direction_check",
+          "value": "\"transport_trips\".\"direction\" in ('morning', 'evening')"
+        },
+        "transport_trips_status_check": {
+          "name": "transport_trips_status_check",
+          "value": "\"transport_trips\".\"status\" in ('open', 'closed')"
+        },
+        "transport_trips_closed_check": {
+          "name": "transport_trips_closed_check",
+          "value": "(\"transport_trips\".\"status\" = 'closed') = (\"transport_trips\".\"closed_at\" is not null) and (\"transport_trips\".\"closed_at\" is null) = (\"transport_trips\".\"closed_by_user_id\" is null)"
         }
       },
       "isRLSEnabled": false

@@ -4237,6 +4237,170 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: servis listesi (ON-148; DOM-FIN-148).
+  'GET /api/v1/finance/transport/routes/:routeId/roster': kayit(
+    'finance-transport-roster.test.ts',
+    'DOM-FIN-148: başka kurumun ya da arşivli güzergâhı 404',
+    'get(rosterUrl(route.id), a.admin)',
+  ),
+  // Onur: servis seferi ve biniş-iniş (ON-145; DOM-FIN-149).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/transport/trips/my', 'get(MY, aParent)'],
+        ['liste', 'GET /api/v1/finance/transport/trips', 'get(TRIPS, a.admin)'],
+        ['kayıt', 'GET /api/v1/finance/transport/trips/:tripId', 'get(bTripUrl, a.admin)'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/transport/routes/:routeId/trips',
+          'startUrl(bSetup.route.id), a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/transport/trips/:tripId/marks',
+          'markUrl(bTrip.id), a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/transport/trips/:tripId/close',
+          'closeTripAs(a.admin, bTrip.id',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-transport-trips.test.ts',
+        'DOM-FIN-149: başka kurumun seferi ve işareti 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: servis aracı ve personeli belgeleri (ON-147; DOM-FIN-147).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/transport/documents', 'listOf(a.admin)'],
+        ['gövde', 'POST /api/v1/finance/transport/documents', 'institutionId: b.id'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/transport/documents/:documentId/file-url',
+          '`${DOCS}/${String(bDoc.id)}/file-url`',
+        ],
+        ['liste', 'GET /api/v1/finance/transport/document-alerts', 'get(ALERTS, a.admin)'],
+        ['liste', 'GET /api/v1/finance/transport/document-settings', 'get(SETTINGS, a.admin)'],
+        [
+          'gövde',
+          'PATCH /api/v1/finance/transport/document-settings',
+          'warningDays: 20, institutionId: b.id',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-transport-documents.test.ts',
+        'DOM-FIN-147: başka kurumun aracı ve belgesi 404 ve B değişmez; listede yok; gövdedeki institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: kulüp tercihi ve kontenjanlı dağıtım (ON-169; DOM-FIN-150).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/club-selection/my', 'get(MY, aParent)'],
+        ['liste', 'GET /api/v1/finance/club-selection/periods', 'get(PERIODS, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/club-selection/periods', 'institutionId: b.id'],
+        ['kayıt', 'GET /api/v1/finance/club-selection/periods/:periodId', 'get(bUrl, a.admin)'],
+        ['kayıt', 'PATCH /api/v1/finance/club-selection/periods/:periodId', 'patch(bUrl'],
+        ['kayıt', 'DELETE /api/v1/finance/club-selection/periods/:periodId', 'remove(bUrl'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/club-selection/periods/:periodId/preferences',
+          '`${bUrl}/preferences`',
+        ],
+        ['kayıt', 'POST /api/v1/finance/club-selection/periods/:periodId/draw', '`${bUrl}/draw`'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/club-selection/periods/:periodId/allocation',
+          '`${bUrl}/allocation`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/club-selection/periods/:periodId/confirm',
+          '`${bUrl}/confirm`',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-club-selection.test.ts',
+        'başka kurumun tercih dönemi 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
+  // Onur: revir ve ilaç onayı (ON-101; DOM-FIN-151).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/infirmary/visits', 'get(VISITS, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/infirmary/visits', 'visitBody({ institutionId: b.id })'],
+        ['kayıt', 'GET /api/v1/finance/infirmary/visits/:visitId', 'get(bVisitUrl, a.admin)'],
+        [
+          'kayıt',
+          'PATCH /api/v1/finance/infirmary/visits/:visitId',
+          "versioned('PATCH', bVisitUrl, a.admin",
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/infirmary/visits/:visitId/discharge',
+          'discharge(bVisit.id, a.admin',
+        ],
+        ['liste', 'GET /api/v1/finance/infirmary/visit-states', 'get(STATES, a.admin)'],
+        ['liste', 'GET /api/v1/finance/infirmary/my-visits', 'get(MY_VISITS, a.mother)'],
+        ['liste', 'GET /api/v1/finance/infirmary/medication-consents', 'get(CONSENTS, a.admin)'],
+        [
+          'gövde',
+          'POST /api/v1/finance/infirmary/medication-consents',
+          'consentBody({ institutionId: b.id })',
+        ],
+        [
+          'kayıt',
+          'GET /api/v1/finance/infirmary/medication-consents/:consentId',
+          'get(bConsentUrl, a.admin)',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/infirmary/medication-consents/:consentId/approve',
+          'approve(bConsent.id, a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/infirmary/medication-consents/:consentId/reject',
+          '`${bConsentUrl}/reject`, a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/infirmary/medication-consents/:consentId/withdraw',
+          '`${bConsentUrl}/withdraw`, a.mother',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/infirmary/medication-consents/:consentId/administrations',
+          'administer(a, bConsent.id',
+        ],
+        ['liste', 'GET /api/v1/finance/infirmary/medication-schedule', 'get(SCHEDULE, a.admin)'],
+        ['liste', 'GET /api/v1/finance/infirmary/staff', 'get(`${STAFF}?pageSize=100`, a.admin)'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-infirmary.test.ts',
+        'DOM-FIN-151: başka kurumun ziyareti ve talebi 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

@@ -1,13 +1,16 @@
 // Personel performans raporu (DOM-FIN-137; ON-220, K-466…K-468): personel ve dönem; bölümler
 // sunucunun bildirdiği sırayla — dönem sonu değerlendirmesi (hedef, ağırlık, puan, genel puan, ara
 // görüşme, personel görüşü), öz değerlendirme (gönderildiyse soru ve cevaplar), ders gözlemleri
-// (gün, form, gözlemci, puan, ortalama), döneme bağlı gelişim hedefleri (hedef, ölçüt, takip
-// tarihi, durum) ve yönetici görüşü; kesinleştirme, "okudum" kaydı ve imza
+// (gün, form, gözlemci, puan, ortalama), çok kaynaklı geri bildirim (yönetici yanıtları adıyla,
+// meslektaş sonucu yalnız eşik üstünde toplu; ON-350), döneme bağlı gelişim hedefleri (hedef, ölçüt,
+// takip tarihi, durum; kesinleşmiş raporda anlık görüntü) ve yönetici görüşü; kesinleştirme,
+// "okudum" kaydı ve imza
 // alanları. Veri rapor ucundan gelir (okuması denetime düşer); belge web'de üretilir, sunucuda
 // saklanmaz. Kesinleşmemiş rapor "TASLAK" ibaresiyle basılır.
 import type { PerformanceReport } from '@kampus/react-shared/use-finance-performance-reports.ts'
 import {
   PERFORMANCE_REPORT_ACK_CHANNEL_LABELS,
+  PERFORMANCE_REPORT_FEEDBACK_STATE_LABELS,
   PERFORMANCE_REPORT_SECTION_LABELS,
   PERFORMANCE_REPORT_SELF_STATUS_LABELS,
   PERFORMANCE_REPORT_STATUS_LABELS,
@@ -76,6 +79,41 @@ export function performanceDevelopmentGoalRows(report: PerformanceReport): strin
     goal.successCriterion,
     dayText(goal.followUpDate),
     DEVELOPMENT_GOAL_STATUS_LABELS[goal.status],
+  ])
+}
+
+type FeedbackSection = PerformanceReport['staffFeedback']
+type FeedbackAnswer = FeedbackSection['manager']['responses'][number]['items'][number]
+
+/** Geri bildirim yanıt durumu: "Yönetici 1/1 · meslektaş 2/3 yanıt · anonimlik eşiği 3". */
+export function performanceFeedbackProgressText(section: FeedbackSection): string {
+  const { manager, peer } = section
+  return `Yönetici ${String(manager.responded)}/${String(manager.assigned)} · meslektaş ${String(peer.responded)}/${String(peer.assigned)} yanıt · anonimlik eşiği ${String(section.threshold)}`
+}
+
+/** Yönetici cevabı: puanlıda "4 / 5", açık uçluda metin; boşsa "—". */
+export const performanceFeedbackAnswerText = (item: FeedbackAnswer) =>
+  item.kind === 'scale'
+    ? item.score === null
+      ? '—'
+      : `${String(item.score)} / 5`
+    : (item.text ?? '—')
+
+/**
+ * Meslektaş toplu sonucu satırları: soru, cevaplayan sayısı, sonuç (puanlıda ortalama, açık uçluda
+ * alfabetik metinler). Eşik altında cevaplanan soruda sonuç yerine "Yeterli yanıt yok" yazılır.
+ */
+export function performanceFeedbackPeerRows(section: FeedbackSection): string[][] {
+  return section.peer.questions.map((question) => [
+    question.question,
+    String(question.answered),
+    question.hidden
+      ? 'Yeterli yanıt yok'
+      : question.kind === 'scale'
+        ? scoreText(question.average)
+        : question.texts.length === 0
+          ? '—'
+          : question.texts.join(' · '),
   ])
 }
 
@@ -152,6 +190,33 @@ function observationsSection(doc: DocumentLayout, report: PerformanceReport) {
   )
 }
 
+function staffFeedbackSection(doc: DocumentLayout, report: PerformanceReport) {
+  const feedback = report.staffFeedback
+  if (feedback.state === 'not_collected') {
+    doc.paragraph(PERFORMANCE_REPORT_FEEDBACK_STATE_LABELS.not_collected)
+    return
+  }
+  doc.paragraph(performanceFeedbackProgressText(feedback))
+  for (const response of feedback.manager.responses) {
+    doc.paragraph(`Yönetici değerlendirmesi: ${response.reviewerName}`)
+    response.items.forEach((item, index) => {
+      doc.paragraph(`${String(index + 1)}. ${item.question}`)
+      doc.paragraph(performanceFeedbackAnswerText(item), 9)
+    })
+  }
+  doc.paragraph(PERFORMANCE_REPORT_FEEDBACK_STATE_LABELS[feedback.state])
+  if (feedback.state !== 'visible') return
+  doc.table(
+    [
+      { header: 'Soru', width: 70 },
+      { header: 'Yanıt', width: 18 },
+      { header: 'Toplu sonuç', width: 86 },
+    ],
+    performanceFeedbackPeerRows(feedback),
+    true,
+  )
+}
+
 function developmentGoalsSection(doc: DocumentLayout, report: PerformanceReport) {
   const goals = report.developmentGoals
   if (goals.count === 0) {
@@ -179,6 +244,7 @@ const SECTION_WRITERS = {
   evaluation: evaluationSection,
   selfEvaluation: selfEvaluationSection,
   observations: observationsSection,
+  staffFeedback: staffFeedbackSection,
   developmentGoals: developmentGoalsSection,
   managerOpinion: managerOpinionSection,
 } satisfies Record<

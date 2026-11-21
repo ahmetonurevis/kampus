@@ -10,9 +10,15 @@ import {
   observationAverage,
   PERFORMANCE_REPORT_MANAGE_ROLES,
   PERFORMANCE_REPORT_READ_ROLES,
+  PERFORMANCE_REPORT_FEEDBACK_STATE_LABELS,
+  PERFORMANCE_REPORT_FEEDBACK_STATES,
+  PERFORMANCE_REPORT_SECTION_LABELS,
   PERFORMANCE_REPORT_SECTIONS,
   performanceReportAcknowledgeSchema,
+  performanceReportFeedbackSection,
   performanceReportFinalizeSchema,
+  performanceReportGoalSection,
+  performanceReportGoalSnapshotSchema,
   performanceReportStatus,
   performanceReportSummary,
   performanceScoreBand,
@@ -21,6 +27,10 @@ import {
   selfEvaluationScaleAverage,
   type PerformanceReportFinalizeChecks,
 } from '../packages/school-core/src/lib/finance-performance-reports.ts'
+import {
+  multiSourceFeedbackResult,
+  type StaffFeedbackResultInput,
+} from '../packages/school-core/src/lib/finance-staff-feedback.ts'
 
 import { isDomainError } from './support/domain-error.ts'
 
@@ -50,11 +60,19 @@ test('DOM-FIN-137 K-468: yazma ve özet yalnız yönetici; okuma yönetici ve ö
   assert.deepEqual([...PERFORMANCE_REPORT_READ_ROLES], ['yonetici', 'ogretmen'])
 })
 
-test('DOM-FIN-137 K-466: rapor bölümlüdür; bu turun bölümleri sırasıyla', () => {
+test('DOM-FIN-137 K-466 K-468: rapor bölümlüdür; geri bildirim gözlemlerden sonra gelir', () => {
   assert.deepEqual(
     [...PERFORMANCE_REPORT_SECTIONS],
-    ['evaluation', 'selfEvaluation', 'observations', 'developmentGoals', 'managerOpinion'],
+    [
+      'evaluation',
+      'selfEvaluation',
+      'observations',
+      'staffFeedback',
+      'developmentGoals',
+      'managerOpinion',
+    ],
   )
+  assert.equal(PERFORMANCE_REPORT_SECTION_LABELS.staffFeedback, 'Çok kaynaklı geri bildirim')
 })
 
 test('DOM-FIN-137 K-468: öğretmen yalnız kendi kesinleşmiş raporunu görür', () => {
@@ -322,4 +340,158 @@ test('DOM-FIN-137 K-468: gelişim hedefi kesinleştirme anındaki durumuyla, bı
     assert.equal(isGoalInPerformanceReport(status), true)
   assert.equal(isGoalInPerformanceReport('dropped'), false)
   assert.equal(isGoalInPerformanceReport(null), false)
+})
+
+const goalItem = (patch: Record<string, unknown> = {}) => ({
+  id: 'g1',
+  title: 'Sınıf içi soru tekniği',
+  successCriterion: 'Her derste üç açık uçlu soru',
+  source: 'direct',
+  observedDate: null,
+  followUpDate: '2026-10-20',
+  status: 'open',
+  ...patch,
+})
+
+test('DOM-FIN-137 K-468: hedef anlık görüntüsü şemayla doğrulanır, bölüm sıralı sayılır', () => {
+  const items = performanceReportGoalSnapshotSchema.parse([
+    goalItem({ id: 'g2', title: 'Ölçme araçları', status: 'achieved' }),
+    goalItem({ id: 'g3', title: 'Proje tabanlı ders', followUpDate: '2026-10-10' }),
+    goalItem(),
+  ])
+  const section = performanceReportGoalSection(items)
+  assert.equal(section.count, 3)
+  assert.equal(section.achievedCount, 1)
+  assert.deepEqual(
+    section.items.map((item) => item.id),
+    ['g3', 'g2', 'g1'],
+  )
+  // Bırakılan hedef, bilinmeyen alan ve geçersiz gün görüntüye yazılmaz.
+  for (const bad of [
+    goalItem({ status: 'dropped' }),
+    { ...goalItem(), teacherMembershipId: 'm-selin' },
+    goalItem({ followUpDate: '20-10-2026' }),
+    goalItem({ title: '' }),
+  ])
+    assert.equal(performanceReportGoalSnapshotSchema.safeParse([bad]).success, false)
+  assert.deepEqual(performanceReportGoalSection([]), { count: 0, achievedCount: 0, items: [] })
+})
+
+const FEEDBACK_QUESTIONS = [
+  { kind: 'scale' as const, text: 'Ekip çalışmasına katkısı', required: true },
+  { kind: 'open' as const, text: 'Güçlü yanları', required: false },
+]
+const peerRow = (score: number, text: string | null): StaffFeedbackResultInput => ({
+  relation: 'peer',
+  status: 'submitted',
+  reviewerName: `Meslektaş ${text ?? String(score)}`,
+  submittedAt: '2026-09-20T09:00:00.000Z',
+  answers: [
+    { score, text: null },
+    { score: null, text },
+  ],
+})
+const managerRow: StaffFeedbackResultInput = {
+  relation: 'manager',
+  status: 'submitted',
+  reviewerName: 'Murat Yılmaz',
+  submittedAt: '2026-09-18T09:00:00.000Z',
+  answers: [
+    { score: 5, text: null },
+    { score: null, text: 'Planlı ve özenli' },
+  ],
+}
+const feedback = (
+  assignments: StaffFeedbackResultInput[],
+  patch: { periodStatus?: 'active' | 'closed'; threshold?: number; questions?: null } = {},
+) =>
+  performanceReportFeedbackSection(
+    multiSourceFeedbackResult({
+      periodStatus: patch.periodStatus ?? 'closed',
+      questions: patch.questions === null ? null : FEEDBACK_QUESTIONS,
+      threshold: patch.threshold ?? 3,
+      assignments,
+    }),
+  )
+
+test('DOM-FIN-137 K-468 K-459: geri bildirim bölümü eşik altında "yeterli yanıt yok"; tek meslektaş yanıtı dönmez', () => {
+  const pending: StaffFeedbackResultInput = {
+    ...peerRow(1, null),
+    status: 'pending',
+    answers: null,
+  }
+  const below = feedback([
+    managerRow,
+    peerRow(2, 'Tek-meslektas-cevabi'),
+    peerRow(4, null),
+    pending,
+  ])
+  assert.equal(below.state, 'below_threshold')
+  assert.equal(below.peer.assigned, 3)
+  assert.equal(below.peer.responded, 2)
+  assert.deepEqual(below.peer.questions, [])
+  const text = JSON.stringify(below)
+  assert.equal(text.includes('Tek-meslektas-cevabi'), false)
+  assert.equal(text.includes('Meslektaş'), false)
+  // Yönetici yanıtı anonim değildir: adıyla ve soru metniyle döner.
+  assert.deepEqual(below.manager.responses, [
+    {
+      reviewerName: 'Murat Yılmaz',
+      submittedAt: '2026-09-18T09:00:00.000Z',
+      items: [
+        { question: 'Ekip çalışmasına katkısı', kind: 'scale', score: 5, text: null },
+        { question: 'Güçlü yanları', kind: 'open', score: null, text: 'Planlı ve özenli' },
+      ],
+    },
+  ])
+  assert.equal(
+    PERFORMANCE_REPORT_FEEDBACK_STATE_LABELS[below.state],
+    'Yeterli meslektaş yanıtı yok; anonimlik için toplu sonuç gösterilmez.',
+  )
+})
+
+test('DOM-FIN-137 K-468 K-459: eşik geçilince yalnız toplu sonuç; eşik altı soru gizli', () => {
+  const visible = feedback([peerRow(4, 'Yardımsever'), peerRow(5, null), peerRow(3, 'Düzenli')])
+  assert.equal(visible.state, 'visible')
+  assert.deepEqual(visible.peer.questions, [
+    {
+      question: 'Ekip çalışmasına katkısı',
+      kind: 'scale',
+      answered: 3,
+      hidden: false,
+      average: 4,
+      texts: [],
+    },
+    // Açık uçlu soruyu yalnız iki meslektaş cevapladı: soru gizli, metin dönmez.
+    {
+      question: 'Güçlü yanları',
+      kind: 'open',
+      answered: 2,
+      hidden: true,
+      average: null,
+      texts: [],
+    },
+  ])
+  assert.equal(JSON.stringify(visible).includes('Yardımsever'), false)
+  // Eşik kurum ayarıdır: dört gerekiyorsa aynı üç yanıt gizli kalır.
+  assert.equal(
+    feedback([peerRow(4, 'a'), peerRow(5, 'b'), peerRow(3, 'c')], { threshold: 4 }).state,
+    'below_threshold',
+  )
+})
+
+test('DOM-FIN-137 K-468: geri bildirim toplanmadıysa ya da dönem açıksa içerik yok', () => {
+  const none = feedback([])
+  assert.equal(none.state, 'not_collected')
+  assert.equal(none.questionCount, 2)
+  assert.equal(feedback([managerRow], { questions: null }).state, 'not_collected')
+  assert.deepEqual(feedback([managerRow], { questions: null }).manager.responses, [])
+  const open = feedback([peerRow(4, 'a'), peerRow(5, 'b'), peerRow(3, 'c')], {
+    periodStatus: 'active',
+  })
+  assert.equal(open.state, 'period_open')
+  assert.deepEqual(open.peer.questions, [])
+  assert.deepEqual(Object.keys(PERFORMANCE_REPORT_FEEDBACK_STATE_LABELS), [
+    ...PERFORMANCE_REPORT_FEEDBACK_STATES,
+  ])
 })

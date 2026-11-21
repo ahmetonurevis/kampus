@@ -12,6 +12,7 @@ import { STAFF_ROLES } from '@kampus/school-core/lib/staff-accounts.ts'
 import type { Database } from './client.ts'
 import { memberships, users } from './schema/auth.ts'
 import { staffMedicalReports } from './schema/finance-medical-reports.ts'
+import { staffPersonnelFiles } from './schema/finance-personnel-files.ts'
 import { staffPayRates } from './schema/finance-pay-rates.ts'
 import { payrollLessonHours } from './schema/finance-payroll-exports.ts'
 import { payrollAdjustments } from './schema/finance-payroll-periods.ts'
@@ -84,6 +85,13 @@ const CATEGORY_PARTS: Record<StaffRetentionCategory, readonly CategoryPart[]> = 
       institutionId: staffCertificates.institutionId,
       membershipId: staffCertificates.membershipId,
       immutable: true,
+    },
+    // Özlük kartı (DOM-FIN-140, K-477): kimlik, iletişim, eğitim, banka ve acil durum kişileriyle
+    // birlikte fiziksel silinir; şifreli değerler satırla gider.
+    {
+      table: staffPersonnelFiles,
+      institutionId: staffPersonnelFiles.institutionId,
+      membershipId: staffPersonnelFiles.membershipId,
     },
   ],
   leave_records: [

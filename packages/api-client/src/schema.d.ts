@@ -13188,6 +13188,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/personnel-files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Personel ve özlük kartı durumu
+         * @description Kurumun yönetici, öğretmen ve ön büro üyelikleri ada göre; kartı var mı, sürümü ve dolu gruplar (yalnız okuyanın görebildiği gruplar; değer yok). Ad, durum (`active`, `passive`) ve kart (`with`, `without`) ile süzülür. Rol: okuma `yonetici` (bütün gruplar) ve `onburo` (yalnız acil durum kişileri); yazma yalnız `yonetici`. Muhasebe rolü açılınca kimlik (maskeli) ve iletişimi okur, bankayı yazar (K-475). Öğretmen, veli ve öğrenci 403. Modül `finance`.
+         */
+        get: operations["listPersonnelFiles"];
+        put?: never;
+        /**
+         * Özlük kartı aç
+         * @description Personel ve en az bir grup: kimlik (T.C. kimlik no kontrol haneli, doğum günü 1920 sonrası ve en az 14 yaş), kişisel iletişim (adres 10–500, telefon 0XXXXXXXXXX, e-posta), eğitim geçmişi (en çok 10 satır), banka (TR IBAN mod-97 ve hesap sahibi birlikte), acil durum kişileri (en çok 5). T.C. kimlik no ve IBAN şifreli saklanır. Rolün yazamadığı grup 403 `personnel_file_group_forbidden`. Olmayan üyelik 422 `personnel_file_staff_not_found`, öğrenci ya da veli 422 `personnel_file_not_staff`, pasif personel 422 `personnel_file_staff_inactive`, kart zaten varsa 409 `personnel_file_exists`; doğum günü 422 `personnel_file_birth_date_invalid`, eksik banka 422 `personnel_file_bank_incomplete`. Denetim kaydına dolu grupların adları yazılır. `Idempotency-Key` zorunlu. Rol: okuma `yonetici` (bütün gruplar) ve `onburo` (yalnız acil durum kişileri); yazma yalnız `yonetici`. Muhasebe rolü açılınca kimlik (maskeli) ve iletişimi okur, bankayı yazar (K-475). Öğretmen, veli ve öğrenci 403. Modül `finance`.
+         */
+        post: operations["createPersonnelFile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/personnel-files/{membershipId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Personelin özlük kartı
+         * @description Kartın okuyanın görebildiği grupları (K-475): kimlik (maskeli T.C. kimlik no, doğum günü), kişisel iletişim, eğitim geçmişi ve özlük belgelerinden sertifika özeti, banka (maskeli IBAN, hesap sahibi), acil durum kişileri. Okunamayan grubun anahtarı yanıtta yoktur. `access` grup başına okuma/yazma, `canRevealNationalId` tam kimlik no ucunu gösterir. Kartı olmayan, personel olmayan ya da başka kurumun üyeliği 404. Rol: okuma `yonetici` (bütün gruplar) ve `onburo` (yalnız acil durum kişileri); yazma yalnız `yonetici`. Muhasebe rolü açılınca kimlik (maskeli) ve iletişimi okur, bankayı yazar (K-475). Öğretmen, veli ve öğrenci 403. Modül `finance`.
+         */
+        get: operations["getPersonnelFile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Özlük kartını düzelt
+         * @description Kısmi: verilmeyen grup ve alan değişmez, `null` temizler; eğitim ve acil durum listeleri bütün olarak yazılır; `bank: null` banka bilgisini siler. Birleşik kart açılış kurallarından geçer; değişiklik yoksa 422 `personnel_file_unchanged`. Rolün yazamadığı grup 403 `personnel_file_group_forbidden`. Pasif personelin kartı düzeltilebilir. Denetim kaydına değişen alanların adları yazılır. `If-Match` zorunlu; sürüm tutmazsa 409. Kartı olmayan ya da başka kurumun üyeliği 404. Rol: okuma `yonetici` (bütün gruplar) ve `onburo` (yalnız acil durum kişileri); yazma yalnız `yonetici`. Muhasebe rolü açılınca kimlik (maskeli) ve iletişimi okur, bankayı yazar (K-475). Öğretmen, veli ve öğrenci 403. Modül `finance`.
+         */
+        patch: operations["updatePersonnelFile"];
+        trace?: never;
+    };
+    "/api/v1/finance/personnel-files/{membershipId}/national-id": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tam T.C. kimlik numarası
+         * @description Kartın tam T.C. kimlik numarası (K-476): yalnız yönetici. Okuma aynı transaction'da denetime yazılır (`finance.personnel_file.national_id_read`, alan adı; değer yazılmaz); denetim yazılamazsa değer dönmez. Kartta yoksa `null`. Kartı olmayan ya da başka kurumun üyeliği 404. Ön büro 403. Modül `finance`.
+         */
+        get: operations["getPersonnelNationalId"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/observation-plans": {
         parameters: {
             query?: never;
@@ -21006,6 +21074,69 @@ export interface components {
                 rows: components["schemas"]["SeasonWatchFollowUpInput"][];
             };
         };
+        PersonnelFileInput: {
+            membershipId: string;
+            /** @description Personelin adı (platform hesabından) */
+            name: string;
+            /** @description Personelin rolü */
+            role: string;
+            /** @description Üyelik etkin mi (pasifse ayrılmış) */
+            active: boolean;
+            /** @description Kart sürümü; düzeltmede If-Match */
+            version: number;
+            updatedAt: string;
+            /** @description Okuyanın grup erişimi; okuyamadığı grup yoktur */
+            access: {
+                [key: string]: "read" | "write";
+            };
+            /** @description Tam T.C. kimlik no ucunu çağırabilir mi */
+            canRevealNationalId: boolean;
+            /** @description Kimlik grubu; yalnız okuyabilen rolde bulunur */
+            identity?: {
+                /** @description Maskeli T.C. kimlik no (`*******1234`); tam hâli ayrı uçtan */
+                nationalIdMasked: string | null;
+                /** @description Doğum günü (YYYY-MM-DD) */
+                birthDate: string | null;
+            };
+            /** @description Kişisel iletişim grubu; yalnız okuyabilen rolde bulunur */
+            contact?: {
+                address: string | null;
+                /** @description Kişisel telefon */
+                phone: string | null;
+                /** @description Kişisel e-posta */
+                email: string | null;
+            };
+            /** @description Eğitim geçmişi; yalnız okuyabilen rolde bulunur */
+            education?: {
+                /** @enum {string} */
+                level: "high_school" | "associate" | "bachelor" | "master" | "doctorate" | "other";
+                school: string;
+                department: string | null;
+                /** @description Boşsa öğrenim sürüyor */
+                graduationYear: number | null;
+            }[];
+            /** @description Özlük belgelerinden sertifika özeti (DOM-FIN-113); eğitim grubuyla birlikte bulunur */
+            certificates?: {
+                /** @description Yerine geçilmemiş sertifika/kurs belgesi sayısı */
+                count: number;
+                /** @description Süresi geçmiş olanlar */
+                expiredCount: number;
+                /** @description En yeni belge günü */
+                latestDate: string | null;
+            };
+            /** @description Banka grubu; yalnız yönetici ve muhasebede bulunur */
+            bank?: {
+                /** @description Maskeli IBAN (`TR**…1326`); tam IBAN hiçbir okumada dönmez */
+                ibanMasked: string | null;
+                accountHolder: string | null;
+            };
+            /** @description Acil durum kişileri; yalnız okuyabilen rolde bulunur */
+            emergencyContacts?: {
+                name: string;
+                relation: string;
+                phone: string;
+            }[];
+        };
         ErrorResponse: {
             /** @description Kararlı, İngilizce, snake_case hata kodu */
             code: string;
@@ -25957,6 +26088,69 @@ export interface components {
                 /** @description En çok 50 satır */
                 rows: components["schemas"]["SeasonWatchFollowUp"][];
             };
+        };
+        PersonnelFile: {
+            membershipId: string;
+            /** @description Personelin adı (platform hesabından) */
+            name: string;
+            /** @description Personelin rolü */
+            role: string;
+            /** @description Üyelik etkin mi (pasifse ayrılmış) */
+            active: boolean;
+            /** @description Kart sürümü; düzeltmede If-Match */
+            version: number;
+            updatedAt: string;
+            /** @description Okuyanın grup erişimi; okuyamadığı grup yoktur */
+            access: {
+                [key: string]: "read" | "write";
+            };
+            /** @description Tam T.C. kimlik no ucunu çağırabilir mi */
+            canRevealNationalId: boolean;
+            /** @description Kimlik grubu; yalnız okuyabilen rolde bulunur */
+            identity?: {
+                /** @description Maskeli T.C. kimlik no (`*******1234`); tam hâli ayrı uçtan */
+                nationalIdMasked: string | null;
+                /** @description Doğum günü (YYYY-MM-DD) */
+                birthDate: string | null;
+            };
+            /** @description Kişisel iletişim grubu; yalnız okuyabilen rolde bulunur */
+            contact?: {
+                address: string | null;
+                /** @description Kişisel telefon */
+                phone: string | null;
+                /** @description Kişisel e-posta */
+                email: string | null;
+            };
+            /** @description Eğitim geçmişi; yalnız okuyabilen rolde bulunur */
+            education?: {
+                /** @enum {string} */
+                level: "high_school" | "associate" | "bachelor" | "master" | "doctorate" | "other";
+                school: string;
+                department: string | null;
+                /** @description Boşsa öğrenim sürüyor */
+                graduationYear: number | null;
+            }[];
+            /** @description Özlük belgelerinden sertifika özeti (DOM-FIN-113); eğitim grubuyla birlikte bulunur */
+            certificates?: {
+                /** @description Yerine geçilmemiş sertifika/kurs belgesi sayısı */
+                count: number;
+                /** @description Süresi geçmiş olanlar */
+                expiredCount: number;
+                /** @description En yeni belge günü */
+                latestDate: string | null;
+            };
+            /** @description Banka grubu; yalnız yönetici ve muhasebede bulunur */
+            bank?: {
+                /** @description Maskeli IBAN (`TR**…1326`); tam IBAN hiçbir okumada dönmez */
+                ibanMasked: string | null;
+                accountHolder: string | null;
+            };
+            /** @description Acil durum kişileri; yalnız okuyabilen rolde bulunur */
+            emergencyContacts?: {
+                name: string;
+                relation: string;
+                phone: string;
+            }[];
         };
     };
     responses: never;
@@ -136504,7 +136698,7 @@ export interface operations {
                             /** @description Personelin rolü */
                             staffRole: string;
                             /** @description Rapordaki bölümler, sırasıyla (K-466) */
-                            sections: ("evaluation" | "selfEvaluation" | "observations" | "developmentGoals" | "managerOpinion")[];
+                            sections: ("evaluation" | "selfEvaluation" | "observations" | "staffFeedback" | "developmentGoals" | "managerOpinion")[];
                             /** @description Dönem sonu değerlendirmesi (DOM-FIN-124) */
                             evaluation: {
                                 goals: {
@@ -136564,7 +136758,58 @@ export interface operations {
                                     percent: number;
                                 }[];
                             };
-                            /** @description Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez (K-468) */
+                            /** @description Çok kaynaklı geri bildirim (DOM-FIN-134): yalnız eşik üstünde toplu meslektaş sonucu (K-459, K-468) */
+                            staffFeedback: {
+                                /**
+                                 * @description `not_collected` dönemde şablon ya da atama yok, `period_open` dönem değerlendirme aşamasına geçmedi, `below_threshold` yeterli meslektaş yanıtı yok, `visible` meslektaş toplu sonucu görünür
+                                 * @enum {string}
+                                 */
+                                state: "not_collected" | "period_open" | "below_threshold" | "visible";
+                                /** @description Meslektaş anonimlik eşiği; kesinleşmiş raporda kesinleştirme anındaki (K-468) */
+                                threshold: number;
+                                questionCount: number;
+                                /** @description Yönetici yanıtları adıyla ve soru metniyle */
+                                manager: {
+                                    /** @description Atanan değerlendiren */
+                                    assigned: number;
+                                    /** @description Yanıtı girilen değerlendiren */
+                                    responded: number;
+                                    responses: {
+                                        /** @description Yönetici değerlendiren (anonim değil, K-459) */
+                                        reviewerName: string;
+                                        submittedAt: string | null;
+                                        items: {
+                                            question: string;
+                                            /** @enum {string} */
+                                            kind: "scale" | "open";
+                                            score: number | null;
+                                            text: string | null;
+                                        }[];
+                                    }[];
+                                };
+                                /** @description Meslektaş yanıtlarının toplu sonucu */
+                                peer: {
+                                    /** @description Atanan değerlendiren */
+                                    assigned: number;
+                                    /** @description Yanıtı girilen değerlendiren */
+                                    responded: number;
+                                    /** @description Yalnız `visible` durumunda dolu; tek meslektaş yanıtı hiç dönmez (K-459) */
+                                    questions: {
+                                        question: string;
+                                        /** @enum {string} */
+                                        kind: "scale" | "open";
+                                        /** @description Soruyu cevaplayan meslektaş sayısı */
+                                        answered: number;
+                                        /** @description Eşik altında cevaplanan soru gizlidir */
+                                        hidden: boolean;
+                                        /** @description Puanlı soruda ortalama, iki ondalık */
+                                        average: number | null;
+                                        /** @description Açık uçlu cevaplar, alfabetik; kimden geldiği yok */
+                                        texts: string[];
+                                    }[];
+                                };
+                            };
+                            /** @description Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez. Kesinleşmiş raporda kesinleştirme anındaki anlık görüntü (K-468) */
                             developmentGoals: {
                                 count: number;
                                 /** @description Ulaşılan hedef sayısı */
@@ -136734,7 +136979,7 @@ export interface operations {
                             /** @description Personelin rolü */
                             staffRole: string;
                             /** @description Rapordaki bölümler, sırasıyla (K-466) */
-                            sections: ("evaluation" | "selfEvaluation" | "observations" | "developmentGoals" | "managerOpinion")[];
+                            sections: ("evaluation" | "selfEvaluation" | "observations" | "staffFeedback" | "developmentGoals" | "managerOpinion")[];
                             /** @description Dönem sonu değerlendirmesi (DOM-FIN-124) */
                             evaluation: {
                                 goals: {
@@ -136794,7 +137039,58 @@ export interface operations {
                                     percent: number;
                                 }[];
                             };
-                            /** @description Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez (K-468) */
+                            /** @description Çok kaynaklı geri bildirim (DOM-FIN-134): yalnız eşik üstünde toplu meslektaş sonucu (K-459, K-468) */
+                            staffFeedback: {
+                                /**
+                                 * @description `not_collected` dönemde şablon ya da atama yok, `period_open` dönem değerlendirme aşamasına geçmedi, `below_threshold` yeterli meslektaş yanıtı yok, `visible` meslektaş toplu sonucu görünür
+                                 * @enum {string}
+                                 */
+                                state: "not_collected" | "period_open" | "below_threshold" | "visible";
+                                /** @description Meslektaş anonimlik eşiği; kesinleşmiş raporda kesinleştirme anındaki (K-468) */
+                                threshold: number;
+                                questionCount: number;
+                                /** @description Yönetici yanıtları adıyla ve soru metniyle */
+                                manager: {
+                                    /** @description Atanan değerlendiren */
+                                    assigned: number;
+                                    /** @description Yanıtı girilen değerlendiren */
+                                    responded: number;
+                                    responses: {
+                                        /** @description Yönetici değerlendiren (anonim değil, K-459) */
+                                        reviewerName: string;
+                                        submittedAt: string | null;
+                                        items: {
+                                            question: string;
+                                            /** @enum {string} */
+                                            kind: "scale" | "open";
+                                            score: number | null;
+                                            text: string | null;
+                                        }[];
+                                    }[];
+                                };
+                                /** @description Meslektaş yanıtlarının toplu sonucu */
+                                peer: {
+                                    /** @description Atanan değerlendiren */
+                                    assigned: number;
+                                    /** @description Yanıtı girilen değerlendiren */
+                                    responded: number;
+                                    /** @description Yalnız `visible` durumunda dolu; tek meslektaş yanıtı hiç dönmez (K-459) */
+                                    questions: {
+                                        question: string;
+                                        /** @enum {string} */
+                                        kind: "scale" | "open";
+                                        /** @description Soruyu cevaplayan meslektaş sayısı */
+                                        answered: number;
+                                        /** @description Eşik altında cevaplanan soru gizlidir */
+                                        hidden: boolean;
+                                        /** @description Puanlı soruda ortalama, iki ondalık */
+                                        average: number | null;
+                                        /** @description Açık uçlu cevaplar, alfabetik; kimden geldiği yok */
+                                        texts: string[];
+                                    }[];
+                                };
+                            };
+                            /** @description Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez. Kesinleşmiş raporda kesinleştirme anındaki anlık görüntü (K-468) */
                             developmentGoals: {
                                 count: number;
                                 /** @description Ulaşılan hedef sayısı */
@@ -136969,7 +137265,7 @@ export interface operations {
                             /** @description Personelin rolü */
                             staffRole: string;
                             /** @description Rapordaki bölümler, sırasıyla (K-466) */
-                            sections: ("evaluation" | "selfEvaluation" | "observations" | "developmentGoals" | "managerOpinion")[];
+                            sections: ("evaluation" | "selfEvaluation" | "observations" | "staffFeedback" | "developmentGoals" | "managerOpinion")[];
                             /** @description Dönem sonu değerlendirmesi (DOM-FIN-124) */
                             evaluation: {
                                 goals: {
@@ -137029,7 +137325,58 @@ export interface operations {
                                     percent: number;
                                 }[];
                             };
-                            /** @description Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez (K-468) */
+                            /** @description Çok kaynaklı geri bildirim (DOM-FIN-134): yalnız eşik üstünde toplu meslektaş sonucu (K-459, K-468) */
+                            staffFeedback: {
+                                /**
+                                 * @description `not_collected` dönemde şablon ya da atama yok, `period_open` dönem değerlendirme aşamasına geçmedi, `below_threshold` yeterli meslektaş yanıtı yok, `visible` meslektaş toplu sonucu görünür
+                                 * @enum {string}
+                                 */
+                                state: "not_collected" | "period_open" | "below_threshold" | "visible";
+                                /** @description Meslektaş anonimlik eşiği; kesinleşmiş raporda kesinleştirme anındaki (K-468) */
+                                threshold: number;
+                                questionCount: number;
+                                /** @description Yönetici yanıtları adıyla ve soru metniyle */
+                                manager: {
+                                    /** @description Atanan değerlendiren */
+                                    assigned: number;
+                                    /** @description Yanıtı girilen değerlendiren */
+                                    responded: number;
+                                    responses: {
+                                        /** @description Yönetici değerlendiren (anonim değil, K-459) */
+                                        reviewerName: string;
+                                        submittedAt: string | null;
+                                        items: {
+                                            question: string;
+                                            /** @enum {string} */
+                                            kind: "scale" | "open";
+                                            score: number | null;
+                                            text: string | null;
+                                        }[];
+                                    }[];
+                                };
+                                /** @description Meslektaş yanıtlarının toplu sonucu */
+                                peer: {
+                                    /** @description Atanan değerlendiren */
+                                    assigned: number;
+                                    /** @description Yanıtı girilen değerlendiren */
+                                    responded: number;
+                                    /** @description Yalnız `visible` durumunda dolu; tek meslektaş yanıtı hiç dönmez (K-459) */
+                                    questions: {
+                                        question: string;
+                                        /** @enum {string} */
+                                        kind: "scale" | "open";
+                                        /** @description Soruyu cevaplayan meslektaş sayısı */
+                                        answered: number;
+                                        /** @description Eşik altında cevaplanan soru gizlidir */
+                                        hidden: boolean;
+                                        /** @description Puanlı soruda ortalama, iki ondalık */
+                                        average: number | null;
+                                        /** @description Açık uçlu cevaplar, alfabetik; kimden geldiği yok */
+                                        texts: string[];
+                                    }[];
+                                };
+                            };
+                            /** @description Döneme bağlı gelişim hedefleri (DOM-FIN-133): açık, süren ve ulaşılan; bırakılan girmez. Kesinleşmiş raporda kesinleştirme anındaki anlık görüntü (K-468) */
                             developmentGoals: {
                                 count: number;
                                 /** @description Ulaşılan hedef sayısı */
@@ -139082,6 +139429,630 @@ export interface operations {
                                 /** @description Maddeyi işaretleyen */
                                 completedByName: string | null;
                             }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listPersonnelFiles: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Personel adında arama */
+                q?: string;
+                /** @description `active` etkin, `passive` pasifleştirilmiş (ayrılan) personel */
+                status?: "active" | "passive";
+                /** @description `with` kartı olan, `without` kartı olmayan personel */
+                file?: "with" | "without";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            membershipId: string;
+                            name: string;
+                            role: string;
+                            active: boolean;
+                            /** @description Özlük kartı açılmış mı */
+                            hasFile: boolean;
+                            /** @description Kart sürümü; kart yoksa boş */
+                            version: number | null;
+                            updatedAt: string | null;
+                            /** @description Dolu gruplar; yalnız okuyanın görebildiği gruplar sayılır */
+                            filledGroups: ("identity" | "contact" | "education" | "bank" | "emergencyContacts")[];
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createPersonnelFile: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Kartın personeli (kurum üyeliği) */
+                    membershipId: string;
+                    /** @description Kimlik grubu */
+                    identity?: {
+                        /** @description T.C. kimlik no (11 hane); şifreli saklanır, okumada maskeli */
+                        nationalId?: string | null;
+                        /** @description Doğum günü (YYYY-MM-DD) */
+                        birthDate?: string | null;
+                    };
+                    /** @description Kişisel iletişim grubu */
+                    contact?: {
+                        /** @description Ev adresi */
+                        address?: string | null;
+                        /** @description Kişisel telefon (0XXXXXXXXXX) */
+                        phone?: string | null;
+                        /** @description Kişisel e-posta (iş e-postası hesaptadır) */
+                        email?: string | null;
+                    };
+                    /** @description Eğitim geçmişi; liste bütün olarak yazılır */
+                    education?: {
+                        /**
+                         * @description Eğitim düzeyi
+                         * @enum {string}
+                         */
+                        level: "high_school" | "associate" | "bachelor" | "master" | "doctorate" | "other";
+                        /** @description Okul */
+                        school: string;
+                        /** @description Bölüm */
+                        department?: string | null;
+                        /**
+                         * @description Mezuniyet yılı; boşsa öğrenim sürüyor
+                         * @default null
+                         */
+                        graduationYear?: number | null;
+                    }[];
+                    /** @description Banka grubu; `null` siler */
+                    bank?: {
+                        /** @description TR IBAN (mod-97); şifreli saklanır, okumada maskeli */
+                        iban?: string;
+                        /** @description Hesap sahibinin adı */
+                        accountHolder?: string;
+                    } | null;
+                    /** @description Acil durum kişileri; liste bütün olarak yazılır */
+                    emergencyContacts?: {
+                        /** @description Ad soyad */
+                        name: string;
+                        /** @description Yakınlık (eşi, annesi, kardeşi…) */
+                        relation: string;
+                        /** @description Telefon (0XXXXXXXXXX) */
+                        phone: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["PersonnelFile"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPersonnelFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Personelin kurum üyeliği */
+                membershipId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["PersonnelFile"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updatePersonnelFile: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Personelin kurum üyeliği */
+                membershipId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Kimlik grubu */
+                    identity?: {
+                        /** @description T.C. kimlik no (11 hane); şifreli saklanır, okumada maskeli */
+                        nationalId?: string | null;
+                        /** @description Doğum günü (YYYY-MM-DD) */
+                        birthDate?: string | null;
+                    };
+                    /** @description Kişisel iletişim grubu */
+                    contact?: {
+                        /** @description Ev adresi */
+                        address?: string | null;
+                        /** @description Kişisel telefon (0XXXXXXXXXX) */
+                        phone?: string | null;
+                        /** @description Kişisel e-posta (iş e-postası hesaptadır) */
+                        email?: string | null;
+                    };
+                    /** @description Eğitim geçmişi; liste bütün olarak yazılır */
+                    education?: {
+                        /**
+                         * @description Eğitim düzeyi
+                         * @enum {string}
+                         */
+                        level: "high_school" | "associate" | "bachelor" | "master" | "doctorate" | "other";
+                        /** @description Okul */
+                        school: string;
+                        /** @description Bölüm */
+                        department?: string | null;
+                        /**
+                         * @description Mezuniyet yılı; boşsa öğrenim sürüyor
+                         * @default null
+                         */
+                        graduationYear?: number | null;
+                    }[];
+                    /** @description Banka grubu; `null` siler */
+                    bank?: {
+                        /** @description TR IBAN (mod-97); şifreli saklanır, okumada maskeli */
+                        iban?: string;
+                        /** @description Hesap sahibinin adı */
+                        accountHolder?: string;
+                    } | null;
+                    /** @description Acil durum kişileri; liste bütün olarak yazılır */
+                    emergencyContacts?: {
+                        /** @description Ad soyad */
+                        name: string;
+                        /** @description Yakınlık (eşi, annesi, kardeşi…) */
+                        relation: string;
+                        /** @description Telefon (0XXXXXXXXXX) */
+                        phone: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["PersonnelFile"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPersonnelNationalId: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Personelin kurum üyeliği */
+                membershipId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Tam T.C. kimlik no; kartta yoksa boş */
+                            nationalId: string | null;
                         };
                     };
                 };

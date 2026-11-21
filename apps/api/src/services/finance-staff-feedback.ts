@@ -151,18 +151,21 @@ export async function listStaffFeedbackAssignmentsFor(
  * (sonuç ucu, performans raporu ON-220) okumayı kendi transaction'ında denetler. Meslektaş cevabı
  * yalnız `multiSourceFeedbackResult` üzerinden toplu çıkar. `subjectMembershipIds` verilmezse
  * değerlendireni atanmış her değerlendirilen döner. Dönem başka kurumdaysa boş harita.
+ * `threshold` verilirse kurum ayarı yerine o eşik kullanılır: kesinleşmiş performans raporu
+ * kesinleştirme anındaki eşiği verir (K-468).
  */
 export async function loadStaffFeedbackResults(
   db: Database,
   institutionId: string,
   periodId: string,
   subjectMembershipIds?: readonly string[],
+  options: { threshold?: number | undefined } = {},
 ): Promise<Map<string, StaffFeedbackResult>> {
   const period = await findPerformancePeriod(db, institutionId, periodId)
   if (period === null) return new Map()
-  const [template, settings, rows] = await Promise.all([
+  const [template, threshold, rows] = await Promise.all([
     findPeriodStaffFeedbackTemplate(db, institutionId, periodId),
-    loadStaffFeedbackSettings(db, institutionId),
+    options.threshold ?? loadStaffFeedbackThreshold(db, institutionId),
     loadSubmittedStaffFeedback(db, institutionId, periodId, subjectMembershipIds),
   ])
   const ids = subjectMembershipIds ?? [...new Set(rows.map((row) => row.subjectMembershipId))]
@@ -172,7 +175,7 @@ export async function loadStaffFeedbackResults(
       multiSourceFeedbackResult({
         periodStatus: period.status,
         questions: template?.questions ?? null,
-        threshold: settings.peerAnonymityThreshold,
+        threshold,
         assignments: rows.filter((row) => row.subjectMembershipId === id),
       }),
     ]),
@@ -222,6 +225,11 @@ export async function getStaffFeedbackResultFor(
 }
 
 // --- Ayar ----------------------------------------------------------------------------------------
+
+/** Kurumun güncel meslektaş anonimlik eşiği (K-459). */
+export async function loadStaffFeedbackThreshold(db: Database, institutionId: string) {
+  return (await loadStaffFeedbackSettings(db, institutionId)).peerAnonymityThreshold
+}
 
 export function staffFeedbackSettingsFor(ctx: ServiceContext) {
   return loadStaffFeedbackSettings(ctx.db, ctx.institutionId)

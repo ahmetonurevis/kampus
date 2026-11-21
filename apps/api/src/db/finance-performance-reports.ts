@@ -8,7 +8,11 @@ import type {
 } from '@kampus/school-core/lib/finance-lesson-observations.ts'
 import type { DevelopmentGoalStatus } from '@kampus/school-core/lib/finance-observation-debriefs.ts'
 import type { PerformanceGoal } from '@kampus/school-core/lib/finance-performance.ts'
-import type { PerformanceReportAckChannel } from '@kampus/school-core/lib/finance-performance-reports.ts'
+import {
+  performanceReportGoalSnapshotSchema,
+  type PerformanceReportAckChannel,
+  type PerformanceReportGoalItem,
+} from '@kampus/school-core/lib/finance-performance-reports.ts'
 import type { SelfEvaluationStatus } from '@kampus/school-core/lib/finance-self-evaluations.ts'
 
 import type { Database } from './client.ts'
@@ -26,7 +30,8 @@ import { selfEvaluationResponses } from './schema/finance-self-evaluations.ts'
  * Performans raporu deposu (DOM-FIN-137; ON-220). Kurum kapsamlıdır: ilk parametre
  * `institutionId`. Kural core `lib/finance-performance-reports.ts`'tedir. Rapor içeriği performans
  * kaydı, öz değerlendirme, ders gözlemi ve gelişim hedefi tablolarından yalnız okunur; bu depo yalnız
- * `performance_reports` (kesinleştirme ve "okudum" kaydı) yazar.
+ * `performance_reports` (kesinleştirme, hedef anlık görüntüsü, geri bildirim eşiği ve "okudum"
+ * kaydı) yazar. Anlık görüntü yazmadan önce ve okurken core şemasıyla doğrulanır (K-468).
  */
 
 const reportOf = (institutionId: string) => eq(performanceReports.institutionId, institutionId)
@@ -41,6 +46,10 @@ export interface StoredPerformanceReport {
   acknowledgementChannel: PerformanceReportAckChannel | null
   acknowledgementRecordedAt: string | null
   acknowledgementRecordedByName: string | null
+  /** Kesinleştirme anındaki gelişim hedefi özeti; ON-350 öncesi kesinleşen raporda `null`. */
+  developmentGoals: PerformanceReportGoalItem[] | null
+  /** Kesinleştirme anındaki meslektaş anonimlik eşiği; ON-350 öncesi raporda `null`. */
+  feedbackThreshold: number | null
   version: number
 }
 
@@ -54,17 +63,27 @@ const REPORT_COLUMNS = {
   acknowledgementChannel: performanceReports.acknowledgementChannel,
   acknowledgementRecordedAt: performanceReports.acknowledgementRecordedAt,
   acknowledgementRecordedByName: performanceReports.acknowledgementRecordedByName,
+  developmentGoals: performanceReports.developmentGoals,
+  feedbackThreshold: performanceReports.feedbackThreshold,
   version: performanceReports.version,
 }
 
-type ReportRow = Omit<StoredPerformanceReport, 'finalizedAt' | 'acknowledgementRecordedAt'> & {
+type ReportRow = Omit<
+  StoredPerformanceReport,
+  'finalizedAt' | 'acknowledgementRecordedAt' | 'developmentGoals'
+> & {
   finalizedAt: Date
   acknowledgementRecordedAt: Date | null
+  developmentGoals: unknown
 }
 const toReport = (row: ReportRow): StoredPerformanceReport => ({
   ...row,
   finalizedAt: row.finalizedAt.toISOString(),
   acknowledgementRecordedAt: row.acknowledgementRecordedAt?.toISOString() ?? null,
+  developmentGoals:
+    row.developmentGoals === null
+      ? null
+      : performanceReportGoalSnapshotSchema.parse(row.developmentGoals),
 })
 
 /** Kayıtların kesinleştirme satırları (performans kaydı kimliğine göre). */
@@ -100,6 +119,8 @@ export async function insertPerformanceReport(
     id: string
     reviewId: string
     managerOpinion: string
+    developmentGoals: readonly PerformanceReportGoalItem[]
+    feedbackThreshold: number
     userId: string
     userName: string
     now: Date
@@ -110,6 +131,8 @@ export async function insertPerformanceReport(
     id: input.id,
     reviewId: input.reviewId,
     managerOpinion: input.managerOpinion,
+    developmentGoals: performanceReportGoalSnapshotSchema.parse(input.developmentGoals),
+    feedbackThreshold: input.feedbackThreshold,
     finalizedAt: input.now,
     finalizedByUserId: input.userId,
     finalizedByName: input.userName,

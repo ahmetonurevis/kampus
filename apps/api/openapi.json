@@ -320104,7 +320104,7 @@
         "tags": [
           "finance-incidents"
         ],
-        "description": "Açıklama, tanıklar, veli bildirimleri; sağlık grubu (`health`) yöneticiye her zaman, açana yalnız taslakta; ek notlar (`addenda`) yalnız yöneticiye (K-494). Okuma aynı transaction'da `finance.incident.read` denetimine düşer (dönen alanların adları; değer yok). Olmayan, başka kurumun ya da başkasının açtığı tutanak 404. Rol: `yonetici` (bütün tutanaklar), `ogretmen` ve `onburo` (yalnız açtıkları; başkasınınki 404). Veli ve öğrenci 403. Modül `finance`.",
+        "description": "Açıklama, tanıklar, veli bildirimleri; sağlık grubu (`health`) yöneticiye her zaman, açana yalnız taslakta; ek notlar (`addenda`) yalnız yöneticiye (K-494). Erişim gerekçesi zorunlu (`X-Access-Reason`; DOM-FIN-156, K-523): yoksa 400 `health_access_reason_required`. Okuma aynı transaction'da `finance.incident.read` denetimine (dönen alanların adları; değer yok) ve gerekçesiyle sağlık erişim günlüğüne düşer. Olmayan, başka kurumun ya da başkasının açtığı tutanak 404. Rol: `yonetici` (bütün tutanaklar), `ogretmen` ve `onburo` (yalnız açtıkları; başkasınınki 404). Veli ve öğrenci 403. Modül `finance`.",
         "parameters": [
           {
             "schema": {
@@ -320115,6 +320115,32 @@
             "in": "path",
             "name": "incidentId",
             "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "emergency",
+                "first_aid",
+                "guardian_meeting",
+                "incident_report",
+                "official_request",
+                "other"
+              ]
+            },
+            "in": "header",
+            "name": "x-access-reason",
+            "required": true,
+            "description": "Zorunlu. Sağlık verisi erişim gerekçesi: `emergency` acil durum, `first_aid` ilk yardım / revir işlemi, `guardian_meeting` veli görüşmesi, `incident_report` tutanak hazırlama, `official_request` resmî talep, `other` diğer. Yoksa 400 `health_access_reason_required`, geçersizse 400 `health_access_reason_invalid`. Gerekçe başlıkta taşınır, sorgu dizesine konmaz; istek logunda başlık yer almaz."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-access-reason-note",
+            "required": false,
+            "description": "Yalnız `other` gerekçede zorunlu açıklama: yüzde kodlu UTF-8 (`encodeURIComponent`), çözülmüş hâli kırpılınca 5–200 karakter. Kodlu gerekçede gönderilirse 400 `health_access_reason_invalid`."
           }
         ],
         "responses": {
@@ -345566,7 +345592,7 @@
         "tags": [
           "finance-infirmary"
         ],
-        "description": "Şikâyet, yapılanlar ve not dahil. Okuma aynı transaction'da `finance.infirmary.visit_read` denetimine düşer (alan adları; değer yok). Olmayan ya da başka kurumun ziyareti 404. Rol: `yonetici` ve `onburo` (revir görevlisi rolü yok). Öğretmen, veli ve öğrenci 403. Modül `finance`.",
+        "description": "Şikâyet, yapılanlar ve not dahil. Okuma aynı transaction'da `finance.infirmary.visit_read` denetimine düşer (alan adları; değer yok). Erişim gerekçesi zorunlu (`X-Access-Reason`; DOM-FIN-156, K-523): yoksa 400 `health_access_reason_required`; okuma gerekçesiyle sağlık erişim günlüğüne düşer. Olmayan ya da başka kurumun ziyareti 404. Rol: `yonetici` ve `onburo` (revir görevlisi rolü yok). Öğretmen, veli ve öğrenci 403. Modül `finance`.",
         "parameters": [
           {
             "schema": {
@@ -345577,6 +345603,32 @@
             "in": "path",
             "name": "visitId",
             "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "emergency",
+                "first_aid",
+                "guardian_meeting",
+                "incident_report",
+                "official_request",
+                "other"
+              ]
+            },
+            "in": "header",
+            "name": "x-access-reason",
+            "required": true,
+            "description": "Zorunlu. Sağlık verisi erişim gerekçesi: `emergency` acil durum, `first_aid` ilk yardım / revir işlemi, `guardian_meeting` veli görüşmesi, `incident_report` tutanak hazırlama, `official_request` resmî talep, `other` diğer. Yoksa 400 `health_access_reason_required`, geçersizse 400 `health_access_reason_invalid`. Gerekçe başlıkta taşınır, sorgu dizesine konmaz; istek logunda başlık yer almaz."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-access-reason-note",
+            "required": false,
+            "description": "Yalnız `other` gerekçede zorunlu açıklama: yüzde kodlu UTF-8 (`encodeURIComponent`), çözülmüş hâli kırpılınca 5–200 karakter. Kodlu gerekçede gönderilirse 400 `health_access_reason_invalid`."
           }
         ],
         "responses": {
@@ -346921,7 +346973,7 @@
         "tags": [
           "finance-infirmary"
         ],
-        "description": "En yeni talep önce; süzgeç durum ve öğrenci. Satır ilaç adı ve doz taşıdığından her dönen talep `finance.infirmary.consent_read` denetimine düşer. Rol: `yonetici` ve `onburo` (bütün talepler), `veli` (kapsamındaki çocuklar; başkası 404). Öğretmen ve öğrenci 403. Modül `finance`.",
+        "description": "En yeni talep önce; süzgeç durum ve öğrenci. Satır ilaç adı ve doz taşıdığından her dönen talep `finance.infirmary.consent_read` denetimine düşer. Okulda erişim gerekçesi zorunlu (`X-Access-Reason`; DOM-FIN-156, K-523): yoksa 400 `health_access_reason_required`; okuma gerekçesiyle sağlık erişim günlüğüne düşer. Veliden gerekçe istenmez. Rol: `yonetici` ve `onburo` (bütün talepler), `veli` (kapsamındaki çocuklar; başkası 404). Öğretmen ve öğrenci 403. Modül `finance`.",
         "parameters": [
           {
             "schema": {
@@ -346972,6 +347024,32 @@
             "name": "studentId",
             "required": false,
             "description": "Öğrenci (velide çocuklardan biri)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "emergency",
+                "first_aid",
+                "guardian_meeting",
+                "incident_report",
+                "official_request",
+                "other"
+              ]
+            },
+            "in": "header",
+            "name": "x-access-reason",
+            "required": false,
+            "description": "Personelde zorunlu; veli ve öğrencide gönderilmez. Sağlık verisi erişim gerekçesi: `emergency` acil durum, `first_aid` ilk yardım / revir işlemi, `guardian_meeting` veli görüşmesi, `incident_report` tutanak hazırlama, `official_request` resmî talep, `other` diğer. Yoksa 400 `health_access_reason_required`, geçersizse 400 `health_access_reason_invalid`. Gerekçe başlıkta taşınır, sorgu dizesine konmaz; istek logunda başlık yer almaz."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-access-reason-note",
+            "required": false,
+            "description": "Yalnız `other` gerekçede zorunlu açıklama: yüzde kodlu UTF-8 (`encodeURIComponent`), çözülmüş hâli kırpılınca 5–200 karakter. Kodlu gerekçede gönderilirse 400 `health_access_reason_invalid`."
           }
         ],
         "responses": {
@@ -347566,7 +347644,7 @@
         "tags": [
           "finance-infirmary"
         ],
-        "description": "Talep ve ilaç uygulamaları (an, saat, doz, uygulayan). Okuma `finance.infirmary.consent_read` denetimine düşer. Olmayan, başka kurumun ya da velinin kapsamı dışındaki talep 404. Rol: `yonetici` ve `onburo` (bütün talepler), `veli` (kapsamındaki çocuklar; başkası 404). Öğretmen ve öğrenci 403. Modül `finance`.",
+        "description": "Talep ve ilaç uygulamaları (an, saat, doz, uygulayan). Okuma `finance.infirmary.consent_read` denetimine düşer. Okulda erişim gerekçesi zorunlu (`X-Access-Reason`; DOM-FIN-156, K-523): yoksa 400 `health_access_reason_required`; okuma gerekçesiyle sağlık erişim günlüğüne düşer. Veliden gerekçe istenmez. Olmayan, başka kurumun ya da velinin kapsamı dışındaki talep 404. Rol: `yonetici` ve `onburo` (bütün talepler), `veli` (kapsamındaki çocuklar; başkası 404). Öğretmen ve öğrenci 403. Modül `finance`.",
         "parameters": [
           {
             "schema": {
@@ -347577,6 +347655,32 @@
             "in": "path",
             "name": "consentId",
             "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "emergency",
+                "first_aid",
+                "guardian_meeting",
+                "incident_report",
+                "official_request",
+                "other"
+              ]
+            },
+            "in": "header",
+            "name": "x-access-reason",
+            "required": false,
+            "description": "Personelde zorunlu; veli ve öğrencide gönderilmez. Sağlık verisi erişim gerekçesi: `emergency` acil durum, `first_aid` ilk yardım / revir işlemi, `guardian_meeting` veli görüşmesi, `incident_report` tutanak hazırlama, `official_request` resmî talep, `other` diğer. Yoksa 400 `health_access_reason_required`, geçersizse 400 `health_access_reason_invalid`. Gerekçe başlıkta taşınır, sorgu dizesine konmaz; istek logunda başlık yer almaz."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-access-reason-note",
+            "required": false,
+            "description": "Yalnız `other` gerekçede zorunlu açıklama: yüzde kodlu UTF-8 (`encodeURIComponent`), çözülmüş hâli kırpılınca 5–200 karakter. Kodlu gerekçede gönderilirse 400 `health_access_reason_invalid`."
           }
         ],
         "responses": {
@@ -349214,7 +349318,7 @@
         "tags": [
           "finance-infirmary"
         ],
-        "description": "Günü (Europe/Istanbul; boşsa bugün) kapsayan onaylı taleplerin her doz saati, saat sırasıyla; o gün verildiyse uygulama. Her talep `finance.infirmary.schedule_read` denetimine düşer. Rol: `yonetici` ve `onburo` (revir görevlisi rolü yok). Öğretmen, veli ve öğrenci 403. Modül `finance`.",
+        "description": "Günü (Europe/Istanbul; boşsa bugün) kapsayan onaylı taleplerin her doz saati, saat sırasıyla; o gün verildiyse uygulama. Her talep `finance.infirmary.schedule_read` denetimine düşer. Erişim gerekçesi zorunlu (`X-Access-Reason`; DOM-FIN-156, K-523): yoksa 400 `health_access_reason_required`; okuma gerekçesiyle sağlık erişim günlüğüne düşer. Rol: `yonetici` ve `onburo` (revir görevlisi rolü yok). Öğretmen, veli ve öğrenci 403. Modül `finance`.",
         "parameters": [
           {
             "schema": {
@@ -349225,6 +349329,32 @@
             "name": "date",
             "required": false,
             "description": "Gün (YYYY-MM-DD, Europe/Istanbul); boşsa bugün"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "emergency",
+                "first_aid",
+                "guardian_meeting",
+                "incident_report",
+                "official_request",
+                "other"
+              ]
+            },
+            "in": "header",
+            "name": "x-access-reason",
+            "required": true,
+            "description": "Zorunlu. Sağlık verisi erişim gerekçesi: `emergency` acil durum, `first_aid` ilk yardım / revir işlemi, `guardian_meeting` veli görüşmesi, `incident_report` tutanak hazırlama, `official_request` resmî talep, `other` diğer. Yoksa 400 `health_access_reason_required`, geçersizse 400 `health_access_reason_invalid`. Gerekçe başlıkta taşınır, sorgu dizesine konmaz; istek logunda başlık yer almaz."
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "header",
+            "name": "x-access-reason-note",
+            "required": false,
+            "description": "Yalnız `other` gerekçede zorunlu açıklama: yüzde kodlu UTF-8 (`encodeURIComponent`), çözülmüş hâli kırpılınca 5–200 karakter. Kodlu gerekçede gönderilirse 400 `health_access_reason_invalid`."
           }
         ],
         "responses": {
@@ -349480,6 +349610,301 @@
                           "name",
                           "role",
                           "active"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/health-access-logs": {
+      "get": {
+        "operationId": "listHealthAccessLogs",
+        "summary": "Sağlık verisi erişim günlüğü",
+        "tags": [
+          "finance-health-access"
+        ],
+        "description": "Gerekçeyle açılan sağlık okumaları (kaza tutanağı, revir ziyareti, ilaç talebi ve uygulama listesi), en yeni önce: kim, ne zaman, hangi kaydı, hangi gerekçeyle. Süzgeç okuyan üyelik, öğrenci, gerekçe kodu ve okuma günü aralığı (Europe/Istanbul). Sağlık değeri dönmez; \"diğer\" gerekçenin açıklaması döner. Günlük okuması denetlenmez. Rol: yalnız `yonetici` (DOM-YTK-053). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "actorMembershipId",
+            "required": false,
+            "description": "Okuyan kişinin kurum üyeliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "studentId",
+            "required": false,
+            "description": "Kaydın öğrencisi"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "emergency",
+                "first_aid",
+                "guardian_meeting",
+                "incident_report",
+                "official_request",
+                "other"
+              ]
+            },
+            "in": "query",
+            "name": "reasonCode",
+            "required": false,
+            "description": "`emergency` acil durum, `first_aid` ilk yardım / revir işlemi, `guardian_meeting` veli görüşmesi, `incident_report` tutanak hazırlama, `official_request` resmî talep, `other` diğer"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "description": "Okuma günü başlangıcı (YYYY-MM-DD, Europe/Istanbul)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "description": "Okuma günü sonu (dahil)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                            "description": "Denetim satırının kimliği"
+                          },
+                          "accessedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "actorMembershipId": {
+                            "type": "string"
+                          },
+                          "actorName": {
+                            "description": "Okuyan kişi; üyelik silindiyse boş",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "actorRole": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "action": {
+                            "type": "string",
+                            "description": "Denetim eylemi (`finance.incident.read`, `finance.infirmary.visit_read`, `consent_read`, `schedule_read` …)"
+                          },
+                          "entityType": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "entityId": {
+                            "description": "Okunan kaydın kimliği",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "studentId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "studentName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "reasonCode": {
+                            "type": "string",
+                            "enum": [
+                              "emergency",
+                              "first_aid",
+                              "guardian_meeting",
+                              "incident_report",
+                              "official_request",
+                              "other"
+                            ],
+                            "description": "`emergency` acil durum, `first_aid` ilk yardım / revir işlemi, `guardian_meeting` veli görüşmesi, `incident_report` tutanak hazırlama, `official_request` resmî talep, `other` diğer"
+                          },
+                          "reasonNote": {
+                            "description": "Yalnız `other` gerekçede açıklama",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "accessedAt",
+                          "actorMembershipId",
+                          "actorName",
+                          "actorRole",
+                          "action",
+                          "entityType",
+                          "entityId",
+                          "studentId",
+                          "studentName",
+                          "reasonCode",
+                          "reasonNote"
                         ],
                         "additionalProperties": false
                       }

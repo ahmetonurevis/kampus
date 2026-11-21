@@ -75,7 +75,9 @@ describe('DOM-FIN-146: kaza ve yaralanma tutanağı uçları', () => {
       ...(payload === undefined ? {} : { payload: JSON.stringify(payload) }),
     })
   }
-  const get = (url: string, cookie: string | null) => call('GET', url, cookie)
+  // Sağlık okumaları gerekçe ister (DOM-FIN-156); gerekçe dalları `finance-health-access.test.ts`.
+  const get = (url: string, cookie: string | null) =>
+    call('GET', url, cookie, undefined, { 'x-access-reason': 'first_aid' })
   const post = (url: string, cookie: string | null, body: unknown, key = randomUUID()) =>
     call('POST', url, cookie, body, { 'idempotency-key': key })
   const versioned = (
@@ -335,9 +337,9 @@ describe('DOM-FIN-146: kaza ve yaralanma tutanağı uçları', () => {
     const reads = await audits(t.id, 'finance.incident.read')
     assert.equal(reads.length, 3)
     const fieldsOf = (row: (typeof reads)[number]) => (row.changes as { fields: string[] }).fields
-    assert.ok(fieldsOf(reads[0]!).includes('severity'))
-    assert.equal(fieldsOf(reads[1]!).includes('severity'), false)
-    assert.ok(fieldsOf(reads[2]!).includes('addenda'))
+    // Aynı anda yazılan satırların okuma sırası tanımsızdır; alanlar sayıyla denetlenir.
+    assert.equal(reads.filter((row) => fieldsOf(row).includes('severity')).length, 2)
+    assert.equal(reads.filter((row) => fieldsOf(row).includes('addenda')).length, 1)
     assert.ok(teachers.id)
   })
 

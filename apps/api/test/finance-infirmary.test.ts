@@ -77,7 +77,9 @@ describe('DOM-FIN-151: revir ve ilaç onayı uçları', () => {
       ...(payload === undefined ? {} : { payload: JSON.stringify(payload) }),
     })
   }
-  const get = (url: string, cookie: string | null) => call('GET', url, cookie)
+  // Sağlık okumaları gerekçe ister (DOM-FIN-156); gerekçe dalları `finance-health-access.test.ts`.
+  const get = (url: string, cookie: string | null) =>
+    call('GET', url, cookie, undefined, { 'x-access-reason': 'first_aid' })
   const post = (url: string, cookie: string | null, body: unknown, key = randomUUID()) =>
     call('POST', url, cookie, body, { 'idempotency-key': key })
   const versioned = (

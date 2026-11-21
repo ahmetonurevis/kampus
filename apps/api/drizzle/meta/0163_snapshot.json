@@ -1,5 +1,5 @@
 {
-  "id": "7c1cb3dd-b2e3-4fc6-8c64-dfaa809a87c1",
+  "id": "40a17804-c1bc-4cea-98a9-54ceaad5462d",
   "prevId": "f66a7bdb-38c6-4121-b190-9b0858bbdafe",
   "version": "7",
   "dialect": "postgresql",
@@ -17118,8 +17118,8 @@
       },
       "isRLSEnabled": false
     },
-    "public.health_screening_notifications": {
-      "name": "health_screening_notifications",
+    "public.health_access_reasons": {
+      "name": "health_access_reasons",
       "schema": "",
       "columns": {
         "institution_id": {
@@ -17128,21 +17128,15 @@
           "primaryKey": false,
           "notNull": true
         },
-        "id": {
-          "name": "id",
+        "audit_log_id": {
+          "name": "audit_log_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
-        "session_id": {
-          "name": "session_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "result_id": {
-          "name": "result_id",
-          "type": "uuid",
+        "actor_membership_id": {
+          "name": "actor_membership_id",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
@@ -17150,238 +17144,10 @@
           "name": "student_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'pending'"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
           "notNull": false
         },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "health_screening_notifications_result_key": {
-          "name": "health_screening_notifications_result_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "result_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "health_screening_notifications_session_idx": {
-          "name": "health_screening_notifications_session_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "session_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "health_screening_notifications_student_idx": {
-          "name": "health_screening_notifications_student_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "student_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "health_screening_notifications_institution_id_institutions_id_fk": {
-          "name": "health_screening_notifications_institution_id_institutions_id_fk",
-          "tableFrom": "health_screening_notifications",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "health_screening_notifications_session_fkey": {
-          "name": "health_screening_notifications_session_fkey",
-          "tableFrom": "health_screening_notifications",
-          "tableTo": "health_screening_sessions",
-          "columnsFrom": [
-            "institution_id",
-            "session_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "health_screening_notifications_result_fkey": {
-          "name": "health_screening_notifications_result_fkey",
-          "tableFrom": "health_screening_notifications",
-          "tableTo": "health_screening_results",
-          "columnsFrom": [
-            "institution_id",
-            "result_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "health_screening_notifications_pkey": {
-          "name": "health_screening_notifications_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "health_screening_notifications_status_check": {
-          "name": "health_screening_notifications_status_check",
-          "value": "\"health_screening_notifications\".\"status\" in ('pending')"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.health_screening_results": {
-      "name": "health_screening_results",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "session_id": {
-          "name": "session_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "student_id": {
-          "name": "student_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "class_id": {
-          "name": "class_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "outcome": {
-          "name": "outcome",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "referral_recommended": {
-          "name": "referral_recommended",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "health_ciphertext": {
-          "name": "health_ciphertext",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "health_key_version": {
-          "name": "health_key_version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "recorded_by_user_id": {
-          "name": "recorded_by_user_id",
+        "reason_code": {
+          "name": "reason_code",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -17415,8 +17181,8 @@
         }
       },
       "indexes": {
-        "health_screening_results_student_key": {
-          "name": "health_screening_results_student_key",
+        "health_access_reasons_created_idx": {
+          "name": "health_access_reasons_created_idx",
           "columns": [
             {
               "expression": "institution_id",
@@ -17425,7 +17191,49 @@
               "nulls": "last"
             },
             {
-              "expression": "session_id",
+              "expression": "\"created_at\" desc",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "health_access_reasons_actor_idx": {
+          "name": "health_access_reasons_actor_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "actor_membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "\"created_at\" desc",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "health_access_reasons_student_idx": {
+          "name": "health_access_reasons_student_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -17435,66 +17243,25 @@
               "isExpression": false,
               "asc": true,
               "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "health_screening_results_student_idx": {
-          "name": "health_screening_results_student_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
             },
             {
-              "expression": "student_id",
-              "isExpression": false,
+              "expression": "\"created_at\" desc",
               "asc": true,
+              "isExpression": true,
               "nulls": "last"
             }
           ],
           "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "health_screening_results_class_idx": {
-          "name": "health_screening_results_class_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "session_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "class_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
+          "where": "\"health_access_reasons\".\"student_id\" is not null",
           "concurrently": false,
           "method": "btree",
           "with": {}
         }
       },
       "foreignKeys": {
-        "health_screening_results_institution_id_institutions_id_fk": {
-          "name": "health_screening_results_institution_id_institutions_id_fk",
-          "tableFrom": "health_screening_results",
+        "health_access_reasons_institution_id_institutions_id_fk": {
+          "name": "health_access_reasons_institution_id_institutions_id_fk",
+          "tableFrom": "health_access_reasons",
           "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
@@ -17504,261 +17271,23 @@
           ],
           "onDelete": "no action",
           "onUpdate": "no action"
-        },
-        "health_screening_results_session_fkey": {
-          "name": "health_screening_results_session_fkey",
-          "tableFrom": "health_screening_results",
-          "tableTo": "health_screening_sessions",
-          "columnsFrom": [
-            "institution_id",
-            "session_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
-        "health_screening_results_pkey": {
-          "name": "health_screening_results_pkey",
+        "health_access_reasons_pkey": {
+          "name": "health_access_reasons_pkey",
           "columns": [
             "institution_id",
-            "id"
+            "audit_log_id"
           ]
         }
       },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "health_screening_results_outcome_check": {
-          "name": "health_screening_results_outcome_check",
-          "value": "\"health_screening_results\".\"outcome\" in ('screened', 'absent', 'refused')"
-        },
-        "health_screening_results_referral_check": {
-          "name": "health_screening_results_referral_check",
-          "value": "\"health_screening_results\".\"outcome\" = 'screened' or not \"health_screening_results\".\"referral_recommended\""
-        },
-        "health_screening_results_key_version_check": {
-          "name": "health_screening_results_key_version_check",
-          "value": "\"health_screening_results\".\"health_key_version\" > 0"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.health_screening_sessions": {
-      "name": "health_screening_sessions",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'open'"
-        },
-        "screened_on": {
-          "name": "screened_on",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "class_ids": {
-          "name": "class_ids",
-          "type": "text[]",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "performer_membership_id": {
-          "name": "performer_membership_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "performer_name": {
-          "name": "performer_name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "thresholds": {
-          "name": "thresholds",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "published_at": {
-          "name": "published_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "published_by_user_id": {
-          "name": "published_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "health_screening_sessions_screened_idx": {
-          "name": "health_screening_sessions_screened_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "screened_on",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "health_screening_sessions_performer_idx": {
-          "name": "health_screening_sessions_performer_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "performer_membership_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"health_screening_sessions\".\"performer_membership_id\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "health_screening_sessions_institution_id_institutions_id_fk": {
-          "name": "health_screening_sessions_institution_id_institutions_id_fk",
-          "tableFrom": "health_screening_sessions",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "health_screening_sessions_performer_fkey": {
-          "name": "health_screening_sessions_performer_fkey",
-          "tableFrom": "health_screening_sessions",
-          "tableTo": "memberships",
-          "columnsFrom": [
-            "institution_id",
-            "performer_membership_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "health_screening_sessions_pkey": {
-          "name": "health_screening_sessions_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "health_screening_sessions_kind_check": {
-          "name": "health_screening_sessions_kind_check",
-          "value": "\"health_screening_sessions\".\"kind\" in ('growth', 'vision')"
-        },
-        "health_screening_sessions_status_check": {
-          "name": "health_screening_sessions_status_check",
-          "value": "\"health_screening_sessions\".\"status\" in ('open', 'published')"
-        },
-        "health_screening_sessions_classes_check": {
-          "name": "health_screening_sessions_classes_check",
-          "value": "cardinality(\"health_screening_sessions\".\"class_ids\") between 1 and 40"
-        },
-        "health_screening_sessions_performer_check": {
-          "name": "health_screening_sessions_performer_check",
-          "value": "(\"health_screening_sessions\".\"performer_membership_id\" is null) <> (\"health_screening_sessions\".\"performer_name\" is null)\n        and (\"health_screening_sessions\".\"performer_name\" is null or char_length(\"health_screening_sessions\".\"performer_name\") between 2 and 120)"
-        },
-        "health_screening_sessions_published_check": {
-          "name": "health_screening_sessions_published_check",
-          "value": "((\"health_screening_sessions\".\"status\" = 'published') = (\"health_screening_sessions\".\"published_at\" is not null))\n        and ((\"health_screening_sessions\".\"published_at\" is null) = (\"health_screening_sessions\".\"published_by_user_id\" is null))"
+        "health_access_reasons_reason_code_check": {
+          "name": "health_access_reasons_reason_code_check",
+          "value": "\"health_access_reasons\".\"reason_code\" in ('emergency', 'first_aid', 'guardian_meeting', 'incident_report', 'official_request', 'other')"
         }
       },
       "isRLSEnabled": false

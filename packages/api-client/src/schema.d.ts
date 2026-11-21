@@ -13945,7 +13945,7 @@ export interface paths {
         };
         /**
          * Kaza tutanağı ayrıntısı
-         * @description Açıklama, tanıklar, veli bildirimleri; sağlık grubu (`health`) yöneticiye her zaman, açana yalnız taslakta; ek notlar (`addenda`) yalnız yöneticiye (K-494). Okuma aynı transaction'da `finance.incident.read` denetimine düşer (dönen alanların adları; değer yok). Olmayan, başka kurumun ya da başkasının açtığı tutanak 404. Rol: `yonetici` (bütün tutanaklar), `ogretmen` ve `onburo` (yalnız açtıkları; başkasınınki 404). Veli ve öğrenci 403. Modül `finance`.
+         * @description Açıklama, tanıklar, veli bildirimleri; sağlık grubu (`health`) yöneticiye her zaman, açana yalnız taslakta; ek notlar (`addenda`) yalnız yöneticiye (K-494). Erişim gerekçesi zorunlu (`X-Access-Reason`; DOM-FIN-156, K-523): yoksa 400 `health_access_reason_required`. Okuma aynı transaction'da `finance.incident.read` denetimine (dönen alanların adları; değer yok) ve gerekçesiyle sağlık erişim günlüğüne düşer. Olmayan, başka kurumun ya da başkasının açtığı tutanak 404. Rol: `yonetici` (bütün tutanaklar), `ogretmen` ve `onburo` (yalnız açtıkları; başkasınınki 404). Veli ve öğrenci 403. Modül `finance`.
          */
         get: operations["getIncidentReport"];
         put?: never;
@@ -15237,7 +15237,7 @@ export interface paths {
         };
         /**
          * Revir ziyareti ayrıntısı
-         * @description Şikâyet, yapılanlar ve not dahil. Okuma aynı transaction'da `finance.infirmary.visit_read` denetimine düşer (alan adları; değer yok). Olmayan ya da başka kurumun ziyareti 404. Rol: `yonetici` ve `onburo` (revir görevlisi rolü yok). Öğretmen, veli ve öğrenci 403. Modül `finance`.
+         * @description Şikâyet, yapılanlar ve not dahil. Okuma aynı transaction'da `finance.infirmary.visit_read` denetimine düşer (alan adları; değer yok). Erişim gerekçesi zorunlu (`X-Access-Reason`; DOM-FIN-156, K-523): yoksa 400 `health_access_reason_required`; okuma gerekçesiyle sağlık erişim günlüğüne düşer. Olmayan ya da başka kurumun ziyareti 404. Rol: `yonetici` ve `onburo` (revir görevlisi rolü yok). Öğretmen, veli ve öğrenci 403. Modül `finance`.
          */
         get: operations["getInfirmaryVisit"];
         put?: never;
@@ -15321,7 +15321,7 @@ export interface paths {
         };
         /**
          * İlaç onayı talepleri
-         * @description En yeni talep önce; süzgeç durum ve öğrenci. Satır ilaç adı ve doz taşıdığından her dönen talep `finance.infirmary.consent_read` denetimine düşer. Rol: `yonetici` ve `onburo` (bütün talepler), `veli` (kapsamındaki çocuklar; başkası 404). Öğretmen ve öğrenci 403. Modül `finance`.
+         * @description En yeni talep önce; süzgeç durum ve öğrenci. Satır ilaç adı ve doz taşıdığından her dönen talep `finance.infirmary.consent_read` denetimine düşer. Okulda erişim gerekçesi zorunlu (`X-Access-Reason`; DOM-FIN-156, K-523): yoksa 400 `health_access_reason_required`; okuma gerekçesiyle sağlık erişim günlüğüne düşer. Veliden gerekçe istenmez. Rol: `yonetici` ve `onburo` (bütün talepler), `veli` (kapsamındaki çocuklar; başkası 404). Öğretmen ve öğrenci 403. Modül `finance`.
          */
         get: operations["listMedicationConsents"];
         put?: never;
@@ -15345,7 +15345,7 @@ export interface paths {
         };
         /**
          * İlaç onayı ve uygulamaları
-         * @description Talep ve ilaç uygulamaları (an, saat, doz, uygulayan). Okuma `finance.infirmary.consent_read` denetimine düşer. Olmayan, başka kurumun ya da velinin kapsamı dışındaki talep 404. Rol: `yonetici` ve `onburo` (bütün talepler), `veli` (kapsamındaki çocuklar; başkası 404). Öğretmen ve öğrenci 403. Modül `finance`.
+         * @description Talep ve ilaç uygulamaları (an, saat, doz, uygulayan). Okuma `finance.infirmary.consent_read` denetimine düşer. Okulda erişim gerekçesi zorunlu (`X-Access-Reason`; DOM-FIN-156, K-523): yoksa 400 `health_access_reason_required`; okuma gerekçesiyle sağlık erişim günlüğüne düşer. Veliden gerekçe istenmez. Olmayan, başka kurumun ya da velinin kapsamı dışındaki talep 404. Rol: `yonetici` ve `onburo` (bütün talepler), `veli` (kapsamındaki çocuklar; başkası 404). Öğretmen ve öğrenci 403. Modül `finance`.
          */
         get: operations["getMedicationConsent"];
         put?: never;
@@ -15445,7 +15445,7 @@ export interface paths {
         };
         /**
          * Günün ilaç uygulama listesi
-         * @description Günü (Europe/Istanbul; boşsa bugün) kapsayan onaylı taleplerin her doz saati, saat sırasıyla; o gün verildiyse uygulama. Her talep `finance.infirmary.schedule_read` denetimine düşer. Rol: `yonetici` ve `onburo` (revir görevlisi rolü yok). Öğretmen, veli ve öğrenci 403. Modül `finance`.
+         * @description Günü (Europe/Istanbul; boşsa bugün) kapsayan onaylı taleplerin her doz saati, saat sırasıyla; o gün verildiyse uygulama. Her talep `finance.infirmary.schedule_read` denetimine düşer. Erişim gerekçesi zorunlu (`X-Access-Reason`; DOM-FIN-156, K-523): yoksa 400 `health_access_reason_required`; okuma gerekçesiyle sağlık erişim günlüğüne düşer. Rol: `yonetici` ve `onburo` (revir görevlisi rolü yok). Öğretmen, veli ve öğrenci 403. Modül `finance`.
          */
         get: operations["getMedicationSchedule"];
         put?: never;
@@ -15468,6 +15468,26 @@ export interface paths {
          * @description Gönderen ve uygulayan seçimi: kurumun etkin yönetici, öğretmen ve ön büro üyelikleri, ada göre. Rol: `yonetici` ve `onburo` (revir görevlisi rolü yok). Öğretmen, veli ve öğrenci 403. Modül `finance`.
          */
         get: operations["listInfirmaryStaff"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/health-access-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sağlık verisi erişim günlüğü
+         * @description Gerekçeyle açılan sağlık okumaları (kaza tutanağı, revir ziyareti, ilaç talebi ve uygulama listesi), en yeni önce: kim, ne zaman, hangi kaydı, hangi gerekçeyle. Süzgeç okuyan üyelik, öğrenci, gerekçe kodu ve okuma günü aralığı (Europe/Istanbul). Sağlık değeri dönmez; "diğer" gerekçenin açıklaması döner. Günlük okuması denetlenmez. Rol: yalnız `yonetici` (DOM-YTK-053). Modül `finance`.
+         */
+        get: operations["listHealthAccessLogs"];
         put?: never;
         post?: never;
         delete?: never;
@@ -149214,7 +149234,12 @@ export interface operations {
     getIncidentReport: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Zorunlu. Sağlık verisi erişim gerekçesi: `emergency` acil durum, `first_aid` ilk yardım / revir işlemi, `guardian_meeting` veli görüşmesi, `incident_report` tutanak hazırlama, `official_request` resmî talep, `other` diğer. Yoksa 400 `health_access_reason_required`, geçersizse 400 `health_access_reason_invalid`. Gerekçe başlıkta taşınır, sorgu dizesine konmaz; istek logunda başlık yer almaz. */
+                "x-access-reason": "emergency" | "first_aid" | "guardian_meeting" | "incident_report" | "official_request" | "other";
+                /** @description Yalnız `other` gerekçede zorunlu açıklama: yüzde kodlu UTF-8 (`encodeURIComponent`), çözülmüş hâli kırpılınca 5–200 karakter. Kodlu gerekçede gönderilirse 400 `health_access_reason_invalid`. */
+                "x-access-reason-note"?: string;
+            };
             path: {
                 incidentId: string;
             };
@@ -161076,7 +161101,12 @@ export interface operations {
     getInfirmaryVisit: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Zorunlu. Sağlık verisi erişim gerekçesi: `emergency` acil durum, `first_aid` ilk yardım / revir işlemi, `guardian_meeting` veli görüşmesi, `incident_report` tutanak hazırlama, `official_request` resmî talep, `other` diğer. Yoksa 400 `health_access_reason_required`, geçersizse 400 `health_access_reason_invalid`. Gerekçe başlıkta taşınır, sorgu dizesine konmaz; istek logunda başlık yer almaz. */
+                "x-access-reason": "emergency" | "first_aid" | "guardian_meeting" | "incident_report" | "official_request" | "other";
+                /** @description Yalnız `other` gerekçede zorunlu açıklama: yüzde kodlu UTF-8 (`encodeURIComponent`), çözülmüş hâli kırpılınca 5–200 karakter. Kodlu gerekçede gönderilirse 400 `health_access_reason_invalid`. */
+                "x-access-reason-note"?: string;
+            };
             path: {
                 visitId: string;
             };
@@ -161732,7 +161762,12 @@ export interface operations {
                 /** @description Öğrenci (velide çocuklardan biri) */
                 studentId?: string;
             };
-            header?: never;
+            header?: {
+                /** @description Personelde zorunlu; veli ve öğrencide gönderilmez. Sağlık verisi erişim gerekçesi: `emergency` acil durum, `first_aid` ilk yardım / revir işlemi, `guardian_meeting` veli görüşmesi, `incident_report` tutanak hazırlama, `official_request` resmî talep, `other` diğer. Yoksa 400 `health_access_reason_required`, geçersizse 400 `health_access_reason_invalid`. Gerekçe başlıkta taşınır, sorgu dizesine konmaz; istek logunda başlık yer almaz. */
+                "x-access-reason"?: "emergency" | "first_aid" | "guardian_meeting" | "incident_report" | "official_request" | "other";
+                /** @description Yalnız `other` gerekçede zorunlu açıklama: yüzde kodlu UTF-8 (`encodeURIComponent`), çözülmüş hâli kırpılınca 5–200 karakter. Kodlu gerekçede gönderilirse 400 `health_access_reason_invalid`. */
+                "x-access-reason-note"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -162015,7 +162050,12 @@ export interface operations {
     getMedicationConsent: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description Personelde zorunlu; veli ve öğrencide gönderilmez. Sağlık verisi erişim gerekçesi: `emergency` acil durum, `first_aid` ilk yardım / revir işlemi, `guardian_meeting` veli görüşmesi, `incident_report` tutanak hazırlama, `official_request` resmî talep, `other` diğer. Yoksa 400 `health_access_reason_required`, geçersizse 400 `health_access_reason_invalid`. Gerekçe başlıkta taşınır, sorgu dizesine konmaz; istek logunda başlık yer almaz. */
+                "x-access-reason"?: "emergency" | "first_aid" | "guardian_meeting" | "incident_report" | "official_request" | "other";
+                /** @description Yalnız `other` gerekçede zorunlu açıklama: yüzde kodlu UTF-8 (`encodeURIComponent`), çözülmüş hâli kırpılınca 5–200 karakter. Kodlu gerekçede gönderilirse 400 `health_access_reason_invalid`. */
+                "x-access-reason-note"?: string;
+            };
             path: {
                 consentId: string;
             };
@@ -162767,7 +162807,12 @@ export interface operations {
                 /** @description Gün (YYYY-MM-DD, Europe/Istanbul); boşsa bugün */
                 date?: string;
             };
-            header?: never;
+            header: {
+                /** @description Zorunlu. Sağlık verisi erişim gerekçesi: `emergency` acil durum, `first_aid` ilk yardım / revir işlemi, `guardian_meeting` veli görüşmesi, `incident_report` tutanak hazırlama, `official_request` resmî talep, `other` diğer. Yoksa 400 `health_access_reason_required`, geçersizse 400 `health_access_reason_invalid`. Gerekçe başlıkta taşınır, sorgu dizesine konmaz; istek logunda başlık yer almaz. */
+                "x-access-reason": "emergency" | "first_aid" | "guardian_meeting" | "incident_report" | "official_request" | "other";
+                /** @description Yalnız `other` gerekçede zorunlu açıklama: yüzde kodlu UTF-8 (`encodeURIComponent`), çözülmüş hâli kırpılınca 5–200 karakter. Kodlu gerekçede gönderilirse 400 `health_access_reason_invalid`. */
+                "x-access-reason-note"?: string;
+            };
             path?: never;
             cookie?: never;
         };
@@ -162901,6 +162946,142 @@ export interface operations {
                             /** @description `yonetici`, `ogretmen` ya da `onburo` */
                             role: string;
                             active: boolean;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listHealthAccessLogs: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Okuyan kişinin kurum üyeliği */
+                actorMembershipId?: string;
+                /** @description Kaydın öğrencisi */
+                studentId?: string;
+                /** @description `emergency` acil durum, `first_aid` ilk yardım / revir işlemi, `guardian_meeting` veli görüşmesi, `incident_report` tutanak hazırlama, `official_request` resmî talep, `other` diğer */
+                reasonCode?: "emergency" | "first_aid" | "guardian_meeting" | "incident_report" | "official_request" | "other";
+                /** @description Okuma günü başlangıcı (YYYY-MM-DD, Europe/Istanbul) */
+                from?: string;
+                /** @description Okuma günü sonu (dahil) */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /**
+                             * Format: uuid
+                             * @description Denetim satırının kimliği
+                             */
+                            id: string;
+                            /** Format: date-time */
+                            accessedAt: string;
+                            actorMembershipId: string;
+                            /** @description Okuyan kişi; üyelik silindiyse boş */
+                            actorName: string | null;
+                            actorRole: string | null;
+                            /** @description Denetim eylemi (`finance.incident.read`, `finance.infirmary.visit_read`, `consent_read`, `schedule_read` …) */
+                            action: string;
+                            entityType: string | null;
+                            /** @description Okunan kaydın kimliği */
+                            entityId: string | null;
+                            studentId: string | null;
+                            studentName: string | null;
+                            /**
+                             * @description `emergency` acil durum, `first_aid` ilk yardım / revir işlemi, `guardian_meeting` veli görüşmesi, `incident_report` tutanak hazırlama, `official_request` resmî talep, `other` diğer
+                             * @enum {string}
+                             */
+                            reasonCode: "emergency" | "first_aid" | "guardian_meeting" | "incident_report" | "official_request" | "other";
+                            /** @description Yalnız `other` gerekçede açıklama */
+                            reasonNote: string | null;
                         }[];
                         meta: components["schemas"]["PageMeta"];
                     };

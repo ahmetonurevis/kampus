@@ -19,6 +19,7 @@ import {
   type IncidentValues,
   type InjuredKind,
 } from '@kampus/school-core/lib/finance-incidents.ts'
+import type { HealthAccessReason } from '@kampus/school-core/lib/finance-health-access.ts'
 
 import type { Database } from '../db/client.ts'
 import { listStaffMembers } from '../db/finance-pay-rates.ts'
@@ -46,6 +47,7 @@ import type { FieldBinding, FieldCipher } from '../lib/field-crypto.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { istanbulDayStart } from './list-filters.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
+import { recordHealthRead } from './finance-health-access.ts'
 import { readScope } from './read-scope.ts'
 import { auditWork } from './task-work.ts'
 
@@ -350,13 +352,25 @@ export async function listIncidentsFor(ctx: ServiceContext, query: IncidentListF
 
 /**
  * Ayrıntı (K-494): erişim matrisine göre alanlar; okuma aynı transaction'da
- * `finance.incident.read` denetimine düşer (dönen alanların adları).
+ * `finance.incident.read` denetimine (dönen alanların adları) ve gerekçesiyle sağlık erişim
+ * günlüğüne düşer (DOM-FIN-156; gerekçe rotada zorunlu).
  */
-export function getIncidentFor(ctx: ServiceContext, deps: IncidentDeps, id: string) {
+export function getIncidentFor(
+  ctx: ServiceContext,
+  deps: IncidentDeps,
+  id: string,
+  reason: HealthAccessReason | null,
+) {
   return ctx.db.transaction(async (tx) => {
     const { row, access } = await readable(tx, ctx, id)
     const { body, fields } = await detailOf(tx, ctx, deps, row, access)
-    await auditWork(tx, ctx, 'finance.incident.read', { type: ENTITY, id }, fields)
+    await recordHealthRead(tx, ctx, {
+      action: 'finance.incident.read',
+      entity: { type: ENTITY, id },
+      fields,
+      studentId: row.studentId,
+      reason,
+    })
     return body
   })
 }

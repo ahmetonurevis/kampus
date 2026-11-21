@@ -265,6 +265,12 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/interview-templates',
   'POST /api/v1/finance/job-applications/{applicationId}/interviews',
   'POST /api/v1/finance/candidate-interviews/{interviewId}/evaluation',
+  // Personel anketi taslağı, yeni sürüm ve personelin yanıtı; çift tıklama ikinci taslağı ya da
+  // ikinci yanıtı yazmaz, yanıtın özeti gövdesizdir (routes/finance-staff-surveys.ts; DOM-FIN-143,
+  // ON-191).
+  'POST /api/v1/finance/staff-surveys',
+  'POST /api/v1/finance/staff-surveys/{surveyId}/copy',
+  'POST /api/v1/finance/staff-surveys/{surveyId}/responses',
   // Kaza tutanağı, veli bildirimi ve ek not; çift tıklama ikinci tutanağı ya da kaydı yazmaz
   // (routes/finance-incidents.ts; DOM-FIN-146, ON-162).
   'POST /api/v1/finance/incidents',

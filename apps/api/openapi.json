@@ -315486,6 +315486,3176 @@
         }
       }
     },
+    "/api/v1/finance/staff-surveys": {
+      "get": {
+        "operationId": "listStaffSurveys",
+        "summary": "Personel anketleri",
+        "tags": [
+          "finance-staff-surveys"
+        ],
+        "description": "Kurumun anketleri (kaldırılmış taslak hariç), en yeni açılış önce: aşama (`draft`, `scheduled`, `open`, `closed`; Europe/Istanbul gününden), tarihler, hedef kitle, eşik, soru sayısı ve yayımlanmışta katılım oranı (K-486). Aşama ve başlıkla süzülür. Rol: yalnız `yonetici` (K-484). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Başlıkta arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "scheduled",
+                "open",
+                "closed"
+              ]
+            },
+            "in": "query",
+            "name": "phase",
+            "required": false,
+            "description": "Aşama süzgeci"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string",
+                            "description": "Anket başlığı"
+                          },
+                          "revision": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Sürüm numarası (ilk anket 1)"
+                          },
+                          "sourceSurveyId": {
+                            "description": "Yeni sürümün kopyalandığı anket",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "draft",
+                              "published",
+                              "archived"
+                            ],
+                            "description": "`draft` taslak, `published` yayımlandı"
+                          },
+                          "phase": {
+                            "type": "string",
+                            "enum": [
+                              "draft",
+                              "scheduled",
+                              "open",
+                              "closed"
+                            ],
+                            "description": "`draft`, `scheduled` açılmadı, `open` yanıta açık, `closed` kapandı (bugünden)"
+                          },
+                          "openDate": {
+                            "type": "string",
+                            "description": "Açılış günü (Europe/Istanbul, dahil)"
+                          },
+                          "closeDate": {
+                            "type": "string",
+                            "description": "Kapanış günü (Europe/Istanbul, dahil)"
+                          },
+                          "anonymityThreshold": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Sonuç için en az yanıt (3–10)"
+                          },
+                          "audience": {
+                            "type": "object",
+                            "properties": {
+                              "roles": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "yonetici",
+                                    "ogretmen",
+                                    "onburo"
+                                  ]
+                                },
+                                "description": "Rol süzgeci; boş = bütün personel"
+                              },
+                              "unitIds": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "description": "Birim süzgeci; boş = birim süzgeci yok"
+                              }
+                            },
+                            "required": [
+                              "roles",
+                              "unitIds"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "questionCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "participation": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "participants": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Yayımda donan katılımcı sayısı"
+                                  },
+                                  "responded": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Yanıtlayan sayısı (kimin yanıtladığı dönmez)"
+                                  },
+                                  "rate": {
+                                    "description": "Yanıtlayan / katılımcı, yüzde (bir ondalık)",
+                                    "type": [
+                                      "number",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "participants",
+                                  "responded",
+                                  "rate"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Katılım oranı; taslakta boş (K-486)"
+                          },
+                          "publishedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için anket sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "title",
+                          "revision",
+                          "sourceSurveyId",
+                          "status",
+                          "phase",
+                          "openDate",
+                          "closeDate",
+                          "anonymityThreshold",
+                          "audience",
+                          "questionCount",
+                          "participation",
+                          "publishedAt",
+                          "createdAt",
+                          "updatedAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createStaffSurvey",
+        "summary": "Anket taslağı aç",
+        "tags": [
+          "finance-staff-surveys"
+        ],
+        "description": "Başlık (3–150), açılış ve kapanış günü (uçlar dahil, en çok 90 gün), isteğe bağlı eşik (3–10; verilmezse kurumun anonimlik eşiği), hedef kitle (rol ve birim süzgeci; bilinmeyen birim 422 `staff_survey_unit_not_found`) ve 1–30 soru (Likert 1–5, eNPS 0–10, açık uçlu) (K-484). `Idempotency-Key` zorunlu. Gövdedeki `institutionId` 400. Rol: yalnız `yonetici` (K-484). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 150,
+                    "description": "Anket başlığı"
+                  },
+                  "openDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Açılış günü (Europe/Istanbul, dahil)"
+                  },
+                  "closeDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Kapanış günü (Europe/Istanbul, dahil); ertesi gün yanıt alınmaz"
+                  },
+                  "anonymityThreshold": {
+                    "type": "integer",
+                    "minimum": 3,
+                    "maximum": 10,
+                    "description": "Sonucun gösterilmesi için gereken en az yanıt (3–10; verilmezse kurumun anonimlik eşiği, K-486)"
+                  },
+                  "audience": {
+                    "type": "object",
+                    "properties": {
+                      "roles": {
+                        "maxItems": 3,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "yonetici",
+                            "ogretmen",
+                            "onburo"
+                          ]
+                        },
+                        "description": "Rol süzgeci (`yonetici`, `ogretmen`, `onburo`); boş = bütün personel rolleri"
+                      },
+                      "unitIds": {
+                        "maxItems": 50,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "description": "Organizasyon birimi süzgeci (DOM-FIN-129); yayım günü birimde süren ataması olan personel. Boş = birim süzgeci yok"
+                      }
+                    },
+                    "required": [
+                      "roles",
+                      "unitIds"
+                    ],
+                    "additionalProperties": false,
+                    "description": "Hedef kitle (K-484)"
+                  },
+                  "questions": {
+                    "minItems": 1,
+                    "maxItems": 30,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "likert",
+                            "enps",
+                            "open"
+                          ],
+                          "description": "`likert` 1–5, `enps` 0–10 (tavsiye etme olasılığı), `open` açık uçlu"
+                        },
+                        "text": {
+                          "type": "string",
+                          "minLength": 5,
+                          "maxLength": 300,
+                          "description": "Soru metni"
+                        },
+                        "required": {
+                          "type": "boolean",
+                          "description": "Yanıtta cevap zorunlu mu"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "text",
+                        "required"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Sorular, sırasıyla; yayımdan sonra değişmez (K-484)"
+                  }
+                },
+                "required": [
+                  "title",
+                  "openDate",
+                  "closeDate",
+                  "audience",
+                  "questions"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string",
+                          "description": "Anket başlığı"
+                        },
+                        "revision": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Sürüm numarası (ilk anket 1)"
+                        },
+                        "sourceSurveyId": {
+                          "description": "Yeni sürümün kopyalandığı anket",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "archived"
+                          ],
+                          "description": "`draft` taslak, `published` yayımlandı"
+                        },
+                        "phase": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "scheduled",
+                            "open",
+                            "closed"
+                          ],
+                          "description": "`draft`, `scheduled` açılmadı, `open` yanıta açık, `closed` kapandı (bugünden)"
+                        },
+                        "openDate": {
+                          "type": "string",
+                          "description": "Açılış günü (Europe/Istanbul, dahil)"
+                        },
+                        "closeDate": {
+                          "type": "string",
+                          "description": "Kapanış günü (Europe/Istanbul, dahil)"
+                        },
+                        "anonymityThreshold": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Sonuç için en az yanıt (3–10)"
+                        },
+                        "audience": {
+                          "type": "object",
+                          "properties": {
+                            "roles": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "enum": [
+                                  "yonetici",
+                                  "ogretmen",
+                                  "onburo"
+                                ]
+                              },
+                              "description": "Rol süzgeci; boş = bütün personel"
+                            },
+                            "unitIds": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              },
+                              "description": "Birim süzgeci; boş = birim süzgeci yok"
+                            }
+                          },
+                          "required": [
+                            "roles",
+                            "unitIds"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "questionCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "participation": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "participants": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Yayımda donan katılımcı sayısı"
+                                },
+                                "responded": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Yanıtlayan sayısı (kimin yanıtladığı dönmez)"
+                                },
+                                "rate": {
+                                  "description": "Yanıtlayan / katılımcı, yüzde (bir ondalık)",
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "participants",
+                                "responded",
+                                "rate"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Katılım oranı; taslakta boş (K-486)"
+                        },
+                        "publishedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için anket sürümü"
+                        },
+                        "questions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "likert",
+                                  "enps",
+                                  "open"
+                                ],
+                                "description": "`likert` 1–5, `enps` 0–10, `open` açık uçlu"
+                              },
+                              "text": {
+                                "type": "string",
+                                "description": "Soru metni"
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "description": "Yanıtta cevap zorunlu mu"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "text",
+                              "required"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Sorular, sırasıyla"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "revision",
+                        "sourceSurveyId",
+                        "status",
+                        "phase",
+                        "openDate",
+                        "closeDate",
+                        "anonymityThreshold",
+                        "audience",
+                        "questionCount",
+                        "participation",
+                        "publishedAt",
+                        "createdAt",
+                        "updatedAt",
+                        "version",
+                        "questions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/staff-surveys/assigned": {
+      "get": {
+        "operationId": "listAssignedStaffSurveys",
+        "summary": "Yanıtlayacağım anketler",
+        "tags": [
+          "finance-staff-surveys"
+        ],
+        "description": "Oturumdaki personelin katılımcısı olduğu, kapanmamış yayımlanmış anketler, kapanışı yakın önce: sorular ve yanıtladınız mı (K-485). Başka personelin katılımı dönmez. Rol: personel (`yonetici`, `ogretmen`, `onburo`); yalnız kendi katılımcısı olduğu anket (K-485). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "openDate": {
+                            "type": "string"
+                          },
+                          "closeDate": {
+                            "type": "string"
+                          },
+                          "phase": {
+                            "type": "string",
+                            "enum": [
+                              "draft",
+                              "scheduled",
+                              "open",
+                              "closed"
+                            ],
+                            "description": "`scheduled` açılmadı ya da `open` yanıta açık"
+                          },
+                          "anonymityThreshold": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "questions": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "likert",
+                                    "enps",
+                                    "open"
+                                  ],
+                                  "description": "`likert` 1–5, `enps` 0–10, `open` açık uçlu"
+                                },
+                                "text": {
+                                  "type": "string",
+                                  "description": "Soru metni"
+                                },
+                                "required": {
+                                  "type": "boolean",
+                                  "description": "Yanıtta cevap zorunlu mu"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "text",
+                                "required"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "responded": {
+                            "type": "boolean",
+                            "description": "Bu anketi yanıtladınız mı"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "title",
+                          "openDate",
+                          "closeDate",
+                          "phase",
+                          "anonymityThreshold",
+                          "questions",
+                          "responded"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/staff-surveys/{surveyId}": {
+      "get": {
+        "operationId": "getStaffSurvey",
+        "summary": "Anket ayrıntısı",
+        "tags": [
+          "finance-staff-surveys"
+        ],
+        "description": "Sorular, hedef kitle birimlerinin adları, hedef kitle büyüklüğü (taslakta bugünkü personelle, yayımlanmışta donan liste) ve katılım oranı. Katılımcıların adı dönmez. Başka kurumun anketi 404. Rol: yalnız `yonetici` (K-484). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "surveyId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string",
+                          "description": "Anket başlığı"
+                        },
+                        "revision": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Sürüm numarası (ilk anket 1)"
+                        },
+                        "sourceSurveyId": {
+                          "description": "Yeni sürümün kopyalandığı anket",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "archived"
+                          ],
+                          "description": "`draft` taslak, `published` yayımlandı"
+                        },
+                        "phase": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "scheduled",
+                            "open",
+                            "closed"
+                          ],
+                          "description": "`draft`, `scheduled` açılmadı, `open` yanıta açık, `closed` kapandı (bugünden)"
+                        },
+                        "openDate": {
+                          "type": "string",
+                          "description": "Açılış günü (Europe/Istanbul, dahil)"
+                        },
+                        "closeDate": {
+                          "type": "string",
+                          "description": "Kapanış günü (Europe/Istanbul, dahil)"
+                        },
+                        "anonymityThreshold": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Sonuç için en az yanıt (3–10)"
+                        },
+                        "audience": {
+                          "type": "object",
+                          "properties": {
+                            "roles": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "enum": [
+                                  "yonetici",
+                                  "ogretmen",
+                                  "onburo"
+                                ]
+                              },
+                              "description": "Rol süzgeci; boş = bütün personel"
+                            },
+                            "unitIds": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              },
+                              "description": "Birim süzgeci; boş = birim süzgeci yok"
+                            }
+                          },
+                          "required": [
+                            "roles",
+                            "unitIds"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "questionCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "participation": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "participants": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Yayımda donan katılımcı sayısı"
+                                },
+                                "responded": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Yanıtlayan sayısı (kimin yanıtladığı dönmez)"
+                                },
+                                "rate": {
+                                  "description": "Yanıtlayan / katılımcı, yüzde (bir ondalık)",
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "participants",
+                                "responded",
+                                "rate"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Katılım oranı; taslakta boş (K-486)"
+                        },
+                        "publishedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için anket sürümü"
+                        },
+                        "questions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "likert",
+                                  "enps",
+                                  "open"
+                                ],
+                                "description": "`likert` 1–5, `enps` 0–10, `open` açık uçlu"
+                              },
+                              "text": {
+                                "type": "string",
+                                "description": "Soru metni"
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "description": "Yanıtta cevap zorunlu mu"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "text",
+                              "required"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Sorular, sırasıyla"
+                        },
+                        "audienceSize": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Hedef kitle: taslakta bugünkü personelle hesaplanır, yayımlanmışta donan liste"
+                        },
+                        "audienceUnits": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Birim süzgecindeki birimlerin adları"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "revision",
+                        "sourceSurveyId",
+                        "status",
+                        "phase",
+                        "openDate",
+                        "closeDate",
+                        "anonymityThreshold",
+                        "audience",
+                        "questionCount",
+                        "participation",
+                        "publishedAt",
+                        "createdAt",
+                        "updatedAt",
+                        "version",
+                        "questions",
+                        "audienceSize",
+                        "audienceUnits"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateStaffSurvey",
+        "summary": "Taslağı düzelt",
+        "tags": [
+          "finance-staff-surveys"
+        ],
+        "description": "Gönderilen alanlar değişir (en az bir alan). Yalnız taslak (409 `staff_survey_not_draft`); birleşen tarihler ters ya da 90 günden uzunsa 422 `staff_survey_dates_invalid`; bilinmeyen birim 422 `staff_survey_unit_not_found` (K-484). `If-Match` zorunlu; sürüm tutmazsa 409. Başka kurumun anketi 404. Rol: yalnız `yonetici` (K-484). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 3,
+                    "maxLength": 150,
+                    "description": "Anket başlığı"
+                  },
+                  "openDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Açılış günü"
+                  },
+                  "closeDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Kapanış günü"
+                  },
+                  "anonymityThreshold": {
+                    "type": "integer",
+                    "minimum": 3,
+                    "maximum": 10,
+                    "description": "Sonucun gösterilmesi için gereken en az yanıt (3–10; verilmezse kurumun anonimlik eşiği, K-486)"
+                  },
+                  "audience": {
+                    "type": "object",
+                    "properties": {
+                      "roles": {
+                        "maxItems": 3,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": [
+                            "yonetici",
+                            "ogretmen",
+                            "onburo"
+                          ]
+                        },
+                        "description": "Rol süzgeci (`yonetici`, `ogretmen`, `onburo`); boş = bütün personel rolleri"
+                      },
+                      "unitIds": {
+                        "maxItems": 50,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        "description": "Organizasyon birimi süzgeci (DOM-FIN-129); yayım günü birimde süren ataması olan personel. Boş = birim süzgeci yok"
+                      }
+                    },
+                    "required": [
+                      "roles",
+                      "unitIds"
+                    ],
+                    "additionalProperties": false,
+                    "description": "Hedef kitle"
+                  },
+                  "questions": {
+                    "minItems": 1,
+                    "maxItems": 30,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "likert",
+                            "enps",
+                            "open"
+                          ],
+                          "description": "`likert` 1–5, `enps` 0–10 (tavsiye etme olasılığı), `open` açık uçlu"
+                        },
+                        "text": {
+                          "type": "string",
+                          "minLength": 5,
+                          "maxLength": 300,
+                          "description": "Soru metni"
+                        },
+                        "required": {
+                          "type": "boolean",
+                          "description": "Yanıtta cevap zorunlu mu"
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "text",
+                        "required"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Sorular, sırasıyla; yayımdan sonra değişmez (K-484)"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "surveyId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string",
+                          "description": "Anket başlığı"
+                        },
+                        "revision": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Sürüm numarası (ilk anket 1)"
+                        },
+                        "sourceSurveyId": {
+                          "description": "Yeni sürümün kopyalandığı anket",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "archived"
+                          ],
+                          "description": "`draft` taslak, `published` yayımlandı"
+                        },
+                        "phase": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "scheduled",
+                            "open",
+                            "closed"
+                          ],
+                          "description": "`draft`, `scheduled` açılmadı, `open` yanıta açık, `closed` kapandı (bugünden)"
+                        },
+                        "openDate": {
+                          "type": "string",
+                          "description": "Açılış günü (Europe/Istanbul, dahil)"
+                        },
+                        "closeDate": {
+                          "type": "string",
+                          "description": "Kapanış günü (Europe/Istanbul, dahil)"
+                        },
+                        "anonymityThreshold": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Sonuç için en az yanıt (3–10)"
+                        },
+                        "audience": {
+                          "type": "object",
+                          "properties": {
+                            "roles": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "enum": [
+                                  "yonetici",
+                                  "ogretmen",
+                                  "onburo"
+                                ]
+                              },
+                              "description": "Rol süzgeci; boş = bütün personel"
+                            },
+                            "unitIds": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              },
+                              "description": "Birim süzgeci; boş = birim süzgeci yok"
+                            }
+                          },
+                          "required": [
+                            "roles",
+                            "unitIds"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "questionCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "participation": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "participants": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Yayımda donan katılımcı sayısı"
+                                },
+                                "responded": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Yanıtlayan sayısı (kimin yanıtladığı dönmez)"
+                                },
+                                "rate": {
+                                  "description": "Yanıtlayan / katılımcı, yüzde (bir ondalık)",
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "participants",
+                                "responded",
+                                "rate"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Katılım oranı; taslakta boş (K-486)"
+                        },
+                        "publishedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için anket sürümü"
+                        },
+                        "questions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "likert",
+                                  "enps",
+                                  "open"
+                                ],
+                                "description": "`likert` 1–5, `enps` 0–10, `open` açık uçlu"
+                              },
+                              "text": {
+                                "type": "string",
+                                "description": "Soru metni"
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "description": "Yanıtta cevap zorunlu mu"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "text",
+                              "required"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Sorular, sırasıyla"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "revision",
+                        "sourceSurveyId",
+                        "status",
+                        "phase",
+                        "openDate",
+                        "closeDate",
+                        "anonymityThreshold",
+                        "audience",
+                        "questionCount",
+                        "participation",
+                        "publishedAt",
+                        "createdAt",
+                        "updatedAt",
+                        "version",
+                        "questions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "archiveStaffSurvey",
+        "summary": "Taslağı kaldır",
+        "tags": [
+          "finance-staff-surveys"
+        ],
+        "description": "Taslak arşivlenir; yayımlanmış anket 409 `staff_survey_not_draft` (K-484). `If-Match` zorunlu. Başka kurumun anketi 404. Rol: yalnız `yonetici` (K-484). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "surveyId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/staff-surveys/{surveyId}/publish": {
+      "post": {
+        "operationId": "publishStaffSurvey",
+        "summary": "Anketi yayımla",
+        "tags": [
+          "finance-staff-surveys"
+        ],
+        "description": "Bugün hedef kitleye uyan etkin personel katılımcı listesi olarak donar; sorular, tarihler, hedef kitle ve eşik artık değişmez (K-484). Yalnız taslak (409 `staff_survey_not_draft`); kapanış günü geçtiyse 422 `staff_survey_closes_past`; katılımcı eşikten azsa 422 `staff_survey_audience_below_threshold` (K-486). `If-Match` zorunlu. Başka kurumun anketi 404. Rol: yalnız `yonetici` (K-484). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "surveyId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string",
+                          "description": "Anket başlığı"
+                        },
+                        "revision": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Sürüm numarası (ilk anket 1)"
+                        },
+                        "sourceSurveyId": {
+                          "description": "Yeni sürümün kopyalandığı anket",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "archived"
+                          ],
+                          "description": "`draft` taslak, `published` yayımlandı"
+                        },
+                        "phase": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "scheduled",
+                            "open",
+                            "closed"
+                          ],
+                          "description": "`draft`, `scheduled` açılmadı, `open` yanıta açık, `closed` kapandı (bugünden)"
+                        },
+                        "openDate": {
+                          "type": "string",
+                          "description": "Açılış günü (Europe/Istanbul, dahil)"
+                        },
+                        "closeDate": {
+                          "type": "string",
+                          "description": "Kapanış günü (Europe/Istanbul, dahil)"
+                        },
+                        "anonymityThreshold": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Sonuç için en az yanıt (3–10)"
+                        },
+                        "audience": {
+                          "type": "object",
+                          "properties": {
+                            "roles": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "enum": [
+                                  "yonetici",
+                                  "ogretmen",
+                                  "onburo"
+                                ]
+                              },
+                              "description": "Rol süzgeci; boş = bütün personel"
+                            },
+                            "unitIds": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              },
+                              "description": "Birim süzgeci; boş = birim süzgeci yok"
+                            }
+                          },
+                          "required": [
+                            "roles",
+                            "unitIds"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "questionCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "participation": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "participants": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Yayımda donan katılımcı sayısı"
+                                },
+                                "responded": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Yanıtlayan sayısı (kimin yanıtladığı dönmez)"
+                                },
+                                "rate": {
+                                  "description": "Yanıtlayan / katılımcı, yüzde (bir ondalık)",
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "participants",
+                                "responded",
+                                "rate"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Katılım oranı; taslakta boş (K-486)"
+                        },
+                        "publishedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için anket sürümü"
+                        },
+                        "questions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "likert",
+                                  "enps",
+                                  "open"
+                                ],
+                                "description": "`likert` 1–5, `enps` 0–10, `open` açık uçlu"
+                              },
+                              "text": {
+                                "type": "string",
+                                "description": "Soru metni"
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "description": "Yanıtta cevap zorunlu mu"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "text",
+                              "required"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Sorular, sırasıyla"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "revision",
+                        "sourceSurveyId",
+                        "status",
+                        "phase",
+                        "openDate",
+                        "closeDate",
+                        "anonymityThreshold",
+                        "audience",
+                        "questionCount",
+                        "participation",
+                        "publishedAt",
+                        "createdAt",
+                        "updatedAt",
+                        "version",
+                        "questions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/staff-surveys/{surveyId}/copy": {
+      "post": {
+        "operationId": "copyStaffSurvey",
+        "summary": "Yeni sürüm aç",
+        "tags": [
+          "finance-staff-surveys"
+        ],
+        "description": "Yayımlanmış anketin soruları, hedef kitlesi, tarihleri ve eşiğiyle yeni taslak açılır; sürüm numarası bir artar (K-484). Taslaktan 409 `staff_survey_copy_draft`; ankette etkin yeni sürüm varsa 409 `staff_survey_copy_exists`. `Idempotency-Key` zorunlu. Başka kurumun anketi 404. Rol: yalnız `yonetici` (K-484). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "surveyId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string",
+                          "description": "Anket başlığı"
+                        },
+                        "revision": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Sürüm numarası (ilk anket 1)"
+                        },
+                        "sourceSurveyId": {
+                          "description": "Yeni sürümün kopyalandığı anket",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "published",
+                            "archived"
+                          ],
+                          "description": "`draft` taslak, `published` yayımlandı"
+                        },
+                        "phase": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "scheduled",
+                            "open",
+                            "closed"
+                          ],
+                          "description": "`draft`, `scheduled` açılmadı, `open` yanıta açık, `closed` kapandı (bugünden)"
+                        },
+                        "openDate": {
+                          "type": "string",
+                          "description": "Açılış günü (Europe/Istanbul, dahil)"
+                        },
+                        "closeDate": {
+                          "type": "string",
+                          "description": "Kapanış günü (Europe/Istanbul, dahil)"
+                        },
+                        "anonymityThreshold": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Sonuç için en az yanıt (3–10)"
+                        },
+                        "audience": {
+                          "type": "object",
+                          "properties": {
+                            "roles": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "enum": [
+                                  "yonetici",
+                                  "ogretmen",
+                                  "onburo"
+                                ]
+                              },
+                              "description": "Rol süzgeci; boş = bütün personel"
+                            },
+                            "unitIds": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              },
+                              "description": "Birim süzgeci; boş = birim süzgeci yok"
+                            }
+                          },
+                          "required": [
+                            "roles",
+                            "unitIds"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "questionCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "participation": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "participants": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Yayımda donan katılımcı sayısı"
+                                },
+                                "responded": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "description": "Yanıtlayan sayısı (kimin yanıtladığı dönmez)"
+                                },
+                                "rate": {
+                                  "description": "Yanıtlayan / katılımcı, yüzde (bir ondalık)",
+                                  "type": [
+                                    "number",
+                                    "null"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "participants",
+                                "responded",
+                                "rate"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Katılım oranı; taslakta boş (K-486)"
+                        },
+                        "publishedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için anket sürümü"
+                        },
+                        "questions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "likert",
+                                  "enps",
+                                  "open"
+                                ],
+                                "description": "`likert` 1–5, `enps` 0–10, `open` açık uçlu"
+                              },
+                              "text": {
+                                "type": "string",
+                                "description": "Soru metni"
+                              },
+                              "required": {
+                                "type": "boolean",
+                                "description": "Yanıtta cevap zorunlu mu"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "text",
+                              "required"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Sorular, sırasıyla"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "revision",
+                        "sourceSurveyId",
+                        "status",
+                        "phase",
+                        "openDate",
+                        "closeDate",
+                        "anonymityThreshold",
+                        "audience",
+                        "questionCount",
+                        "participation",
+                        "publishedAt",
+                        "createdAt",
+                        "updatedAt",
+                        "version",
+                        "questions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/staff-surveys/{surveyId}/results": {
+      "get": {
+        "operationId": "getStaffSurveyResult",
+        "summary": "Anketin toplu sonucu",
+        "tags": [
+          "finance-staff-surveys"
+        ],
+        "description": "Katılım oranı her zaman; sonuç yalnız anket kapandıktan sonra (`hiddenReason: not_closed`) ve en az eşik kadar yanıtla (`below_threshold`). Birim kırılımı (`unit`) eşik ve tamamlayıcı gizlemeyi geçmezse gösterilmez (`unit_below_threshold`); soru başına cevap da eşik altındaysa soru gizli. Puanlı soruda dağılım ve ortalama, eNPS sorusunda eNPS puanı; açık uçlu cevaplar karışık sırada, tarih/saat ve yanıtlayan olmadan (K-486). Okuma aynı transaction'da denetime yazılır (`finance.staff_survey_result.read`, alan adları). Başka kurumun anketi 404. Rol: yalnız `yonetici` (K-484). Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "none"
+                  ]
+                }
+              ]
+            },
+            "in": "query",
+            "name": "unit",
+            "required": false,
+            "description": "Birim kırılımı: birim kimliği ya da `none` (birimsiz); verilmezse bütün yanıtlar"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "surveyId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "participants": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Yayımda donan katılımcı sayısı"
+                        },
+                        "responded": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Yanıtlayan sayısı (kimin yanıtladığı dönmez)"
+                        },
+                        "rate": {
+                          "description": "Yanıtlayan / katılımcı, yüzde (bir ondalık)",
+                          "type": [
+                            "number",
+                            "null"
+                          ]
+                        },
+                        "surveyId": {
+                          "type": "string"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "phase": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "scheduled",
+                            "open",
+                            "closed"
+                          ]
+                        },
+                        "closeDate": {
+                          "type": "string"
+                        },
+                        "threshold": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Uygulanan anonimlik eşiği"
+                        },
+                        "unit": {
+                          "description": "Seçilen birim kırılımı; `none` birimsiz, boş = hepsi",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "visible": {
+                          "type": "boolean",
+                          "description": "Sonuç gösteriliyor mu"
+                        },
+                        "hiddenReason": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "not_closed",
+                                "below_threshold",
+                                "unit_below_threshold"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "`not_closed` anket kapanmadı, `below_threshold` yanıt eşiğin altında, `unit_below_threshold` seçilen birim eşik ya da tamamlayıcı gizlemeye takıldı"
+                        },
+                        "units": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "unit": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "responses": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "unit",
+                              "name",
+                              "responses"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Seçilebilen birimler (eşik ve tamamlayıcı gizlemeyi geçen), yanıt sayısıyla"
+                        },
+                        "questions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "likert",
+                                  "enps",
+                                  "open"
+                                ]
+                              },
+                              "text": {
+                                "type": "string"
+                              },
+                              "required": {
+                                "type": "boolean"
+                              },
+                              "answered": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Cevaplayan sayısı; gizliyse boş"
+                              },
+                              "hidden": {
+                                "type": "boolean",
+                                "description": "Eşik ya da tamamlayıcı gizleme nedeniyle gizli"
+                              },
+                              "average": {
+                                "description": "Puanlı soruda ortalama (iki ondalık)",
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              },
+                              "distribution": {
+                                "type": "array",
+                                "items": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "description": "Puanlı soruda ölçeğin her değerinin yanıt sayısı, küçükten büyüğe"
+                              },
+                              "enps": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "score": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "eNPS: tavsiye eden % − kötüleyen % (−100…100)"
+                                      },
+                                      "promoters": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "9–10"
+                                      },
+                                      "passives": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "7–8"
+                                      },
+                                      "detractors": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "0–6"
+                                      }
+                                    },
+                                    "required": [
+                                      "score",
+                                      "promoters",
+                                      "passives",
+                                      "detractors"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "texts": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "description": "Açık uçlu cevaplar, karışık sırada"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "text",
+                              "required",
+                              "answered",
+                              "hidden",
+                              "average",
+                              "distribution",
+                              "enps",
+                              "texts"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "participants",
+                        "responded",
+                        "rate",
+                        "surveyId",
+                        "title",
+                        "phase",
+                        "closeDate",
+                        "threshold",
+                        "unit",
+                        "visible",
+                        "hiddenReason",
+                        "units",
+                        "questions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/staff-surveys/{surveyId}/responses": {
+      "post": {
+        "operationId": "respondStaffSurvey",
+        "summary": "Anketi yanıtla",
+        "tags": [
+          "finance-staff-surveys"
+        ],
+        "description": "Soru sırasıyla cevaplar (Likert 1–5, eNPS 0–10, açık uçlu metin ≤ 2000). Anket yanıta açık olmalı (açılmadıysa 422 `staff_survey_not_open`, kapandıysa 422 `staff_survey_closed`); kişi bir kez yanıtlar (409 `staff_survey_already_responded`); cevap sayısı, türü ya da ölçeği uymazsa 422 `staff_survey_answers_mismatch` / `staff_survey_answer_kind` / `staff_survey_answer_range`; zorunlu soru boşsa 422 `staff_survey_incomplete` (K-485). Yanıt kişiye bağlanmaz ve yanıt anı saklanmaz; denetime yalnız katılım yazılır, cevaplar yanıtta dönmez. `Idempotency-Key` zorunlu; özet gövdesiz hesaplanır, aynı anahtar ilk yanıtı tekrarlar. Katılımcısı olmadığı ya da başka kurumun anketi 404. Rol: personel (`yonetici`, `ogretmen`, `onburo`); yalnız kendi katılımcısı olduğu anket (K-485). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "answers": {
+                    "maxItems": 30,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "value": {
+                          "description": "Likert 1–5 ya da eNPS 0–10; boş = cevaplanmadı",
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "text": {
+                          "description": "Açık uçlu soru için cevap; boş = cevaplanmadı",
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 2000
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "description": "Soru sırasıyla cevaplar; dizi soru sayısı kadardır"
+                  }
+                },
+                "required": [
+                  "answers"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "surveyId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "surveyId": {
+                          "type": "string"
+                        },
+                        "responded": {
+                          "type": "boolean",
+                          "enum": [
+                            true
+                          ]
+                        }
+                      },
+                      "required": [
+                        "surveyId",
+                        "responded"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/finance/incidents": {
       "get": {
         "operationId": "listIncidentReports",

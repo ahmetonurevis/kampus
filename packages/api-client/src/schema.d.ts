@@ -13912,6 +13912,154 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/incidents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kaza ve yaralanma tutanakları
+         * @description En yeni olay önce. Süzgeç durum (`draft`, `finalized`), yaralanan türü, öğrenci ve olay günü aralığı (Europe/Istanbul). Satırda açıklama ve sağlık grubu yoktur; bildirim sayısı vardır. Rol: `yonetici` (bütün tutanaklar), `ogretmen` ve `onburo` (yalnız açtıkları; başkasınınki 404). Veli ve öğrenci 403. Modül `finance`.
+         */
+        get: operations["listIncidentReports"];
+        put?: never;
+        /**
+         * Kaza tutanağı aç (taslak)
+         * @description Yaralanan (öğrenci kaydı ya da personel üyeliği), olay anı (gelecekte 422 `incident_occurred_in_future`, 30 günden eski 422 `incident_occurred_too_old`), yer (2–200), tür, açıklama (10–4000), yaralanma bölgeleri (1–6), şiddet, isteğe bağlı yaralanma notu, ilk müdahale (yapan personel ya da boş, ne yapıldı), sevk, tanıklar (0–20) ve sorumlu. Öğrenci yok 422 `incident_student_not_found`; yaralanan personel yok ya da personel değil 422 `incident_injured_not_found`, `incident_injured_not_staff`; sorumlu, tanık ve müdahaleyi yapan kurumun etkin personeli olmalı (422 `incident_<responsible|witness|first_aid_by>_not_found|not_staff|inactive`); yaralanan tanık olamaz 422 `incident_witness_is_injured`. Açıklama ve sağlık grubu şifreli saklanır; sağlık profili kopyalanmaz. Denetim `finance.incident.create` (alan adları). `Idempotency-Key` zorunlu. Rol: `yonetici` (bütün tutanaklar), `ogretmen` ve `onburo` (yalnız açtıkları; başkasınınki 404). Veli ve öğrenci 403. Modül `finance`.
+         */
+        post: operations["createIncidentReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/incidents/{incidentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kaza tutanağı ayrıntısı
+         * @description Açıklama, tanıklar, veli bildirimleri; sağlık grubu (`health`) yöneticiye her zaman, açana yalnız taslakta; ek notlar (`addenda`) yalnız yöneticiye (K-494). Okuma aynı transaction'da `finance.incident.read` denetimine düşer (dönen alanların adları; değer yok). Olmayan, başka kurumun ya da başkasının açtığı tutanak 404. Rol: `yonetici` (bütün tutanaklar), `ogretmen` ve `onburo` (yalnız açtıkları; başkasınınki 404). Veli ve öğrenci 403. Modül `finance`.
+         */
+        get: operations["getIncidentReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Taslak tutanağı düzelt
+         * @description Kısmi: verilmeyen alan değişmez; tanıklar bütün olarak yazılır; yaralanan değişmez. Birleşik değer açılış kurallarından geçer; olay anı değiştiyse kayıtlı ilk bildirimden sonra olamaz (422 `incident_occurred_after_notification`). Değişiklik yoksa 422 `incident_report_unchanged`. Kesinleşmiş tutanak 409 `incident_report_finalized` (düzeltme ek nottur). Denetime değişen alanların adları. `If-Match` zorunlu. Rol: `yonetici` (bütün tutanaklar), `ogretmen` ve `onburo` (yalnız açtıkları; başkasınınki 404). Veli ve öğrenci 403. Modül `finance`.
+         */
+        patch: operations["updateIncidentReport"];
+        trace?: never;
+    };
+    "/api/v1/finance/incidents/{incidentId}/finalize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Tutanağı kesinleştir
+         * @description Taslak kesinleşir; sonra tutanak ve tanıklar değişmez (409 `incident_report_finalized`; veritabanında tetikleyici). Ağır yaralanan öğrencinin tutanağı veli bildirimi kaydı olmadan kesinleşmez (422 `incident_notification_required`, K-493). Gövde boş nesne. Denetim `finance.incident.finalize`. `If-Match` zorunlu. Rol: `yonetici` (bütün tutanaklar), `ogretmen` ve `onburo` (yalnız açtıkları; başkasınınki 404). Veli ve öğrenci 403. Modül `finance`.
+         */
+        post: operations["finalizeIncidentReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/incidents/{incidentId}/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Veli bildirimini kaydet
+         * @description Veliye ne zaman (boşsa şimdi; olaydan önce 422 `incident_notification_before_incident`, gelecekte 422 `incident_notification_in_future`), hangi kanaldan (telefon, yüz yüze, mesaj) ve kimin bildirdiği (boşsa kaydeden; kurumun etkin personeli, 422 `incident_notified_by_not_found|not_staff|inactive`). **Yalnız kayıttır; veliye ileti gönderilmez.** Yalnız öğrencinin tutanağında (422 `incident_notification_not_student`); taslakta da kesinleşmişte de yazılır, en çok 10 (422 `incident_notification_limit`). Kayıt değişmez. Denetim `finance.incident.notify`. `Idempotency-Key` zorunlu. Rol: `yonetici` (bütün tutanaklar), `ogretmen` ve `onburo` (yalnız açtıkları; başkasınınki 404). Veli ve öğrenci 403. Modül `finance`.
+         */
+        post: operations["recordIncidentNotification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/incidents/{incidentId}/addenda": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Kesinleşmiş tutanağa ek not
+         * @description Düzeltme ya da ek bilgi (5–2000; şifreli); tutanağın eski hâli korunur, not değişmez. Taslakta 422 `incident_addendum_draft` (taslak doğrudan düzeltilir), en çok 50 (422 `incident_addendum_limit`). Denetim `finance.incident.addendum` (not yazılmaz). `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (öğretmen ve ön büro 404/403). Modül `finance`.
+         */
+        post: operations["addIncidentAddendum"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/incident-staff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tutanak için personel
+         * @description Sorumlu, tanık, ilk müdahale ve bildiren seçimi: kurumun etkin yönetici, öğretmen ve ön büro üyelikleri, ada göre. Rol: `yonetici` (bütün tutanaklar), `ogretmen` ve `onburo` (yalnız açtıkları; başkasınınki 404). Veli ve öğrenci 403. Modül `finance`.
+         */
+        get: operations["listIncidentStaff"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/incident-summaries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Çocuğumun kaza tutanakları (özet)
+         * @description Velinin kapsamındaki çocukların (velayetli ve kısıtsız bağ) **kesinleşmiş** tutanaklarının özeti (K-495): olay anı, yer, tür, yaralanma bölgesi, şiddet, yapılan ilk müdahale, sevk ve bildirimler (an, kanal). Açıklama, tanıklar, sorumlu, yaralanma notu ve ek notlar dönmez; taslak ve personel tutanağı görünmez. Her dönen tutanak `finance.incident.guardian_read` denetimine düşer. Rol: yalnız `veli`. Modül `finance`.
+         */
+        get: operations["listGuardianIncidentSummaries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -146901,6 +147049,1700 @@ export interface operations {
                             /** @enum {boolean} */
                             responded: true;
                         };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listIncidentReports: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description `draft` taslak, `finalized` kesinleşti */
+                status?: "draft" | "finalized";
+                /** @description `student` öğrenci, `staff` personel */
+                injuredKind?: "student" | "staff";
+                /** @description Yaralanan öğrenci */
+                studentId?: string;
+                /** @description Olay günü başlangıcı (YYYY-MM-DD, Europe/Istanbul) */
+                from?: string;
+                /** @description Olay günü sonu (dahil) */
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description `draft` taslak, `finalized` kesinleşti
+                             * @enum {string}
+                             */
+                            status: "draft" | "finalized";
+                            /**
+                             * @description `student` öğrenci, `staff` personel
+                             * @enum {string}
+                             */
+                            injuredKind: "student" | "staff";
+                            studentId: string | null;
+                            injuredMembershipId: string | null;
+                            /** @description Yaralananın adı */
+                            injuredName: string | null;
+                            /** @description Olay anı (ISO 8601) */
+                            occurredAt: string;
+                            location: string;
+                            /**
+                             * @description `fall` düşme, `collision` çarpma, `sports` spor, `play` oyun, `other` diğer
+                             * @enum {string}
+                             */
+                            kind: "fall" | "collision" | "sports" | "play" | "other";
+                            responsibleMembershipId: string;
+                            responsibleName: string | null;
+                            /** @description Veli bildirimi kaydı sayısı */
+                            notificationCount: number;
+                            lastNotifiedAt: string | null;
+                            /** @description Tutanağı açan kullanıcı */
+                            createdByUserId: string;
+                            /** @description Tutanağı okuyan açtı mı */
+                            mine: boolean;
+                            finalizedAt: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createIncidentReport: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Yaralanan: `student` öğrenci kaydı ya da `staff` personel üyeliği */
+                    injured: {
+                        /** @enum {string} */
+                        kind: "student";
+                        /** @description Öğrenci kaydı */
+                        studentId: string;
+                    } | {
+                        /** @enum {string} */
+                        kind: "staff";
+                        /** @description Personelin kurum üyeliği */
+                        membershipId: string;
+                    };
+                    /**
+                     * Format: date-time
+                     * @description Olay anı (ISO 8601); gelecekte ve 30 günden eski olamaz
+                     */
+                    occurredAt: string;
+                    /** @description Olay yeri (2–200) */
+                    location: string;
+                    /**
+                     * @description `fall` düşme, `collision` çarpma, `sports` spor, `play` oyun, `other` diğer
+                     * @enum {string}
+                     */
+                    kind: "fall" | "collision" | "sports" | "play" | "other";
+                    /** @description Olayın anlatımı (10–4000; şifreli) */
+                    description: string;
+                    /** @description Yaralanma bölgeleri (1–6) */
+                    bodyParts: ("head" | "face" | "eye" | "teeth" | "neck" | "shoulder" | "arm" | "hand" | "chest" | "back" | "abdomen" | "leg" | "knee" | "foot" | "other")[];
+                    /**
+                     * @description `minor` hafif, `moderate` orta, `severe` ağır
+                     * @enum {string}
+                     */
+                    severity: "minor" | "moderate" | "severe";
+                    /** @description Yaralanmanın kısa tarifi (≤ 1000; şifreli) */
+                    injuryNote?: string | null;
+                    /**
+                     * @description İlk müdahale; yapılmadıysa `null`
+                     * @default null
+                     */
+                    firstAid?: {
+                        /**
+                         * @description Müdahaleyi yapan personel üyeliği; kurum dışından biriyse boş
+                         * @default null
+                         */
+                        byMembershipId?: string | null;
+                        /** @description Ne yapıldı (2–1000; şifreli) */
+                        action: string;
+                    } | null;
+                    /**
+                     * @description `none` yok, `infirmary` revir, `hospital` hastane, `emergency_112` 112
+                     * @enum {string}
+                     */
+                    referral: "none" | "infirmary" | "hospital" | "emergency_112";
+                    /**
+                     * @description Tanık personel üyelikleri (0–20)
+                     * @default []
+                     */
+                    witnessMembershipIds?: string[];
+                    /** @description Olaydan sorumlu personel (nöbetçi ya da derse giren; etkin personel) */
+                    responsibleMembershipId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description `draft` taslak, `finalized` kesinleşti
+                             * @enum {string}
+                             */
+                            status: "draft" | "finalized";
+                            /**
+                             * @description `student` öğrenci, `staff` personel
+                             * @enum {string}
+                             */
+                            injuredKind: "student" | "staff";
+                            studentId: string | null;
+                            injuredMembershipId: string | null;
+                            /** @description Yaralananın adı */
+                            injuredName: string | null;
+                            /** @description Olay anı (ISO 8601) */
+                            occurredAt: string;
+                            location: string;
+                            /**
+                             * @description `fall` düşme, `collision` çarpma, `sports` spor, `play` oyun, `other` diğer
+                             * @enum {string}
+                             */
+                            kind: "fall" | "collision" | "sports" | "play" | "other";
+                            responsibleMembershipId: string;
+                            responsibleName: string | null;
+                            /** @description Veli bildirimi kaydı sayısı */
+                            notificationCount: number;
+                            lastNotifiedAt: string | null;
+                            /** @description Tutanağı açan kullanıcı */
+                            createdByUserId: string;
+                            /** @description Tutanağı okuyan açtı mı */
+                            mine: boolean;
+                            finalizedAt: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                            /** @description Olayın anlatımı (şifreli saklanır) */
+                            description: string;
+                            witnesses: {
+                                membershipId: string;
+                                name: string | null;
+                            }[];
+                            notifications: {
+                                id: string;
+                                notifiedAt: string;
+                                /**
+                                 * @description `phone` telefon, `in_person` yüz yüze, `message` mesaj
+                                 * @enum {string}
+                                 */
+                                channel: "phone" | "in_person" | "message";
+                                notifiedByMembershipId: string;
+                                notifiedByName: string | null;
+                                createdAt: string;
+                            }[];
+                            /** @description Sağlık grubu (özel nitelikli): yöneticiye her zaman, açana yalnız taslakta; yoksa anahtar yok (K-494) */
+                            health?: {
+                                bodyParts: ("head" | "face" | "eye" | "teeth" | "neck" | "shoulder" | "arm" | "hand" | "chest" | "back" | "abdomen" | "leg" | "knee" | "foot" | "other")[];
+                                /**
+                                 * @description `minor` hafif, `moderate` orta, `severe` ağır
+                                 * @enum {string}
+                                 */
+                                severity: "minor" | "moderate" | "severe";
+                                injuryNote: string | null;
+                                firstAid: {
+                                    byMembershipId: string | null;
+                                    byName: string | null;
+                                    action: string;
+                                } | null;
+                                /**
+                                 * @description `none` yok, `infirmary` revir, `hospital` hastane, `emergency_112` 112
+                                 * @enum {string}
+                                 */
+                                referral: "none" | "infirmary" | "hospital" | "emergency_112";
+                            };
+                            /** @description Kesinleşmiş tutanağın ek notları; yalnız yöneticide (K-494) */
+                            addenda?: {
+                                id: string;
+                                note: string;
+                                createdByUserId: string;
+                                createdByName: string | null;
+                                createdAt: string;
+                            }[];
+                            /** @description Okuyanın bu tutanaktaki izinleri */
+                            access: {
+                                health: boolean;
+                                /** @description Taslağı düzeltir ve kesinleştirir */
+                                edit: boolean;
+                                /** @description Veli bildirimi kaydeder */
+                                notify: boolean;
+                                /** @description Ek not yazar ve tutanak PDF’ini basar */
+                                manage: boolean;
+                            };
+                            finalizedByUserId: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getIncidentReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                incidentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description `draft` taslak, `finalized` kesinleşti
+                             * @enum {string}
+                             */
+                            status: "draft" | "finalized";
+                            /**
+                             * @description `student` öğrenci, `staff` personel
+                             * @enum {string}
+                             */
+                            injuredKind: "student" | "staff";
+                            studentId: string | null;
+                            injuredMembershipId: string | null;
+                            /** @description Yaralananın adı */
+                            injuredName: string | null;
+                            /** @description Olay anı (ISO 8601) */
+                            occurredAt: string;
+                            location: string;
+                            /**
+                             * @description `fall` düşme, `collision` çarpma, `sports` spor, `play` oyun, `other` diğer
+                             * @enum {string}
+                             */
+                            kind: "fall" | "collision" | "sports" | "play" | "other";
+                            responsibleMembershipId: string;
+                            responsibleName: string | null;
+                            /** @description Veli bildirimi kaydı sayısı */
+                            notificationCount: number;
+                            lastNotifiedAt: string | null;
+                            /** @description Tutanağı açan kullanıcı */
+                            createdByUserId: string;
+                            /** @description Tutanağı okuyan açtı mı */
+                            mine: boolean;
+                            finalizedAt: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                            /** @description Olayın anlatımı (şifreli saklanır) */
+                            description: string;
+                            witnesses: {
+                                membershipId: string;
+                                name: string | null;
+                            }[];
+                            notifications: {
+                                id: string;
+                                notifiedAt: string;
+                                /**
+                                 * @description `phone` telefon, `in_person` yüz yüze, `message` mesaj
+                                 * @enum {string}
+                                 */
+                                channel: "phone" | "in_person" | "message";
+                                notifiedByMembershipId: string;
+                                notifiedByName: string | null;
+                                createdAt: string;
+                            }[];
+                            /** @description Sağlık grubu (özel nitelikli): yöneticiye her zaman, açana yalnız taslakta; yoksa anahtar yok (K-494) */
+                            health?: {
+                                bodyParts: ("head" | "face" | "eye" | "teeth" | "neck" | "shoulder" | "arm" | "hand" | "chest" | "back" | "abdomen" | "leg" | "knee" | "foot" | "other")[];
+                                /**
+                                 * @description `minor` hafif, `moderate` orta, `severe` ağır
+                                 * @enum {string}
+                                 */
+                                severity: "minor" | "moderate" | "severe";
+                                injuryNote: string | null;
+                                firstAid: {
+                                    byMembershipId: string | null;
+                                    byName: string | null;
+                                    action: string;
+                                } | null;
+                                /**
+                                 * @description `none` yok, `infirmary` revir, `hospital` hastane, `emergency_112` 112
+                                 * @enum {string}
+                                 */
+                                referral: "none" | "infirmary" | "hospital" | "emergency_112";
+                            };
+                            /** @description Kesinleşmiş tutanağın ek notları; yalnız yöneticide (K-494) */
+                            addenda?: {
+                                id: string;
+                                note: string;
+                                createdByUserId: string;
+                                createdByName: string | null;
+                                createdAt: string;
+                            }[];
+                            /** @description Okuyanın bu tutanaktaki izinleri */
+                            access: {
+                                health: boolean;
+                                /** @description Taslağı düzeltir ve kesinleştirir */
+                                edit: boolean;
+                                /** @description Veli bildirimi kaydeder */
+                                notify: boolean;
+                                /** @description Ek not yazar ve tutanak PDF’ini basar */
+                                manage: boolean;
+                            };
+                            finalizedByUserId: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateIncidentReport: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                incidentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * Format: date-time
+                     * @description Olay anı (ISO 8601); gelecekte ve 30 günden eski olamaz
+                     */
+                    occurredAt?: string;
+                    /** @description Olay yeri (2–200) */
+                    location?: string;
+                    /**
+                     * @description `fall` düşme, `collision` çarpma, `sports` spor, `play` oyun, `other` diğer
+                     * @enum {string}
+                     */
+                    kind?: "fall" | "collision" | "sports" | "play" | "other";
+                    /** @description Olayın anlatımı (10–4000; şifreli) */
+                    description?: string;
+                    /** @description Yaralanma bölgeleri (1–6) */
+                    bodyParts?: ("head" | "face" | "eye" | "teeth" | "neck" | "shoulder" | "arm" | "hand" | "chest" | "back" | "abdomen" | "leg" | "knee" | "foot" | "other")[];
+                    /**
+                     * @description `minor` hafif, `moderate` orta, `severe` ağır
+                     * @enum {string}
+                     */
+                    severity?: "minor" | "moderate" | "severe";
+                    /** @description Yaralanmanın kısa tarifi (≤ 1000; şifreli) */
+                    injuryNote?: string | null;
+                    /** @description İlk müdahale; yapılmadıysa `null` */
+                    firstAid?: {
+                        /**
+                         * @description Müdahaleyi yapan personel üyeliği; kurum dışından biriyse boş
+                         * @default null
+                         */
+                        byMembershipId?: string | null;
+                        /** @description Ne yapıldı (2–1000; şifreli) */
+                        action: string;
+                    } | null;
+                    /**
+                     * @description `none` yok, `infirmary` revir, `hospital` hastane, `emergency_112` 112
+                     * @enum {string}
+                     */
+                    referral?: "none" | "infirmary" | "hospital" | "emergency_112";
+                    /** @description Tanık personel üyelikleri (0–20) */
+                    witnessMembershipIds?: string[];
+                    /** @description Olaydan sorumlu personel (nöbetçi ya da derse giren; etkin personel) */
+                    responsibleMembershipId?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description `draft` taslak, `finalized` kesinleşti
+                             * @enum {string}
+                             */
+                            status: "draft" | "finalized";
+                            /**
+                             * @description `student` öğrenci, `staff` personel
+                             * @enum {string}
+                             */
+                            injuredKind: "student" | "staff";
+                            studentId: string | null;
+                            injuredMembershipId: string | null;
+                            /** @description Yaralananın adı */
+                            injuredName: string | null;
+                            /** @description Olay anı (ISO 8601) */
+                            occurredAt: string;
+                            location: string;
+                            /**
+                             * @description `fall` düşme, `collision` çarpma, `sports` spor, `play` oyun, `other` diğer
+                             * @enum {string}
+                             */
+                            kind: "fall" | "collision" | "sports" | "play" | "other";
+                            responsibleMembershipId: string;
+                            responsibleName: string | null;
+                            /** @description Veli bildirimi kaydı sayısı */
+                            notificationCount: number;
+                            lastNotifiedAt: string | null;
+                            /** @description Tutanağı açan kullanıcı */
+                            createdByUserId: string;
+                            /** @description Tutanağı okuyan açtı mı */
+                            mine: boolean;
+                            finalizedAt: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                            /** @description Olayın anlatımı (şifreli saklanır) */
+                            description: string;
+                            witnesses: {
+                                membershipId: string;
+                                name: string | null;
+                            }[];
+                            notifications: {
+                                id: string;
+                                notifiedAt: string;
+                                /**
+                                 * @description `phone` telefon, `in_person` yüz yüze, `message` mesaj
+                                 * @enum {string}
+                                 */
+                                channel: "phone" | "in_person" | "message";
+                                notifiedByMembershipId: string;
+                                notifiedByName: string | null;
+                                createdAt: string;
+                            }[];
+                            /** @description Sağlık grubu (özel nitelikli): yöneticiye her zaman, açana yalnız taslakta; yoksa anahtar yok (K-494) */
+                            health?: {
+                                bodyParts: ("head" | "face" | "eye" | "teeth" | "neck" | "shoulder" | "arm" | "hand" | "chest" | "back" | "abdomen" | "leg" | "knee" | "foot" | "other")[];
+                                /**
+                                 * @description `minor` hafif, `moderate` orta, `severe` ağır
+                                 * @enum {string}
+                                 */
+                                severity: "minor" | "moderate" | "severe";
+                                injuryNote: string | null;
+                                firstAid: {
+                                    byMembershipId: string | null;
+                                    byName: string | null;
+                                    action: string;
+                                } | null;
+                                /**
+                                 * @description `none` yok, `infirmary` revir, `hospital` hastane, `emergency_112` 112
+                                 * @enum {string}
+                                 */
+                                referral: "none" | "infirmary" | "hospital" | "emergency_112";
+                            };
+                            /** @description Kesinleşmiş tutanağın ek notları; yalnız yöneticide (K-494) */
+                            addenda?: {
+                                id: string;
+                                note: string;
+                                createdByUserId: string;
+                                createdByName: string | null;
+                                createdAt: string;
+                            }[];
+                            /** @description Okuyanın bu tutanaktaki izinleri */
+                            access: {
+                                health: boolean;
+                                /** @description Taslağı düzeltir ve kesinleştirir */
+                                edit: boolean;
+                                /** @description Veli bildirimi kaydeder */
+                                notify: boolean;
+                                /** @description Ek not yazar ve tutanak PDF’ini basar */
+                                manage: boolean;
+                            };
+                            finalizedByUserId: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    finalizeIncidentReport: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                incidentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description `draft` taslak, `finalized` kesinleşti
+                             * @enum {string}
+                             */
+                            status: "draft" | "finalized";
+                            /**
+                             * @description `student` öğrenci, `staff` personel
+                             * @enum {string}
+                             */
+                            injuredKind: "student" | "staff";
+                            studentId: string | null;
+                            injuredMembershipId: string | null;
+                            /** @description Yaralananın adı */
+                            injuredName: string | null;
+                            /** @description Olay anı (ISO 8601) */
+                            occurredAt: string;
+                            location: string;
+                            /**
+                             * @description `fall` düşme, `collision` çarpma, `sports` spor, `play` oyun, `other` diğer
+                             * @enum {string}
+                             */
+                            kind: "fall" | "collision" | "sports" | "play" | "other";
+                            responsibleMembershipId: string;
+                            responsibleName: string | null;
+                            /** @description Veli bildirimi kaydı sayısı */
+                            notificationCount: number;
+                            lastNotifiedAt: string | null;
+                            /** @description Tutanağı açan kullanıcı */
+                            createdByUserId: string;
+                            /** @description Tutanağı okuyan açtı mı */
+                            mine: boolean;
+                            finalizedAt: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                            /** @description Olayın anlatımı (şifreli saklanır) */
+                            description: string;
+                            witnesses: {
+                                membershipId: string;
+                                name: string | null;
+                            }[];
+                            notifications: {
+                                id: string;
+                                notifiedAt: string;
+                                /**
+                                 * @description `phone` telefon, `in_person` yüz yüze, `message` mesaj
+                                 * @enum {string}
+                                 */
+                                channel: "phone" | "in_person" | "message";
+                                notifiedByMembershipId: string;
+                                notifiedByName: string | null;
+                                createdAt: string;
+                            }[];
+                            /** @description Sağlık grubu (özel nitelikli): yöneticiye her zaman, açana yalnız taslakta; yoksa anahtar yok (K-494) */
+                            health?: {
+                                bodyParts: ("head" | "face" | "eye" | "teeth" | "neck" | "shoulder" | "arm" | "hand" | "chest" | "back" | "abdomen" | "leg" | "knee" | "foot" | "other")[];
+                                /**
+                                 * @description `minor` hafif, `moderate` orta, `severe` ağır
+                                 * @enum {string}
+                                 */
+                                severity: "minor" | "moderate" | "severe";
+                                injuryNote: string | null;
+                                firstAid: {
+                                    byMembershipId: string | null;
+                                    byName: string | null;
+                                    action: string;
+                                } | null;
+                                /**
+                                 * @description `none` yok, `infirmary` revir, `hospital` hastane, `emergency_112` 112
+                                 * @enum {string}
+                                 */
+                                referral: "none" | "infirmary" | "hospital" | "emergency_112";
+                            };
+                            /** @description Kesinleşmiş tutanağın ek notları; yalnız yöneticide (K-494) */
+                            addenda?: {
+                                id: string;
+                                note: string;
+                                createdByUserId: string;
+                                createdByName: string | null;
+                                createdAt: string;
+                            }[];
+                            /** @description Okuyanın bu tutanaktaki izinleri */
+                            access: {
+                                health: boolean;
+                                /** @description Taslağı düzeltir ve kesinleştirir */
+                                edit: boolean;
+                                /** @description Veli bildirimi kaydeder */
+                                notify: boolean;
+                                /** @description Ek not yazar ve tutanak PDF’ini basar */
+                                manage: boolean;
+                            };
+                            finalizedByUserId: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    recordIncidentNotification: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                incidentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description Veliye bildirildiği an (ISO 8601); boşsa şimdi. Olaydan önce ve gelecekte olamaz
+                     * @default null
+                     */
+                    notifiedAt?: string | null;
+                    /**
+                     * @description `phone` telefon, `in_person` yüz yüze, `message` mesaj
+                     * @enum {string}
+                     */
+                    channel: "phone" | "in_person" | "message";
+                    /**
+                     * @description Veliye bildiren personel üyeliği; boşsa kaydeden
+                     * @default null
+                     */
+                    notifiedByMembershipId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description `draft` taslak, `finalized` kesinleşti
+                             * @enum {string}
+                             */
+                            status: "draft" | "finalized";
+                            /**
+                             * @description `student` öğrenci, `staff` personel
+                             * @enum {string}
+                             */
+                            injuredKind: "student" | "staff";
+                            studentId: string | null;
+                            injuredMembershipId: string | null;
+                            /** @description Yaralananın adı */
+                            injuredName: string | null;
+                            /** @description Olay anı (ISO 8601) */
+                            occurredAt: string;
+                            location: string;
+                            /**
+                             * @description `fall` düşme, `collision` çarpma, `sports` spor, `play` oyun, `other` diğer
+                             * @enum {string}
+                             */
+                            kind: "fall" | "collision" | "sports" | "play" | "other";
+                            responsibleMembershipId: string;
+                            responsibleName: string | null;
+                            /** @description Veli bildirimi kaydı sayısı */
+                            notificationCount: number;
+                            lastNotifiedAt: string | null;
+                            /** @description Tutanağı açan kullanıcı */
+                            createdByUserId: string;
+                            /** @description Tutanağı okuyan açtı mı */
+                            mine: boolean;
+                            finalizedAt: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                            /** @description Olayın anlatımı (şifreli saklanır) */
+                            description: string;
+                            witnesses: {
+                                membershipId: string;
+                                name: string | null;
+                            }[];
+                            notifications: {
+                                id: string;
+                                notifiedAt: string;
+                                /**
+                                 * @description `phone` telefon, `in_person` yüz yüze, `message` mesaj
+                                 * @enum {string}
+                                 */
+                                channel: "phone" | "in_person" | "message";
+                                notifiedByMembershipId: string;
+                                notifiedByName: string | null;
+                                createdAt: string;
+                            }[];
+                            /** @description Sağlık grubu (özel nitelikli): yöneticiye her zaman, açana yalnız taslakta; yoksa anahtar yok (K-494) */
+                            health?: {
+                                bodyParts: ("head" | "face" | "eye" | "teeth" | "neck" | "shoulder" | "arm" | "hand" | "chest" | "back" | "abdomen" | "leg" | "knee" | "foot" | "other")[];
+                                /**
+                                 * @description `minor` hafif, `moderate` orta, `severe` ağır
+                                 * @enum {string}
+                                 */
+                                severity: "minor" | "moderate" | "severe";
+                                injuryNote: string | null;
+                                firstAid: {
+                                    byMembershipId: string | null;
+                                    byName: string | null;
+                                    action: string;
+                                } | null;
+                                /**
+                                 * @description `none` yok, `infirmary` revir, `hospital` hastane, `emergency_112` 112
+                                 * @enum {string}
+                                 */
+                                referral: "none" | "infirmary" | "hospital" | "emergency_112";
+                            };
+                            /** @description Kesinleşmiş tutanağın ek notları; yalnız yöneticide (K-494) */
+                            addenda?: {
+                                id: string;
+                                note: string;
+                                createdByUserId: string;
+                                createdByName: string | null;
+                                createdAt: string;
+                            }[];
+                            /** @description Okuyanın bu tutanaktaki izinleri */
+                            access: {
+                                health: boolean;
+                                /** @description Taslağı düzeltir ve kesinleştirir */
+                                edit: boolean;
+                                /** @description Veli bildirimi kaydeder */
+                                notify: boolean;
+                                /** @description Ek not yazar ve tutanak PDF’ini basar */
+                                manage: boolean;
+                            };
+                            finalizedByUserId: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    addIncidentAddendum: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                incidentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Kesinleşmiş tutanağa düzeltme ya da ek bilgi (5–2000; şifreli) */
+                    note: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description `draft` taslak, `finalized` kesinleşti
+                             * @enum {string}
+                             */
+                            status: "draft" | "finalized";
+                            /**
+                             * @description `student` öğrenci, `staff` personel
+                             * @enum {string}
+                             */
+                            injuredKind: "student" | "staff";
+                            studentId: string | null;
+                            injuredMembershipId: string | null;
+                            /** @description Yaralananın adı */
+                            injuredName: string | null;
+                            /** @description Olay anı (ISO 8601) */
+                            occurredAt: string;
+                            location: string;
+                            /**
+                             * @description `fall` düşme, `collision` çarpma, `sports` spor, `play` oyun, `other` diğer
+                             * @enum {string}
+                             */
+                            kind: "fall" | "collision" | "sports" | "play" | "other";
+                            responsibleMembershipId: string;
+                            responsibleName: string | null;
+                            /** @description Veli bildirimi kaydı sayısı */
+                            notificationCount: number;
+                            lastNotifiedAt: string | null;
+                            /** @description Tutanağı açan kullanıcı */
+                            createdByUserId: string;
+                            /** @description Tutanağı okuyan açtı mı */
+                            mine: boolean;
+                            finalizedAt: string | null;
+                            /** @description `If-Match` sürümü */
+                            version: number;
+                            /** @description Olayın anlatımı (şifreli saklanır) */
+                            description: string;
+                            witnesses: {
+                                membershipId: string;
+                                name: string | null;
+                            }[];
+                            notifications: {
+                                id: string;
+                                notifiedAt: string;
+                                /**
+                                 * @description `phone` telefon, `in_person` yüz yüze, `message` mesaj
+                                 * @enum {string}
+                                 */
+                                channel: "phone" | "in_person" | "message";
+                                notifiedByMembershipId: string;
+                                notifiedByName: string | null;
+                                createdAt: string;
+                            }[];
+                            /** @description Sağlık grubu (özel nitelikli): yöneticiye her zaman, açana yalnız taslakta; yoksa anahtar yok (K-494) */
+                            health?: {
+                                bodyParts: ("head" | "face" | "eye" | "teeth" | "neck" | "shoulder" | "arm" | "hand" | "chest" | "back" | "abdomen" | "leg" | "knee" | "foot" | "other")[];
+                                /**
+                                 * @description `minor` hafif, `moderate` orta, `severe` ağır
+                                 * @enum {string}
+                                 */
+                                severity: "minor" | "moderate" | "severe";
+                                injuryNote: string | null;
+                                firstAid: {
+                                    byMembershipId: string | null;
+                                    byName: string | null;
+                                    action: string;
+                                } | null;
+                                /**
+                                 * @description `none` yok, `infirmary` revir, `hospital` hastane, `emergency_112` 112
+                                 * @enum {string}
+                                 */
+                                referral: "none" | "infirmary" | "hospital" | "emergency_112";
+                            };
+                            /** @description Kesinleşmiş tutanağın ek notları; yalnız yöneticide (K-494) */
+                            addenda?: {
+                                id: string;
+                                note: string;
+                                createdByUserId: string;
+                                createdByName: string | null;
+                                createdAt: string;
+                            }[];
+                            /** @description Okuyanın bu tutanaktaki izinleri */
+                            access: {
+                                health: boolean;
+                                /** @description Taslağı düzeltir ve kesinleştirir */
+                                edit: boolean;
+                                /** @description Veli bildirimi kaydeder */
+                                notify: boolean;
+                                /** @description Ek not yazar ve tutanak PDF’ini basar */
+                                manage: boolean;
+                            };
+                            finalizedByUserId: string | null;
+                            createdAt: string;
+                            updatedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listIncidentStaff: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Personel adında arama */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            membershipId: string;
+                            name: string;
+                            /** @description `yonetici`, `ogretmen` ya da `onburo` */
+                            role: string;
+                            active: boolean;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listGuardianIncidentSummaries: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Çocuklardan biri */
+                studentId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            studentId: string;
+                            studentName: string | null;
+                            occurredAt: string;
+                            location: string;
+                            /**
+                             * @description `fall` düşme, `collision` çarpma, `sports` spor, `play` oyun, `other` diğer
+                             * @enum {string}
+                             */
+                            kind: "fall" | "collision" | "sports" | "play" | "other";
+                            bodyParts: ("head" | "face" | "eye" | "teeth" | "neck" | "shoulder" | "arm" | "hand" | "chest" | "back" | "abdomen" | "leg" | "knee" | "foot" | "other")[];
+                            /**
+                             * @description `minor` hafif, `moderate` orta, `severe` ağır
+                             * @enum {string}
+                             */
+                            severity: "minor" | "moderate" | "severe";
+                            firstAidAction: string | null;
+                            /**
+                             * @description `none` yok, `infirmary` revir, `hospital` hastane, `emergency_112` 112
+                             * @enum {string}
+                             */
+                            referral: "none" | "infirmary" | "hospital" | "emergency_112";
+                            finalizedAt: string;
+                            notifications: {
+                                notifiedAt: string;
+                                /**
+                                 * @description `phone` telefon, `in_person` yüz yüze, `message` mesaj
+                                 * @enum {string}
+                                 */
+                                channel: "phone" | "in_person" | "message";
+                            }[];
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
                     };
                 };
             };

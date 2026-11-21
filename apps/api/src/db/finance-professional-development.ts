@@ -12,10 +12,13 @@ import type { StaffRole } from '@kampus/school-core/lib/staff-accounts.ts'
 import type { Database } from './client.ts'
 import { memberships, users } from './schema/auth.ts'
 import { costCenters } from './schema/finance-budget.ts'
+import { staffDevelopmentGoals } from './schema/finance-observation-debriefs.ts'
 import {
   professionalDevelopmentEnrollments as enrollments,
   professionalDevelopmentPrograms as programs,
 } from './schema/finance-professional-development.ts'
+import { staffDocuments } from './schema/finance-staff-documents.ts'
+import { files } from './schema/files.ts'
 import { foldSearch, foldSql } from './text-search.ts'
 
 /**
@@ -242,6 +245,17 @@ export interface StoredEnrollment {
   status: ProfessionalDevelopmentEnrollmentStatus
   attendedHours: number | null
   attendedMinutes: number | null
+  /** Katılım belgesi dosyası (DOM-FIN-144, K-488); adı ve boyutu yalnız hazır dosyada. */
+  documentFileId: string | null
+  documentFileName: string | null
+  documentFileBytes: number | null
+  /** Bağlı sertifika özlük belgesi (K-488). */
+  certificateDocumentId: string | null
+  certificateDocumentDate: string | null
+  certificateValidUntil: string | null
+  /** Katkı verdiği gelişim hedefi (K-489). */
+  developmentGoalId: string | null
+  developmentGoalTitle: string | null
   statusChangedAt: string
   createdAt: string
   version: number
@@ -256,6 +270,14 @@ const ENROLLMENT_COLUMNS = {
   origin: enrollments.origin,
   status: enrollments.status,
   attendedMinutes: enrollments.attendedMinutes,
+  documentFileId: enrollments.documentFileId,
+  documentFileName: files.originalName,
+  documentFileBytes: files.byteSize,
+  certificateDocumentId: enrollments.certificateDocumentId,
+  certificateDocumentDate: staffDocuments.documentDate,
+  certificateValidUntil: staffDocuments.validUntil,
+  developmentGoalId: enrollments.developmentGoalId,
+  developmentGoalTitle: staffDevelopmentGoals.title,
   statusChangedAt: enrollments.statusChangedAt,
   createdAt: enrollments.createdAt,
   version: enrollments.version,
@@ -283,6 +305,28 @@ function enrollmentSelect(db: Database) {
       ),
     )
     .innerJoin(users, eq(users.id, memberships.userId))
+    .leftJoin(
+      files,
+      and(
+        eq(files.institutionId, enrollments.institutionId),
+        eq(files.id, enrollments.documentFileId),
+        eq(files.status, 'ready'),
+      ),
+    )
+    .leftJoin(
+      staffDocuments,
+      and(
+        eq(staffDocuments.institutionId, enrollments.institutionId),
+        eq(staffDocuments.id, enrollments.certificateDocumentId),
+      ),
+    )
+    .leftJoin(
+      staffDevelopmentGoals,
+      and(
+        eq(staffDevelopmentGoals.institutionId, enrollments.institutionId),
+        eq(staffDevelopmentGoals.id, enrollments.developmentGoalId),
+      ),
+    )
 }
 
 export async function findEnrollment(
@@ -373,6 +417,8 @@ export async function updateEnrollment(
     expectedVersion: number
     status: ProfessionalDevelopmentEnrollmentStatus
     attendedMinutes: number | null
+    /** Verilmezse gelişim hedefi bağı değişmez (K-489). */
+    developmentGoalId?: string | null
     now: Date
   },
 ): Promise<boolean> {
@@ -381,6 +427,9 @@ export async function updateEnrollment(
     .set({
       status: input.status,
       attendedMinutes: input.attendedMinutes,
+      ...(input.developmentGoalId === undefined
+        ? {}
+        : { developmentGoalId: input.developmentGoalId }),
       statusChangedAt: input.now,
       updatedAt: input.now,
       version: input.expectedVersion + 1,
@@ -408,4 +457,32 @@ export async function findEnrollmentStaff(
     .where(and(eq(memberships.institutionId, institutionId), eq(memberships.id, membershipId)))
     .limit(1)
   return row === undefined ? null : { role: row.role, active: row.deactivatedAt === null }
+}
+
+/**
+ * Katılım belgesi ve sertifika bağı (DOM-FIN-144, K-488); verilen alanlar yazılır, durum ve
+ * katılım saati değişmez. Sürüm tutmazsa `false` (409).
+ */
+export async function updateEnrollmentLinks(
+  tx: Database,
+  institutionId: string,
+  input: {
+    id: string
+    expectedVersion: number
+    now: Date
+    values: { documentFileId?: string | null; certificateDocumentId?: string | null }
+  },
+): Promise<boolean> {
+  const rows = await tx
+    .update(enrollments)
+    .set({ ...input.values, updatedAt: input.now, version: input.expectedVersion + 1 })
+    .where(
+      and(
+        eq(enrollments.institutionId, institutionId),
+        eq(enrollments.id, input.id),
+        eq(enrollments.version, input.expectedVersion),
+      ),
+    )
+    .returning({ id: enrollments.id })
+  return rows.length === 1
 }

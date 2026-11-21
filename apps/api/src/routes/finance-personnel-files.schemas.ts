@@ -64,6 +64,17 @@ const certificatesView = z
   })
   .describe('Özlük belgelerinden sertifika özeti (DOM-FIN-113); eğitim grubuyla birlikte bulunur')
 
+const professionalDevelopmentView = z
+  .object({
+    academicYear: z.number().int().describe('İçinde bulunulan öğretim yılı (başlangıç yılı)'),
+    attendedCount: z.number().int().describe('Yıl içinde katıldığı eğitim sayısı'),
+    completedHours: z.number().describe('Tamamlanan mesleki gelişim saati'),
+    targetHours: z.number().nullable().describe('Hedef; yoksa ya da rolüne uygulanmıyorsa boş'),
+    missingHours: z.number().nullable().describe('Eksik saat; hedef yoksa boş'),
+    met: z.boolean().nullable().describe('Hedef tamamlandı mı; hedef yoksa boş'),
+  })
+  .describe('Mesleki gelişim saati özeti (DOM-FIN-144); eğitim grubuyla birlikte bulunur')
+
 const baseFile = {
   membershipId: z.string(),
   name: z.string().describe('Personelin adı (platform hesabından)'),
@@ -84,6 +95,7 @@ const personnelFileSchema = z
     contact: contactView.optional(),
     education: educationView.optional(),
     certificates: certificatesView.optional(),
+    professionalDevelopment: professionalDevelopmentView.optional(),
     bank: bankView.optional(),
     emergencyContacts: emergencyView.optional(),
   })
@@ -93,15 +105,20 @@ export const personnelFileResponse = dataResponse(personnelFileSchema)
 
 /**
  * Rolün yanıt şeması (K-475): okunamayan grubun anahtarı şemada yoktur, `parse` onu atar.
- * Sertifika özeti eğitim grubuna bağlıdır.
+ * Sertifika ve mesleki gelişim saati özeti eğitim grubuna bağlıdır.
  */
 export function personnelFileResponseFor(
   role: string,
 ): z.ZodType<z.output<typeof personnelFileResponse>> {
   const readable = new Set(readablePersonnelFileGroups(role))
-  const hidden: Partial<Record<PersonnelFileGroup | 'certificates', true>> = {}
+  const hidden: Partial<
+    Record<PersonnelFileGroup | 'certificates' | 'professionalDevelopment', true>
+  > = {}
   for (const group of PERSONNEL_FILE_GROUPS) if (!readable.has(group)) hidden[group] = true
-  if (!readable.has('education')) hidden.certificates = true
+  if (!readable.has('education')) {
+    hidden.certificates = true
+    hidden.professionalDevelopment = true
+  }
   return dataResponse(personnelFileSchema.omit(hidden))
 }
 

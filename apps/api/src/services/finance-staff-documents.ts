@@ -337,6 +337,100 @@ export async function getStaffDocumentsFor(ctx: ServiceContext, membershipId: st
 
 // --- Yazma ---------------------------------------------------------------------------------------
 
+type StaffDocumentParsed = ReturnType<typeof staffDocumentInputSchema.parse>
+type StaffDocumentPlanned = ReturnType<typeof planStaffDocument>
+
+/**
+ * Yeni belgenin girdisini doğrular ve kuralın girdilerini (personel, tür ayarları, aynı türün geçerli
+ * belgeleri) yükler; `plan` kural denetimini çalıştırır. Mesleki gelişim sertifikası da (DOM-FIN-144,
+ * K-488) aynı yoldan özlük belgesi açar: ikinci sertifika tablosu yoktur.
+ */
+export async function prepareStaffDocument(tx: Database, ctx: ServiceContext, input: unknown) {
+  const parsed = staffDocumentInputSchema.parse(input)
+  const staff = await findStaffMember(tx, ctx.institutionId, parsed.membershipId)
+  const settings = await settingsOf(tx, ctx.institutionId)
+  const current =
+    staff === null
+      ? []
+      : await loadCurrentDocumentsOfType(
+          tx,
+          ctx.institutionId,
+          parsed.membershipId,
+          parsed.documentType,
+        )
+  return {
+    parsed,
+    settings,
+    plan: () =>
+      planStaffDocument(parsed, {
+        staff,
+        settings,
+        current,
+        actorRole: ctx.actor.role,
+        today: dayKey(ctx.now),
+      }),
+  }
+}
+
+/**
+ * Planlanan belgeyi yazar (K-373): yerine geçilen belge geçmiş olur, dosya bağlanır, satır ve
+ * denetim kayıtları yazılır. Çağıranın transaction'ında.
+ */
+export async function writeStaffDocument(
+  tx: Database,
+  ctx: ServiceContext,
+  id: string,
+  parsed: StaffDocumentParsed,
+  plan: StaffDocumentPlanned,
+): Promise<void> {
+  if (plan.supersedes !== null) {
+    const done = await supersedeStaffDocument(tx, ctx.institutionId, {
+      id: plan.supersedes,
+      now: ctx.now,
+    })
+    if (!done) throw new ConflictError()
+  }
+  // Dosya belge satırından önce bağlanır: başkasının, başka kurumun ya da hazır olmayan dosya
+  // yabancı anahtar hatası yerine 422 `file_unavailable` (bağlı dosya 409
+  // `file_already_attached`) alır; bağ belge kimliğini taşır, yabancı anahtarı yoktur.
+  if (parsed.fileId !== null)
+    await attachFile(tx, ctx, {
+      fileId: parsed.fileId,
+      attachedType: ATTACHMENT,
+      attachedId: id,
+      dataSubjectId: null,
+    })
+  await insertStaffDocument(tx, ctx.institutionId, {
+    id,
+    membershipId: parsed.membershipId,
+    documentType: parsed.documentType,
+    healthReportKind: parsed.healthReportKind,
+    documentDate: parsed.documentDate,
+    validUntil: plan.validUntil,
+    validUntilSource: plan.validUntilSource,
+    fileId: parsed.fileId,
+    note: parsed.note,
+    replacesId: plan.supersedes,
+    createdByUserId: ctx.actor.userId,
+    now: ctx.now,
+  })
+  if (plan.supersedes !== null)
+    await auditWork(
+      tx,
+      ctx,
+      'finance.staff_document.supersede',
+      { type: ENTITY, id: plan.supersedes },
+      ['supersededAt'],
+    )
+  await auditWork(
+    tx,
+    ctx,
+    'finance.staff_document.create',
+    { type: ENTITY, id },
+    Object.keys(parsed).filter((key) => parsed[key as keyof typeof parsed] !== null),
+  )
+}
+
 /** Yeni belge (K-373): yerine geçilen belge aynı transaction'da geçmiş olur. 201. */
 export function createStaffDocumentCommand(
   ctx: ServiceContext,
@@ -353,79 +447,17 @@ export function createStaffDocumentCommand(
       collections: [],
       entity,
       load: async (tx) => {
-        const parsed = staffDocumentInputSchema.parse(input)
-        const staff = await findStaffMember(tx, ctx.institutionId, parsed.membershipId)
-        const settings = await settingsOf(tx, ctx.institutionId)
-        const current =
-          staff === null
-            ? []
-            : await loadCurrentDocumentsOfType(
-                tx,
-                ctx.institutionId,
-                parsed.membershipId,
-                parsed.documentType,
-              )
+        const prepared = await prepareStaffDocument(tx, ctx, input)
         return {
           run: () => ({
-            parsed,
-            settings,
-            plan: planStaffDocument(parsed, {
-              staff,
-              settings,
-              current,
-              actorRole: ctx.actor.role,
-              today: dayKey(ctx.now),
-            }),
+            parsed: prepared.parsed,
+            settings: prepared.settings,
+            plan: prepared.plan(),
           }),
         }
       },
       after: async (tx, { parsed, settings, plan }) => {
-        if (plan.supersedes !== null) {
-          const done = await supersedeStaffDocument(tx, ctx.institutionId, {
-            id: plan.supersedes,
-            now: ctx.now,
-          })
-          if (!done) throw new ConflictError()
-        }
-        // Dosya belge satırından önce bağlanır: başkasının, başka kurumun ya da hazır olmayan dosya
-        // yabancı anahtar hatası yerine 422 `file_unavailable` (bağlı dosya 409
-        // `file_already_attached`) alır; bağ belge kimliğini taşır, yabancı anahtarı yoktur.
-        if (parsed.fileId !== null)
-          await attachFile(tx, ctx, {
-            fileId: parsed.fileId,
-            attachedType: ATTACHMENT,
-            attachedId: id,
-            dataSubjectId: null,
-          })
-        await insertStaffDocument(tx, ctx.institutionId, {
-          id,
-          membershipId: parsed.membershipId,
-          documentType: parsed.documentType,
-          healthReportKind: parsed.healthReportKind,
-          documentDate: parsed.documentDate,
-          validUntil: plan.validUntil,
-          validUntilSource: plan.validUntilSource,
-          fileId: parsed.fileId,
-          note: parsed.note,
-          replacesId: plan.supersedes,
-          createdByUserId: ctx.actor.userId,
-          now: ctx.now,
-        })
-        if (plan.supersedes !== null)
-          await auditWork(
-            tx,
-            ctx,
-            'finance.staff_document.supersede',
-            { type: ENTITY, id: plan.supersedes },
-            ['supersededAt'],
-          )
-        await auditWork(
-          tx,
-          ctx,
-          'finance.staff_document.create',
-          entity,
-          Object.keys(parsed).filter((key) => parsed[key as keyof typeof parsed] !== null),
-        )
+        await writeStaffDocument(tx, ctx, id, parsed, plan)
         const created = await findStaffDocument(tx, ctx.institutionId, id)
         if (created === null) throw new NotFoundError()
         const superseded =

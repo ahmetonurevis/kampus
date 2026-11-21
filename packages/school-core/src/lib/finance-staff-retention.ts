@@ -109,7 +109,7 @@ export const STAFF_RETENTION_CATEGORY_SPECS = {
   personnel_file: {
     label: 'Özlük dosyası',
     contents:
-      'Diploma, kimlik, sertifika ve diğer özlük belgeleri; öğretmen çalışma onayı kayıtları; düzenlenen çalışma ve hizmet belgeleri; özlük kartı (kimlik, iletişim, eğitim, banka, acil durum kişileri)',
+      'Diploma, kimlik, sertifika ve diğer özlük belgeleri; öğretmen çalışma onayı kayıtları; düzenlenen çalışma ve hizmet belgeleri; özlük kartı (kimlik, iletişim, eğitim, banka, acil durum kişileri); mesleki gelişim katılımları ve katılım belgeleri',
     special: false,
     method: 'delete',
     startEvent: 'separation_day',

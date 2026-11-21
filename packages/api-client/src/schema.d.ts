@@ -11603,7 +11603,7 @@ export interface paths {
         head?: never;
         /**
          * Katılım durumunu işaretle
-         * @description Atandı, katıldı ya da tamamlamadı (K-432). "Katıldı" katılım saati ister (yarım saat adımlı, eğitim süresini aşamaz: 422 `professional_development_hours_exceed`); diğer durumlarda saat girilmez. Arşivdeki eğitimin katılımı değişmez (409 `professional_development_archived`). Sertifika ayrı iştir (ON-215). `If-Match` zorunlu. Başka kurumun kaydı 404. Rol: yalnız `yonetici` (K-430). Modül `finance`.
+         * @description Atandı, katıldı ya da tamamlamadı (K-432). "Katıldı" katılım saati ister (yarım saat adımlı, eğitim süresini aşamaz: 422 `professional_development_hours_exceed`); diğer durumlarda saat girilmez. Arşivdeki eğitimin katılımı değişmez (409 `professional_development_archived`). Belgesi ya da sertifikası olan katılım "katıldı"dan çıkarılamaz (409 `professional_development_attendance_has_documents`; DOM-FIN-144). İsteğe bağlı `developmentGoalId` katılımı aynı personelin açık ya da süren gelişim hedefine katkı olarak işaretler (başka personelin ya da yoksa 422 `professional_development_goal_not_found`, kapanmış 422 `professional_development_goal_closed`; K-489); verilmezse bağ değişmez, `null` kaldırır. `If-Match` zorunlu. Başka kurumun kaydı 404. Rol: yalnız `yonetici` (K-430). Modül `finance`.
          */
         patch: operations["updateProfessionalDevelopmentEnrollment"];
         trace?: never;
@@ -13755,6 +13755,118 @@ export interface paths {
          */
         post: operations["submitCandidateEvaluation"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/professional-development-hours": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Mesleki gelişim saati özeti
+         * @description Etkin personelin öğretim yılındaki tamamlanan saati, hedefi ve eksik saati, ada göre (DOM-FIN-144, K-487). Tamamlanan saat "katıldı" işaretli atamaların katılım saatidir; katılım günü tarihli eğitimde bitiş günü, sürekli eğitimde işaretin İstanbul günüdür ve kurumun kayıtlı öğretim yılı (yoksa 1 Eylül – 31 Ağustos) aralığına düşmelidir. Hedef yoksa `targetHours`, `missingHours` ve `met` boştur ve `status` süzgeci boş liste döner; hedef varken süzgeç yalnız hedef rollerindeki personeli döner. `academicYear` verilmezse içinde bulunulan yıl; yanıtın `meta.academicYear` alanındadır. Rol: yalnız `yonetici` (K-487). Modül `finance`.
+         */
+        get: operations["listProfessionalDevelopmentHours"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/professional-development-targets/{academicYear}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Öğretim yılı hedef saati
+         * @description Kurumun öğretim yılı hedefi (K-487) ve yılın gün aralığı. Hedef yazılmamışsa `targetHours` boş, roller boş liste. Rol: yalnız `yonetici` (K-487). Modül `finance`.
+         */
+        get: operations["getProfessionalDevelopmentTarget"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Öğretim yılı hedef saatini yaz
+         * @description Hedef tam saat (1–500) ve uygulandığı personel rolleri (varsayılan öğretmen); `targetHours: null` hedefi kaldırır (K-487). Ayar bütünüyle yazılır, kayıtlı öğretim yılı şart değildir. Denetim `finance.professional_development.target` (alan adları). Rol: yalnız `yonetici` (K-487). Modül `finance`.
+         */
+        patch: operations["updateProfessionalDevelopmentTarget"];
+        trace?: never;
+    };
+    "/api/v1/finance/professional-development/{programId}/enrollments/{enrollmentId}/document": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Katılım belgesi ekle
+         * @description Yüklenmiş `document` amaçlı dosyayı katılıma bağlar (K-488). Yalnız "katıldı" katılımda (422 `professional_development_document_not_attended`); PDF (422 `professional_development_document_format`), en çok 10 MB (422 `professional_development_document_too_large`). Başkasının ya da hazır olmayan dosya 422 `file_unavailable`/`file_not_ready`, başka kayda bağlı dosya 409 `file_already_attached`. Eski belgenin dosya bağı kalkar. Arşivdeki eğitimde de eklenir. Denetim `finance.professional_development.document_attach`. `If-Match` katılımın sürümü. Başka kurumun kaydı 404. Rol: yalnız `yonetici` (K-487). Modül `finance`.
+         */
+        post: operations["attachProfessionalDevelopmentDocument"];
+        /**
+         * Katılım belgesini kaldır
+         * @description Belgenin katılımla bağı kalkar; bağsız dosyayı temizlik işi siler. Belge yoksa 422 `professional_development_no_document`. Denetim `finance.professional_development.document_remove`. `If-Match` zorunlu. Başka kurumun kaydı 404. Rol: yalnız `yonetici` (K-487). Modül `finance`.
+         */
+        delete: operations["removeProfessionalDevelopmentDocument"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/professional-development/{programId}/enrollments/{enrollmentId}/document/url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Katılım belgesini aç
+         * @description Kısa ömürlü imzalı bağlantı (5 dk). Her üretim denetim kaydına `finance.professional_development.document_open` olarak yazılır. Belge yoksa 422 `professional_development_no_document`. Dosya `GET /files/{fileId}/url` yolundan açılmaz (404). Başka kurumun kaydı 404. Rol: yalnız `yonetici` (K-487). Modül `finance`.
+         */
+        get: operations["getProfessionalDevelopmentDocumentUrl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/professional-development/{programId}/enrollments/{enrollmentId}/certificate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Katılıma sertifika bağla
+         * @description Sertifika ikinci kez tutulmaz, özlük belgesidir (DOM-FIN-113; K-488). `source: existing`: personelin yerine geçilmemiş `certificate` türü belgesi (başka personelin ya da yoksa 422 `professional_development_certificate_not_found`, başka tür 422 `professional_development_certificate_wrong_type`, yerine geçilmiş 422 `professional_development_certificate_superseded`, başka katılıma bağlı 409 `professional_development_certificate_linked`). `source: upload`: yüklenen PDF (en çok 10 MB) ile aynı işlemde yeni sertifika özlük belgesi açılır; özlük belgesi kuralları geçer (ör. 422 `staff_document_date_in_future`, ayrılmış personel 422 `staff_document_staff_inactive`). Yalnız "katıldı" katılımda; zaten bağlıysa 409 `professional_development_certificate_exists`. Denetim `finance.professional_development.certificate_link` (yeni belgede ayrıca `finance.staff_document.create`). `Idempotency-Key` ve `If-Match` zorunlu. Başka kurumun kaydı 404. Rol: yalnız `yonetici` (K-487). Modül `finance`.
+         */
+        post: operations["linkProfessionalDevelopmentCertificate"];
+        /**
+         * Sertifika bağını kaldır
+         * @description Katılımın sertifika bağı kalkar; özlük belgesi kalır (K-488). Bağ yoksa 422 `professional_development_no_certificate`. Denetim `finance.professional_development.certificate_unlink`. `If-Match` zorunlu. Başka kurumun kaydı 404. Rol: yalnız `yonetici` (K-487). Modül `finance`.
+         */
+        delete: operations["unlinkProfessionalDevelopmentCertificate"];
         options?: never;
         head?: never;
         patch?: never;
@@ -21520,6 +21632,21 @@ export interface components {
                 /** @description En yeni belge günü */
                 latestDate: string | null;
             };
+            /** @description Mesleki gelişim saati özeti (DOM-FIN-144); eğitim grubuyla birlikte bulunur */
+            professionalDevelopment?: {
+                /** @description İçinde bulunulan öğretim yılı (başlangıç yılı) */
+                academicYear: number;
+                /** @description Yıl içinde katıldığı eğitim sayısı */
+                attendedCount: number;
+                /** @description Tamamlanan mesleki gelişim saati */
+                completedHours: number;
+                /** @description Hedef; yoksa ya da rolüne uygulanmıyorsa boş */
+                targetHours: number | null;
+                /** @description Eksik saat; hedef yoksa boş */
+                missingHours: number | null;
+                /** @description Hedef tamamlandı mı; hedef yoksa boş */
+                met: boolean | null;
+            };
             /** @description Banka grubu; yalnız yönetici ve muhasebede bulunur */
             bank?: {
                 /** @description Maskeli IBAN (`TR**…1326`); tam IBAN hiçbir okumada dönmez */
@@ -26534,6 +26661,21 @@ export interface components {
                 expiredCount: number;
                 /** @description En yeni belge günü */
                 latestDate: string | null;
+            };
+            /** @description Mesleki gelişim saati özeti (DOM-FIN-144); eğitim grubuyla birlikte bulunur */
+            professionalDevelopment?: {
+                /** @description İçinde bulunulan öğretim yılı (başlangıç yılı) */
+                academicYear: number;
+                /** @description Yıl içinde katıldığı eğitim sayısı */
+                attendedCount: number;
+                /** @description Tamamlanan mesleki gelişim saati */
+                completedHours: number;
+                /** @description Hedef; yoksa ya da rolüne uygulanmıyorsa boş */
+                targetHours: number | null;
+                /** @description Eksik saat; hedef yoksa boş */
+                missingHours: number | null;
+                /** @description Hedef tamamlandı mı; hedef yoksa boş */
+                met: boolean | null;
             };
             /** @description Banka grubu; yalnız yönetici ve muhasebede bulunur */
             bank?: {
@@ -124574,6 +124716,28 @@ export interface operations {
                             status: "assigned" | "attended" | "not_completed";
                             /** @description Katılım saati; yalnız `attended` */
                             attendedHours: number | null;
+                            /** @description Katılım belgesi (DOM-FIN-144, K-488); yalnız yöneticiye döner, ön büroya `null` */
+                            document: {
+                                fileId: string;
+                                /** @description Dosya adı */
+                                name: string;
+                                /** @description Boyut; dosya hazır değilse boş */
+                                byteSize: number | null;
+                            } | null;
+                            /** @description Bağlı sertifika (K-488); yalnız yöneticiye döner, ön büroya `null` */
+                            certificate: {
+                                /** @description Sertifika özlük belgesi (DOM-FIN-113) */
+                                staffDocumentId: string;
+                                /** @description Sertifika günü (YYYY-MM-DD) */
+                                documentDate: string | null;
+                                /** @description Geçerlilik bitişi; süresizse boş */
+                                validUntil: string | null;
+                            } | null;
+                            /** @description Katkı verdiği gelişim hedefi (K-489); yalnız yöneticiye döner, ön büroya `null` */
+                            developmentGoal: {
+                                id: string;
+                                title: string;
+                            } | null;
                             statusChangedAt: string;
                             createdAt: string;
                             version: number;
@@ -124705,6 +124869,28 @@ export interface operations {
                             status: "assigned" | "attended" | "not_completed";
                             /** @description Katılım saati; yalnız `attended` */
                             attendedHours: number | null;
+                            /** @description Katılım belgesi (DOM-FIN-144, K-488); yalnız yöneticiye döner, ön büroya `null` */
+                            document: {
+                                fileId: string;
+                                /** @description Dosya adı */
+                                name: string;
+                                /** @description Boyut; dosya hazır değilse boş */
+                                byteSize: number | null;
+                            } | null;
+                            /** @description Bağlı sertifika (K-488); yalnız yöneticiye döner, ön büroya `null` */
+                            certificate: {
+                                /** @description Sertifika özlük belgesi (DOM-FIN-113) */
+                                staffDocumentId: string;
+                                /** @description Sertifika günü (YYYY-MM-DD) */
+                                documentDate: string | null;
+                                /** @description Geçerlilik bitişi; süresizse boş */
+                                validUntil: string | null;
+                            } | null;
+                            /** @description Katkı verdiği gelişim hedefi (K-489); yalnız yöneticiye döner, ön büroya `null` */
+                            developmentGoal: {
+                                id: string;
+                                title: string;
+                            } | null;
                             statusChangedAt: string;
                             createdAt: string;
                             version: number;
@@ -124814,6 +125000,8 @@ export interface operations {
                      * @default null
                      */
                     attendedHours?: number | null;
+                    /** @description Katkı verdiği gelişim hedefi (DOM-FIN-144, K-489); verilmezse bağ değişmez, `null` bağı kaldırır */
+                    developmentGoalId?: string | null;
                 };
             };
         };
@@ -124840,6 +125028,28 @@ export interface operations {
                             status: "assigned" | "attended" | "not_completed";
                             /** @description Katılım saati; yalnız `attended` */
                             attendedHours: number | null;
+                            /** @description Katılım belgesi (DOM-FIN-144, K-488); yalnız yöneticiye döner, ön büroya `null` */
+                            document: {
+                                fileId: string;
+                                /** @description Dosya adı */
+                                name: string;
+                                /** @description Boyut; dosya hazır değilse boş */
+                                byteSize: number | null;
+                            } | null;
+                            /** @description Bağlı sertifika (K-488); yalnız yöneticiye döner, ön büroya `null` */
+                            certificate: {
+                                /** @description Sertifika özlük belgesi (DOM-FIN-113) */
+                                staffDocumentId: string;
+                                /** @description Sertifika günü (YYYY-MM-DD) */
+                                documentDate: string | null;
+                                /** @description Geçerlilik bitişi; süresizse boş */
+                                validUntil: string | null;
+                            } | null;
+                            /** @description Katkı verdiği gelişim hedefi (K-489); yalnız yöneticiye döner, ön büroya `null` */
+                            developmentGoal: {
+                                id: string;
+                                title: string;
+                            } | null;
                             statusChangedAt: string;
                             createdAt: string;
                             version: number;
@@ -145255,6 +145465,1084 @@ export interface operations {
                             createdAt: string;
                             updatedAt: string;
                             /** @description `If-Match` için mülakat sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listProfessionalDevelopmentHours: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Öğretim yılı; verilmezse içinde bulunulan yıl */
+                academicYear?: number;
+                /** @description Personel adında arama */
+                q?: string;
+                /** @description `missing` eksik saati olan, `met` hedefi tamamlayan (yalnız hedef rollerinde) */
+                status?: "missing" | "met";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            membershipId: string;
+                            /** @description Personel adı */
+                            name: string;
+                            role: string;
+                            /** @description Yıl içinde katıldığı eğitim sayısı */
+                            attendedCount: number;
+                            /** @description Tamamlanan saat (katılım saatlerinin toplamı) */
+                            completedHours: number;
+                            /** @description Hedef; hedef yoksa ya da rolüne uygulanmıyorsa boş */
+                            targetHours: number | null;
+                            /** @description Eksik saat; hedef yoksa boş */
+                            missingHours: number | null;
+                            /** @description Hedef tamamlandı mı; hedef yoksa boş */
+                            met: boolean | null;
+                        }[];
+                        meta: {
+                            /** @description Sayfa numarası (1’den başlar) */
+                            page: number;
+                            /** @description Sayfa boyutu */
+                            pageSize: number;
+                            /** @description Filtre uygulanmış toplam kayıt sayısı */
+                            total: number;
+                            /** @description Özetin öğretim yılı */
+                            academicYear: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getProfessionalDevelopmentTarget: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Öğretim yılının başlangıç yılı (2026 → 2026–2027) */
+                academicYear: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            academicYear: number;
+                            /** @description Öğretim yılı başlangıcı (kayıtlı yıl ya da 1 Eylül) */
+                            startDate: string;
+                            /** @description Öğretim yılı sonu (kayıtlı yıl ya da 31 Ağustos) */
+                            endDate: string;
+                            /** @description Hedef saat; tanımsızsa boş */
+                            targetHours: number | null;
+                            /** @description Hedefin uygulandığı roller */
+                            appliesToRoles: ("yonetici" | "ogretmen" | "onburo")[];
+                            updatedAt: string | null;
+                            version: number | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateProfessionalDevelopmentTarget: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                /** @description Öğretim yılının başlangıç yılı (2026 → 2026–2027) */
+                academicYear: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Öğretim yılı hedefi, tam saat; `null` hedefi kaldırır */
+                    targetHours: number | null;
+                    /**
+                     * @description Hedefin uygulandığı personel rolleri; varsayılan öğretmen
+                     * @default [
+                     *       "ogretmen"
+                     *     ]
+                     */
+                    appliesToRoles?: ("yonetici" | "ogretmen" | "onburo")[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            academicYear: number;
+                            /** @description Öğretim yılı başlangıcı (kayıtlı yıl ya da 1 Eylül) */
+                            startDate: string;
+                            /** @description Öğretim yılı sonu (kayıtlı yıl ya da 31 Ağustos) */
+                            endDate: string;
+                            /** @description Hedef saat; tanımsızsa boş */
+                            targetHours: number | null;
+                            /** @description Hedefin uygulandığı roller */
+                            appliesToRoles: ("yonetici" | "ogretmen" | "onburo")[];
+                            updatedAt: string | null;
+                            version: number | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    attachProfessionalDevelopmentDocument: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                programId: string;
+                enrollmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * Format: uuid
+                     * @description Yüklenmiş `document` amaçlı PDF (`POST /files`); en çok 10 MB
+                     */
+                    fileId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            programId: string;
+                            /** @description Personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı (üyelikten) */
+                            staffName: string;
+                            /** @description Personelin rolü */
+                            staffRole: string;
+                            /** @enum {string} */
+                            origin: "request" | "assignment";
+                            /** @enum {string} */
+                            status: "assigned" | "attended" | "not_completed";
+                            /** @description Katılım saati; yalnız `attended` */
+                            attendedHours: number | null;
+                            /** @description Katılım belgesi (DOM-FIN-144, K-488); yalnız yöneticiye döner, ön büroya `null` */
+                            document: {
+                                fileId: string;
+                                /** @description Dosya adı */
+                                name: string;
+                                /** @description Boyut; dosya hazır değilse boş */
+                                byteSize: number | null;
+                            } | null;
+                            /** @description Bağlı sertifika (K-488); yalnız yöneticiye döner, ön büroya `null` */
+                            certificate: {
+                                /** @description Sertifika özlük belgesi (DOM-FIN-113) */
+                                staffDocumentId: string;
+                                /** @description Sertifika günü (YYYY-MM-DD) */
+                                documentDate: string | null;
+                                /** @description Geçerlilik bitişi; süresizse boş */
+                                validUntil: string | null;
+                            } | null;
+                            /** @description Katkı verdiği gelişim hedefi (K-489); yalnız yöneticiye döner, ön büroya `null` */
+                            developmentGoal: {
+                                id: string;
+                                title: string;
+                            } | null;
+                            statusChangedAt: string;
+                            createdAt: string;
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    removeProfessionalDevelopmentDocument: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                programId: string;
+                enrollmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            programId: string;
+                            /** @description Personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı (üyelikten) */
+                            staffName: string;
+                            /** @description Personelin rolü */
+                            staffRole: string;
+                            /** @enum {string} */
+                            origin: "request" | "assignment";
+                            /** @enum {string} */
+                            status: "assigned" | "attended" | "not_completed";
+                            /** @description Katılım saati; yalnız `attended` */
+                            attendedHours: number | null;
+                            /** @description Katılım belgesi (DOM-FIN-144, K-488); yalnız yöneticiye döner, ön büroya `null` */
+                            document: {
+                                fileId: string;
+                                /** @description Dosya adı */
+                                name: string;
+                                /** @description Boyut; dosya hazır değilse boş */
+                                byteSize: number | null;
+                            } | null;
+                            /** @description Bağlı sertifika (K-488); yalnız yöneticiye döner, ön büroya `null` */
+                            certificate: {
+                                /** @description Sertifika özlük belgesi (DOM-FIN-113) */
+                                staffDocumentId: string;
+                                /** @description Sertifika günü (YYYY-MM-DD) */
+                                documentDate: string | null;
+                                /** @description Geçerlilik bitişi; süresizse boş */
+                                validUntil: string | null;
+                            } | null;
+                            /** @description Katkı verdiği gelişim hedefi (K-489); yalnız yöneticiye döner, ön büroya `null` */
+                            developmentGoal: {
+                                id: string;
+                                title: string;
+                            } | null;
+                            statusChangedAt: string;
+                            createdAt: string;
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getProfessionalDevelopmentDocumentUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                programId: string;
+                enrollmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Kısa ömürlü imzalı GET bağlantısı */
+                            url: string;
+                            /** @description Bağlantının geçerlilik sonu */
+                            expiresAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    linkProfessionalDevelopmentCertificate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                programId: string;
+                enrollmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description Var olan sertifika özlük belgesine bağla
+                     * @enum {string}
+                     */
+                    source: "existing";
+                    /**
+                     * Format: uuid
+                     * @description Personelin yerine geçilmemiş `certificate` türü özlük belgesi
+                     */
+                    staffDocumentId: string;
+                } | {
+                    /**
+                     * @description Yüklenen dosyayla yeni sertifika özlük belgesi aç
+                     * @enum {string}
+                     */
+                    source: "upload";
+                    /**
+                     * Format: uuid
+                     * @description Yüklenmiş `document` amaçlı PDF (`POST /files`); en çok 10 MB
+                     */
+                    fileId: string;
+                    /** @description Sertifikanın düzenlendiği gün; bugünden sonra olamaz */
+                    documentDate: string;
+                    /**
+                     * @description Geçerlilik bitişi (dahil); boşsa sertifika türünün süresi uygulanır
+                     * @default null
+                     */
+                    validUntil?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            programId: string;
+                            /** @description Personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı (üyelikten) */
+                            staffName: string;
+                            /** @description Personelin rolü */
+                            staffRole: string;
+                            /** @enum {string} */
+                            origin: "request" | "assignment";
+                            /** @enum {string} */
+                            status: "assigned" | "attended" | "not_completed";
+                            /** @description Katılım saati; yalnız `attended` */
+                            attendedHours: number | null;
+                            /** @description Katılım belgesi (DOM-FIN-144, K-488); yalnız yöneticiye döner, ön büroya `null` */
+                            document: {
+                                fileId: string;
+                                /** @description Dosya adı */
+                                name: string;
+                                /** @description Boyut; dosya hazır değilse boş */
+                                byteSize: number | null;
+                            } | null;
+                            /** @description Bağlı sertifika (K-488); yalnız yöneticiye döner, ön büroya `null` */
+                            certificate: {
+                                /** @description Sertifika özlük belgesi (DOM-FIN-113) */
+                                staffDocumentId: string;
+                                /** @description Sertifika günü (YYYY-MM-DD) */
+                                documentDate: string | null;
+                                /** @description Geçerlilik bitişi; süresizse boş */
+                                validUntil: string | null;
+                            } | null;
+                            /** @description Katkı verdiği gelişim hedefi (K-489); yalnız yöneticiye döner, ön büroya `null` */
+                            developmentGoal: {
+                                id: string;
+                                title: string;
+                            } | null;
+                            statusChangedAt: string;
+                            createdAt: string;
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    unlinkProfessionalDevelopmentCertificate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                programId: string;
+                enrollmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            programId: string;
+                            /** @description Personelin kurum üyeliği */
+                            membershipId: string;
+                            /** @description Personel adı (üyelikten) */
+                            staffName: string;
+                            /** @description Personelin rolü */
+                            staffRole: string;
+                            /** @enum {string} */
+                            origin: "request" | "assignment";
+                            /** @enum {string} */
+                            status: "assigned" | "attended" | "not_completed";
+                            /** @description Katılım saati; yalnız `attended` */
+                            attendedHours: number | null;
+                            /** @description Katılım belgesi (DOM-FIN-144, K-488); yalnız yöneticiye döner, ön büroya `null` */
+                            document: {
+                                fileId: string;
+                                /** @description Dosya adı */
+                                name: string;
+                                /** @description Boyut; dosya hazır değilse boş */
+                                byteSize: number | null;
+                            } | null;
+                            /** @description Bağlı sertifika (K-488); yalnız yöneticiye döner, ön büroya `null` */
+                            certificate: {
+                                /** @description Sertifika özlük belgesi (DOM-FIN-113) */
+                                staffDocumentId: string;
+                                /** @description Sertifika günü (YYYY-MM-DD) */
+                                documentDate: string | null;
+                                /** @description Geçerlilik bitişi; süresizse boş */
+                                validUntil: string | null;
+                            } | null;
+                            /** @description Katkı verdiği gelişim hedefi (K-489); yalnız yöneticiye döner, ön büroya `null` */
+                            developmentGoal: {
+                                id: string;
+                                title: string;
+                            } | null;
+                            statusChangedAt: string;
+                            createdAt: string;
                             version: number;
                         };
                     };

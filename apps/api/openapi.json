@@ -315486,6 +315486,4214 @@
         }
       }
     },
+    "/api/v1/finance/incidents": {
+      "get": {
+        "operationId": "listIncidentReports",
+        "summary": "Kaza ve yaralanma tutanakları",
+        "tags": [
+          "finance-incidents"
+        ],
+        "description": "En yeni olay önce. Süzgeç durum (`draft`, `finalized`), yaralanan türü, öğrenci ve olay günü aralığı (Europe/Istanbul). Satırda açıklama ve sağlık grubu yoktur; bildirim sayısı vardır. Rol: `yonetici` (bütün tutanaklar), `ogretmen` ve `onburo` (yalnız açtıkları; başkasınınki 404). Veli ve öğrenci 403. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "finalized"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "`draft` taslak, `finalized` kesinleşti"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "student",
+                "staff"
+              ]
+            },
+            "in": "query",
+            "name": "injuredKind",
+            "required": false,
+            "description": "`student` öğrenci, `staff` personel"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "studentId",
+            "required": false,
+            "description": "Yaralanan öğrenci"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "from",
+            "required": false,
+            "description": "Olay günü başlangıcı (YYYY-MM-DD, Europe/Istanbul)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "in": "query",
+            "name": "to",
+            "required": false,
+            "description": "Olay günü sonu (dahil)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "draft",
+                              "finalized"
+                            ],
+                            "description": "`draft` taslak, `finalized` kesinleşti"
+                          },
+                          "injuredKind": {
+                            "type": "string",
+                            "enum": [
+                              "student",
+                              "staff"
+                            ],
+                            "description": "`student` öğrenci, `staff` personel"
+                          },
+                          "studentId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "injuredMembershipId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "injuredName": {
+                            "description": "Yaralananın adı",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "occurredAt": {
+                            "type": "string",
+                            "description": "Olay anı (ISO 8601)"
+                          },
+                          "location": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "fall",
+                              "collision",
+                              "sports",
+                              "play",
+                              "other"
+                            ],
+                            "description": "`fall` düşme, `collision` çarpma, `sports` spor, `play` oyun, `other` diğer"
+                          },
+                          "responsibleMembershipId": {
+                            "type": "string"
+                          },
+                          "responsibleName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "notificationCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Veli bildirimi kaydı sayısı"
+                          },
+                          "lastNotifiedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "createdByUserId": {
+                            "type": "string",
+                            "description": "Tutanağı açan kullanıcı"
+                          },
+                          "mine": {
+                            "type": "boolean",
+                            "description": "Tutanağı okuyan açtı mı"
+                          },
+                          "finalizedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "status",
+                          "injuredKind",
+                          "studentId",
+                          "injuredMembershipId",
+                          "injuredName",
+                          "occurredAt",
+                          "location",
+                          "kind",
+                          "responsibleMembershipId",
+                          "responsibleName",
+                          "notificationCount",
+                          "lastNotifiedAt",
+                          "createdByUserId",
+                          "mine",
+                          "finalizedAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createIncidentReport",
+        "summary": "Kaza tutanağı aç (taslak)",
+        "tags": [
+          "finance-incidents"
+        ],
+        "description": "Yaralanan (öğrenci kaydı ya da personel üyeliği), olay anı (gelecekte 422 `incident_occurred_in_future`, 30 günden eski 422 `incident_occurred_too_old`), yer (2–200), tür, açıklama (10–4000), yaralanma bölgeleri (1–6), şiddet, isteğe bağlı yaralanma notu, ilk müdahale (yapan personel ya da boş, ne yapıldı), sevk, tanıklar (0–20) ve sorumlu. Öğrenci yok 422 `incident_student_not_found`; yaralanan personel yok ya da personel değil 422 `incident_injured_not_found`, `incident_injured_not_staff`; sorumlu, tanık ve müdahaleyi yapan kurumun etkin personeli olmalı (422 `incident_<responsible|witness|first_aid_by>_not_found|not_staff|inactive`); yaralanan tanık olamaz 422 `incident_witness_is_injured`. Açıklama ve sağlık grubu şifreli saklanır; sağlık profili kopyalanmaz. Denetim `finance.incident.create` (alan adları). `Idempotency-Key` zorunlu. Rol: `yonetici` (bütün tutanaklar), `ogretmen` ve `onburo` (yalnız açtıkları; başkasınınki 404). Veli ve öğrenci 403. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "injured": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "student"
+                            ]
+                          },
+                          "studentId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "description": "Öğrenci kaydı"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "studentId"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "staff"
+                            ]
+                          },
+                          "membershipId": {
+                            "type": "string",
+                            "minLength": 1,
+                            "description": "Personelin kurum üyeliği"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "membershipId"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ],
+                    "description": "Yaralanan: `student` öğrenci kaydı ya da `staff` personel üyeliği"
+                  },
+                  "occurredAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                    "description": "Olay anı (ISO 8601); gelecekte ve 30 günden eski olamaz"
+                  },
+                  "location": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 200,
+                    "description": "Olay yeri (2–200)"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "fall",
+                      "collision",
+                      "sports",
+                      "play",
+                      "other"
+                    ],
+                    "description": "`fall` düşme, `collision` çarpma, `sports` spor, `play` oyun, `other` diğer"
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 4000,
+                    "description": "Olayın anlatımı (10–4000; şifreli)"
+                  },
+                  "bodyParts": {
+                    "minItems": 1,
+                    "maxItems": 6,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "head",
+                        "face",
+                        "eye",
+                        "teeth",
+                        "neck",
+                        "shoulder",
+                        "arm",
+                        "hand",
+                        "chest",
+                        "back",
+                        "abdomen",
+                        "leg",
+                        "knee",
+                        "foot",
+                        "other"
+                      ]
+                    },
+                    "description": "Yaralanma bölgeleri (1–6)"
+                  },
+                  "severity": {
+                    "type": "string",
+                    "enum": [
+                      "minor",
+                      "moderate",
+                      "severe"
+                    ],
+                    "description": "`minor` hafif, `moderate` orta, `severe` ağır"
+                  },
+                  "injuryNote": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Yaralanmanın kısa tarifi (≤ 1000; şifreli)"
+                  },
+                  "firstAid": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "byMembershipId": {
+                            "default": null,
+                            "description": "Müdahaleyi yapan personel üyeliği; kurum dışından biriyse boş",
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "action": {
+                            "type": "string",
+                            "minLength": 2,
+                            "maxLength": 1000,
+                            "description": "Ne yapıldı (2–1000; şifreli)"
+                          }
+                        },
+                        "required": [
+                          "action"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "İlk müdahale; yapılmadıysa `null`"
+                  },
+                  "referral": {
+                    "type": "string",
+                    "enum": [
+                      "none",
+                      "infirmary",
+                      "hospital",
+                      "emergency_112"
+                    ],
+                    "description": "`none` yok, `infirmary` revir, `hospital` hastane, `emergency_112` 112"
+                  },
+                  "witnessMembershipIds": {
+                    "default": [],
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "description": "Tanık personel üyelikleri (0–20)"
+                  },
+                  "responsibleMembershipId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Olaydan sorumlu personel (nöbetçi ya da derse giren; etkin personel)"
+                  }
+                },
+                "required": [
+                  "injured",
+                  "occurredAt",
+                  "location",
+                  "kind",
+                  "description",
+                  "bodyParts",
+                  "severity",
+                  "referral",
+                  "responsibleMembershipId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "finalized"
+                          ],
+                          "description": "`draft` taslak, `finalized` kesinleşti"
+                        },
+                        "injuredKind": {
+                          "type": "string",
+                          "enum": [
+                            "student",
+                            "staff"
+                          ],
+                          "description": "`student` öğrenci, `staff` personel"
+                        },
+                        "studentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "injuredMembershipId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "injuredName": {
+                          "description": "Yaralananın adı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "occurredAt": {
+                          "type": "string",
+                          "description": "Olay anı (ISO 8601)"
+                        },
+                        "location": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "fall",
+                            "collision",
+                            "sports",
+                            "play",
+                            "other"
+                          ],
+                          "description": "`fall` düşme, `collision` çarpma, `sports` spor, `play` oyun, `other` diğer"
+                        },
+                        "responsibleMembershipId": {
+                          "type": "string"
+                        },
+                        "responsibleName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "notificationCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Veli bildirimi kaydı sayısı"
+                        },
+                        "lastNotifiedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdByUserId": {
+                          "type": "string",
+                          "description": "Tutanağı açan kullanıcı"
+                        },
+                        "mine": {
+                          "type": "boolean",
+                          "description": "Tutanağı okuyan açtı mı"
+                        },
+                        "finalizedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        },
+                        "description": {
+                          "type": "string",
+                          "description": "Olayın anlatımı (şifreli saklanır)"
+                        },
+                        "witnesses": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "membershipId",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "notifications": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "notifiedAt": {
+                                "type": "string"
+                              },
+                              "channel": {
+                                "type": "string",
+                                "enum": [
+                                  "phone",
+                                  "in_person",
+                                  "message"
+                                ],
+                                "description": "`phone` telefon, `in_person` yüz yüze, `message` mesaj"
+                              },
+                              "notifiedByMembershipId": {
+                                "type": "string"
+                              },
+                              "notifiedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "notifiedAt",
+                              "channel",
+                              "notifiedByMembershipId",
+                              "notifiedByName",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "health": {
+                          "description": "Sağlık grubu (özel nitelikli): yöneticiye her zaman, açana yalnız taslakta; yoksa anahtar yok (K-494)",
+                          "type": "object",
+                          "properties": {
+                            "bodyParts": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "enum": [
+                                  "head",
+                                  "face",
+                                  "eye",
+                                  "teeth",
+                                  "neck",
+                                  "shoulder",
+                                  "arm",
+                                  "hand",
+                                  "chest",
+                                  "back",
+                                  "abdomen",
+                                  "leg",
+                                  "knee",
+                                  "foot",
+                                  "other"
+                                ]
+                              }
+                            },
+                            "severity": {
+                              "type": "string",
+                              "enum": [
+                                "minor",
+                                "moderate",
+                                "severe"
+                              ],
+                              "description": "`minor` hafif, `moderate` orta, `severe` ağır"
+                            },
+                            "injuryNote": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "firstAid": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "byMembershipId": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "byName": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "action": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "byMembershipId",
+                                    "byName",
+                                    "action"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "referral": {
+                              "type": "string",
+                              "enum": [
+                                "none",
+                                "infirmary",
+                                "hospital",
+                                "emergency_112"
+                              ],
+                              "description": "`none` yok, `infirmary` revir, `hospital` hastane, `emergency_112` 112"
+                            }
+                          },
+                          "required": [
+                            "bodyParts",
+                            "severity",
+                            "injuryNote",
+                            "firstAid",
+                            "referral"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "addenda": {
+                          "description": "Kesinleşmiş tutanağın ek notları; yalnız yöneticide (K-494)",
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "note": {
+                                "type": "string"
+                              },
+                              "createdByUserId": {
+                                "type": "string"
+                              },
+                              "createdByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "note",
+                              "createdByUserId",
+                              "createdByName",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "access": {
+                          "type": "object",
+                          "properties": {
+                            "health": {
+                              "type": "boolean"
+                            },
+                            "edit": {
+                              "type": "boolean",
+                              "description": "Taslağı düzeltir ve kesinleştirir"
+                            },
+                            "notify": {
+                              "type": "boolean",
+                              "description": "Veli bildirimi kaydeder"
+                            },
+                            "manage": {
+                              "type": "boolean",
+                              "description": "Ek not yazar ve tutanak PDF’ini basar"
+                            }
+                          },
+                          "required": [
+                            "health",
+                            "edit",
+                            "notify",
+                            "manage"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Okuyanın bu tutanaktaki izinleri"
+                        },
+                        "finalizedByUserId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "status",
+                        "injuredKind",
+                        "studentId",
+                        "injuredMembershipId",
+                        "injuredName",
+                        "occurredAt",
+                        "location",
+                        "kind",
+                        "responsibleMembershipId",
+                        "responsibleName",
+                        "notificationCount",
+                        "lastNotifiedAt",
+                        "createdByUserId",
+                        "mine",
+                        "finalizedAt",
+                        "version",
+                        "description",
+                        "witnesses",
+                        "notifications",
+                        "access",
+                        "finalizedByUserId",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/incidents/{incidentId}": {
+      "get": {
+        "operationId": "getIncidentReport",
+        "summary": "Kaza tutanağı ayrıntısı",
+        "tags": [
+          "finance-incidents"
+        ],
+        "description": "Açıklama, tanıklar, veli bildirimleri; sağlık grubu (`health`) yöneticiye her zaman, açana yalnız taslakta; ek notlar (`addenda`) yalnız yöneticiye (K-494). Okuma aynı transaction'da `finance.incident.read` denetimine düşer (dönen alanların adları; değer yok). Olmayan, başka kurumun ya da başkasının açtığı tutanak 404. Rol: `yonetici` (bütün tutanaklar), `ogretmen` ve `onburo` (yalnız açtıkları; başkasınınki 404). Veli ve öğrenci 403. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "incidentId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "finalized"
+                          ],
+                          "description": "`draft` taslak, `finalized` kesinleşti"
+                        },
+                        "injuredKind": {
+                          "type": "string",
+                          "enum": [
+                            "student",
+                            "staff"
+                          ],
+                          "description": "`student` öğrenci, `staff` personel"
+                        },
+                        "studentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "injuredMembershipId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "injuredName": {
+                          "description": "Yaralananın adı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "occurredAt": {
+                          "type": "string",
+                          "description": "Olay anı (ISO 8601)"
+                        },
+                        "location": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "fall",
+                            "collision",
+                            "sports",
+                            "play",
+                            "other"
+                          ],
+                          "description": "`fall` düşme, `collision` çarpma, `sports` spor, `play` oyun, `other` diğer"
+                        },
+                        "responsibleMembershipId": {
+                          "type": "string"
+                        },
+                        "responsibleName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "notificationCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Veli bildirimi kaydı sayısı"
+                        },
+                        "lastNotifiedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdByUserId": {
+                          "type": "string",
+                          "description": "Tutanağı açan kullanıcı"
+                        },
+                        "mine": {
+                          "type": "boolean",
+                          "description": "Tutanağı okuyan açtı mı"
+                        },
+                        "finalizedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        },
+                        "description": {
+                          "type": "string",
+                          "description": "Olayın anlatımı (şifreli saklanır)"
+                        },
+                        "witnesses": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "membershipId",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "notifications": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "notifiedAt": {
+                                "type": "string"
+                              },
+                              "channel": {
+                                "type": "string",
+                                "enum": [
+                                  "phone",
+                                  "in_person",
+                                  "message"
+                                ],
+                                "description": "`phone` telefon, `in_person` yüz yüze, `message` mesaj"
+                              },
+                              "notifiedByMembershipId": {
+                                "type": "string"
+                              },
+                              "notifiedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "notifiedAt",
+                              "channel",
+                              "notifiedByMembershipId",
+                              "notifiedByName",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "health": {
+                          "description": "Sağlık grubu (özel nitelikli): yöneticiye her zaman, açana yalnız taslakta; yoksa anahtar yok (K-494)",
+                          "type": "object",
+                          "properties": {
+                            "bodyParts": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "enum": [
+                                  "head",
+                                  "face",
+                                  "eye",
+                                  "teeth",
+                                  "neck",
+                                  "shoulder",
+                                  "arm",
+                                  "hand",
+                                  "chest",
+                                  "back",
+                                  "abdomen",
+                                  "leg",
+                                  "knee",
+                                  "foot",
+                                  "other"
+                                ]
+                              }
+                            },
+                            "severity": {
+                              "type": "string",
+                              "enum": [
+                                "minor",
+                                "moderate",
+                                "severe"
+                              ],
+                              "description": "`minor` hafif, `moderate` orta, `severe` ağır"
+                            },
+                            "injuryNote": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "firstAid": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "byMembershipId": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "byName": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "action": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "byMembershipId",
+                                    "byName",
+                                    "action"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "referral": {
+                              "type": "string",
+                              "enum": [
+                                "none",
+                                "infirmary",
+                                "hospital",
+                                "emergency_112"
+                              ],
+                              "description": "`none` yok, `infirmary` revir, `hospital` hastane, `emergency_112` 112"
+                            }
+                          },
+                          "required": [
+                            "bodyParts",
+                            "severity",
+                            "injuryNote",
+                            "firstAid",
+                            "referral"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "addenda": {
+                          "description": "Kesinleşmiş tutanağın ek notları; yalnız yöneticide (K-494)",
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "note": {
+                                "type": "string"
+                              },
+                              "createdByUserId": {
+                                "type": "string"
+                              },
+                              "createdByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "note",
+                              "createdByUserId",
+                              "createdByName",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "access": {
+                          "type": "object",
+                          "properties": {
+                            "health": {
+                              "type": "boolean"
+                            },
+                            "edit": {
+                              "type": "boolean",
+                              "description": "Taslağı düzeltir ve kesinleştirir"
+                            },
+                            "notify": {
+                              "type": "boolean",
+                              "description": "Veli bildirimi kaydeder"
+                            },
+                            "manage": {
+                              "type": "boolean",
+                              "description": "Ek not yazar ve tutanak PDF’ini basar"
+                            }
+                          },
+                          "required": [
+                            "health",
+                            "edit",
+                            "notify",
+                            "manage"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Okuyanın bu tutanaktaki izinleri"
+                        },
+                        "finalizedByUserId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "status",
+                        "injuredKind",
+                        "studentId",
+                        "injuredMembershipId",
+                        "injuredName",
+                        "occurredAt",
+                        "location",
+                        "kind",
+                        "responsibleMembershipId",
+                        "responsibleName",
+                        "notificationCount",
+                        "lastNotifiedAt",
+                        "createdByUserId",
+                        "mine",
+                        "finalizedAt",
+                        "version",
+                        "description",
+                        "witnesses",
+                        "notifications",
+                        "access",
+                        "finalizedByUserId",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateIncidentReport",
+        "summary": "Taslak tutanağı düzelt",
+        "tags": [
+          "finance-incidents"
+        ],
+        "description": "Kısmi: verilmeyen alan değişmez; tanıklar bütün olarak yazılır; yaralanan değişmez. Birleşik değer açılış kurallarından geçer; olay anı değiştiyse kayıtlı ilk bildirimden sonra olamaz (422 `incident_occurred_after_notification`). Değişiklik yoksa 422 `incident_report_unchanged`. Kesinleşmiş tutanak 409 `incident_report_finalized` (düzeltme ek nottur). Denetime değişen alanların adları. `If-Match` zorunlu. Rol: `yonetici` (bütün tutanaklar), `ogretmen` ve `onburo` (yalnız açtıkları; başkasınınki 404). Veli ve öğrenci 403. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "occurredAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+                    "description": "Olay anı (ISO 8601); gelecekte ve 30 günden eski olamaz"
+                  },
+                  "location": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 200,
+                    "description": "Olay yeri (2–200)"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "fall",
+                      "collision",
+                      "sports",
+                      "play",
+                      "other"
+                    ],
+                    "description": "`fall` düşme, `collision` çarpma, `sports` spor, `play` oyun, `other` diğer"
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 4000,
+                    "description": "Olayın anlatımı (10–4000; şifreli)"
+                  },
+                  "bodyParts": {
+                    "minItems": 1,
+                    "maxItems": 6,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "head",
+                        "face",
+                        "eye",
+                        "teeth",
+                        "neck",
+                        "shoulder",
+                        "arm",
+                        "hand",
+                        "chest",
+                        "back",
+                        "abdomen",
+                        "leg",
+                        "knee",
+                        "foot",
+                        "other"
+                      ]
+                    },
+                    "description": "Yaralanma bölgeleri (1–6)"
+                  },
+                  "severity": {
+                    "type": "string",
+                    "enum": [
+                      "minor",
+                      "moderate",
+                      "severe"
+                    ],
+                    "description": "`minor` hafif, `moderate` orta, `severe` ağır"
+                  },
+                  "injuryNote": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 1000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Yaralanmanın kısa tarifi (≤ 1000; şifreli)"
+                  },
+                  "firstAid": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "byMembershipId": {
+                            "default": null,
+                            "description": "Müdahaleyi yapan personel üyeliği; kurum dışından biriyse boş",
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "action": {
+                            "type": "string",
+                            "minLength": 2,
+                            "maxLength": 1000,
+                            "description": "Ne yapıldı (2–1000; şifreli)"
+                          }
+                        },
+                        "required": [
+                          "action"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "İlk müdahale; yapılmadıysa `null`"
+                  },
+                  "referral": {
+                    "type": "string",
+                    "enum": [
+                      "none",
+                      "infirmary",
+                      "hospital",
+                      "emergency_112"
+                    ],
+                    "description": "`none` yok, `infirmary` revir, `hospital` hastane, `emergency_112` 112"
+                  },
+                  "witnessMembershipIds": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "description": "Tanık personel üyelikleri (0–20)"
+                  },
+                  "responsibleMembershipId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Olaydan sorumlu personel (nöbetçi ya da derse giren; etkin personel)"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "incidentId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "finalized"
+                          ],
+                          "description": "`draft` taslak, `finalized` kesinleşti"
+                        },
+                        "injuredKind": {
+                          "type": "string",
+                          "enum": [
+                            "student",
+                            "staff"
+                          ],
+                          "description": "`student` öğrenci, `staff` personel"
+                        },
+                        "studentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "injuredMembershipId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "injuredName": {
+                          "description": "Yaralananın adı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "occurredAt": {
+                          "type": "string",
+                          "description": "Olay anı (ISO 8601)"
+                        },
+                        "location": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "fall",
+                            "collision",
+                            "sports",
+                            "play",
+                            "other"
+                          ],
+                          "description": "`fall` düşme, `collision` çarpma, `sports` spor, `play` oyun, `other` diğer"
+                        },
+                        "responsibleMembershipId": {
+                          "type": "string"
+                        },
+                        "responsibleName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "notificationCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Veli bildirimi kaydı sayısı"
+                        },
+                        "lastNotifiedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdByUserId": {
+                          "type": "string",
+                          "description": "Tutanağı açan kullanıcı"
+                        },
+                        "mine": {
+                          "type": "boolean",
+                          "description": "Tutanağı okuyan açtı mı"
+                        },
+                        "finalizedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        },
+                        "description": {
+                          "type": "string",
+                          "description": "Olayın anlatımı (şifreli saklanır)"
+                        },
+                        "witnesses": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "membershipId",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "notifications": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "notifiedAt": {
+                                "type": "string"
+                              },
+                              "channel": {
+                                "type": "string",
+                                "enum": [
+                                  "phone",
+                                  "in_person",
+                                  "message"
+                                ],
+                                "description": "`phone` telefon, `in_person` yüz yüze, `message` mesaj"
+                              },
+                              "notifiedByMembershipId": {
+                                "type": "string"
+                              },
+                              "notifiedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "notifiedAt",
+                              "channel",
+                              "notifiedByMembershipId",
+                              "notifiedByName",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "health": {
+                          "description": "Sağlık grubu (özel nitelikli): yöneticiye her zaman, açana yalnız taslakta; yoksa anahtar yok (K-494)",
+                          "type": "object",
+                          "properties": {
+                            "bodyParts": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "enum": [
+                                  "head",
+                                  "face",
+                                  "eye",
+                                  "teeth",
+                                  "neck",
+                                  "shoulder",
+                                  "arm",
+                                  "hand",
+                                  "chest",
+                                  "back",
+                                  "abdomen",
+                                  "leg",
+                                  "knee",
+                                  "foot",
+                                  "other"
+                                ]
+                              }
+                            },
+                            "severity": {
+                              "type": "string",
+                              "enum": [
+                                "minor",
+                                "moderate",
+                                "severe"
+                              ],
+                              "description": "`minor` hafif, `moderate` orta, `severe` ağır"
+                            },
+                            "injuryNote": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "firstAid": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "byMembershipId": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "byName": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "action": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "byMembershipId",
+                                    "byName",
+                                    "action"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "referral": {
+                              "type": "string",
+                              "enum": [
+                                "none",
+                                "infirmary",
+                                "hospital",
+                                "emergency_112"
+                              ],
+                              "description": "`none` yok, `infirmary` revir, `hospital` hastane, `emergency_112` 112"
+                            }
+                          },
+                          "required": [
+                            "bodyParts",
+                            "severity",
+                            "injuryNote",
+                            "firstAid",
+                            "referral"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "addenda": {
+                          "description": "Kesinleşmiş tutanağın ek notları; yalnız yöneticide (K-494)",
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "note": {
+                                "type": "string"
+                              },
+                              "createdByUserId": {
+                                "type": "string"
+                              },
+                              "createdByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "note",
+                              "createdByUserId",
+                              "createdByName",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "access": {
+                          "type": "object",
+                          "properties": {
+                            "health": {
+                              "type": "boolean"
+                            },
+                            "edit": {
+                              "type": "boolean",
+                              "description": "Taslağı düzeltir ve kesinleştirir"
+                            },
+                            "notify": {
+                              "type": "boolean",
+                              "description": "Veli bildirimi kaydeder"
+                            },
+                            "manage": {
+                              "type": "boolean",
+                              "description": "Ek not yazar ve tutanak PDF’ini basar"
+                            }
+                          },
+                          "required": [
+                            "health",
+                            "edit",
+                            "notify",
+                            "manage"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Okuyanın bu tutanaktaki izinleri"
+                        },
+                        "finalizedByUserId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "status",
+                        "injuredKind",
+                        "studentId",
+                        "injuredMembershipId",
+                        "injuredName",
+                        "occurredAt",
+                        "location",
+                        "kind",
+                        "responsibleMembershipId",
+                        "responsibleName",
+                        "notificationCount",
+                        "lastNotifiedAt",
+                        "createdByUserId",
+                        "mine",
+                        "finalizedAt",
+                        "version",
+                        "description",
+                        "witnesses",
+                        "notifications",
+                        "access",
+                        "finalizedByUserId",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/incidents/{incidentId}/finalize": {
+      "post": {
+        "operationId": "finalizeIncidentReport",
+        "summary": "Tutanağı kesinleştir",
+        "tags": [
+          "finance-incidents"
+        ],
+        "description": "Taslak kesinleşir; sonra tutanak ve tanıklar değişmez (409 `incident_report_finalized`; veritabanında tetikleyici). Ağır yaralanan öğrencinin tutanağı veli bildirimi kaydı olmadan kesinleşmez (422 `incident_notification_required`, K-493). Gövde boş nesne. Denetim `finance.incident.finalize`. `If-Match` zorunlu. Rol: `yonetici` (bütün tutanaklar), `ogretmen` ve `onburo` (yalnız açtıkları; başkasınınki 404). Veli ve öğrenci 403. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "incidentId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "finalized"
+                          ],
+                          "description": "`draft` taslak, `finalized` kesinleşti"
+                        },
+                        "injuredKind": {
+                          "type": "string",
+                          "enum": [
+                            "student",
+                            "staff"
+                          ],
+                          "description": "`student` öğrenci, `staff` personel"
+                        },
+                        "studentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "injuredMembershipId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "injuredName": {
+                          "description": "Yaralananın adı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "occurredAt": {
+                          "type": "string",
+                          "description": "Olay anı (ISO 8601)"
+                        },
+                        "location": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "fall",
+                            "collision",
+                            "sports",
+                            "play",
+                            "other"
+                          ],
+                          "description": "`fall` düşme, `collision` çarpma, `sports` spor, `play` oyun, `other` diğer"
+                        },
+                        "responsibleMembershipId": {
+                          "type": "string"
+                        },
+                        "responsibleName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "notificationCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Veli bildirimi kaydı sayısı"
+                        },
+                        "lastNotifiedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdByUserId": {
+                          "type": "string",
+                          "description": "Tutanağı açan kullanıcı"
+                        },
+                        "mine": {
+                          "type": "boolean",
+                          "description": "Tutanağı okuyan açtı mı"
+                        },
+                        "finalizedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        },
+                        "description": {
+                          "type": "string",
+                          "description": "Olayın anlatımı (şifreli saklanır)"
+                        },
+                        "witnesses": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "membershipId",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "notifications": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "notifiedAt": {
+                                "type": "string"
+                              },
+                              "channel": {
+                                "type": "string",
+                                "enum": [
+                                  "phone",
+                                  "in_person",
+                                  "message"
+                                ],
+                                "description": "`phone` telefon, `in_person` yüz yüze, `message` mesaj"
+                              },
+                              "notifiedByMembershipId": {
+                                "type": "string"
+                              },
+                              "notifiedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "notifiedAt",
+                              "channel",
+                              "notifiedByMembershipId",
+                              "notifiedByName",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "health": {
+                          "description": "Sağlık grubu (özel nitelikli): yöneticiye her zaman, açana yalnız taslakta; yoksa anahtar yok (K-494)",
+                          "type": "object",
+                          "properties": {
+                            "bodyParts": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "enum": [
+                                  "head",
+                                  "face",
+                                  "eye",
+                                  "teeth",
+                                  "neck",
+                                  "shoulder",
+                                  "arm",
+                                  "hand",
+                                  "chest",
+                                  "back",
+                                  "abdomen",
+                                  "leg",
+                                  "knee",
+                                  "foot",
+                                  "other"
+                                ]
+                              }
+                            },
+                            "severity": {
+                              "type": "string",
+                              "enum": [
+                                "minor",
+                                "moderate",
+                                "severe"
+                              ],
+                              "description": "`minor` hafif, `moderate` orta, `severe` ağır"
+                            },
+                            "injuryNote": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "firstAid": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "byMembershipId": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "byName": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "action": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "byMembershipId",
+                                    "byName",
+                                    "action"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "referral": {
+                              "type": "string",
+                              "enum": [
+                                "none",
+                                "infirmary",
+                                "hospital",
+                                "emergency_112"
+                              ],
+                              "description": "`none` yok, `infirmary` revir, `hospital` hastane, `emergency_112` 112"
+                            }
+                          },
+                          "required": [
+                            "bodyParts",
+                            "severity",
+                            "injuryNote",
+                            "firstAid",
+                            "referral"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "addenda": {
+                          "description": "Kesinleşmiş tutanağın ek notları; yalnız yöneticide (K-494)",
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "note": {
+                                "type": "string"
+                              },
+                              "createdByUserId": {
+                                "type": "string"
+                              },
+                              "createdByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "note",
+                              "createdByUserId",
+                              "createdByName",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "access": {
+                          "type": "object",
+                          "properties": {
+                            "health": {
+                              "type": "boolean"
+                            },
+                            "edit": {
+                              "type": "boolean",
+                              "description": "Taslağı düzeltir ve kesinleştirir"
+                            },
+                            "notify": {
+                              "type": "boolean",
+                              "description": "Veli bildirimi kaydeder"
+                            },
+                            "manage": {
+                              "type": "boolean",
+                              "description": "Ek not yazar ve tutanak PDF’ini basar"
+                            }
+                          },
+                          "required": [
+                            "health",
+                            "edit",
+                            "notify",
+                            "manage"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Okuyanın bu tutanaktaki izinleri"
+                        },
+                        "finalizedByUserId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "status",
+                        "injuredKind",
+                        "studentId",
+                        "injuredMembershipId",
+                        "injuredName",
+                        "occurredAt",
+                        "location",
+                        "kind",
+                        "responsibleMembershipId",
+                        "responsibleName",
+                        "notificationCount",
+                        "lastNotifiedAt",
+                        "createdByUserId",
+                        "mine",
+                        "finalizedAt",
+                        "version",
+                        "description",
+                        "witnesses",
+                        "notifications",
+                        "access",
+                        "finalizedByUserId",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/incidents/{incidentId}/notifications": {
+      "post": {
+        "operationId": "recordIncidentNotification",
+        "summary": "Veli bildirimini kaydet",
+        "tags": [
+          "finance-incidents"
+        ],
+        "description": "Veliye ne zaman (boşsa şimdi; olaydan önce 422 `incident_notification_before_incident`, gelecekte 422 `incident_notification_in_future`), hangi kanaldan (telefon, yüz yüze, mesaj) ve kimin bildirdiği (boşsa kaydeden; kurumun etkin personeli, 422 `incident_notified_by_not_found|not_staff|inactive`). **Yalnız kayıttır; veliye ileti gönderilmez.** Yalnız öğrencinin tutanağında (422 `incident_notification_not_student`); taslakta da kesinleşmişte de yazılır, en çok 10 (422 `incident_notification_limit`). Kayıt değişmez. Denetim `finance.incident.notify`. `Idempotency-Key` zorunlu. Rol: `yonetici` (bütün tutanaklar), `ogretmen` ve `onburo` (yalnız açtıkları; başkasınınki 404). Veli ve öğrenci 403. Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "notifiedAt": {
+                    "default": null,
+                    "description": "Veliye bildirildiği an (ISO 8601); boşsa şimdi. Olaydan önce ve gelecekte olamaz",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "phone",
+                      "in_person",
+                      "message"
+                    ],
+                    "description": "`phone` telefon, `in_person` yüz yüze, `message` mesaj"
+                  },
+                  "notifiedByMembershipId": {
+                    "default": null,
+                    "description": "Veliye bildiren personel üyeliği; boşsa kaydeden",
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "channel"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "incidentId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "finalized"
+                          ],
+                          "description": "`draft` taslak, `finalized` kesinleşti"
+                        },
+                        "injuredKind": {
+                          "type": "string",
+                          "enum": [
+                            "student",
+                            "staff"
+                          ],
+                          "description": "`student` öğrenci, `staff` personel"
+                        },
+                        "studentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "injuredMembershipId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "injuredName": {
+                          "description": "Yaralananın adı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "occurredAt": {
+                          "type": "string",
+                          "description": "Olay anı (ISO 8601)"
+                        },
+                        "location": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "fall",
+                            "collision",
+                            "sports",
+                            "play",
+                            "other"
+                          ],
+                          "description": "`fall` düşme, `collision` çarpma, `sports` spor, `play` oyun, `other` diğer"
+                        },
+                        "responsibleMembershipId": {
+                          "type": "string"
+                        },
+                        "responsibleName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "notificationCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Veli bildirimi kaydı sayısı"
+                        },
+                        "lastNotifiedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdByUserId": {
+                          "type": "string",
+                          "description": "Tutanağı açan kullanıcı"
+                        },
+                        "mine": {
+                          "type": "boolean",
+                          "description": "Tutanağı okuyan açtı mı"
+                        },
+                        "finalizedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        },
+                        "description": {
+                          "type": "string",
+                          "description": "Olayın anlatımı (şifreli saklanır)"
+                        },
+                        "witnesses": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "membershipId",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "notifications": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "notifiedAt": {
+                                "type": "string"
+                              },
+                              "channel": {
+                                "type": "string",
+                                "enum": [
+                                  "phone",
+                                  "in_person",
+                                  "message"
+                                ],
+                                "description": "`phone` telefon, `in_person` yüz yüze, `message` mesaj"
+                              },
+                              "notifiedByMembershipId": {
+                                "type": "string"
+                              },
+                              "notifiedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "notifiedAt",
+                              "channel",
+                              "notifiedByMembershipId",
+                              "notifiedByName",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "health": {
+                          "description": "Sağlık grubu (özel nitelikli): yöneticiye her zaman, açana yalnız taslakta; yoksa anahtar yok (K-494)",
+                          "type": "object",
+                          "properties": {
+                            "bodyParts": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "enum": [
+                                  "head",
+                                  "face",
+                                  "eye",
+                                  "teeth",
+                                  "neck",
+                                  "shoulder",
+                                  "arm",
+                                  "hand",
+                                  "chest",
+                                  "back",
+                                  "abdomen",
+                                  "leg",
+                                  "knee",
+                                  "foot",
+                                  "other"
+                                ]
+                              }
+                            },
+                            "severity": {
+                              "type": "string",
+                              "enum": [
+                                "minor",
+                                "moderate",
+                                "severe"
+                              ],
+                              "description": "`minor` hafif, `moderate` orta, `severe` ağır"
+                            },
+                            "injuryNote": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "firstAid": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "byMembershipId": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "byName": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "action": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "byMembershipId",
+                                    "byName",
+                                    "action"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "referral": {
+                              "type": "string",
+                              "enum": [
+                                "none",
+                                "infirmary",
+                                "hospital",
+                                "emergency_112"
+                              ],
+                              "description": "`none` yok, `infirmary` revir, `hospital` hastane, `emergency_112` 112"
+                            }
+                          },
+                          "required": [
+                            "bodyParts",
+                            "severity",
+                            "injuryNote",
+                            "firstAid",
+                            "referral"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "addenda": {
+                          "description": "Kesinleşmiş tutanağın ek notları; yalnız yöneticide (K-494)",
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "note": {
+                                "type": "string"
+                              },
+                              "createdByUserId": {
+                                "type": "string"
+                              },
+                              "createdByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "note",
+                              "createdByUserId",
+                              "createdByName",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "access": {
+                          "type": "object",
+                          "properties": {
+                            "health": {
+                              "type": "boolean"
+                            },
+                            "edit": {
+                              "type": "boolean",
+                              "description": "Taslağı düzeltir ve kesinleştirir"
+                            },
+                            "notify": {
+                              "type": "boolean",
+                              "description": "Veli bildirimi kaydeder"
+                            },
+                            "manage": {
+                              "type": "boolean",
+                              "description": "Ek not yazar ve tutanak PDF’ini basar"
+                            }
+                          },
+                          "required": [
+                            "health",
+                            "edit",
+                            "notify",
+                            "manage"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Okuyanın bu tutanaktaki izinleri"
+                        },
+                        "finalizedByUserId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "status",
+                        "injuredKind",
+                        "studentId",
+                        "injuredMembershipId",
+                        "injuredName",
+                        "occurredAt",
+                        "location",
+                        "kind",
+                        "responsibleMembershipId",
+                        "responsibleName",
+                        "notificationCount",
+                        "lastNotifiedAt",
+                        "createdByUserId",
+                        "mine",
+                        "finalizedAt",
+                        "version",
+                        "description",
+                        "witnesses",
+                        "notifications",
+                        "access",
+                        "finalizedByUserId",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/incidents/{incidentId}/addenda": {
+      "post": {
+        "operationId": "addIncidentAddendum",
+        "summary": "Kesinleşmiş tutanağa ek not",
+        "tags": [
+          "finance-incidents"
+        ],
+        "description": "Düzeltme ya da ek bilgi (5–2000; şifreli); tutanağın eski hâli korunur, not değişmez. Taslakta 422 `incident_addendum_draft` (taslak doğrudan düzeltilir), en çok 50 (422 `incident_addendum_limit`). Denetim `finance.incident.addendum` (not yazılmaz). `Idempotency-Key` zorunlu. Rol: yalnız `yonetici` (öğretmen ve ön büro 404/403). Modül `finance`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "note": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 2000,
+                    "description": "Kesinleşmiş tutanağa düzeltme ya da ek bilgi (5–2000; şifreli)"
+                  }
+                },
+                "required": [
+                  "note"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "incidentId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "finalized"
+                          ],
+                          "description": "`draft` taslak, `finalized` kesinleşti"
+                        },
+                        "injuredKind": {
+                          "type": "string",
+                          "enum": [
+                            "student",
+                            "staff"
+                          ],
+                          "description": "`student` öğrenci, `staff` personel"
+                        },
+                        "studentId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "injuredMembershipId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "injuredName": {
+                          "description": "Yaralananın adı",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "occurredAt": {
+                          "type": "string",
+                          "description": "Olay anı (ISO 8601)"
+                        },
+                        "location": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "fall",
+                            "collision",
+                            "sports",
+                            "play",
+                            "other"
+                          ],
+                          "description": "`fall` düşme, `collision` çarpma, `sports` spor, `play` oyun, `other` diğer"
+                        },
+                        "responsibleMembershipId": {
+                          "type": "string"
+                        },
+                        "responsibleName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "notificationCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Veli bildirimi kaydı sayısı"
+                        },
+                        "lastNotifiedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdByUserId": {
+                          "type": "string",
+                          "description": "Tutanağı açan kullanıcı"
+                        },
+                        "mine": {
+                          "type": "boolean",
+                          "description": "Tutanağı okuyan açtı mı"
+                        },
+                        "finalizedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` sürümü"
+                        },
+                        "description": {
+                          "type": "string",
+                          "description": "Olayın anlatımı (şifreli saklanır)"
+                        },
+                        "witnesses": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "membershipId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "membershipId",
+                              "name"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "notifications": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "notifiedAt": {
+                                "type": "string"
+                              },
+                              "channel": {
+                                "type": "string",
+                                "enum": [
+                                  "phone",
+                                  "in_person",
+                                  "message"
+                                ],
+                                "description": "`phone` telefon, `in_person` yüz yüze, `message` mesaj"
+                              },
+                              "notifiedByMembershipId": {
+                                "type": "string"
+                              },
+                              "notifiedByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "notifiedAt",
+                              "channel",
+                              "notifiedByMembershipId",
+                              "notifiedByName",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "health": {
+                          "description": "Sağlık grubu (özel nitelikli): yöneticiye her zaman, açana yalnız taslakta; yoksa anahtar yok (K-494)",
+                          "type": "object",
+                          "properties": {
+                            "bodyParts": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "enum": [
+                                  "head",
+                                  "face",
+                                  "eye",
+                                  "teeth",
+                                  "neck",
+                                  "shoulder",
+                                  "arm",
+                                  "hand",
+                                  "chest",
+                                  "back",
+                                  "abdomen",
+                                  "leg",
+                                  "knee",
+                                  "foot",
+                                  "other"
+                                ]
+                              }
+                            },
+                            "severity": {
+                              "type": "string",
+                              "enum": [
+                                "minor",
+                                "moderate",
+                                "severe"
+                              ],
+                              "description": "`minor` hafif, `moderate` orta, `severe` ağır"
+                            },
+                            "injuryNote": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "firstAid": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "byMembershipId": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "byName": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "action": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "byMembershipId",
+                                    "byName",
+                                    "action"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "referral": {
+                              "type": "string",
+                              "enum": [
+                                "none",
+                                "infirmary",
+                                "hospital",
+                                "emergency_112"
+                              ],
+                              "description": "`none` yok, `infirmary` revir, `hospital` hastane, `emergency_112` 112"
+                            }
+                          },
+                          "required": [
+                            "bodyParts",
+                            "severity",
+                            "injuryNote",
+                            "firstAid",
+                            "referral"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "addenda": {
+                          "description": "Kesinleşmiş tutanağın ek notları; yalnız yöneticide (K-494)",
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "note": {
+                                "type": "string"
+                              },
+                              "createdByUserId": {
+                                "type": "string"
+                              },
+                              "createdByName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "note",
+                              "createdByUserId",
+                              "createdByName",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "access": {
+                          "type": "object",
+                          "properties": {
+                            "health": {
+                              "type": "boolean"
+                            },
+                            "edit": {
+                              "type": "boolean",
+                              "description": "Taslağı düzeltir ve kesinleştirir"
+                            },
+                            "notify": {
+                              "type": "boolean",
+                              "description": "Veli bildirimi kaydeder"
+                            },
+                            "manage": {
+                              "type": "boolean",
+                              "description": "Ek not yazar ve tutanak PDF’ini basar"
+                            }
+                          },
+                          "required": [
+                            "health",
+                            "edit",
+                            "notify",
+                            "manage"
+                          ],
+                          "additionalProperties": false,
+                          "description": "Okuyanın bu tutanaktaki izinleri"
+                        },
+                        "finalizedByUserId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "status",
+                        "injuredKind",
+                        "studentId",
+                        "injuredMembershipId",
+                        "injuredName",
+                        "occurredAt",
+                        "location",
+                        "kind",
+                        "responsibleMembershipId",
+                        "responsibleName",
+                        "notificationCount",
+                        "lastNotifiedAt",
+                        "createdByUserId",
+                        "mine",
+                        "finalizedAt",
+                        "version",
+                        "description",
+                        "witnesses",
+                        "notifications",
+                        "access",
+                        "finalizedByUserId",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/incident-staff": {
+      "get": {
+        "operationId": "listIncidentStaff",
+        "summary": "Tutanak için personel",
+        "tags": [
+          "finance-incidents"
+        ],
+        "description": "Sorumlu, tanık, ilk müdahale ve bildiren seçimi: kurumun etkin yönetici, öğretmen ve ön büro üyelikleri, ada göre. Rol: `yonetici` (bütün tutanaklar), `ogretmen` ve `onburo` (yalnız açtıkları; başkasınınki 404). Veli ve öğrenci 403. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Personel adında arama"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "membershipId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "role": {
+                            "type": "string",
+                            "description": "`yonetici`, `ogretmen` ya da `onburo`"
+                          },
+                          "active": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "membershipId",
+                          "name",
+                          "role",
+                          "active"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/incident-summaries": {
+      "get": {
+        "operationId": "listGuardianIncidentSummaries",
+        "summary": "Çocuğumun kaza tutanakları (özet)",
+        "tags": [
+          "finance-incidents"
+        ],
+        "description": "Velinin kapsamındaki çocukların (velayetli ve kısıtsız bağ) **kesinleşmiş** tutanaklarının özeti (K-495): olay anı, yer, tür, yaralanma bölgesi, şiddet, yapılan ilk müdahale, sevk ve bildirimler (an, kanal). Açıklama, tanıklar, sorumlu, yaralanma notu ve ek notlar dönmez; taslak ve personel tutanağı görünmez. Her dönen tutanak `finance.incident.guardian_read` denetimine düşer. Rol: yalnız `veli`. Modül `finance`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "studentId",
+            "required": false,
+            "description": "Çocuklardan biri"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "studentId": {
+                            "type": "string"
+                          },
+                          "studentName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "occurredAt": {
+                            "type": "string"
+                          },
+                          "location": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "fall",
+                              "collision",
+                              "sports",
+                              "play",
+                              "other"
+                            ],
+                            "description": "`fall` düşme, `collision` çarpma, `sports` spor, `play` oyun, `other` diğer"
+                          },
+                          "bodyParts": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "head",
+                                "face",
+                                "eye",
+                                "teeth",
+                                "neck",
+                                "shoulder",
+                                "arm",
+                                "hand",
+                                "chest",
+                                "back",
+                                "abdomen",
+                                "leg",
+                                "knee",
+                                "foot",
+                                "other"
+                              ]
+                            }
+                          },
+                          "severity": {
+                            "type": "string",
+                            "enum": [
+                              "minor",
+                              "moderate",
+                              "severe"
+                            ],
+                            "description": "`minor` hafif, `moderate` orta, `severe` ağır"
+                          },
+                          "firstAidAction": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "referral": {
+                            "type": "string",
+                            "enum": [
+                              "none",
+                              "infirmary",
+                              "hospital",
+                              "emergency_112"
+                            ],
+                            "description": "`none` yok, `infirmary` revir, `hospital` hastane, `emergency_112` 112"
+                          },
+                          "finalizedAt": {
+                            "type": "string"
+                          },
+                          "notifications": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "notifiedAt": {
+                                  "type": "string"
+                                },
+                                "channel": {
+                                  "type": "string",
+                                  "enum": [
+                                    "phone",
+                                    "in_person",
+                                    "message"
+                                  ],
+                                  "description": "`phone` telefon, `in_person` yüz yüze, `message` mesaj"
+                                }
+                              },
+                              "required": [
+                                "notifiedAt",
+                                "channel"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "studentId",
+                          "studentName",
+                          "occurredAt",
+                          "location",
+                          "kind",
+                          "bodyParts",
+                          "severity",
+                          "firstAidAction",
+                          "referral",
+                          "finalizedAt",
+                          "notifications"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

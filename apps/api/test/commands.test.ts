@@ -265,6 +265,11 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/interview-templates',
   'POST /api/v1/finance/job-applications/{applicationId}/interviews',
   'POST /api/v1/finance/candidate-interviews/{interviewId}/evaluation',
+  // Kaza tutanağı, veli bildirimi ve ek not; çift tıklama ikinci tutanağı ya da kaydı yazmaz
+  // (routes/finance-incidents.ts; DOM-FIN-146, ON-162).
+  'POST /api/v1/finance/incidents',
+  'POST /api/v1/finance/incidents/{incidentId}/notifications',
+  'POST /api/v1/finance/incidents/{incidentId}/addenda',
 ]
 // Onur: kayıt ve finans sonu
 

@@ -1,5 +1,5 @@
 {
-  "id": "c479e5d5-1b42-4dee-be10-535015a6432a",
+  "id": "40a17804-c1bc-4cea-98a9-54ceaad5462d",
   "prevId": "f66a7bdb-38c6-4121-b190-9b0858bbdafe",
   "version": "7",
   "dialect": "postgresql",
@@ -14235,178 +14235,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.emergency_summaries": {
-      "name": "emergency_summaries",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "student_id": {
-          "name": "student_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "published_ciphertext": {
-          "name": "published_ciphertext",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "published_key_version": {
-          "name": "published_key_version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "draft_ciphertext": {
-          "name": "draft_ciphertext",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "draft_key_version": {
-          "name": "draft_key_version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reviewed_profile_version": {
-          "name": "reviewed_profile_version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reviewed_profile_updated_at": {
-          "name": "reviewed_profile_updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "approved_at": {
-          "name": "approved_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "approved_by_user_id": {
-          "name": "approved_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "updated_by_user_id": {
-          "name": "updated_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "emergency_summaries_student_key": {
-          "name": "emergency_summaries_student_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "student_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"emergency_summaries\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "emergency_summaries_institution_id_institutions_id_fk": {
-          "name": "emergency_summaries_institution_id_institutions_id_fk",
-          "tableFrom": "emergency_summaries",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "emergency_summaries_pkey": {
-          "name": "emergency_summaries_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "emergency_summaries_texts_check": {
-          "name": "emergency_summaries_texts_check",
-          "value": "((\"emergency_summaries\".\"published_ciphertext\" is null) = (\"emergency_summaries\".\"published_key_version\" is null))\n        and ((\"emergency_summaries\".\"draft_ciphertext\" is null) = (\"emergency_summaries\".\"draft_key_version\" is null))\n        and (\"emergency_summaries\".\"published_ciphertext\" is not null or \"emergency_summaries\".\"draft_ciphertext\" is not null)\n        and (\"emergency_summaries\".\"published_key_version\" is null or \"emergency_summaries\".\"published_key_version\" > 0)\n        and (\"emergency_summaries\".\"draft_key_version\" is null or \"emergency_summaries\".\"draft_key_version\" > 0)"
-        },
-        "emergency_summaries_approval_check": {
-          "name": "emergency_summaries_approval_check",
-          "value": "((\"emergency_summaries\".\"published_ciphertext\" is null) = (\"emergency_summaries\".\"approved_at\" is null))\n        and ((\"emergency_summaries\".\"approved_at\" is null) = (\"emergency_summaries\".\"approved_by_user_id\" is null))\n        and ((\"emergency_summaries\".\"approved_at\" is null) = (\"emergency_summaries\".\"reviewed_profile_version\" is null))\n        and (\"emergency_summaries\".\"reviewed_profile_version\" is null or \"emergency_summaries\".\"reviewed_profile_version\" > 0)\n        and (\"emergency_summaries\".\"approved_at\" is not null or \"emergency_summaries\".\"reviewed_profile_updated_at\" is null)"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.event_ticket_check_in_reversals": {
       "name": "event_ticket_check_in_reversals",
       "schema": "",
@@ -17286,6 +17114,180 @@
         "free_tuition_rounds_quota_check": {
           "name": "free_tuition_rounds_quota_check",
           "value": "(\"free_tuition_rounds\".\"confirmed_quota\" is null) = (\"free_tuition_rounds\".\"quota_confirmed_at\" is null)\n        and (\"free_tuition_rounds\".\"confirmed_quota\" is null) = (\"free_tuition_rounds\".\"student_count\" is null)\n        and (\"free_tuition_rounds\".\"confirmed_quota\" is null) = (\"free_tuition_rounds\".\"computed_quota\" is null)\n        and (\"free_tuition_rounds\".\"confirmed_quota\" is null) = (\"free_tuition_rounds\".\"quota_confirmed_by_user_id\" is null)\n        and (\"free_tuition_rounds\".\"confirmed_quota\" is null or (\"free_tuition_rounds\".\"student_count\" >= 0\n          and \"free_tuition_rounds\".\"computed_quota\" >= 0 and \"free_tuition_rounds\".\"confirmed_quota\" >= \"free_tuition_rounds\".\"computed_quota\"))"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.health_access_reasons": {
+      "name": "health_access_reasons",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "audit_log_id": {
+          "name": "audit_log_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actor_membership_id": {
+          "name": "actor_membership_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "student_id": {
+          "name": "student_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reason_code": {
+          "name": "reason_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "health_access_reasons_created_idx": {
+          "name": "health_access_reasons_created_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "\"created_at\" desc",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "health_access_reasons_actor_idx": {
+          "name": "health_access_reasons_actor_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "actor_membership_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "\"created_at\" desc",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "health_access_reasons_student_idx": {
+          "name": "health_access_reasons_student_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "student_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "\"created_at\" desc",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"health_access_reasons\".\"student_id\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "health_access_reasons_institution_id_institutions_id_fk": {
+          "name": "health_access_reasons_institution_id_institutions_id_fk",
+          "tableFrom": "health_access_reasons",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "health_access_reasons_pkey": {
+          "name": "health_access_reasons_pkey",
+          "columns": [
+            "institution_id",
+            "audit_log_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "health_access_reasons_reason_code_check": {
+          "name": "health_access_reasons_reason_code_check",
+          "value": "\"health_access_reasons\".\"reason_code\" in ('emergency', 'first_aid', 'guardian_meeting', 'incident_report', 'official_request', 'other')"
         }
       },
       "isRLSEnabled": false

@@ -258,6 +258,9 @@ const FinanceEmergencySummariesSection = lazy(async () => ({
   default: (await import('./FinanceEmergencySummariesSection.tsx'))
     .FinanceEmergencySummariesSection,
 }))
+const FinanceHealthAccessLogSection = lazy(async () => ({
+  default: (await import('./FinanceHealthAccessLogSection.tsx')).FinanceHealthAccessLogSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -341,6 +344,7 @@ const VIEWS = {
   clubs: { label: 'Kulüpler', param: 'kulupler' },
   infirmary: { label: 'Revir', param: 'revir' },
   emergencySummaries: { label: 'Acil durum özetleri', param: 'acil-durum-ozetleri' },
+  healthAccessLog: { label: 'Sağlık erişim günlüğü', param: 'saglik-erisim' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -416,6 +420,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Revir (DOM-FIN-151) ikisine açıktır; revir görevlisi rolü yoktur (K-510).
  * Acil durum özetleri (DOM-FIN-155) ikisine açıktır; ön büro sınıf kartlarını okur, özeti yönetici
  * yazar ve onaylar (K-520, K-521).
+ * Sağlık erişim günlüğü (DOM-FIN-156) yalnız yöneticidedir; denetimi yalnız yönetici görür (K-524).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -456,7 +461,8 @@ const viewOptionsFor = (institutionType: string | undefined, isManager: boolean)
       value === 'staffCosts' ||
       value === 'stakeholders' ||
       value === 'donations' ||
-      value === 'refundInvoices'
+      value === 'refundInvoices' ||
+      value === 'healthAccessLog'
     )
       return isManager
     if (value === 'packages' || value === 'courseOffers' || value === 'corporate')
@@ -688,6 +694,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'emergencySummaries' ? (
           <FinanceEmergencySummariesSection isManager={isManager} />
         ) : null}
+        {tab === 'healthAccessLog' ? <FinanceHealthAccessLogSection /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

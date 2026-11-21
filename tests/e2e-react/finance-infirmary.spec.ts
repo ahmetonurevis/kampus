@@ -7,13 +7,14 @@ import { expectNoHorizontalOverflow } from './support/ui.ts'
 // Revir ve ilaç onayı (ON-101; DOM-FIN-151). Kural dalları birim ve API testlerindedir
 // (`tests/finance-infirmary.test.ts`, `apps/api/test/finance-infirmary.test.ts`); burada ön büro
 // dar ekranda revir ziyareti açıp kapatır (K-508), velinin API'den açtığı ilaç talebini onaylar ve
-// bugünkü listeden dozu verildi olarak kaydeder; aynı doz ikinci kez sunulmaz (K-509). Veli
-// çocuğunun ziyaret özetini okur (K-510).
+// bugünkü listeden dozu verildi olarak kaydeder; aynı doz ikinci kez sunulmaz (K-509). İlaç
+// listeleri "Diğer" erişim gerekçesiyle açılır (DOM-FIN-156, K-523). Veli çocuğunun ziyaret özetini
+// gerekçesiz okur (K-510).
 
 const DESK = '/onburo/tahsilat-takip'
 
 test.describe('DOM-FIN-151: revir', () => {
-  test('DOM-FIN-151: ziyaret açılıp kapanır; onaylı ilaç bugünkü listeden verilir (K-508, K-509)', async ({
+  test('DOM-FIN-151, DOM-FIN-156: ziyaret açılıp kapanır; onaylı ilaç gerekçeyle açılan listeden verilir (K-508, K-509, K-523)', async ({
     loginAs,
     api,
     tenant,
@@ -64,6 +65,14 @@ test.describe('DOM-FIN-151: revir', () => {
     await expect(panel.getByText('Sınıfa döndü')).toBeVisible()
     await page.keyboard.press('Escape')
 
+    await expect(section.getByRole('list', { name: 'Bugünkü ilaçlar' })).toHaveCount(0)
+    await section.getByRole('button', { name: 'Gerekçe seç' }).click()
+    const reason = page
+      .getByRole('dialog', { name: 'Sağlık bilgisine erişim gerekçesi' })
+      .getByRole('form', { name: 'Erişim gerekçesi' })
+    await reason.getByLabel('Erişim gerekçesi').selectOption({ label: 'Diğer' })
+    await reason.getByLabel('Açıklama').fill('Veli telefonla ilacı sordu')
+    await reason.getByRole('button', { name: 'Bilgiyi aç' }).click()
     await section.getByRole('button', { name: /ilaç talebini onayla/ }).click()
     const give = section.getByRole('button', { name: /12:30 dozunu verildi olarak kaydet/ })
     await give.click()

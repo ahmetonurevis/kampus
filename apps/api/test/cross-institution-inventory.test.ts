@@ -4401,6 +4401,12 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: sağlık verisi erişim günlüğü (ON-164; DOM-FIN-156).
+  'GET /api/v1/finance/health-access-logs': liste(
+    'finance-health-access.test.ts',
+    'DOM-FIN-156: başka kurumun günlüğü görünmez; başka kurumun kaydı gerekçeyle de 404 ve günlüğe düşmez',
+    'get(LOGS, a.admin)',
+  ),
 }
 
 /**

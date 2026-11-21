@@ -337277,6 +337277,2005 @@
         }
       }
     },
+    "/api/v1/finance/transport/trips/my": {
+      "get": {
+        "operationId": "listMyTransportTrips",
+        "summary": "Çocuğumun bugünkü servis biniş-inişi",
+        "tags": [
+          "finance-transport"
+        ],
+        "description": "Velinin bağlı çocuklarının ya da öğrencinin kendi bugünkü (Europe/Istanbul) servis durumu, yön başına bir satır: güzergâh, durak, sefer durumu (`not_started`, `open`, `closed`), işaret (`pending`, `boarded`, `alighted`, `absent`) ve biniş/iniş anı (K-502). Kapsam sunucuda core `transportAssignments` kuralıyla daralır. Bildirim göndermez. Rol: `veli`, `ogrenci`; diğer roller 403. Modüller `finance` ve `transport`.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "studentId": {
+                            "type": "string"
+                          },
+                          "studentName": {
+                            "type": "string"
+                          },
+                          "direction": {
+                            "type": "string",
+                            "enum": [
+                              "morning",
+                              "evening"
+                            ],
+                            "description": "`morning` sabah (evden okula), `evening` akşam (okuldan eve)"
+                          },
+                          "routeName": {
+                            "type": "string"
+                          },
+                          "stopName": {
+                            "type": "string"
+                          },
+                          "stopTime": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "tripDate": {
+                            "type": "string",
+                            "description": "Bugün (YYYY-MM-DD, Europe/Istanbul)"
+                          },
+                          "tripStatus": {
+                            "type": "string",
+                            "enum": [
+                              "not_started",
+                              "open",
+                              "closed"
+                            ],
+                            "description": "`not_started` sefer başlamadı, `open` sürüyor, `closed` kapandı"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "pending",
+                              "boarded",
+                              "alighted",
+                              "absent"
+                            ],
+                            "description": "`pending` işaretlenmedi, `boarded` bindi (araçta), `alighted` indi, `absent` gelmedi"
+                          },
+                          "boardedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "alightedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "studentId",
+                          "studentName",
+                          "direction",
+                          "routeName",
+                          "stopName",
+                          "stopTime",
+                          "tripDate",
+                          "tripStatus",
+                          "status",
+                          "boardedAt",
+                          "alightedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/transport/trips": {
+      "get": {
+        "operationId": "listTransportTrips",
+        "summary": "Günlük sefer özeti",
+        "tags": [
+          "finance-transport"
+        ],
+        "description": "Rolün görebildiği her güzergâh için günün seferi (başlatılmadıysa `trip: null`) ve binen (inen dahil), inen, gelmeyen, araçta (binip inişi işaretlenmemiş) ve işaretlenmemiş sayıları; o gün seferi olan arşivli güzergâh da listelenir. `date` verilmezse bugün (Europe/Istanbul); `direction` süzer. Yön ve ada göre sıralı. Rol: `yonetici`, `ogretmen`, `onburo`; seferi yönetici ve güzergâhın rehber personeli yürütür, ön büro bütün seferleri okur, öğretmen yalnız rehberi olduğu güzergâhı görür (K-502); diğer roller 403. Modüller `finance` ve `transport` (kapalıysa 403).",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            },
+            "in": "query",
+            "name": "date",
+            "required": false,
+            "description": "Gün (YYYY-MM-DD, Europe/Istanbul); verilmezse bugün"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "morning",
+                "evening"
+              ]
+            },
+            "in": "query",
+            "name": "direction",
+            "required": false,
+            "description": "`morning` sabah (evden okula), `evening` akşam (okuldan eve)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "routeId": {
+                            "type": "string"
+                          },
+                          "routeName": {
+                            "type": "string"
+                          },
+                          "direction": {
+                            "type": "string",
+                            "enum": [
+                              "morning",
+                              "evening"
+                            ],
+                            "description": "`morning` sabah (evden okula), `evening` akşam (okuldan eve)"
+                          },
+                          "vehiclePlate": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "guideName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "assigned": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Güzergâha bugün atanmış öğrenci"
+                          },
+                          "canOperate": {
+                            "type": "boolean",
+                            "description": "Oturumdaki kullanıcı bu güzergâhın seferini yürütebilir"
+                          },
+                          "trip": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "open",
+                                      "closed"
+                                    ],
+                                    "description": "`open` sürüyor, `closed` kapandı"
+                                  },
+                                  "startedAt": {
+                                    "type": "string"
+                                  },
+                                  "closedAt": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "counts": {
+                                    "type": "object",
+                                    "properties": {
+                                      "total": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Listedeki öğrenci"
+                                      },
+                                      "pending": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "İşaretlenmemiş"
+                                      },
+                                      "boarded": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Binen (inen dahil)"
+                                      },
+                                      "alighted": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "İnen"
+                                      },
+                                      "absent": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Gelmeyen"
+                                      },
+                                      "onBoard": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991,
+                                        "description": "Binip inişi işaretlenmemiş: araçta olabilir; sıfır değilse sefer kapanmaz (K-504)"
+                                      }
+                                    },
+                                    "required": [
+                                      "total",
+                                      "pending",
+                                      "boarded",
+                                      "alighted",
+                                      "absent",
+                                      "onBoard"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "version": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "status",
+                                  "startedAt",
+                                  "closedAt",
+                                  "counts",
+                                  "version"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Günün seferi; başlatılmadıysa `null`"
+                          }
+                        },
+                        "required": [
+                          "routeId",
+                          "routeName",
+                          "direction",
+                          "vehiclePlate",
+                          "guideName",
+                          "assigned",
+                          "canOperate",
+                          "trip"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/transport/trips/{tripId}": {
+      "get": {
+        "operationId": "getTransportTrip",
+        "summary": "Sefer ve işaretleme listesi",
+        "tags": [
+          "finance-transport"
+        ],
+        "description": "Seferin öğrencileri durak sırasıyla: açık seferde güzergâha atanmış öğrenciler ve işaretler, kapanmış seferde kapanıştaki işaretler (K-503). Her satırda durum, biniş ve iniş anı, son düzeltmenin anı (gerekçe yalnız yöneticiye). `canOperate` ve `canCorrect` kullanıcının bu seferdeki yetkisidir. Başka kurumun ya da görülemeyen güzergâhın seferi 404. Rol: `yonetici`, `ogretmen`, `onburo`; seferi yönetici ve güzergâhın rehber personeli yürütür, ön büro bütün seferleri okur, öğretmen yalnız rehberi olduğu güzergâhı görür (K-502); diğer roller 403. Modüller `finance` ve `transport` (kapalıysa 403).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "tripId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "routeId": {
+                          "type": "string"
+                        },
+                        "routeName": {
+                          "type": "string"
+                        },
+                        "direction": {
+                          "type": "string",
+                          "enum": [
+                            "morning",
+                            "evening"
+                          ],
+                          "description": "`morning` sabah (evden okula), `evening` akşam (okuldan eve)"
+                        },
+                        "tripDate": {
+                          "type": "string",
+                          "description": "Seferin günü (YYYY-MM-DD, Europe/Istanbul)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "closed"
+                          ],
+                          "description": "`open` sürüyor, `closed` kapandı"
+                        },
+                        "vehiclePlate": {
+                          "description": "Başlatma anındaki aracın plakası",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "guideName": {
+                          "description": "Güzergâhın aracının rehber personeli",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startedAt": {
+                          "type": "string"
+                        },
+                        "closedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "counts": {
+                          "type": "object",
+                          "properties": {
+                            "total": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Listedeki öğrenci"
+                            },
+                            "pending": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "İşaretlenmemiş"
+                            },
+                            "boarded": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Binen (inen dahil)"
+                            },
+                            "alighted": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "İnen"
+                            },
+                            "absent": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Gelmeyen"
+                            },
+                            "onBoard": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Binip inişi işaretlenmemiş: araçta olabilir; sıfır değilse sefer kapanmaz (K-504)"
+                            }
+                          },
+                          "required": [
+                            "total",
+                            "pending",
+                            "boarded",
+                            "alighted",
+                            "absent",
+                            "onBoard"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "canOperate": {
+                          "type": "boolean",
+                          "description": "Oturumdaki kullanıcı bu açık seferi işaretleyip kapatabilir"
+                        },
+                        "canCorrect": {
+                          "type": "boolean",
+                          "description": "Oturumdaki kullanıcı bu kapanmış seferi düzeltebilir (yönetici)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kapatma `If-Match` sürümü"
+                        },
+                        "roster": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "studentId": {
+                                "type": "string"
+                              },
+                              "studentName": {
+                                "type": "string"
+                              },
+                              "stopId": {
+                                "type": "string"
+                              },
+                              "stopName": {
+                                "type": "string"
+                              },
+                              "stopPosition": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Durak sırası (1’den); liste bu sıraya göredir"
+                              },
+                              "stopTime": {
+                                "description": "Duraktan geçiş saati (SS:DD)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "pending",
+                                  "boarded",
+                                  "alighted",
+                                  "absent"
+                                ],
+                                "description": "`pending` işaretlenmedi, `boarded` bindi (araçta), `alighted` indi, `absent` gelmedi"
+                              },
+                              "boardedAt": {
+                                "description": "Biniş anı (ISO 8601 UTC)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "alightedAt": {
+                                "description": "İniş anı (ISO 8601 UTC)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "correctedAt": {
+                                "description": "Son yönetici düzeltmesinin anı (K-503)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "correctionReason": {
+                                "description": "Son düzeltmenin gerekçesi; yalnız yöneticiye döner (K-503)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "studentId",
+                              "studentName",
+                              "stopId",
+                              "stopName",
+                              "stopPosition",
+                              "stopTime",
+                              "status",
+                              "boardedAt",
+                              "alightedAt",
+                              "correctedAt",
+                              "correctionReason"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Öğrenciler durak sırasına ve ada göre"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "routeId",
+                        "routeName",
+                        "direction",
+                        "tripDate",
+                        "status",
+                        "vehiclePlate",
+                        "guideName",
+                        "startedAt",
+                        "closedAt",
+                        "counts",
+                        "canOperate",
+                        "canCorrect",
+                        "version",
+                        "roster"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/transport/routes/{routeId}/trips": {
+      "post": {
+        "operationId": "startTransportTrip",
+        "summary": "Seferi başlat",
+        "tags": [
+          "finance-transport"
+        ],
+        "description": "Güzergâhın bugünkü (Europe/Istanbul) seferini güzergâhın yönü ve bugünkü aracıyla açar. Aynı güzergâhın aynı gün ve yönde ikinci seferi 409 `transport_trip_exists`; rehberi olmadığı güzergâhta ön büro 403 `transport_trip_not_guide` (K-502). Gövde boş nesnedir. Denetim `finance.transport.trip_start`. `Idempotency-Key` zorunlu. Başarı 201. Rol: `yonetici`, `ogretmen`, `onburo`; seferi yönetici ve güzergâhın rehber personeli yürütür, ön büro bütün seferleri okur, öğretmen yalnız rehberi olduğu güzergâhı görür (K-502); diğer roller 403. Modüller `finance` ve `transport` (kapalıysa 403).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "routeId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "routeId": {
+                          "type": "string"
+                        },
+                        "routeName": {
+                          "type": "string"
+                        },
+                        "direction": {
+                          "type": "string",
+                          "enum": [
+                            "morning",
+                            "evening"
+                          ],
+                          "description": "`morning` sabah (evden okula), `evening` akşam (okuldan eve)"
+                        },
+                        "tripDate": {
+                          "type": "string",
+                          "description": "Seferin günü (YYYY-MM-DD, Europe/Istanbul)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "closed"
+                          ],
+                          "description": "`open` sürüyor, `closed` kapandı"
+                        },
+                        "vehiclePlate": {
+                          "description": "Başlatma anındaki aracın plakası",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "guideName": {
+                          "description": "Güzergâhın aracının rehber personeli",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startedAt": {
+                          "type": "string"
+                        },
+                        "closedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "counts": {
+                          "type": "object",
+                          "properties": {
+                            "total": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Listedeki öğrenci"
+                            },
+                            "pending": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "İşaretlenmemiş"
+                            },
+                            "boarded": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Binen (inen dahil)"
+                            },
+                            "alighted": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "İnen"
+                            },
+                            "absent": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Gelmeyen"
+                            },
+                            "onBoard": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Binip inişi işaretlenmemiş: araçta olabilir; sıfır değilse sefer kapanmaz (K-504)"
+                            }
+                          },
+                          "required": [
+                            "total",
+                            "pending",
+                            "boarded",
+                            "alighted",
+                            "absent",
+                            "onBoard"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "canOperate": {
+                          "type": "boolean",
+                          "description": "Oturumdaki kullanıcı bu açık seferi işaretleyip kapatabilir"
+                        },
+                        "canCorrect": {
+                          "type": "boolean",
+                          "description": "Oturumdaki kullanıcı bu kapanmış seferi düzeltebilir (yönetici)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kapatma `If-Match` sürümü"
+                        },
+                        "roster": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "studentId": {
+                                "type": "string"
+                              },
+                              "studentName": {
+                                "type": "string"
+                              },
+                              "stopId": {
+                                "type": "string"
+                              },
+                              "stopName": {
+                                "type": "string"
+                              },
+                              "stopPosition": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Durak sırası (1’den); liste bu sıraya göredir"
+                              },
+                              "stopTime": {
+                                "description": "Duraktan geçiş saati (SS:DD)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "pending",
+                                  "boarded",
+                                  "alighted",
+                                  "absent"
+                                ],
+                                "description": "`pending` işaretlenmedi, `boarded` bindi (araçta), `alighted` indi, `absent` gelmedi"
+                              },
+                              "boardedAt": {
+                                "description": "Biniş anı (ISO 8601 UTC)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "alightedAt": {
+                                "description": "İniş anı (ISO 8601 UTC)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "correctedAt": {
+                                "description": "Son yönetici düzeltmesinin anı (K-503)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "correctionReason": {
+                                "description": "Son düzeltmenin gerekçesi; yalnız yöneticiye döner (K-503)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "studentId",
+                              "studentName",
+                              "stopId",
+                              "stopName",
+                              "stopPosition",
+                              "stopTime",
+                              "status",
+                              "boardedAt",
+                              "alightedAt",
+                              "correctedAt",
+                              "correctionReason"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Öğrenciler durak sırasına ve ada göre"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "routeId",
+                        "routeName",
+                        "direction",
+                        "tripDate",
+                        "status",
+                        "vehiclePlate",
+                        "guideName",
+                        "startedAt",
+                        "closedAt",
+                        "counts",
+                        "canOperate",
+                        "canCorrect",
+                        "version",
+                        "roster"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/transport/trips/{tripId}/marks": {
+      "post": {
+        "operationId": "markTransportTrip",
+        "summary": "Biniş, iniş ya da gelmedi işaretle",
+        "tags": [
+          "finance-transport"
+        ],
+        "description": "Öğrenciyi bindi (`boarded`), indi (`alighted`; önce biniş, 422 `transport_mark_not_boarded`) ya da gelmedi (`absent`) işaretler. Yalnız güzergâha atanmış öğrenci (422 `transport_trip_student_not_on_route`). Saat verilmezse işaret anıdır; çevrimdışı yeniden denemede cihazın işaret anı gönderilir: seferin gününde olmalı (422 `transport_mark_other_day`), ileri olamaz (5 dk pay; 422 `transport_mark_future`), iniş binişten önce olamaz (422 `transport_mark_alight_before_board`). Aynı işaretin yinelenmesi değişiklik yazmaz. Açık seferde rehber ya da yönetici (403 `transport_trip_not_guide`); kapanmış seferi yalnız yönetici gerekçeyle düzeltir (422 `transport_trip_closed`, `transport_mark_reason_required`, `transport_trip_closed_on_board`, `transport_mark_unchanged`; K-503). Konum alınmaz. Denetim `finance.transport.trip_mark` ya da `finance.transport.trip_mark_correct` (alan adları). `Idempotency-Key` zorunlu; ardışık işaretler kilitsizdir (`If-Match` yok). Yanıt seferin güncel hâlidir. Rol: `yonetici`, `ogretmen`, `onburo`; seferi yönetici ve güzergâhın rehber personeli yürütür, ön büro bütün seferleri okur, öğretmen yalnız rehberi olduğu güzergâhı görür (K-502); diğer roller 403. Modüller `finance` ve `transport` (kapalıysa 403).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "studentId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Güzergâha atanmış öğrencinin kaydı"
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "boarded",
+                      "alighted",
+                      "absent"
+                    ],
+                    "description": "`boarded` bindi, `alighted` indi, `absent` gelmedi"
+                  },
+                  "boardedAt": {
+                    "description": "Biniş anı (ISO 8601). Verilmezse işaret anı; öğrenci zaten bindiyse korunur. Çevrimdışı yeniden denemede cihazın işaret anı gönderilir.",
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                  },
+                  "alightedAt": {
+                    "description": "İniş anı (ISO 8601; yalnız `alighted`). Verilmezse işaret anı; öğrenci zaten indiyse korunur.",
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                  },
+                  "reason": {
+                    "description": "Kapanmış seferde yöneticinin düzeltme gerekçesi (zorunlu); açık seferde yok sayılır (K-503)",
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "studentId",
+                  "status"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "tripId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "routeId": {
+                          "type": "string"
+                        },
+                        "routeName": {
+                          "type": "string"
+                        },
+                        "direction": {
+                          "type": "string",
+                          "enum": [
+                            "morning",
+                            "evening"
+                          ],
+                          "description": "`morning` sabah (evden okula), `evening` akşam (okuldan eve)"
+                        },
+                        "tripDate": {
+                          "type": "string",
+                          "description": "Seferin günü (YYYY-MM-DD, Europe/Istanbul)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "closed"
+                          ],
+                          "description": "`open` sürüyor, `closed` kapandı"
+                        },
+                        "vehiclePlate": {
+                          "description": "Başlatma anındaki aracın plakası",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "guideName": {
+                          "description": "Güzergâhın aracının rehber personeli",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startedAt": {
+                          "type": "string"
+                        },
+                        "closedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "counts": {
+                          "type": "object",
+                          "properties": {
+                            "total": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Listedeki öğrenci"
+                            },
+                            "pending": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "İşaretlenmemiş"
+                            },
+                            "boarded": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Binen (inen dahil)"
+                            },
+                            "alighted": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "İnen"
+                            },
+                            "absent": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Gelmeyen"
+                            },
+                            "onBoard": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Binip inişi işaretlenmemiş: araçta olabilir; sıfır değilse sefer kapanmaz (K-504)"
+                            }
+                          },
+                          "required": [
+                            "total",
+                            "pending",
+                            "boarded",
+                            "alighted",
+                            "absent",
+                            "onBoard"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "canOperate": {
+                          "type": "boolean",
+                          "description": "Oturumdaki kullanıcı bu açık seferi işaretleyip kapatabilir"
+                        },
+                        "canCorrect": {
+                          "type": "boolean",
+                          "description": "Oturumdaki kullanıcı bu kapanmış seferi düzeltebilir (yönetici)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kapatma `If-Match` sürümü"
+                        },
+                        "roster": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "studentId": {
+                                "type": "string"
+                              },
+                              "studentName": {
+                                "type": "string"
+                              },
+                              "stopId": {
+                                "type": "string"
+                              },
+                              "stopName": {
+                                "type": "string"
+                              },
+                              "stopPosition": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Durak sırası (1’den); liste bu sıraya göredir"
+                              },
+                              "stopTime": {
+                                "description": "Duraktan geçiş saati (SS:DD)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "pending",
+                                  "boarded",
+                                  "alighted",
+                                  "absent"
+                                ],
+                                "description": "`pending` işaretlenmedi, `boarded` bindi (araçta), `alighted` indi, `absent` gelmedi"
+                              },
+                              "boardedAt": {
+                                "description": "Biniş anı (ISO 8601 UTC)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "alightedAt": {
+                                "description": "İniş anı (ISO 8601 UTC)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "correctedAt": {
+                                "description": "Son yönetici düzeltmesinin anı (K-503)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "correctionReason": {
+                                "description": "Son düzeltmenin gerekçesi; yalnız yöneticiye döner (K-503)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "studentId",
+                              "studentName",
+                              "stopId",
+                              "stopName",
+                              "stopPosition",
+                              "stopTime",
+                              "status",
+                              "boardedAt",
+                              "alightedAt",
+                              "correctedAt",
+                              "correctionReason"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Öğrenciler durak sırasına ve ada göre"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "routeId",
+                        "routeName",
+                        "direction",
+                        "tripDate",
+                        "status",
+                        "vehiclePlate",
+                        "guideName",
+                        "startedAt",
+                        "closedAt",
+                        "counts",
+                        "canOperate",
+                        "canCorrect",
+                        "version",
+                        "roster"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/transport/trips/{tripId}/close": {
+      "post": {
+        "operationId": "closeTransportTrip",
+        "summary": "Seferi kapat",
+        "tags": [
+          "finance-transport"
+        ],
+        "description": "Binip inişi işaretlenmemiş (araçta kalmış olabilecek) öğrenci varken 422 `transport_trip_students_on_board`, işaretlenmemiş öğrenci varken 422 `transport_trip_unmarked` (K-504); kapanmış sefer 409 `transport_trip_already_closed`. Kapanan sefer yeniden açılmaz; sonraki değişiklik yöneticinin gerekçeli düzeltmesidir. Gövde boş nesnedir. Denetim `finance.transport.trip_close`. `If-Match` seferin sürümüdür. Rol: `yonetici`, `ogretmen`, `onburo`; seferi yönetici ve güzergâhın rehber personeli yürütür, ön büro bütün seferleri okur, öğretmen yalnız rehberi olduğu güzergâhı görür (K-502); diğer roller 403. Modüller `finance` ve `transport` (kapalıysa 403).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "tripId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "routeId": {
+                          "type": "string"
+                        },
+                        "routeName": {
+                          "type": "string"
+                        },
+                        "direction": {
+                          "type": "string",
+                          "enum": [
+                            "morning",
+                            "evening"
+                          ],
+                          "description": "`morning` sabah (evden okula), `evening` akşam (okuldan eve)"
+                        },
+                        "tripDate": {
+                          "type": "string",
+                          "description": "Seferin günü (YYYY-MM-DD, Europe/Istanbul)"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "closed"
+                          ],
+                          "description": "`open` sürüyor, `closed` kapandı"
+                        },
+                        "vehiclePlate": {
+                          "description": "Başlatma anındaki aracın plakası",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "guideName": {
+                          "description": "Güzergâhın aracının rehber personeli",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "startedAt": {
+                          "type": "string"
+                        },
+                        "closedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "counts": {
+                          "type": "object",
+                          "properties": {
+                            "total": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Listedeki öğrenci"
+                            },
+                            "pending": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "İşaretlenmemiş"
+                            },
+                            "boarded": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Binen (inen dahil)"
+                            },
+                            "alighted": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "İnen"
+                            },
+                            "absent": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Gelmeyen"
+                            },
+                            "onBoard": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Binip inişi işaretlenmemiş: araçta olabilir; sıfır değilse sefer kapanmaz (K-504)"
+                            }
+                          },
+                          "required": [
+                            "total",
+                            "pending",
+                            "boarded",
+                            "alighted",
+                            "absent",
+                            "onBoard"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "canOperate": {
+                          "type": "boolean",
+                          "description": "Oturumdaki kullanıcı bu açık seferi işaretleyip kapatabilir"
+                        },
+                        "canCorrect": {
+                          "type": "boolean",
+                          "description": "Oturumdaki kullanıcı bu kapanmış seferi düzeltebilir (yönetici)"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kapatma `If-Match` sürümü"
+                        },
+                        "roster": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "studentId": {
+                                "type": "string"
+                              },
+                              "studentName": {
+                                "type": "string"
+                              },
+                              "stopId": {
+                                "type": "string"
+                              },
+                              "stopName": {
+                                "type": "string"
+                              },
+                              "stopPosition": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Durak sırası (1’den); liste bu sıraya göredir"
+                              },
+                              "stopTime": {
+                                "description": "Duraktan geçiş saati (SS:DD)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "pending",
+                                  "boarded",
+                                  "alighted",
+                                  "absent"
+                                ],
+                                "description": "`pending` işaretlenmedi, `boarded` bindi (araçta), `alighted` indi, `absent` gelmedi"
+                              },
+                              "boardedAt": {
+                                "description": "Biniş anı (ISO 8601 UTC)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "alightedAt": {
+                                "description": "İniş anı (ISO 8601 UTC)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "correctedAt": {
+                                "description": "Son yönetici düzeltmesinin anı (K-503)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "correctionReason": {
+                                "description": "Son düzeltmenin gerekçesi; yalnız yöneticiye döner (K-503)",
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "studentId",
+                              "studentName",
+                              "stopId",
+                              "stopName",
+                              "stopPosition",
+                              "stopTime",
+                              "status",
+                              "boardedAt",
+                              "alightedAt",
+                              "correctedAt",
+                              "correctionReason"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Öğrenciler durak sırasına ve ada göre"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "routeId",
+                        "routeName",
+                        "direction",
+                        "tripDate",
+                        "status",
+                        "vehiclePlate",
+                        "guideName",
+                        "startedAt",
+                        "closedAt",
+                        "counts",
+                        "canOperate",
+                        "canCorrect",
+                        "version",
+                        "roster"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

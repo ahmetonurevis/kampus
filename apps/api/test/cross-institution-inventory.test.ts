@@ -4243,6 +4243,38 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'DOM-FIN-148: başka kurumun ya da arşivli güzergâhı 404',
     'get(rosterUrl(route.id), a.admin)',
   ),
+  // Onur: servis seferi ve biniş-iniş (ON-145; DOM-FIN-149).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/transport/trips/my', 'get(MY, aParent)'],
+        ['liste', 'GET /api/v1/finance/transport/trips', 'get(TRIPS, a.admin)'],
+        ['kayıt', 'GET /api/v1/finance/transport/trips/:tripId', 'get(bTripUrl, a.admin)'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/transport/routes/:routeId/trips',
+          'startUrl(bSetup.route.id), a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/transport/trips/:tripId/marks',
+          'markUrl(bTrip.id), a.admin',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/transport/trips/:tripId/close',
+          'closeTripAs(a.admin, bTrip.id',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-transport-trips.test.ts',
+        'DOM-FIN-149: başka kurumun seferi ve işareti 404 ve B değişmez; listede yok; institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

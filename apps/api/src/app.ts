@@ -138,6 +138,7 @@ import { registerFinanceTransportTripRoutes } from './routes/finance-transport-t
 import { registerFinanceTransportDocumentRoutes } from './routes/finance-transport-documents.ts'
 import { registerFinanceClubSelectionRoutes } from './routes/finance-club-selection.ts'
 import { registerFinanceInfirmaryRoutes } from './routes/finance-infirmary.ts'
+import { registerFinanceEmergencySummaryRoutes } from './routes/finance-emergency-summaries.ts'
 // Onur: kayıt ve finans sonu
 import { createFfmpegTranscoder, type AudioTranscoder } from './services/audio-transcoder.ts'
 import { MAX_UPLOAD_BYTES } from './services/files.ts'
@@ -355,6 +356,15 @@ export const REDACTED_PATHS = [
   '*.cancellationReason',
   'certificateNumber',
   '*.certificateNumber',
+  // kvkk: Ö — acil durum özetinin acil eylem metni (DOM-FIN-155, ON-165).
+  'actionText',
+  '*.actionText',
+  'draftText',
+  '*.draftText',
+  'publishedText',
+  '*.publishedText',
+  'profileInstructions',
+  '*.profileInstructions',
   // kvkk: Ö — öğrencinin sağlık ve acil bilgisi (IST-020, DOM-ILT-035) ve şifreli paketi.
   'allergies',
   '*.allergies',
@@ -684,6 +694,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceTransportDocumentRoutes(app, storage)
   registerFinanceClubSelectionRoutes(app)
   registerFinanceInfirmaryRoutes(app)
+  registerFinanceEmergencySummaryRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

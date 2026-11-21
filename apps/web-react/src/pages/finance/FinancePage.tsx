@@ -236,6 +236,9 @@ const FinancePersonnelFilesSection = lazy(async () => ({
 const FinanceVisitorsSection = lazy(async () => ({
   default: (await import('./FinanceVisitorsSection.tsx')).FinanceVisitorsSection,
 }))
+const FinanceLostItemsSection = lazy(async () => ({
+  default: (await import('./FinanceLostItemsSection.tsx')).FinanceLostItemsSection,
+}))
 const FreeTuitionSection = lazy(async () => ({
   default: (await import('./FreeTuitionSection.tsx')).FreeTuitionSection,
 }))
@@ -312,6 +315,7 @@ const VIEWS = {
   teacherMentorships: { label: 'Mentorluk', param: 'mentorluk' },
   personnelFiles: { label: 'Özlük kartları', param: 'ozluk-kartlari' },
   visitors: { label: 'Ziyaretçiler', param: 'ziyaretciler' },
+  lostItems: { label: 'Kayıp eşya', param: 'kayip-esya' },
 } as const
 type FinanceView = keyof typeof VIEWS
 const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
@@ -378,6 +382,7 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
  * Özlük kartları (DOM-FIN-140) yalnız yöneticidedir (muhasebe rolü açılınca o da); alanlar role
  * göre sunucuda süzülür (K-475).
  * Ziyaretçiler (DOM-FIN-141) ikisine açıktır; ayar ve saklama yöneticide (K-478, K-480).
+ * Kayıp eşya (DOM-FIN-145) ikisine açıktır; ayar ve toplu bağış/imha yöneticide (K-490, K-492).
  */
 const viewOptionsFor = (institutionType: string | undefined, isManager: boolean) =>
   VIEW_OPTIONS.filter(({ value }) => {
@@ -641,6 +646,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         {tab === 'teacherMentorships' ? <FinanceTeacherMentorshipsSection /> : null}
         {tab === 'personnelFiles' ? <FinancePersonnelFilesSection /> : null}
         {tab === 'visitors' ? <FinanceVisitorsSection isManager={isManager} /> : null}
+        {tab === 'lostItems' ? <FinanceLostItemsSection isManager={isManager} /> : null}
       </Suspense>
       <InvoiceSummaryPanel
         invoiceId={panel.selectedId}

@@ -14824,6 +14824,234 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/transport/routes/{routeId}/roster": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Servis listesi (PDF verisi)
+         * @description Güzergâhın (araç × yön) etkin atamaları durak sırasıyla; durakta öğrenciler ada göre: ad, sınıf, durak ve saat, acil iletişim (velayetli ve iletişim kısıtı olmayan veli bağları, bağ yoksa öğrenci kaydındaki veli; en çok iki kişi; ad, yakınlık, telefon). Ayrılan, mezun ve arşivli öğrenci listede yok (K-499, K-501). Sağlık ve alerji bilgisi dönmez. `purpose=office` (varsayılan) veli telefonu maskeli; `purpose=driver` sürücüye verilecek liste, veli telefonu tam, yalnız `yonetici` (ön büroya 403 `transport_roster_driver_forbidden`) (K-500). Sürücü telefonu her amaçta maskeli (K-481). Web PDF'i bu veriden üretir. Taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk; her okuma denetime düşer: `office` `finance.transport.roster_export`, `driver` `finance.transport.roster_driver_export` (alan adları ve satır sayısı; telefon ve öğrenci kimliği yazılmaz). Olmayan, arşivli ya da başka kurumun güzergâhı 404. Rol: `yonetici`, `onburo`; modüller `finance` ve `transport` (kapalıysa 403).
+         */
+        get: operations["getTransportRoster"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/transport/trips/my": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Çocuğumun bugünkü servis biniş-inişi
+         * @description Velinin bağlı çocuklarının ya da öğrencinin kendi bugünkü (Europe/Istanbul) servis durumu, yön başına bir satır: güzergâh, durak, sefer durumu (`not_started`, `open`, `closed`), işaret (`pending`, `boarded`, `alighted`, `absent`) ve biniş/iniş anı (K-502). Kapsam sunucuda core `transportAssignments` kuralıyla daralır. Bildirim göndermez. Rol: `veli`, `ogrenci`; diğer roller 403. Modüller `finance` ve `transport`.
+         */
+        get: operations["listMyTransportTrips"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/transport/trips": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Günlük sefer özeti
+         * @description Rolün görebildiği her güzergâh için günün seferi (başlatılmadıysa `trip: null`) ve binen (inen dahil), inen, gelmeyen, araçta (binip inişi işaretlenmemiş) ve işaretlenmemiş sayıları; o gün seferi olan arşivli güzergâh da listelenir. `date` verilmezse bugün (Europe/Istanbul); `direction` süzer. Yön ve ada göre sıralı. Rol: `yonetici`, `ogretmen`, `onburo`; seferi yönetici ve güzergâhın rehber personeli yürütür, ön büro bütün seferleri okur, öğretmen yalnız rehberi olduğu güzergâhı görür (K-502); diğer roller 403. Modüller `finance` ve `transport` (kapalıysa 403).
+         */
+        get: operations["listTransportTrips"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/transport/trips/{tripId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sefer ve işaretleme listesi
+         * @description Seferin öğrencileri durak sırasıyla: açık seferde güzergâha atanmış öğrenciler ve işaretler, kapanmış seferde kapanıştaki işaretler (K-503). Her satırda durum, biniş ve iniş anı, son düzeltmenin anı (gerekçe yalnız yöneticiye). `canOperate` ve `canCorrect` kullanıcının bu seferdeki yetkisidir. Başka kurumun ya da görülemeyen güzergâhın seferi 404. Rol: `yonetici`, `ogretmen`, `onburo`; seferi yönetici ve güzergâhın rehber personeli yürütür, ön büro bütün seferleri okur, öğretmen yalnız rehberi olduğu güzergâhı görür (K-502); diğer roller 403. Modüller `finance` ve `transport` (kapalıysa 403).
+         */
+        get: operations["getTransportTrip"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/transport/routes/{routeId}/trips": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Seferi başlat
+         * @description Güzergâhın bugünkü (Europe/Istanbul) seferini güzergâhın yönü ve bugünkü aracıyla açar. Aynı güzergâhın aynı gün ve yönde ikinci seferi 409 `transport_trip_exists`; rehberi olmadığı güzergâhta ön büro 403 `transport_trip_not_guide` (K-502). Gövde boş nesnedir. Denetim `finance.transport.trip_start`. `Idempotency-Key` zorunlu. Başarı 201. Rol: `yonetici`, `ogretmen`, `onburo`; seferi yönetici ve güzergâhın rehber personeli yürütür, ön büro bütün seferleri okur, öğretmen yalnız rehberi olduğu güzergâhı görür (K-502); diğer roller 403. Modüller `finance` ve `transport` (kapalıysa 403).
+         */
+        post: operations["startTransportTrip"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/transport/trips/{tripId}/marks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Biniş, iniş ya da gelmedi işaretle
+         * @description Öğrenciyi bindi (`boarded`), indi (`alighted`; önce biniş, 422 `transport_mark_not_boarded`) ya da gelmedi (`absent`) işaretler. Yalnız güzergâha atanmış öğrenci (422 `transport_trip_student_not_on_route`). Saat verilmezse işaret anıdır; çevrimdışı yeniden denemede cihazın işaret anı gönderilir: seferin gününde olmalı (422 `transport_mark_other_day`), ileri olamaz (5 dk pay; 422 `transport_mark_future`), iniş binişten önce olamaz (422 `transport_mark_alight_before_board`). Aynı işaretin yinelenmesi değişiklik yazmaz. Açık seferde rehber ya da yönetici (403 `transport_trip_not_guide`); kapanmış seferi yalnız yönetici gerekçeyle düzeltir (422 `transport_trip_closed`, `transport_mark_reason_required`, `transport_trip_closed_on_board`, `transport_mark_unchanged`; K-503). Konum alınmaz. Denetim `finance.transport.trip_mark` ya da `finance.transport.trip_mark_correct` (alan adları). `Idempotency-Key` zorunlu; ardışık işaretler kilitsizdir (`If-Match` yok). Yanıt seferin güncel hâlidir. Rol: `yonetici`, `ogretmen`, `onburo`; seferi yönetici ve güzergâhın rehber personeli yürütür, ön büro bütün seferleri okur, öğretmen yalnız rehberi olduğu güzergâhı görür (K-502); diğer roller 403. Modüller `finance` ve `transport` (kapalıysa 403).
+         */
+        post: operations["markTransportTrip"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/transport/trips/{tripId}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Seferi kapat
+         * @description Binip inişi işaretlenmemiş (araçta kalmış olabilecek) öğrenci varken 422 `transport_trip_students_on_board`, işaretlenmemiş öğrenci varken 422 `transport_trip_unmarked` (K-504); kapanmış sefer 409 `transport_trip_already_closed`. Kapanan sefer yeniden açılmaz; sonraki değişiklik yöneticinin gerekçeli düzeltmesidir. Gövde boş nesnedir. Denetim `finance.transport.trip_close`. `If-Match` seferin sürümüdür. Rol: `yonetici`, `ogretmen`, `onburo`; seferi yönetici ve güzergâhın rehber personeli yürütür, ön büro bütün seferleri okur, öğretmen yalnız rehberi olduğu güzergâhı görür (K-502); diğer roller 403. Modüller `finance` ve `transport` (kapalıysa 403).
+         */
+        post: operations["closeTransportTrip"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/transport/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Servis belgeleri
+         * @description Etkin araçların, sürücülerinin ve personelin belgeleri; bitişi en yakın önce (süresiz en sonda), sayfalı. Süzgeçler: özne, araç, personel, tür, `due` (süresi geçen, uyarı penceresinde biten, ikisi ya da geçerli; yalnız uyarıya sayılan belgeler) ve `history=true` (yerine geçilenler dahil). Önceki sürücünün ve pasif personelin belgesi `counted: false` döner. Özel nitelikli belgede yönetici dışında dosya bilgisi `null` (`restricted: true`; K-497). Arşivli aracın belgesi dönmez. Rol: `yonetici`, `onburo`; adli sicil ve psikoteknik belgesini yalnız yönetici kaydeder ve dosyasını açar (K-497). Modüller `finance` ve `transport` (kapalıysa 403).
+         */
+        get: operations["listTransportDocuments"];
+        put?: never;
+        /**
+         * Servis belgesi kaydet
+         * @description Özne araç (`vehicleId`; muayene, zorunlu trafik sigortası, koltuk sigortası, okul servis aracı uygunluk/izin belgesi, diğer; isteğe bağlı belge no), aracın kayıtlı sürücüsü (`vehicleId`; belge kayıt anındaki sürücü adına bağlanır) ya da kurum üyesi personel (`membershipId`; rehber ya da üye sürücü). Kişi belgesi ehliyet (sınıf zorunlu), SRC, psikoteknik, adli sicil ya da diğerdir; içerik ve numara saklanmaz (K-497). Bitiş muayene, sigortalar, izin belgesi, ehliyet ve psikoteknikte zorunlu (400). Başlangıç bugünden sonra olamaz (422 `transport_document_start_in_future`). Dosya isteğe bağlı: `POST /files` amaç `document` (PDF) ya da `question_image` (görsel, geçişte yalnız yönetici yükler), en çok 10 MB (422 `transport_document_file_too_large`). "Diğer" dışındaki türde yeni belge aynı öznenin geçerli belgesinin yerine kendiliğinden geçer ve yanıtta `superseded` döner; geçerli belgeden eski tarih 422 `transport_document_older_than_current` (K-496). Ön büro adli sicil ve psikoteknik kaydedemez (403 `transport_document_sensitive_forbidden`). Olmayan ya da arşivli araç 422 `transport_document_vehicle_not_found`; personel 422 `transport_document_staff_not_found`, `transport_document_not_staff`, `transport_document_staff_inactive`. Denetim `finance.transport.document_create` (alan adları) ve `…document_supersede`. `Idempotency-Key` zorunlu. Rol: `yonetici`, `onburo`; adli sicil ve psikoteknik belgesini yalnız yönetici kaydeder ve dosyasını açar (K-497). Modüller `finance` ve `transport` (kapalıysa 403).
+         */
+        post: operations["createTransportDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/transport/documents/{documentId}/file-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Servis belgesinin dosyasını aç
+         * @description Belgenin dosyası için kısa ömürlü imzalı bağlantı. Her üretim denetime `finance.transport.document_file_open` olarak yazılır; denetim yazılamazsa bağlantı dönmez. Adli sicil ve psikoteknik dosyasını yalnız yönetici açar (ön büro 403 `transport_document_sensitive_forbidden`; K-497). Dosyasız belge 422 `transport_document_no_file`. Belge dosyası `GET /files/{fileId}/url` yolundan açılmaz (404). Başka kurumun belgesi 404. Rol: `yonetici`, `onburo`; adli sicil ve psikoteknik belgesini yalnız yönetici kaydeder ve dosyasını açar (K-497). Modüller `finance` ve `transport` (kapalıysa 403).
+         */
+        get: operations["getTransportDocumentFileUrl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/transport/document-alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Servis belgesi uyarıları ve araç uygunluğu
+         * @description Uyarıya sayılan belgelerde süresi geçen ve kurumun uyarı penceresinde (varsayılan 30 gün) biten belge sayısı; her etkin araç için süresi geçmiş ve yaklaşan zorunlu türler (araç: muayene, trafik ve koltuk sigortası, izin belgesi; şimdiki sürücü: ehliyet, SRC, psikoteknik, adli sicil), eksik türler ve etkin güzergâhlar. Zorunlu belgesi süresi geçmiş araç `fit: false` ("uygun değil"); öğrenci ataması engellenmez (K-498). Bildirim gönderilmez. Rol: `yonetici`, `onburo`; adli sicil ve psikoteknik belgesini yalnız yönetici kaydeder ve dosyasını açar (K-497). Modüller `finance` ve `transport` (kapalıysa 403).
+         */
+        get: operations["getTransportDocumentAlerts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/transport/document-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Servis belgesi uyarı ayarı
+         * @description Uyarı penceresi (gün) ve `If-Match` sürümü; hiç kaydedilmediyse 30 gün, sürüm 1 (K-498). Rol: `yonetici`, `onburo`; adli sicil ve psikoteknik belgesini yalnız yönetici kaydeder ve dosyasını açar (K-497). Modüller `finance` ve `transport` (kapalıysa 403).
+         */
+        get: operations["getTransportDocumentSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Servis belgesi uyarı ayarını değiştir
+         * @description Uyarı penceresi 1–180 gün; değişiklik yoksa 422 `transport_document_settings_unchanged`. `If-Match` ayar sürümü (hiç kaydedilmediyse 1), tutmazsa 409. Denetim `finance.transport.document_settings` (K-498). Rol: yalnız `yonetici` (ön büro 403). Modüller `finance` ve `transport`.
+         */
+        patch: operations["updateTransportDocumentSettings"];
+        trace?: never;
+    };
     "/api/v1/finance/club-selection/my": {
         parameters: {
             query?: never;
@@ -156537,6 +156765,1959 @@ export interface operations {
                     "application/json": {
                         data: {
                             id: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getTransportRoster: {
+        parameters: {
+            query?: {
+                /** @description `office` kurum içi (veli telefonu maskeli, varsayılan), `driver` sürücüye verilecek liste (veli telefonu tam; yalnız yönetici) */
+                purpose?: "office" | "driver";
+            };
+            header?: never;
+            path: {
+                routeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            route: {
+                                id: string;
+                                name: string;
+                                /** @enum {string} */
+                                direction: "morning" | "evening";
+                                /** @description Plaka, boşluksuz büyük harf */
+                                vehiclePlate: string | null;
+                                capacity: number;
+                                driverName: string | null;
+                                /** @description Sürücü telefonu, her amaçta maskeli (K-481) */
+                                driverPhoneMasked: string | null;
+                                /** @description Rehber personelin adı */
+                                guideName: string | null;
+                            };
+                            /** @enum {string} */
+                            purpose: "office" | "driver";
+                            /** @description Veli telefonları maskeli mi (`office`) */
+                            phonesMasked: boolean;
+                            /** @description Listenin günü (YYYY-MM-DD, Europe/Istanbul) */
+                            listDate: string;
+                            /** @description Listedeki öğrenci sayısı */
+                            total: number;
+                            /** @description Duraklar sırasıyla; boş durak da yazılır */
+                            stops: {
+                                id: string;
+                                position: number;
+                                /** @description Durak adı ya da semt */
+                                name: string;
+                                /** @description Geçiş saati (SS:DD) */
+                                time: string;
+                                /** @description Durağın kayıtlı öğrencileri, ada göre */
+                                students: {
+                                    studentName: string;
+                                    className: string | null;
+                                    /** @description Acil iletişim, en çok iki kişi (K-501) */
+                                    contacts: {
+                                        /** @description Veli adı (hesap adı, yoksa veli kaydı) */
+                                        name: string | null;
+                                        /** @description Yakınlık; bilinmiyorsa boş */
+                                        relationship: ("mother" | "father" | "legal_guardian" | "other") | null;
+                                        /** @description Veli telefonu: `office` amacında maskeli (`0532 *** ** 12`), `driver` amacında tam */
+                                        phone: string | null;
+                                    }[];
+                                }[];
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listMyTransportTrips: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            studentId: string;
+                            studentName: string;
+                            /**
+                             * @description `morning` sabah (evden okula), `evening` akşam (okuldan eve)
+                             * @enum {string}
+                             */
+                            direction: "morning" | "evening";
+                            routeName: string;
+                            stopName: string;
+                            stopTime: string | null;
+                            /** @description Bugün (YYYY-MM-DD, Europe/Istanbul) */
+                            tripDate: string;
+                            /**
+                             * @description `not_started` sefer başlamadı, `open` sürüyor, `closed` kapandı
+                             * @enum {string}
+                             */
+                            tripStatus: "not_started" | "open" | "closed";
+                            /**
+                             * @description `pending` işaretlenmedi, `boarded` bindi (araçta), `alighted` indi, `absent` gelmedi
+                             * @enum {string}
+                             */
+                            status: "pending" | "boarded" | "alighted" | "absent";
+                            boardedAt: string | null;
+                            alightedAt: string | null;
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listTransportTrips: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Gün (YYYY-MM-DD, Europe/Istanbul); verilmezse bugün */
+                date?: string;
+                /** @description `morning` sabah (evden okula), `evening` akşam (okuldan eve) */
+                direction?: "morning" | "evening";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            routeId: string;
+                            routeName: string;
+                            /**
+                             * @description `morning` sabah (evden okula), `evening` akşam (okuldan eve)
+                             * @enum {string}
+                             */
+                            direction: "morning" | "evening";
+                            vehiclePlate: string | null;
+                            guideName: string | null;
+                            /** @description Güzergâha bugün atanmış öğrenci */
+                            assigned: number;
+                            /** @description Oturumdaki kullanıcı bu güzergâhın seferini yürütebilir */
+                            canOperate: boolean;
+                            /** @description Günün seferi; başlatılmadıysa `null` */
+                            trip: {
+                                id: string;
+                                /**
+                                 * @description `open` sürüyor, `closed` kapandı
+                                 * @enum {string}
+                                 */
+                                status: "open" | "closed";
+                                startedAt: string;
+                                closedAt: string | null;
+                                counts: {
+                                    /** @description Listedeki öğrenci */
+                                    total: number;
+                                    /** @description İşaretlenmemiş */
+                                    pending: number;
+                                    /** @description Binen (inen dahil) */
+                                    boarded: number;
+                                    /** @description İnen */
+                                    alighted: number;
+                                    /** @description Gelmeyen */
+                                    absent: number;
+                                    /** @description Binip inişi işaretlenmemiş: araçta olabilir; sıfır değilse sefer kapanmaz (K-504) */
+                                    onBoard: number;
+                                };
+                                version: number;
+                            } | null;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getTransportTrip: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                tripId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            routeId: string;
+                            routeName: string;
+                            /**
+                             * @description `morning` sabah (evden okula), `evening` akşam (okuldan eve)
+                             * @enum {string}
+                             */
+                            direction: "morning" | "evening";
+                            /** @description Seferin günü (YYYY-MM-DD, Europe/Istanbul) */
+                            tripDate: string;
+                            /**
+                             * @description `open` sürüyor, `closed` kapandı
+                             * @enum {string}
+                             */
+                            status: "open" | "closed";
+                            /** @description Başlatma anındaki aracın plakası */
+                            vehiclePlate: string | null;
+                            /** @description Güzergâhın aracının rehber personeli */
+                            guideName: string | null;
+                            startedAt: string;
+                            closedAt: string | null;
+                            counts: {
+                                /** @description Listedeki öğrenci */
+                                total: number;
+                                /** @description İşaretlenmemiş */
+                                pending: number;
+                                /** @description Binen (inen dahil) */
+                                boarded: number;
+                                /** @description İnen */
+                                alighted: number;
+                                /** @description Gelmeyen */
+                                absent: number;
+                                /** @description Binip inişi işaretlenmemiş: araçta olabilir; sıfır değilse sefer kapanmaz (K-504) */
+                                onBoard: number;
+                            };
+                            /** @description Oturumdaki kullanıcı bu açık seferi işaretleyip kapatabilir */
+                            canOperate: boolean;
+                            /** @description Oturumdaki kullanıcı bu kapanmış seferi düzeltebilir (yönetici) */
+                            canCorrect: boolean;
+                            /** @description Kapatma `If-Match` sürümü */
+                            version: number;
+                            /** @description Öğrenciler durak sırasına ve ada göre */
+                            roster: {
+                                studentId: string;
+                                studentName: string;
+                                stopId: string;
+                                stopName: string;
+                                /** @description Durak sırası (1’den); liste bu sıraya göredir */
+                                stopPosition: number;
+                                /** @description Duraktan geçiş saati (SS:DD) */
+                                stopTime: string | null;
+                                /**
+                                 * @description `pending` işaretlenmedi, `boarded` bindi (araçta), `alighted` indi, `absent` gelmedi
+                                 * @enum {string}
+                                 */
+                                status: "pending" | "boarded" | "alighted" | "absent";
+                                /** @description Biniş anı (ISO 8601 UTC) */
+                                boardedAt: string | null;
+                                /** @description İniş anı (ISO 8601 UTC) */
+                                alightedAt: string | null;
+                                /** @description Son yönetici düzeltmesinin anı (K-503) */
+                                correctedAt: string | null;
+                                /** @description Son düzeltmenin gerekçesi; yalnız yöneticiye döner (K-503) */
+                                correctionReason: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    startTransportTrip: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                routeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            routeId: string;
+                            routeName: string;
+                            /**
+                             * @description `morning` sabah (evden okula), `evening` akşam (okuldan eve)
+                             * @enum {string}
+                             */
+                            direction: "morning" | "evening";
+                            /** @description Seferin günü (YYYY-MM-DD, Europe/Istanbul) */
+                            tripDate: string;
+                            /**
+                             * @description `open` sürüyor, `closed` kapandı
+                             * @enum {string}
+                             */
+                            status: "open" | "closed";
+                            /** @description Başlatma anındaki aracın plakası */
+                            vehiclePlate: string | null;
+                            /** @description Güzergâhın aracının rehber personeli */
+                            guideName: string | null;
+                            startedAt: string;
+                            closedAt: string | null;
+                            counts: {
+                                /** @description Listedeki öğrenci */
+                                total: number;
+                                /** @description İşaretlenmemiş */
+                                pending: number;
+                                /** @description Binen (inen dahil) */
+                                boarded: number;
+                                /** @description İnen */
+                                alighted: number;
+                                /** @description Gelmeyen */
+                                absent: number;
+                                /** @description Binip inişi işaretlenmemiş: araçta olabilir; sıfır değilse sefer kapanmaz (K-504) */
+                                onBoard: number;
+                            };
+                            /** @description Oturumdaki kullanıcı bu açık seferi işaretleyip kapatabilir */
+                            canOperate: boolean;
+                            /** @description Oturumdaki kullanıcı bu kapanmış seferi düzeltebilir (yönetici) */
+                            canCorrect: boolean;
+                            /** @description Kapatma `If-Match` sürümü */
+                            version: number;
+                            /** @description Öğrenciler durak sırasına ve ada göre */
+                            roster: {
+                                studentId: string;
+                                studentName: string;
+                                stopId: string;
+                                stopName: string;
+                                /** @description Durak sırası (1’den); liste bu sıraya göredir */
+                                stopPosition: number;
+                                /** @description Duraktan geçiş saati (SS:DD) */
+                                stopTime: string | null;
+                                /**
+                                 * @description `pending` işaretlenmedi, `boarded` bindi (araçta), `alighted` indi, `absent` gelmedi
+                                 * @enum {string}
+                                 */
+                                status: "pending" | "boarded" | "alighted" | "absent";
+                                /** @description Biniş anı (ISO 8601 UTC) */
+                                boardedAt: string | null;
+                                /** @description İniş anı (ISO 8601 UTC) */
+                                alightedAt: string | null;
+                                /** @description Son yönetici düzeltmesinin anı (K-503) */
+                                correctedAt: string | null;
+                                /** @description Son düzeltmenin gerekçesi; yalnız yöneticiye döner (K-503) */
+                                correctionReason: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    markTransportTrip: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                tripId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Güzergâha atanmış öğrencinin kaydı */
+                    studentId: string;
+                    /**
+                     * @description `boarded` bindi, `alighted` indi, `absent` gelmedi
+                     * @enum {string}
+                     */
+                    status: "boarded" | "alighted" | "absent";
+                    /**
+                     * Format: date-time
+                     * @description Biniş anı (ISO 8601). Verilmezse işaret anı; öğrenci zaten bindiyse korunur. Çevrimdışı yeniden denemede cihazın işaret anı gönderilir.
+                     */
+                    boardedAt?: string;
+                    /**
+                     * Format: date-time
+                     * @description İniş anı (ISO 8601; yalnız `alighted`). Verilmezse işaret anı; öğrenci zaten indiyse korunur.
+                     */
+                    alightedAt?: string;
+                    /** @description Kapanmış seferde yöneticinin düzeltme gerekçesi (zorunlu); açık seferde yok sayılır (K-503) */
+                    reason?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            routeId: string;
+                            routeName: string;
+                            /**
+                             * @description `morning` sabah (evden okula), `evening` akşam (okuldan eve)
+                             * @enum {string}
+                             */
+                            direction: "morning" | "evening";
+                            /** @description Seferin günü (YYYY-MM-DD, Europe/Istanbul) */
+                            tripDate: string;
+                            /**
+                             * @description `open` sürüyor, `closed` kapandı
+                             * @enum {string}
+                             */
+                            status: "open" | "closed";
+                            /** @description Başlatma anındaki aracın plakası */
+                            vehiclePlate: string | null;
+                            /** @description Güzergâhın aracının rehber personeli */
+                            guideName: string | null;
+                            startedAt: string;
+                            closedAt: string | null;
+                            counts: {
+                                /** @description Listedeki öğrenci */
+                                total: number;
+                                /** @description İşaretlenmemiş */
+                                pending: number;
+                                /** @description Binen (inen dahil) */
+                                boarded: number;
+                                /** @description İnen */
+                                alighted: number;
+                                /** @description Gelmeyen */
+                                absent: number;
+                                /** @description Binip inişi işaretlenmemiş: araçta olabilir; sıfır değilse sefer kapanmaz (K-504) */
+                                onBoard: number;
+                            };
+                            /** @description Oturumdaki kullanıcı bu açık seferi işaretleyip kapatabilir */
+                            canOperate: boolean;
+                            /** @description Oturumdaki kullanıcı bu kapanmış seferi düzeltebilir (yönetici) */
+                            canCorrect: boolean;
+                            /** @description Kapatma `If-Match` sürümü */
+                            version: number;
+                            /** @description Öğrenciler durak sırasına ve ada göre */
+                            roster: {
+                                studentId: string;
+                                studentName: string;
+                                stopId: string;
+                                stopName: string;
+                                /** @description Durak sırası (1’den); liste bu sıraya göredir */
+                                stopPosition: number;
+                                /** @description Duraktan geçiş saati (SS:DD) */
+                                stopTime: string | null;
+                                /**
+                                 * @description `pending` işaretlenmedi, `boarded` bindi (araçta), `alighted` indi, `absent` gelmedi
+                                 * @enum {string}
+                                 */
+                                status: "pending" | "boarded" | "alighted" | "absent";
+                                /** @description Biniş anı (ISO 8601 UTC) */
+                                boardedAt: string | null;
+                                /** @description İniş anı (ISO 8601 UTC) */
+                                alightedAt: string | null;
+                                /** @description Son yönetici düzeltmesinin anı (K-503) */
+                                correctedAt: string | null;
+                                /** @description Son düzeltmenin gerekçesi; yalnız yöneticiye döner (K-503) */
+                                correctionReason: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    closeTransportTrip: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                tripId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            routeId: string;
+                            routeName: string;
+                            /**
+                             * @description `morning` sabah (evden okula), `evening` akşam (okuldan eve)
+                             * @enum {string}
+                             */
+                            direction: "morning" | "evening";
+                            /** @description Seferin günü (YYYY-MM-DD, Europe/Istanbul) */
+                            tripDate: string;
+                            /**
+                             * @description `open` sürüyor, `closed` kapandı
+                             * @enum {string}
+                             */
+                            status: "open" | "closed";
+                            /** @description Başlatma anındaki aracın plakası */
+                            vehiclePlate: string | null;
+                            /** @description Güzergâhın aracının rehber personeli */
+                            guideName: string | null;
+                            startedAt: string;
+                            closedAt: string | null;
+                            counts: {
+                                /** @description Listedeki öğrenci */
+                                total: number;
+                                /** @description İşaretlenmemiş */
+                                pending: number;
+                                /** @description Binen (inen dahil) */
+                                boarded: number;
+                                /** @description İnen */
+                                alighted: number;
+                                /** @description Gelmeyen */
+                                absent: number;
+                                /** @description Binip inişi işaretlenmemiş: araçta olabilir; sıfır değilse sefer kapanmaz (K-504) */
+                                onBoard: number;
+                            };
+                            /** @description Oturumdaki kullanıcı bu açık seferi işaretleyip kapatabilir */
+                            canOperate: boolean;
+                            /** @description Oturumdaki kullanıcı bu kapanmış seferi düzeltebilir (yönetici) */
+                            canCorrect: boolean;
+                            /** @description Kapatma `If-Match` sürümü */
+                            version: number;
+                            /** @description Öğrenciler durak sırasına ve ada göre */
+                            roster: {
+                                studentId: string;
+                                studentName: string;
+                                stopId: string;
+                                stopName: string;
+                                /** @description Durak sırası (1’den); liste bu sıraya göredir */
+                                stopPosition: number;
+                                /** @description Duraktan geçiş saati (SS:DD) */
+                                stopTime: string | null;
+                                /**
+                                 * @description `pending` işaretlenmedi, `boarded` bindi (araçta), `alighted` indi, `absent` gelmedi
+                                 * @enum {string}
+                                 */
+                                status: "pending" | "boarded" | "alighted" | "absent";
+                                /** @description Biniş anı (ISO 8601 UTC) */
+                                boardedAt: string | null;
+                                /** @description İniş anı (ISO 8601 UTC) */
+                                alightedAt: string | null;
+                                /** @description Son yönetici düzeltmesinin anı (K-503) */
+                                correctedAt: string | null;
+                                /** @description Son düzeltmenin gerekçesi; yalnız yöneticiye döner (K-503) */
+                                correctionReason: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listTransportDocuments: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description `vehicle` araç, `driver` aracın kayıtlı sürücüsü, `staff` kurum üyesi personel */
+                subject?: "vehicle" | "driver" | "staff";
+                /** @description Aracın ve sürücüsünün belgeleri */
+                vehicleId?: string;
+                /** @description Personelin belgeleri */
+                membershipId?: string;
+                /** @description `inspection`, `traffic_insurance`, `seat_insurance`, `school_bus_permit`, `driving_license`, `src_certificate`, `psychotechnical`, `criminal_record`, `other` */
+                documentType?: "inspection" | "traffic_insurance" | "seat_insurance" | "school_bus_permit" | "driving_license" | "src_certificate" | "psychotechnical" | "criminal_record" | "other";
+                /** @description `expired` süresi geçen, `expiring` uyarı penceresinde biten, `attention` ikisi, `valid` geçerli ya da süresiz (yalnız sayılan belgeler) */
+                due?: "expired" | "expiring" | "attention" | "valid";
+                /** @description `true` ise yerine geçilen belgeler de döner */
+                history?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description `vehicle` araç, `driver` aracın kayıtlı sürücüsü, `staff` kurum üyesi personel
+                             * @enum {string}
+                             */
+                            subject: "vehicle" | "driver" | "staff";
+                            /** @description Araç ve sürücü belgesinde araç */
+                            vehicleId: string | null;
+                            /** @description Aracın plakası (`34ABC123`); arşivli araçta ya da personel belgesinde `null` */
+                            vehiclePlate: string | null;
+                            /** @description Personel belgesinde kurum üyeliği */
+                            membershipId: string | null;
+                            /** @description Sürücü belgesinde kayıt anındaki sürücü adı, personel belgesinde personelin adı */
+                            subjectName: string | null;
+                            /** @description Uyarıya ve uygunluğa sayılıyor mu: önceki sürücünün, pasif personelin ya da yerine geçilen belgede `false` */
+                            counted: boolean;
+                            /**
+                             * @description `inspection`, `traffic_insurance`, `seat_insurance`, `school_bus_permit`, `driving_license`, `src_certificate`, `psychotechnical`, `criminal_record`, `other`
+                             * @enum {string}
+                             */
+                            documentType: "inspection" | "traffic_insurance" | "seat_insurance" | "school_bus_permit" | "driving_license" | "src_certificate" | "psychotechnical" | "criminal_record" | "other";
+                            /** @description Araç belgesinde belge ya da poliçe numarası */
+                            documentNumber: string | null;
+                            /** @description Ehliyette sınıf */
+                            licenseClass: ("M" | "A1" | "A2" | "A" | "B1" | "B" | "BE" | "C1" | "C1E" | "C" | "CE" | "D1" | "D1E" | "D" | "DE" | "F" | "G") | null;
+                            /** @description Belge tarihi ya da başlangıç (YYYY-MM-DD) */
+                            startDate: string;
+                            /** @description Geçerlilik bitişi (dahil); boşsa süresiz */
+                            endDate: string | null;
+                            /**
+                             * @description Bugüne göre: `valid`, `expiring` (bitişi uyarı penceresinde), `expired`, `superseded` (yerine yenisi geçti)
+                             * @enum {string}
+                             */
+                            status: "valid" | "expiring" | "expired" | "superseded";
+                            /** @description Bitişe kalan gün (bugün biten 0, geçen eksi); süresizde `null` */
+                            daysLeft: number | null;
+                            /** @description Özel nitelikli tür (adli sicil, psikoteknik) */
+                            sensitive: boolean;
+                            /** @description Gizli görünüm (K-497): yönetici dışında özel nitelikli belgede dosya bilgisi `null` */
+                            restricted: boolean;
+                            /** @description Dosya eklenmiş mi; gizli görünümde `null` */
+                            hasFile: boolean | null;
+                            /** @description Dosyanın adı ve boyutu; dosya yoksa ya da gizli görünümde `null` */
+                            file: {
+                                name: string;
+                                byteSize: number;
+                            } | null;
+                            /** @description Bu belgenin yerine geçtiği belge */
+                            replacesId: string | null;
+                            /** @description Yerine yeni belge geçtiği an */
+                            supersededAt: string | null;
+                            createdAt: string;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createTransportDocument: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description `vehicle` araç, `driver` aracın kayıtlı sürücüsü (kurum üyesi değil), `staff` kurum üyesi personel (rehber ya da üye sürücü)
+                     * @enum {string}
+                     */
+                    subject: "vehicle" | "driver" | "staff";
+                    /**
+                     * @description Araç ve sürücü belgesinde zorunlu: servis aracı
+                     * @default null
+                     */
+                    vehicleId?: string | null;
+                    /**
+                     * @description Personel belgesinde zorunlu: kurumun etkin yönetici, öğretmen ya da ön büro üyeliği
+                     * @default null
+                     */
+                    membershipId?: string | null;
+                    /**
+                     * @description Araçta `inspection` muayene, `traffic_insurance` zorunlu trafik sigortası, `seat_insurance` koltuk sigortası, `school_bus_permit` okul servis aracı uygunluk/izin belgesi; kişide `driving_license` ehliyet, `src_certificate` SRC, `psychotechnical` psikoteknik, `criminal_record` adli sicil; ikisinde `other`
+                     * @enum {string}
+                     */
+                    documentType: "inspection" | "traffic_insurance" | "seat_insurance" | "school_bus_permit" | "driving_license" | "src_certificate" | "psychotechnical" | "criminal_record" | "other";
+                    /** @description Belge ya da poliçe numarası (yalnız araç belgesinde, isteğe bağlı, en çok 50); kişi belgesinde numara tutulmaz (K-497) */
+                    documentNumber?: string | null;
+                    /**
+                     * @description Yalnız ehliyette ve orada zorunlu: ehliyet sınıfı (`B`, `D1`, `D` …)
+                     * @default null
+                     */
+                    licenseClass?: ("M" | "A1" | "A2" | "A" | "B1" | "B" | "BE" | "C1" | "C1E" | "C" | "CE" | "D1" | "D1E" | "D" | "DE" | "F" | "G") | null;
+                    /** @description Belgenin düzenlendiği ya da başladığı gün; bugünden sonra olamaz */
+                    startDate: string;
+                    /**
+                     * @description Geçerlilik bitişi (dahil); muayene, sigortalar, izin belgesi, ehliyet ve psikoteknikte zorunlu, diğerlerinde boşsa süresiz
+                     * @default null
+                     */
+                    endDate?: string | null;
+                    /**
+                     * @description Yüklenmiş dosya (`POST /files`; amaç `document` PDF ya da `question_image` görsel), en çok 10 MB; isteğe bağlı
+                     * @default null
+                     */
+                    fileId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            document: {
+                                id: string;
+                                /**
+                                 * @description `vehicle` araç, `driver` aracın kayıtlı sürücüsü, `staff` kurum üyesi personel
+                                 * @enum {string}
+                                 */
+                                subject: "vehicle" | "driver" | "staff";
+                                /** @description Araç ve sürücü belgesinde araç */
+                                vehicleId: string | null;
+                                /** @description Aracın plakası (`34ABC123`); arşivli araçta ya da personel belgesinde `null` */
+                                vehiclePlate: string | null;
+                                /** @description Personel belgesinde kurum üyeliği */
+                                membershipId: string | null;
+                                /** @description Sürücü belgesinde kayıt anındaki sürücü adı, personel belgesinde personelin adı */
+                                subjectName: string | null;
+                                /** @description Uyarıya ve uygunluğa sayılıyor mu: önceki sürücünün, pasif personelin ya da yerine geçilen belgede `false` */
+                                counted: boolean;
+                                /**
+                                 * @description `inspection`, `traffic_insurance`, `seat_insurance`, `school_bus_permit`, `driving_license`, `src_certificate`, `psychotechnical`, `criminal_record`, `other`
+                                 * @enum {string}
+                                 */
+                                documentType: "inspection" | "traffic_insurance" | "seat_insurance" | "school_bus_permit" | "driving_license" | "src_certificate" | "psychotechnical" | "criminal_record" | "other";
+                                /** @description Araç belgesinde belge ya da poliçe numarası */
+                                documentNumber: string | null;
+                                /** @description Ehliyette sınıf */
+                                licenseClass: ("M" | "A1" | "A2" | "A" | "B1" | "B" | "BE" | "C1" | "C1E" | "C" | "CE" | "D1" | "D1E" | "D" | "DE" | "F" | "G") | null;
+                                /** @description Belge tarihi ya da başlangıç (YYYY-MM-DD) */
+                                startDate: string;
+                                /** @description Geçerlilik bitişi (dahil); boşsa süresiz */
+                                endDate: string | null;
+                                /**
+                                 * @description Bugüne göre: `valid`, `expiring` (bitişi uyarı penceresinde), `expired`, `superseded` (yerine yenisi geçti)
+                                 * @enum {string}
+                                 */
+                                status: "valid" | "expiring" | "expired" | "superseded";
+                                /** @description Bitişe kalan gün (bugün biten 0, geçen eksi); süresizde `null` */
+                                daysLeft: number | null;
+                                /** @description Özel nitelikli tür (adli sicil, psikoteknik) */
+                                sensitive: boolean;
+                                /** @description Gizli görünüm (K-497): yönetici dışında özel nitelikli belgede dosya bilgisi `null` */
+                                restricted: boolean;
+                                /** @description Dosya eklenmiş mi; gizli görünümde `null` */
+                                hasFile: boolean | null;
+                                /** @description Dosyanın adı ve boyutu; dosya yoksa ya da gizli görünümde `null` */
+                                file: {
+                                    name: string;
+                                    byteSize: number;
+                                } | null;
+                                /** @description Bu belgenin yerine geçtiği belge */
+                                replacesId: string | null;
+                                /** @description Yerine yeni belge geçtiği an */
+                                supersededAt: string | null;
+                                createdAt: string;
+                            };
+                            /** @description Yerine geçilen (artık geçmiş) belge */
+                            superseded: {
+                                id: string;
+                                /**
+                                 * @description `vehicle` araç, `driver` aracın kayıtlı sürücüsü, `staff` kurum üyesi personel
+                                 * @enum {string}
+                                 */
+                                subject: "vehicle" | "driver" | "staff";
+                                /** @description Araç ve sürücü belgesinde araç */
+                                vehicleId: string | null;
+                                /** @description Aracın plakası (`34ABC123`); arşivli araçta ya da personel belgesinde `null` */
+                                vehiclePlate: string | null;
+                                /** @description Personel belgesinde kurum üyeliği */
+                                membershipId: string | null;
+                                /** @description Sürücü belgesinde kayıt anındaki sürücü adı, personel belgesinde personelin adı */
+                                subjectName: string | null;
+                                /** @description Uyarıya ve uygunluğa sayılıyor mu: önceki sürücünün, pasif personelin ya da yerine geçilen belgede `false` */
+                                counted: boolean;
+                                /**
+                                 * @description `inspection`, `traffic_insurance`, `seat_insurance`, `school_bus_permit`, `driving_license`, `src_certificate`, `psychotechnical`, `criminal_record`, `other`
+                                 * @enum {string}
+                                 */
+                                documentType: "inspection" | "traffic_insurance" | "seat_insurance" | "school_bus_permit" | "driving_license" | "src_certificate" | "psychotechnical" | "criminal_record" | "other";
+                                /** @description Araç belgesinde belge ya da poliçe numarası */
+                                documentNumber: string | null;
+                                /** @description Ehliyette sınıf */
+                                licenseClass: ("M" | "A1" | "A2" | "A" | "B1" | "B" | "BE" | "C1" | "C1E" | "C" | "CE" | "D1" | "D1E" | "D" | "DE" | "F" | "G") | null;
+                                /** @description Belge tarihi ya da başlangıç (YYYY-MM-DD) */
+                                startDate: string;
+                                /** @description Geçerlilik bitişi (dahil); boşsa süresiz */
+                                endDate: string | null;
+                                /**
+                                 * @description Bugüne göre: `valid`, `expiring` (bitişi uyarı penceresinde), `expired`, `superseded` (yerine yenisi geçti)
+                                 * @enum {string}
+                                 */
+                                status: "valid" | "expiring" | "expired" | "superseded";
+                                /** @description Bitişe kalan gün (bugün biten 0, geçen eksi); süresizde `null` */
+                                daysLeft: number | null;
+                                /** @description Özel nitelikli tür (adli sicil, psikoteknik) */
+                                sensitive: boolean;
+                                /** @description Gizli görünüm (K-497): yönetici dışında özel nitelikli belgede dosya bilgisi `null` */
+                                restricted: boolean;
+                                /** @description Dosya eklenmiş mi; gizli görünümde `null` */
+                                hasFile: boolean | null;
+                                /** @description Dosyanın adı ve boyutu; dosya yoksa ya da gizli görünümde `null` */
+                                file: {
+                                    name: string;
+                                    byteSize: number;
+                                } | null;
+                                /** @description Bu belgenin yerine geçtiği belge */
+                                replacesId: string | null;
+                                /** @description Yerine yeni belge geçtiği an */
+                                supersededAt: string | null;
+                                createdAt: string;
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getTransportDocumentFileUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Kısa ömürlü imzalı GET bağlantısı */
+                            url: string;
+                            /** @description Bağlantının geçerlilik sonu */
+                            expiresAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getTransportDocumentAlerts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Kurumun uyarı penceresi (gün) */
+                            warningDays: number;
+                            /** @description Süresi geçen sayılan belge */
+                            expiredCount: number;
+                            /** @description Uyarı penceresinde biten sayılan belge */
+                            expiringCount: number;
+                            /** @description Uygun olmayan (zorunlu belgesi geçmiş) araç */
+                            unfitVehicleCount: number;
+                            /** @description Araç ya da sürücüsünde zorunlu belgesi eksik araç */
+                            missingVehicleCount: number;
+                            /** @description Arşivlenmemiş araçlar, plakaya göre */
+                            vehicles: {
+                                vehicleId: string;
+                                plate: string;
+                                /** @description `false`: araç ya da şimdiki sürücüsünde zorunlu belgenin süresi geçmiş (K-498) */
+                                fit: boolean;
+                                /** @description Süresi geçmiş zorunlu türler */
+                                expiredTypes: ("inspection" | "traffic_insurance" | "seat_insurance" | "school_bus_permit" | "driving_license" | "src_certificate" | "psychotechnical" | "criminal_record" | "other")[];
+                                /** @description Bitişi yaklaşan zorunlu türler */
+                                expiringTypes: ("inspection" | "traffic_insurance" | "seat_insurance" | "school_bus_permit" | "driving_license" | "src_certificate" | "psychotechnical" | "criminal_record" | "other")[];
+                                /** @description Aracın eksik zorunlu türleri */
+                                missingVehicleTypes: ("inspection" | "traffic_insurance" | "seat_insurance" | "school_bus_permit" | "driving_license" | "src_certificate" | "psychotechnical" | "criminal_record" | "other")[];
+                                /** @description Şimdiki sürücünün eksik zorunlu türleri */
+                                missingDriverTypes: ("inspection" | "traffic_insurance" | "seat_insurance" | "school_bus_permit" | "driving_license" | "src_certificate" | "psychotechnical" | "criminal_record" | "other")[];
+                                /** @description Aracın etkin güzergâhları */
+                                routes: {
+                                    id: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    direction: "morning" | "evening";
+                                }[];
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getTransportDocumentSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Uyarı penceresi (gün, 1–180; varsayılan 30) */
+                            warningDays: number;
+                            /** @description `If-Match` ayar sürümü; hiç kaydedilmediyse 1 */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateTransportDocumentSettings: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Bitişine bu kadar gün (dahil) kalan belge "süresi yaklaşıyor" (1–180; varsayılan 30) */
+                    warningDays: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Uyarı penceresi (gün, 1–180; varsayılan 30) */
+                            warningDays: number;
+                            /** @description `If-Match` ayar sürümü; hiç kaydedilmediyse 1 */
+                            version: number;
                         };
                     };
                 };

@@ -293,6 +293,13 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/clubs',
   'POST /api/v1/finance/clubs/{clubId}/members',
   'POST /api/v1/finance/clubs/{clubId}/sessions',
+  // Servis seferi ve biniş-iniş işareti; çevrimdışı yeniden deneme ikinci seferi ya da işareti
+  // yazmaz (routes/finance-transport-trips.ts; DOM-FIN-149, ON-145).
+  'POST /api/v1/finance/transport/routes/{routeId}/trips',
+  'POST /api/v1/finance/transport/trips/{tripId}/marks',
+  // Servis aracı ve personeli belgesi; çift tıklama ikinci belgeyi açmaz, eski belgenin yerine iki
+  // kez geçmez (routes/finance-transport-documents.ts; DOM-FIN-147, ON-147).
+  'POST /api/v1/finance/transport/documents',
   // Kulüp tercih dönemi, tercih, kura ve onay; çift tıklama ikinci dönemi, kurayı ya da üyelikleri
   // açmaz (routes/finance-club-selection.ts; DOM-FIN-150, ON-169).
   'POST /api/v1/finance/club-selection/periods',

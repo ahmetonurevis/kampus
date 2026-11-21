@@ -1,5 +1,5 @@
 {
-  "id": "5d609436-26a9-4a8b-8caa-c8a0b005db82",
+  "id": "3142b87d-0bd1-4b1c-af40-f2d4aaf650aa",
   "prevId": "bacaf33b-27c9-4129-820f-c1dde2f563a4",
   "version": "7",
   "dialect": "postgresql",
@@ -9418,1014 +9418,6 @@
         "stock_movement_lots_lot_number_check": {
           "name": "stock_movement_lots_lot_number_check",
           "value": "char_length(\"stock_movement_lots\".\"lot_number\") between 1 and 40"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.club_selection_choices": {
-      "name": "club_selection_choices",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "preference_id": {
-          "name": "preference_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "period_id": {
-          "name": "period_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "rank": {
-          "name": "rank",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "club_id": {
-          "name": "club_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "club_selection_choices_period_idx": {
-          "name": "club_selection_choices_period_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "period_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "preference_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "club_selection_choices_club_idx": {
-          "name": "club_selection_choices_club_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "club_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "club_selection_choices_institution_id_institutions_id_fk": {
-          "name": "club_selection_choices_institution_id_institutions_id_fk",
-          "tableFrom": "club_selection_choices",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "club_selection_choices_preference_fkey": {
-          "name": "club_selection_choices_preference_fkey",
-          "tableFrom": "club_selection_choices",
-          "tableTo": "club_selection_preferences",
-          "columnsFrom": [
-            "institution_id",
-            "period_id",
-            "preference_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "period_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "club_selection_choices_club_fkey": {
-          "name": "club_selection_choices_club_fkey",
-          "tableFrom": "club_selection_choices",
-          "tableTo": "school_clubs",
-          "columnsFrom": [
-            "institution_id",
-            "club_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "club_selection_choices_pkey": {
-          "name": "club_selection_choices_pkey",
-          "columns": [
-            "institution_id",
-            "preference_id",
-            "rank"
-          ]
-        }
-      },
-      "uniqueConstraints": {
-        "club_selection_choices_club_key": {
-          "name": "club_selection_choices_club_key",
-          "nullsNotDistinct": false,
-          "columns": [
-            "institution_id",
-            "preference_id",
-            "club_id"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {
-        "club_selection_choices_rank_check": {
-          "name": "club_selection_choices_rank_check",
-          "value": "\"club_selection_choices\".\"rank\" between 1 and 10"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.club_selection_period_clubs": {
-      "name": "club_selection_period_clubs",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "period_id": {
-          "name": "period_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "club_id": {
-          "name": "club_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "position": {
-          "name": "position",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "club_selection_period_clubs_club_idx": {
-          "name": "club_selection_period_clubs_club_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "club_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "club_selection_period_clubs_institution_id_institutions_id_fk": {
-          "name": "club_selection_period_clubs_institution_id_institutions_id_fk",
-          "tableFrom": "club_selection_period_clubs",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "club_selection_period_clubs_period_fkey": {
-          "name": "club_selection_period_clubs_period_fkey",
-          "tableFrom": "club_selection_period_clubs",
-          "tableTo": "club_selection_periods",
-          "columnsFrom": [
-            "institution_id",
-            "period_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "club_selection_period_clubs_club_fkey": {
-          "name": "club_selection_period_clubs_club_fkey",
-          "tableFrom": "club_selection_period_clubs",
-          "tableTo": "school_clubs",
-          "columnsFrom": [
-            "institution_id",
-            "club_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "club_selection_period_clubs_pkey": {
-          "name": "club_selection_period_clubs_pkey",
-          "columns": [
-            "institution_id",
-            "period_id",
-            "club_id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "club_selection_period_clubs_position_check": {
-          "name": "club_selection_period_clubs_position_check",
-          "value": "\"club_selection_period_clubs\".\"position\" >= 1"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.club_selection_periods": {
-      "name": "club_selection_periods",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "academic_year": {
-          "name": "academic_year",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "term": {
-          "name": "term",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "open_date": {
-          "name": "open_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "close_date": {
-          "name": "close_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "max_choices": {
-          "name": "max_choices",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "seats_per_student": {
-          "name": "seats_per_student",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        },
-        "grade_levels": {
-          "name": "grade_levels",
-          "type": "integer[]",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::integer[]"
-        },
-        "seed": {
-          "name": "seed",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "drawn_at": {
-          "name": "drawn_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "drawn_by_user_id": {
-          "name": "drawn_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "confirmed_at": {
-          "name": "confirmed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "confirmed_by_user_id": {
-          "name": "confirmed_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "club_selection_periods_year_idx": {
-          "name": "club_selection_periods_year_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "academic_year",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "club_selection_periods_institution_id_institutions_id_fk": {
-          "name": "club_selection_periods_institution_id_institutions_id_fk",
-          "tableFrom": "club_selection_periods",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "club_selection_periods_pkey": {
-          "name": "club_selection_periods_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "club_selection_periods_name_check": {
-          "name": "club_selection_periods_name_check",
-          "value": "char_length(\"club_selection_periods\".\"name\") between 2 and 120"
-        },
-        "club_selection_periods_year_check": {
-          "name": "club_selection_periods_year_check",
-          "value": "\"club_selection_periods\".\"academic_year\" between 2000 and 2100"
-        },
-        "club_selection_periods_term_check": {
-          "name": "club_selection_periods_term_check",
-          "value": "\"club_selection_periods\".\"term\" is null or \"club_selection_periods\".\"term\" in (1, 2)"
-        },
-        "club_selection_periods_dates_check": {
-          "name": "club_selection_periods_dates_check",
-          "value": "\"club_selection_periods\".\"close_date\" >= \"club_selection_periods\".\"open_date\""
-        },
-        "club_selection_periods_counts_check": {
-          "name": "club_selection_periods_counts_check",
-          "value": "\"club_selection_periods\".\"max_choices\" between 1 and 10\n        and \"club_selection_periods\".\"seats_per_student\" between 1 and 5\n        and \"club_selection_periods\".\"seats_per_student\" <= \"club_selection_periods\".\"max_choices\""
-        },
-        "club_selection_periods_grades_check": {
-          "name": "club_selection_periods_grades_check",
-          "value": "\"club_selection_periods\".\"grade_levels\" <@ '{1,2,3,4,5,6,7,8,9,10,11,12}'::integer[]"
-        },
-        "club_selection_periods_draw_check": {
-          "name": "club_selection_periods_draw_check",
-          "value": "(\"club_selection_periods\".\"seed\" is null) = (\"club_selection_periods\".\"drawn_at\" is null)\n        and (\"club_selection_periods\".\"drawn_at\" is null) = (\"club_selection_periods\".\"drawn_by_user_id\" is null)\n        and (\"club_selection_periods\".\"confirmed_at\" is null) = (\"club_selection_periods\".\"confirmed_by_user_id\" is null)\n        and (\"club_selection_periods\".\"confirmed_at\" is null or \"club_selection_periods\".\"seed\" is not null)"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.club_selection_preferences": {
-      "name": "club_selection_preferences",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "period_id": {
-          "name": "period_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "student_id": {
-          "name": "student_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "entered_by_user_id": {
-          "name": "entered_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "entered_by_role": {
-          "name": "entered_by_role",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "replaced_by_user_id": {
-          "name": "replaced_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "club_selection_preferences_student_key": {
-          "name": "club_selection_preferences_student_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "period_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "student_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"club_selection_preferences\".\"archived_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "club_selection_preferences_student_idx": {
-          "name": "club_selection_preferences_student_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "student_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "club_selection_preferences_institution_id_institutions_id_fk": {
-          "name": "club_selection_preferences_institution_id_institutions_id_fk",
-          "tableFrom": "club_selection_preferences",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "club_selection_preferences_period_fkey": {
-          "name": "club_selection_preferences_period_fkey",
-          "tableFrom": "club_selection_preferences",
-          "tableTo": "club_selection_periods",
-          "columnsFrom": [
-            "institution_id",
-            "period_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "club_selection_preferences_pkey": {
-          "name": "club_selection_preferences_pkey",
-          "columns": [
-            "institution_id",
-            "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {
-        "club_selection_preferences_period_key": {
-          "name": "club_selection_preferences_period_key",
-          "nullsNotDistinct": false,
-          "columns": [
-            "institution_id",
-            "period_id",
-            "id"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {
-        "club_selection_preferences_role_check": {
-          "name": "club_selection_preferences_role_check",
-          "value": "\"club_selection_preferences\".\"entered_by_role\" in ('yonetici', 'onburo', 'veli', 'ogrenci')"
-        },
-        "club_selection_preferences_replaced_check": {
-          "name": "club_selection_preferences_replaced_check",
-          "value": "(\"club_selection_preferences\".\"archived_at\" is null) = (\"club_selection_preferences\".\"replaced_by_user_id\" is null)"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.club_selection_results": {
-      "name": "club_selection_results",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "period_id": {
-          "name": "period_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "student_id": {
-          "name": "student_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "club_id": {
-          "name": "club_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "outcome": {
-          "name": "outcome",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "rank": {
-          "name": "rank",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "round": {
-          "name": "round",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "waitlist_position": {
-          "name": "waitlist_position",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "lottery_position": {
-          "name": "lottery_position",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "member_id": {
-          "name": "member_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "club_selection_results_waitlist_key": {
-          "name": "club_selection_results_waitlist_key",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "period_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "club_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "waitlist_position",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"club_selection_results\".\"outcome\" = 'waitlisted'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "club_selection_results_club_idx": {
-          "name": "club_selection_results_club_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "club_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "club_selection_results_member_idx": {
-          "name": "club_selection_results_member_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "member_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "club_selection_results_student_idx": {
-          "name": "club_selection_results_student_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "student_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "club_selection_results_institution_id_institutions_id_fk": {
-          "name": "club_selection_results_institution_id_institutions_id_fk",
-          "tableFrom": "club_selection_results",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "club_selection_results_period_fkey": {
-          "name": "club_selection_results_period_fkey",
-          "tableFrom": "club_selection_results",
-          "tableTo": "club_selection_periods",
-          "columnsFrom": [
-            "institution_id",
-            "period_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "club_selection_results_club_fkey": {
-          "name": "club_selection_results_club_fkey",
-          "tableFrom": "club_selection_results",
-          "tableTo": "school_clubs",
-          "columnsFrom": [
-            "institution_id",
-            "club_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "club_selection_results_member_fkey": {
-          "name": "club_selection_results_member_fkey",
-          "tableFrom": "club_selection_results",
-          "tableTo": "school_club_members",
-          "columnsFrom": [
-            "institution_id",
-            "member_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "club_selection_results_pkey": {
-          "name": "club_selection_results_pkey",
-          "columns": [
-            "institution_id",
-            "period_id",
-            "student_id",
-            "club_id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "club_selection_results_outcome_check": {
-          "name": "club_selection_results_outcome_check",
-          "value": "\"club_selection_results\".\"outcome\" in ('assigned', 'waitlisted')"
-        },
-        "club_selection_results_shape_check": {
-          "name": "club_selection_results_shape_check",
-          "value": "\"club_selection_results\".\"rank\" between 1 and 10\n        and \"club_selection_results\".\"lottery_position\" >= 1\n        and ((\"club_selection_results\".\"outcome\" = 'assigned' and \"club_selection_results\".\"member_id\" is not null\n              and \"club_selection_results\".\"round\" >= 1 and \"club_selection_results\".\"waitlist_position\" is null)\n          or (\"club_selection_results\".\"outcome\" = 'waitlisted' and \"club_selection_results\".\"member_id\" is null\n              and \"club_selection_results\".\"round\" is null and \"club_selection_results\".\"waitlist_position\" >= 1))"
         }
       },
       "isRLSEnabled": false
@@ -46544,6 +45536,709 @@
         "teacher_mentorships_closed_check": {
           "name": "teacher_mentorships_closed_check",
           "value": "((\"teacher_mentorships\".\"status\" = 'active') = (\"teacher_mentorships\".\"closed_on\" is null))\n        and ((\"teacher_mentorships\".\"closed_on\" is null) = (\"teacher_mentorships\".\"closed_by_user_id\" is null))\n        and ((\"teacher_mentorships\".\"status\" = 'ended_early') = (\"teacher_mentorships\".\"end_reason\" is not null))\n        and (\"teacher_mentorships\".\"end_reason\" is null\n          or char_length(\"teacher_mentorships\".\"end_reason\") between 5 and 500)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.transport_trip_mark_corrections": {
+      "name": "transport_trip_mark_corrections",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mark_id": {
+          "name": "mark_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "previous_status": {
+          "name": "previous_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "previous_boarded_at": {
+          "name": "previous_boarded_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "previous_alighted_at": {
+          "name": "previous_alighted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "boarded_at": {
+          "name": "boarded_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "alighted_at": {
+          "name": "alighted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "corrected_by_user_id": {
+          "name": "corrected_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "transport_trip_mark_corrections_mark_idx": {
+          "name": "transport_trip_mark_corrections_mark_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "mark_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "transport_trip_mark_corrections_institution_id_institutions_id_fk": {
+          "name": "transport_trip_mark_corrections_institution_id_institutions_id_fk",
+          "tableFrom": "transport_trip_mark_corrections",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "transport_trip_mark_corrections_mark_fkey": {
+          "name": "transport_trip_mark_corrections_mark_fkey",
+          "tableFrom": "transport_trip_mark_corrections",
+          "tableTo": "transport_trip_marks",
+          "columnsFrom": [
+            "institution_id",
+            "mark_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "transport_trip_mark_corrections_pkey": {
+          "name": "transport_trip_mark_corrections_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "transport_trip_mark_corrections_status_check": {
+          "name": "transport_trip_mark_corrections_status_check",
+          "value": "\"transport_trip_mark_corrections\".\"status\" in ('boarded', 'alighted', 'absent') and \"transport_trip_mark_corrections\".\"previous_status\" in ('boarded', 'alighted', 'absent')"
+        },
+        "transport_trip_mark_corrections_reason_check": {
+          "name": "transport_trip_mark_corrections_reason_check",
+          "value": "char_length(\"transport_trip_mark_corrections\".\"reason\") between 5 and 500"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.transport_trip_marks": {
+      "name": "transport_trip_marks",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "trip_id": {
+          "name": "trip_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "route_id": {
+          "name": "route_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "stop_id": {
+          "name": "stop_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "student_id": {
+          "name": "student_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "boarded_at": {
+          "name": "boarded_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "alighted_at": {
+          "name": "alighted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "marked_by_user_id": {
+          "name": "marked_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "transport_trip_marks_student_key": {
+          "name": "transport_trip_marks_student_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "trip_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "student_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"transport_trip_marks\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "transport_trip_marks_trip_idx": {
+          "name": "transport_trip_marks_trip_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "trip_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "route_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "transport_trip_marks_stop_idx": {
+          "name": "transport_trip_marks_stop_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "route_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "stop_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "transport_trip_marks_student_idx": {
+          "name": "transport_trip_marks_student_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "student_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "transport_trip_marks_institution_id_institutions_id_fk": {
+          "name": "transport_trip_marks_institution_id_institutions_id_fk",
+          "tableFrom": "transport_trip_marks",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "transport_trip_marks_trip_fkey": {
+          "name": "transport_trip_marks_trip_fkey",
+          "tableFrom": "transport_trip_marks",
+          "tableTo": "transport_trips",
+          "columnsFrom": [
+            "institution_id",
+            "trip_id",
+            "route_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id",
+            "route_id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "transport_trip_marks_stop_fkey": {
+          "name": "transport_trip_marks_stop_fkey",
+          "tableFrom": "transport_trip_marks",
+          "tableTo": "transport_stops",
+          "columnsFrom": [
+            "institution_id",
+            "route_id",
+            "stop_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "route_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "transport_trip_marks_pkey": {
+          "name": "transport_trip_marks_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "transport_trip_marks_status_check": {
+          "name": "transport_trip_marks_status_check",
+          "value": "\"transport_trip_marks\".\"status\" in ('boarded', 'alighted', 'absent')"
+        },
+        "transport_trip_marks_times_check": {
+          "name": "transport_trip_marks_times_check",
+          "value": "(\"transport_trip_marks\".\"status\" = 'absent' and \"transport_trip_marks\".\"boarded_at\" is null and \"transport_trip_marks\".\"alighted_at\" is null) or (\"transport_trip_marks\".\"status\" = 'boarded' and \"transport_trip_marks\".\"boarded_at\" is not null and \"transport_trip_marks\".\"alighted_at\" is null) or (\"transport_trip_marks\".\"status\" = 'alighted' and \"transport_trip_marks\".\"boarded_at\" is not null and \"transport_trip_marks\".\"alighted_at\" >= \"transport_trip_marks\".\"boarded_at\")"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.transport_trips": {
+      "name": "transport_trips",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "route_id": {
+          "name": "route_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "direction": {
+          "name": "direction",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vehicle_id": {
+          "name": "vehicle_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "trip_date": {
+          "name": "trip_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "started_by_user_id": {
+          "name": "started_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "closed_at": {
+          "name": "closed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closed_by_user_id": {
+          "name": "closed_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "transport_trips_route_day_key": {
+          "name": "transport_trips_route_day_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "route_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "trip_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "direction",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"transport_trips\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "transport_trips_day_idx": {
+          "name": "transport_trips_day_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "trip_date",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "transport_trips_vehicle_idx": {
+          "name": "transport_trips_vehicle_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "vehicle_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "transport_trips_institution_id_institutions_id_fk": {
+          "name": "transport_trips_institution_id_institutions_id_fk",
+          "tableFrom": "transport_trips",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "transport_trips_route_fkey": {
+          "name": "transport_trips_route_fkey",
+          "tableFrom": "transport_trips",
+          "tableTo": "transport_routes",
+          "columnsFrom": [
+            "institution_id",
+            "route_id",
+            "direction"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id",
+            "direction"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "transport_trips_vehicle_fkey": {
+          "name": "transport_trips_vehicle_fkey",
+          "tableFrom": "transport_trips",
+          "tableTo": "transport_vehicles",
+          "columnsFrom": [
+            "institution_id",
+            "vehicle_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "transport_trips_pkey": {
+          "name": "transport_trips_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "transport_trips_route_key": {
+          "name": "transport_trips_route_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "institution_id",
+            "id",
+            "route_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "transport_trips_direction_check": {
+          "name": "transport_trips_direction_check",
+          "value": "\"transport_trips\".\"direction\" in ('morning', 'evening')"
+        },
+        "transport_trips_status_check": {
+          "name": "transport_trips_status_check",
+          "value": "\"transport_trips\".\"status\" in ('open', 'closed')"
+        },
+        "transport_trips_closed_check": {
+          "name": "transport_trips_closed_check",
+          "value": "(\"transport_trips\".\"status\" = 'closed') = (\"transport_trips\".\"closed_at\" is not null) and (\"transport_trips\".\"closed_at\" is null) = (\"transport_trips\".\"closed_by_user_id\" is null)"
         }
       },
       "isRLSEnabled": false

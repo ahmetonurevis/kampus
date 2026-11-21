@@ -300,6 +300,12 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // Servis aracı ve personeli belgesi; çift tıklama ikinci belgeyi açmaz, eski belgenin yerine iki
   // kez geçmez (routes/finance-transport-documents.ts; DOM-FIN-147, ON-147).
   'POST /api/v1/finance/transport/documents',
+  // Kulüp tercih dönemi, tercih, kura ve onay; çift tıklama ikinci dönemi, kurayı ya da üyelikleri
+  // açmaz (routes/finance-club-selection.ts; DOM-FIN-150, ON-169).
+  'POST /api/v1/finance/club-selection/periods',
+  'POST /api/v1/finance/club-selection/periods/{periodId}/preferences',
+  'POST /api/v1/finance/club-selection/periods/{periodId}/draw',
+  'POST /api/v1/finance/club-selection/periods/{periodId}/confirm',
 ]
 // Onur: kayıt ve finans sonu
 

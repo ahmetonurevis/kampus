@@ -41,6 +41,11 @@ import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { notify } from '@/lib/notify.ts'
 import { RootError } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
+import {
+  ClubViewTabs,
+  FinanceClubSelectionSection,
+  useClubView,
+} from './FinanceClubSelectionSection.tsx'
 import { FinanceStudentSearch } from './FinanceStudentSearch.tsx'
 import {
   attendanceBody,
@@ -77,7 +82,22 @@ export function FinanceClubsSection() {
         description="Kulüpleri yönetmek için kurum ayarlarından Kulüpler modülünü açın."
       />
     )
-  return <ClubList canTakeAttendance={session.role === 'yonetici'} />
+  return <ClubViews canTakeAttendance={session.role === 'yonetici'} />
+}
+
+/** Kulüp listesi ve kulüp tercih dönemi (ON-169; DOM-FIN-150) alt görünümleri. */
+function ClubViews({ canTakeAttendance }: { canTakeAttendance: boolean }) {
+  const [view, setView] = useClubView()
+  return (
+    <div className="grid gap-4">
+      <ClubViewTabs value={view} onChange={setView} />
+      {view === 'tercih' ? (
+        <FinanceClubSelectionSection />
+      ) : (
+        <ClubList canTakeAttendance={canTakeAttendance} />
+      )}
+    </div>
+  )
 }
 
 type ClubTableRow = {

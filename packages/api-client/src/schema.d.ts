@@ -15052,6 +15052,158 @@ export interface paths {
         patch: operations["updateTransportDocumentSettings"];
         trace?: never;
     };
+    "/api/v1/finance/club-selection/my": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kendi (çocuğumun) kulüp tercihleri
+         * @description Son 20 tercih döneminde velinin bağlı çocuklarının ya da öğrencinin kendisinin (hedef düzeyde ve kaydı etkin ya da tercihi olan) dönem bilgisi, kulüpler (gün, saat, öğretmen), girilen sıralı tercih ve onaylandıysa sonuç (atandığı kulüpler, yedek sırası) (K-505, K-507). Başka öğrencilerin tercihi ve kura sırası dönmez. Rol: `veli`, `ogrenci`; diğer roller 403. Modüller `finance` ve `clubs`.
+         */
+        get: operations["listMyClubSelections"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/club-selection/periods": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kulüp tercih dönemleri
+         * @description Arşivlenmemiş dönemler, açılış günü yeni önce; aşama, kulüp ve tercih sayısı. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `clubs` (kapalıysa 403).
+         */
+        get: operations["listClubSelectionPeriods"];
+        put?: never;
+        /**
+         * Tercih dönemi aç
+         * @description Ad, eğitim yılı ve dönem, açılış–kapanış günü (Europe/Istanbul, dahil; kapanış bugünden önce 422 `club_selection_closes_past`), kurumun kulüpleri (bulunamayan 422 `club_selection_club_not_found`), en çok tercih (kulüp sayısını aşamaz), atanacak kulüp sayısı (varsayılan 1, tercih sayısını aşamaz) ve isteğe bağlı sınıf düzeyleri (K-505). `Idempotency-Key` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `clubs` (kapalıysa 403).
+         */
+        post: operations["createClubSelectionPeriod"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/club-selection/periods/{periodId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Tercih dönemi ayrıntısı
+         * @description Kulüpler (güncel üye ve boş yer), hedef düzeydeki etkin öğrenci sayısı, etkin tercihler (girenin rolü, dağıtıma girip girmediği), kura tohumu ve onaylandıysa kulüp başına atananlar ile yedek listesi (sonradan üye olan ve kaydı etkin olmayan işaretli; boş yer varsa ilk bekleyen önerilir, otomatik eklenmez; K-507). Başka kurumun ya da arşivli dönem 404. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `clubs` (kapalıysa 403).
+         */
+        get: operations["getClubSelectionPeriod"];
+        put?: never;
+        post?: never;
+        /**
+         * Tercih dönemini arşivle
+         * @description Dönem listeden kalkar; onaylı dönemde yazılan kulüp üyelikleri kalır (K-505). `If-Match` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `clubs` (kapalıysa 403).
+         */
+        delete: operations["archiveClubSelectionPeriod"];
+        options?: never;
+        head?: never;
+        /**
+         * Tercih dönemini düzenle
+         * @description Gönderilen alanlar değişir. Kura çekildiyse 422 `club_selection_locked`; tercih girilmişse yalnız ad ve tarihler (422 `club_selection_has_preferences`); kapanış açılıştan önce 422 `club_selection_date_order`, tarih değişirse kapanış bugünden önce olamaz; tercih sayısı kulüp sayısını (`club_selection_choices_over_clubs`), atanacak sayı tercih sayısını (`club_selection_seats_over_choices`) aşamaz; değişiklik yoksa 422 `club_selection_unchanged` (K-505). `If-Match` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `clubs` (kapalıysa 403).
+         */
+        patch: operations["updateClubSelectionPeriod"];
+        trace?: never;
+    };
+    "/api/v1/finance/club-selection/periods/{periodId}/preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Kulüp tercihi gir
+         * @description Öğrencinin sıralı tercihini yazar; önceki tercih arşivlenir, boş liste geri çeker (tercih yoksa 422 `club_selection_no_preference`). Yalnız dönem açıkken (422 `club_selection_not_open`; kapanınca kimse değiştiremez). Öğrenci kurumun etkin öğrencisi (422 `club_selection_student_not_found`, `club_selection_student_inactive`) ve hedef düzeyde (422 `club_selection_grade_excluded`); tercih sayısı üst sınırı aşamaz (422 `club_selection_too_many_choices`), her tercih dönemin kulübü (422 `club_selection_club_not_in_period`) (K-505). `Idempotency-Key` zorunlu. Rol: `yonetici`, `onburo` herkes adına; `veli` yalnız bağlı çocuğu, `ogrenci` yalnız kendisi (kapsam dışı öğrenci 404); öğretmen 403. Modüller `finance` ve `clubs`.
+         */
+        post: operations["setClubSelectionPreference"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/club-selection/periods/{periodId}/draw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Kulüp kurasını çek
+         * @description Kapanmış dönemde bir kez kura tohumu üretilir ve saklanır; yanıt dağıtım önizlemesidir. Dönem açıksa 422 `club_selection_still_open`, tercih yoksa 422 `club_selection_no_preferences`, ikinci kura 409 `club_selection_already_drawn`, onaylı dönem 409 `club_selection_already_confirmed` (K-506). `Idempotency-Key` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `clubs` (kapalıysa 403).
+         */
+        post: operations["drawClubSelection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/club-selection/periods/{periodId}/allocation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Dağıtım önizlemesi
+         * @description Saklanan tohumla rastgele kura sırası ve tercih sırasına göre seri diktatörlük (çok kulüpte yılan sıralı turlar); kontenjan güncel üyelerle hesaplanır, üye olunan kulüp atlanır; atamalar, kulüp başına yedek listesi ve onayda gönderilecek özet (`digest`) (K-506). Kura çekilmediyse 422 `club_selection_not_drawn`, onaylı dönem 409 `club_selection_already_confirmed`. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `clubs` (kapalıysa 403).
+         */
+        get: operations["getClubSelectionAllocation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/club-selection/periods/{periodId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dağıtımı onayla
+         * @description Dağıtım kurum kilidi altında aynı tohumla yeniden hesaplanır; özet önizlemeyle tutmazsa 409 `club_selection_preview_stale`. Atananların kulüp üyelikleri, sonuç ve yedek listesi tek işlemde yazılır; kontenjan aşılmaz. Kura çekilmediyse 422 `club_selection_not_drawn`, ikinci onay 409 `club_selection_already_confirmed` (K-507). `Idempotency-Key` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `clubs` (kapalıysa 403).
+         */
+        post: operations["confirmClubSelection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -158566,6 +158718,1556 @@ export interface operations {
                             warningDays: number;
                             /** @description `If-Match` ayar sürümü; hiç kaydedilmediyse 1 */
                             version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listMyClubSelections: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            periodId: string;
+                            name: string;
+                            academicYear: number;
+                            term: number | null;
+                            openDate: string;
+                            closeDate: string;
+                            /**
+                             * @description `upcoming` açılmadı, `open` tercihe açık, `closed` kapandı, `drawn` kura çekildi, `confirmed` onaylandı
+                             * @enum {string}
+                             */
+                            phase: "upcoming" | "open" | "closed" | "drawn" | "confirmed";
+                            maxChoices: number;
+                            seatsPerStudent: number;
+                            clubs: {
+                                id: string;
+                                name: string;
+                                teacherName: string | null;
+                                meetingDay: number;
+                                startTime: string;
+                                endTime: string;
+                            }[];
+                            students: {
+                                studentId: string;
+                                studentName: string;
+                                choices: string[];
+                                enteredAt: string | null;
+                                /** @description Onaylı dağıtımda atandığı kulüpler */
+                                assignedClubIds: string[];
+                                /** @description Onaylı dağıtımda yedek sırası */
+                                waitlist: {
+                                    clubId: string;
+                                    position: number;
+                                }[];
+                            }[];
+                        }[];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listClubSelectionPeriods: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @description Eğitim yılının başlangıç yılı */
+                            academicYear: number;
+                            /** @description Eğitim dönemi (1, 2); `null` bütün yıl */
+                            term: number | null;
+                            /** @description Açılış günü (YYYY-MM-DD, dahil) */
+                            openDate: string;
+                            /** @description Kapanış günü (YYYY-MM-DD, dahil) */
+                            closeDate: string;
+                            maxChoices: number;
+                            /** @description Öğrenci başına atanacak kulüp */
+                            seatsPerStudent: number;
+                            /** @description Hedef sınıf düzeyleri; boşsa herkes */
+                            gradeLevels: number[];
+                            /**
+                             * @description `upcoming` açılmadı, `open` tercihe açık, `closed` kapandı, `drawn` kura çekildi, `confirmed` onaylandı
+                             * @enum {string}
+                             */
+                            phase: "upcoming" | "open" | "closed" | "drawn" | "confirmed";
+                            clubCount: number;
+                            /** @description Etkin tercih sayısı */
+                            preferenceCount: number;
+                            drawnAt: string | null;
+                            confirmedAt: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createClubSelectionPeriod: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Dönem adı (2–120) */
+                    name: string;
+                    /** @description Eğitim yılının başlangıç yılı (2026 → 2026–2027) */
+                    academicYear: number;
+                    /**
+                     * @description Eğitim dönemi (1 ya da 2); `null` bütün yıl
+                     * @default null
+                     */
+                    term?: (1 | 2) | null;
+                    /** @description Açılış günü (YYYY-MM-DD, Europe/Istanbul; dahil) */
+                    openDate: string;
+                    /** @description Kapanış günü (YYYY-MM-DD; dahil); bugünden önce olamaz */
+                    closeDate: string;
+                    /** @description Döneme katılan kulüpler (1–40, tekil) */
+                    clubIds: string[];
+                    /** @description Öğrenci başına en çok tercih (1–10); kulüp sayısını aşamaz */
+                    maxChoices: number;
+                    /**
+                     * @description Öğrenci başına atanacak kulüp (1–5); tercih sayısını aşamaz
+                     * @default 1
+                     */
+                    seatsPerStudent?: number;
+                    /**
+                     * @description Hedef sınıf düzeyleri (1–12); boşsa bütün öğrenciler
+                     * @default []
+                     */
+                    gradeLevels?: number[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @description Eğitim yılının başlangıç yılı */
+                            academicYear: number;
+                            /** @description Eğitim dönemi (1, 2); `null` bütün yıl */
+                            term: number | null;
+                            /** @description Açılış günü (YYYY-MM-DD, dahil) */
+                            openDate: string;
+                            /** @description Kapanış günü (YYYY-MM-DD, dahil) */
+                            closeDate: string;
+                            maxChoices: number;
+                            /** @description Öğrenci başına atanacak kulüp */
+                            seatsPerStudent: number;
+                            /** @description Hedef sınıf düzeyleri; boşsa herkes */
+                            gradeLevels: number[];
+                            /**
+                             * @description `upcoming` açılmadı, `open` tercihe açık, `closed` kapandı, `drawn` kura çekildi, `confirmed` onaylandı
+                             * @enum {string}
+                             */
+                            phase: "upcoming" | "open" | "closed" | "drawn" | "confirmed";
+                            clubCount: number;
+                            /** @description Etkin tercih sayısı */
+                            preferenceCount: number;
+                            drawnAt: string | null;
+                            confirmedAt: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Kura tohumu; kura çekilince dolar, sonuç bununla üretilir */
+                            seed: string | null;
+                            /** @description Döneme katılan arşivlenmemiş kulüpler */
+                            clubs: {
+                                id: string;
+                                name: string;
+                                teacherName: string | null;
+                                capacity: number;
+                                /** @description Güncel etkin üye sayısı */
+                                memberCount: number;
+                                /** @description Boş yer (kontenjan − üye) */
+                                freeSeats: number;
+                                meetingDay: number;
+                                startTime: string;
+                                endTime: string;
+                            }[];
+                            /** @description Hedef düzeydeki etkin öğrenci sayısı (tercih durumu için) */
+                            eligibleStudentCount: number;
+                            /** @description Etkin tercihler, öğrenci adına göre */
+                            preferences: {
+                                studentId: string;
+                                studentName: string;
+                                /** @description Sıralı kulüp kimlikleri */
+                                choices: string[];
+                                /** @enum {string} */
+                                enteredByRole: "yonetici" | "onburo" | "veli" | "ogrenci";
+                                enteredAt: string;
+                                /** @description Kaydı etkin ve hedef düzeyde; değilse tercih dağıtıma girmez */
+                                eligible: boolean;
+                            }[];
+                            /** @description Onaylanan dağıtım; onaydan önce `null` */
+                            result: {
+                                clubs: {
+                                    clubId: string;
+                                    clubName: string;
+                                    freeSeats: number;
+                                    assigned: {
+                                        studentId: string;
+                                        studentName: string;
+                                        rank: number;
+                                    }[];
+                                    waitlist: {
+                                        studentId: string;
+                                        studentName: string;
+                                        rank: number;
+                                        position: number;
+                                        /**
+                                         * @description `waiting` bekliyor, `joined` sonradan üye oldu, `inactive` kaydı etkin değil
+                                         * @enum {string}
+                                         */
+                                        status: "waiting" | "joined" | "inactive";
+                                    }[];
+                                    /** @description Boş yer varsa önerilen ilk bekleyen yedek; otomatik eklenmez */
+                                    suggestedStudentId: string | null;
+                                    suggestedStudentName: string | null;
+                                }[];
+                                assignedCount: number;
+                                waitlistedStudentCount: number;
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getClubSelectionPeriod: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                periodId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @description Eğitim yılının başlangıç yılı */
+                            academicYear: number;
+                            /** @description Eğitim dönemi (1, 2); `null` bütün yıl */
+                            term: number | null;
+                            /** @description Açılış günü (YYYY-MM-DD, dahil) */
+                            openDate: string;
+                            /** @description Kapanış günü (YYYY-MM-DD, dahil) */
+                            closeDate: string;
+                            maxChoices: number;
+                            /** @description Öğrenci başına atanacak kulüp */
+                            seatsPerStudent: number;
+                            /** @description Hedef sınıf düzeyleri; boşsa herkes */
+                            gradeLevels: number[];
+                            /**
+                             * @description `upcoming` açılmadı, `open` tercihe açık, `closed` kapandı, `drawn` kura çekildi, `confirmed` onaylandı
+                             * @enum {string}
+                             */
+                            phase: "upcoming" | "open" | "closed" | "drawn" | "confirmed";
+                            clubCount: number;
+                            /** @description Etkin tercih sayısı */
+                            preferenceCount: number;
+                            drawnAt: string | null;
+                            confirmedAt: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Kura tohumu; kura çekilince dolar, sonuç bununla üretilir */
+                            seed: string | null;
+                            /** @description Döneme katılan arşivlenmemiş kulüpler */
+                            clubs: {
+                                id: string;
+                                name: string;
+                                teacherName: string | null;
+                                capacity: number;
+                                /** @description Güncel etkin üye sayısı */
+                                memberCount: number;
+                                /** @description Boş yer (kontenjan − üye) */
+                                freeSeats: number;
+                                meetingDay: number;
+                                startTime: string;
+                                endTime: string;
+                            }[];
+                            /** @description Hedef düzeydeki etkin öğrenci sayısı (tercih durumu için) */
+                            eligibleStudentCount: number;
+                            /** @description Etkin tercihler, öğrenci adına göre */
+                            preferences: {
+                                studentId: string;
+                                studentName: string;
+                                /** @description Sıralı kulüp kimlikleri */
+                                choices: string[];
+                                /** @enum {string} */
+                                enteredByRole: "yonetici" | "onburo" | "veli" | "ogrenci";
+                                enteredAt: string;
+                                /** @description Kaydı etkin ve hedef düzeyde; değilse tercih dağıtıma girmez */
+                                eligible: boolean;
+                            }[];
+                            /** @description Onaylanan dağıtım; onaydan önce `null` */
+                            result: {
+                                clubs: {
+                                    clubId: string;
+                                    clubName: string;
+                                    freeSeats: number;
+                                    assigned: {
+                                        studentId: string;
+                                        studentName: string;
+                                        rank: number;
+                                    }[];
+                                    waitlist: {
+                                        studentId: string;
+                                        studentName: string;
+                                        rank: number;
+                                        position: number;
+                                        /**
+                                         * @description `waiting` bekliyor, `joined` sonradan üye oldu, `inactive` kaydı etkin değil
+                                         * @enum {string}
+                                         */
+                                        status: "waiting" | "joined" | "inactive";
+                                    }[];
+                                    /** @description Boş yer varsa önerilen ilk bekleyen yedek; otomatik eklenmez */
+                                    suggestedStudentId: string | null;
+                                    suggestedStudentName: string | null;
+                                }[];
+                                assignedCount: number;
+                                waitlistedStudentCount: number;
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveClubSelectionPeriod: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                periodId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateClubSelectionPeriod: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                periodId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Dönem adı (2–120) */
+                    name?: string;
+                    /** @description Eğitim yılının başlangıç yılı (2026 → 2026–2027) */
+                    academicYear?: number;
+                    /** @description Eğitim dönemi (1 ya da 2); `null` bütün yıl */
+                    term?: (1 | 2) | null;
+                    /** @description Açılış günü */
+                    openDate?: string;
+                    /** @description Kapanış günü */
+                    closeDate?: string;
+                    /** @description Döneme katılan kulüpler (1–40, tekil) */
+                    clubIds?: string[];
+                    /** @description Öğrenci başına en çok tercih (1–10); kulüp sayısını aşamaz */
+                    maxChoices?: number;
+                    /** @description Öğrenci başına atanacak kulüp (1–5); tercih sayısını aşamaz */
+                    seatsPerStudent?: number;
+                    /** @description Hedef sınıf düzeyleri (1–12); boşsa bütün öğrenciler */
+                    gradeLevels?: number[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @description Eğitim yılının başlangıç yılı */
+                            academicYear: number;
+                            /** @description Eğitim dönemi (1, 2); `null` bütün yıl */
+                            term: number | null;
+                            /** @description Açılış günü (YYYY-MM-DD, dahil) */
+                            openDate: string;
+                            /** @description Kapanış günü (YYYY-MM-DD, dahil) */
+                            closeDate: string;
+                            maxChoices: number;
+                            /** @description Öğrenci başına atanacak kulüp */
+                            seatsPerStudent: number;
+                            /** @description Hedef sınıf düzeyleri; boşsa herkes */
+                            gradeLevels: number[];
+                            /**
+                             * @description `upcoming` açılmadı, `open` tercihe açık, `closed` kapandı, `drawn` kura çekildi, `confirmed` onaylandı
+                             * @enum {string}
+                             */
+                            phase: "upcoming" | "open" | "closed" | "drawn" | "confirmed";
+                            clubCount: number;
+                            /** @description Etkin tercih sayısı */
+                            preferenceCount: number;
+                            drawnAt: string | null;
+                            confirmedAt: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Kura tohumu; kura çekilince dolar, sonuç bununla üretilir */
+                            seed: string | null;
+                            /** @description Döneme katılan arşivlenmemiş kulüpler */
+                            clubs: {
+                                id: string;
+                                name: string;
+                                teacherName: string | null;
+                                capacity: number;
+                                /** @description Güncel etkin üye sayısı */
+                                memberCount: number;
+                                /** @description Boş yer (kontenjan − üye) */
+                                freeSeats: number;
+                                meetingDay: number;
+                                startTime: string;
+                                endTime: string;
+                            }[];
+                            /** @description Hedef düzeydeki etkin öğrenci sayısı (tercih durumu için) */
+                            eligibleStudentCount: number;
+                            /** @description Etkin tercihler, öğrenci adına göre */
+                            preferences: {
+                                studentId: string;
+                                studentName: string;
+                                /** @description Sıralı kulüp kimlikleri */
+                                choices: string[];
+                                /** @enum {string} */
+                                enteredByRole: "yonetici" | "onburo" | "veli" | "ogrenci";
+                                enteredAt: string;
+                                /** @description Kaydı etkin ve hedef düzeyde; değilse tercih dağıtıma girmez */
+                                eligible: boolean;
+                            }[];
+                            /** @description Onaylanan dağıtım; onaydan önce `null` */
+                            result: {
+                                clubs: {
+                                    clubId: string;
+                                    clubName: string;
+                                    freeSeats: number;
+                                    assigned: {
+                                        studentId: string;
+                                        studentName: string;
+                                        rank: number;
+                                    }[];
+                                    waitlist: {
+                                        studentId: string;
+                                        studentName: string;
+                                        rank: number;
+                                        position: number;
+                                        /**
+                                         * @description `waiting` bekliyor, `joined` sonradan üye oldu, `inactive` kaydı etkin değil
+                                         * @enum {string}
+                                         */
+                                        status: "waiting" | "joined" | "inactive";
+                                    }[];
+                                    /** @description Boş yer varsa önerilen ilk bekleyen yedek; otomatik eklenmez */
+                                    suggestedStudentId: string | null;
+                                    suggestedStudentName: string | null;
+                                }[];
+                                assignedCount: number;
+                                waitlistedStudentCount: number;
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    setClubSelectionPreference: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                periodId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Öğrencinin kaydı (veli yalnız kendi çocuğu, öğrenci yalnız kendisi) */
+                    studentId: string;
+                    /** @description Sıralı tercihler (ilk en çok istenen); boş liste tercihi geri çeker */
+                    choices: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            periodId: string;
+                            studentId: string;
+                            choices: string[];
+                            /** @description Geri çekildiyse `null` */
+                            enteredAt: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    drawClubSelection: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                periodId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            periodId: string;
+                            seed: string;
+                            /** @description Onayda geri gönderilecek önizleme özeti */
+                            digest: string;
+                            clubs: {
+                                clubId: string;
+                                clubName: string;
+                                capacity: number;
+                                members: number;
+                                seatsBefore: number;
+                                assigned: number;
+                                seatsAfter: number;
+                                waitlisted: number;
+                            }[];
+                            assignments: {
+                                studentId: string;
+                                studentName: string;
+                                clubId: string;
+                                clubName: string;
+                                rank: number;
+                                round: number;
+                            }[];
+                            waitlist: {
+                                clubId: string;
+                                clubName: string;
+                                studentId: string;
+                                studentName: string;
+                                rank: number;
+                                position: number;
+                            }[];
+                            /** @description Kura sırası */
+                            students: {
+                                studentId: string;
+                                studentName: string;
+                                lotteryPosition: number;
+                                wanted: number;
+                                assigned: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getClubSelectionAllocation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                periodId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            periodId: string;
+                            seed: string;
+                            /** @description Onayda geri gönderilecek önizleme özeti */
+                            digest: string;
+                            clubs: {
+                                clubId: string;
+                                clubName: string;
+                                capacity: number;
+                                members: number;
+                                seatsBefore: number;
+                                assigned: number;
+                                seatsAfter: number;
+                                waitlisted: number;
+                            }[];
+                            assignments: {
+                                studentId: string;
+                                studentName: string;
+                                clubId: string;
+                                clubName: string;
+                                rank: number;
+                                round: number;
+                            }[];
+                            waitlist: {
+                                clubId: string;
+                                clubName: string;
+                                studentId: string;
+                                studentName: string;
+                                rank: number;
+                                position: number;
+                            }[];
+                            /** @description Kura sırası */
+                            students: {
+                                studentId: string;
+                                studentName: string;
+                                lotteryPosition: number;
+                                wanted: number;
+                                assigned: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    confirmClubSelection: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                periodId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Önizlemenin özeti; sonuç o andan beri değiştiyse 409 */
+                    digest: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            name: string;
+                            /** @description Eğitim yılının başlangıç yılı */
+                            academicYear: number;
+                            /** @description Eğitim dönemi (1, 2); `null` bütün yıl */
+                            term: number | null;
+                            /** @description Açılış günü (YYYY-MM-DD, dahil) */
+                            openDate: string;
+                            /** @description Kapanış günü (YYYY-MM-DD, dahil) */
+                            closeDate: string;
+                            maxChoices: number;
+                            /** @description Öğrenci başına atanacak kulüp */
+                            seatsPerStudent: number;
+                            /** @description Hedef sınıf düzeyleri; boşsa herkes */
+                            gradeLevels: number[];
+                            /**
+                             * @description `upcoming` açılmadı, `open` tercihe açık, `closed` kapandı, `drawn` kura çekildi, `confirmed` onaylandı
+                             * @enum {string}
+                             */
+                            phase: "upcoming" | "open" | "closed" | "drawn" | "confirmed";
+                            clubCount: number;
+                            /** @description Etkin tercih sayısı */
+                            preferenceCount: number;
+                            drawnAt: string | null;
+                            confirmedAt: string | null;
+                            /** @description `If-Match` için kayıt sürümü */
+                            version: number;
+                            /** @description Kura tohumu; kura çekilince dolar, sonuç bununla üretilir */
+                            seed: string | null;
+                            /** @description Döneme katılan arşivlenmemiş kulüpler */
+                            clubs: {
+                                id: string;
+                                name: string;
+                                teacherName: string | null;
+                                capacity: number;
+                                /** @description Güncel etkin üye sayısı */
+                                memberCount: number;
+                                /** @description Boş yer (kontenjan − üye) */
+                                freeSeats: number;
+                                meetingDay: number;
+                                startTime: string;
+                                endTime: string;
+                            }[];
+                            /** @description Hedef düzeydeki etkin öğrenci sayısı (tercih durumu için) */
+                            eligibleStudentCount: number;
+                            /** @description Etkin tercihler, öğrenci adına göre */
+                            preferences: {
+                                studentId: string;
+                                studentName: string;
+                                /** @description Sıralı kulüp kimlikleri */
+                                choices: string[];
+                                /** @enum {string} */
+                                enteredByRole: "yonetici" | "onburo" | "veli" | "ogrenci";
+                                enteredAt: string;
+                                /** @description Kaydı etkin ve hedef düzeyde; değilse tercih dağıtıma girmez */
+                                eligible: boolean;
+                            }[];
+                            /** @description Onaylanan dağıtım; onaydan önce `null` */
+                            result: {
+                                clubs: {
+                                    clubId: string;
+                                    clubName: string;
+                                    freeSeats: number;
+                                    assigned: {
+                                        studentId: string;
+                                        studentName: string;
+                                        rank: number;
+                                    }[];
+                                    waitlist: {
+                                        studentId: string;
+                                        studentName: string;
+                                        rank: number;
+                                        position: number;
+                                        /**
+                                         * @description `waiting` bekliyor, `joined` sonradan üye oldu, `inactive` kaydı etkin değil
+                                         * @enum {string}
+                                         */
+                                        status: "waiting" | "joined" | "inactive";
+                                    }[];
+                                    /** @description Boş yer varsa önerilen ilk bekleyen yedek; otomatik eklenmez */
+                                    suggestedStudentId: string | null;
+                                    suggestedStudentName: string | null;
+                                }[];
+                                assignedCount: number;
+                                waitlistedStudentCount: number;
+                            } | null;
                         };
                     };
                 };

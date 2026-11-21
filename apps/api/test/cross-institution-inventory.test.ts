@@ -4303,6 +4303,42 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: kulüp tercihi ve kontenjanlı dağıtım (ON-169; DOM-FIN-150).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/club-selection/my', 'get(MY, aParent)'],
+        ['liste', 'GET /api/v1/finance/club-selection/periods', 'get(PERIODS, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/club-selection/periods', 'institutionId: b.id'],
+        ['kayıt', 'GET /api/v1/finance/club-selection/periods/:periodId', 'get(bUrl, a.admin)'],
+        ['kayıt', 'PATCH /api/v1/finance/club-selection/periods/:periodId', 'patch(bUrl'],
+        ['kayıt', 'DELETE /api/v1/finance/club-selection/periods/:periodId', 'remove(bUrl'],
+        [
+          'kayıt',
+          'POST /api/v1/finance/club-selection/periods/:periodId/preferences',
+          '`${bUrl}/preferences`',
+        ],
+        ['kayıt', 'POST /api/v1/finance/club-selection/periods/:periodId/draw', '`${bUrl}/draw`'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/club-selection/periods/:periodId/allocation',
+          '`${bUrl}/allocation`',
+        ],
+        [
+          'kayıt',
+          'POST /api/v1/finance/club-selection/periods/:periodId/confirm',
+          '`${bUrl}/confirm`',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-club-selection.test.ts',
+        'başka kurumun tercih dönemi 404 ve B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

@@ -39,6 +39,7 @@ import { notify } from '@/lib/notify.ts'
 import { RootError } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { FinanceStudentSearch } from './FinanceStudentSearch.tsx'
+import { TransportTripsView } from './FinanceTransportTripsSection.tsx'
 import {
   directionText,
   emptyStop,
@@ -64,6 +65,7 @@ const TAB_PARAM = 'servis_sekme'
 const TABS = [
   { value: 'guzergahlar', label: 'Güzergâhlar' },
   { value: 'araclar', label: 'Araçlar' },
+  { value: 'seferler', label: 'Seferler' },
 ] as const
 type Tab = (typeof TABS)[number]['value']
 const STAFF_QUERY = { page: 1, pageSize: 100 } as const
@@ -116,7 +118,9 @@ export function FinanceTransportSection() {
       <div className="px-6">
         <LineTabs label="Servis görünümü" value={tab} options={TABS} onChange={setTab} />
       </div>
-      {tab === 'guzergahlar' ? <RouteList /> : <VehicleList />}
+      {tab === 'guzergahlar' ? <RouteList /> : null}
+      {tab === 'araclar' ? <VehicleList /> : null}
+      {tab === 'seferler' ? <TransportTripsView /> : null}
     </section>
   )
 }

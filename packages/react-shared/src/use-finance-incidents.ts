@@ -1,6 +1,11 @@
 import type { operations } from '@kampus/api-client/schema.d.ts'
 
 import { requireIfMatch, type CommandHeaders } from './commands.ts'
+import {
+  healthReasonHeaders,
+  healthReasonKey,
+  type HealthAccessReason,
+} from './use-finance-health-access.ts'
 import { useApiCommand } from './use-api-command.ts'
 import { useApiQuery } from './use-api-query.ts'
 import { useFinanceListQuery } from './use-finance-list-query.ts'
@@ -8,7 +13,8 @@ import { useFinanceListQuery } from './use-finance-list-query.ts'
 // Kaza ve yaralanma tutanağı kancaları (`/finance/incident*`; DOM-FIN-146, ON-162). Açma, veli
 // bildirimi ve ek not `Idempotency-Key`, düzeltme ve kesinleştirme `If-Match` ile gider. Her yazma
 // anahtarın tamamını tazeler (liste ve ayrıntı birlikte değişir). Ayrıntı okuması sunucuda
-// denetime düşer; önbellek kısa tutulmaz ama pencere odaklanınca yeniden okunmaz.
+// denetime düşer; önbellek kısa tutulmaz ama pencere odaklanınca yeniden okunmaz. Ayrıntı erişim
+// gerekçesi ister (DOM-FIN-156): gerekçe yokken sorgu çalışmaz, gerekçe anahtarın parçasıdır.
 
 type JsonBody<TOperation extends keyof operations> =
   NonNullable<operations[TOperation]['requestBody']> extends {
@@ -55,13 +61,14 @@ export function useIncidents(query: IncidentQuery, enabled = true) {
   )
 }
 
-export function useIncident(incidentId: string, enabled = true) {
+export function useIncident(incidentId: string, reason: HealthAccessReason | null, enabled = true) {
   return useApiQuery({
-    key: [...INCIDENTS_KEY, 'incident', incidentId],
-    enabled: enabled && incidentId !== '',
+    key: [...INCIDENTS_KEY, 'incident', incidentId, ...healthReasonKey(reason)],
+    enabled: enabled && incidentId !== '' && reason !== null,
+    refetchOnWindowFocus: false,
     request: (client, signal) =>
       client.GET('/api/v1/finance/incidents/{incidentId}', {
-        params: { path: { incidentId } },
+        params: { path: { incidentId }, header: healthReasonHeaders(reason) },
         signal,
       }),
   })

@@ -1,6 +1,12 @@
 import type { operations } from '@kampus/api-client/schema.d.ts'
 
 import { requireIfMatch, type CommandHeaders } from './commands.ts'
+import {
+  healthReasonHeaders,
+  healthReasonKey,
+  optionalHealthReasonHeaders,
+  type HealthAccessReason,
+} from './use-finance-health-access.ts'
 import { useApiCommand } from './use-api-command.ts'
 import { useApiQuery } from './use-api-query.ts'
 import { useFinanceListQuery } from './use-finance-list-query.ts'
@@ -8,7 +14,8 @@ import { useFinanceListQuery } from './use-finance-list-query.ts'
 // Revir ve ilaç onayı kancaları (`/finance/infirmary/*`; DOM-FIN-151, ON-101). Ziyaret, ilaç talebi
 // ve uygulama `Idempotency-Key`; düzeltme, kapatma, onay, ret ve geri çekme `If-Match` ile gider.
 // Her yazma anahtarın tamamını tazeler (liste, ayrıntı, durum ve gün planı birlikte değişir).
-// Sağlık ayrıntısı dönen okumalar sunucuda denetime düşer.
+// Sağlık ayrıntısı dönen okumalar sunucuda denetime düşer ve okulda erişim gerekçesi ister
+// (DOM-FIN-156): gerekçe yokken sorgu çalışmaz, gerekçe anahtarın parçasıdır. Veli gerekçesiz okur.
 
 type JsonBody<TOperation extends keyof operations> =
   NonNullable<operations[TOperation]['requestBody']> extends {
@@ -64,13 +71,18 @@ export function useInfirmaryVisits(query: InfirmaryVisitQuery, enabled = true) {
   )
 }
 
-export function useInfirmaryVisit(visitId: string, enabled = true) {
+export function useInfirmaryVisit(
+  visitId: string,
+  reason: HealthAccessReason | null,
+  enabled = true,
+) {
   return useApiQuery({
-    key: [...INFIRMARY_KEY, 'visit', visitId],
-    enabled: enabled && visitId !== '',
+    key: [...INFIRMARY_KEY, 'visit', visitId, ...healthReasonKey(reason)],
+    enabled: enabled && visitId !== '' && reason !== null,
+    refetchOnWindowFocus: false,
     request: (client, signal) =>
       client.GET('/api/v1/finance/infirmary/visits/{visitId}', {
-        params: { path: { visitId } },
+        params: { path: { visitId }, header: healthReasonHeaders(reason) },
         signal,
       }),
   })
@@ -99,13 +111,18 @@ export function useGuardianInfirmaryVisits(query: GuardianInfirmaryVisitQuery, e
   )
 }
 
-export function useMedicationConsents(query: MedicationConsentQuery, enabled = true) {
+/** Talep listesi; okulda gerekçe zorunlu (yokken `enabled: false` verilir), velide `null`. */
+export function useMedicationConsents(
+  query: MedicationConsentQuery,
+  reason: HealthAccessReason | null,
+  enabled = true,
+) {
   return useFinanceListQuery(
     {
-      key: [...INFIRMARY_KEY, 'consents', query],
+      key: [...INFIRMARY_KEY, 'consents', query, ...healthReasonKey(reason)],
       request: (client, signal) =>
         client.GET('/api/v1/finance/infirmary/medication-consents', {
-          params: { query },
+          params: { query, header: optionalHealthReasonHeaders(reason) },
           signal,
         }),
     },
@@ -113,25 +130,39 @@ export function useMedicationConsents(query: MedicationConsentQuery, enabled = t
   )
 }
 
-export function useMedicationConsent(consentId: string, enabled = true) {
+/** Talep ayrıntısı; okulda gerekçe zorunlu (yokken `enabled: false` verilir), velide `null`. */
+export function useMedicationConsent(
+  consentId: string,
+  reason: HealthAccessReason | null,
+  enabled = true,
+) {
   return useApiQuery({
-    key: [...INFIRMARY_KEY, 'consent', consentId],
+    key: [...INFIRMARY_KEY, 'consent', consentId, ...healthReasonKey(reason)],
     enabled: enabled && consentId !== '',
+    refetchOnWindowFocus: false,
     request: (client, signal) =>
       client.GET('/api/v1/finance/infirmary/medication-consents/{consentId}', {
-        params: { path: { consentId } },
+        params: { path: { consentId }, header: optionalHealthReasonHeaders(reason) },
         signal,
       }),
   })
 }
 
-export function useMedicationSchedule(date: string | undefined, enabled = true) {
+export function useMedicationSchedule(
+  date: string | undefined,
+  reason: HealthAccessReason | null,
+  enabled = true,
+) {
   return useApiQuery({
-    key: [...INFIRMARY_KEY, 'schedule', date ?? 'today'],
-    enabled,
+    key: [...INFIRMARY_KEY, 'schedule', date ?? 'today', ...healthReasonKey(reason)],
+    enabled: enabled && reason !== null,
+    refetchOnWindowFocus: false,
     request: (client, signal) =>
       client.GET('/api/v1/finance/infirmary/medication-schedule', {
-        params: { query: date === undefined ? {} : { date } },
+        params: {
+          query: date === undefined ? {} : { date },
+          header: healthReasonHeaders(reason),
+        },
         signal,
       }),
   })

@@ -14964,6 +14964,94 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/transport/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Servis belgeleri
+         * @description Etkin araçların, sürücülerinin ve personelin belgeleri; bitişi en yakın önce (süresiz en sonda), sayfalı. Süzgeçler: özne, araç, personel, tür, `due` (süresi geçen, uyarı penceresinde biten, ikisi ya da geçerli; yalnız uyarıya sayılan belgeler) ve `history=true` (yerine geçilenler dahil). Önceki sürücünün ve pasif personelin belgesi `counted: false` döner. Özel nitelikli belgede yönetici dışında dosya bilgisi `null` (`restricted: true`; K-497). Arşivli aracın belgesi dönmez. Rol: `yonetici`, `onburo`; adli sicil ve psikoteknik belgesini yalnız yönetici kaydeder ve dosyasını açar (K-497). Modüller `finance` ve `transport` (kapalıysa 403).
+         */
+        get: operations["listTransportDocuments"];
+        put?: never;
+        /**
+         * Servis belgesi kaydet
+         * @description Özne araç (`vehicleId`; muayene, zorunlu trafik sigortası, koltuk sigortası, okul servis aracı uygunluk/izin belgesi, diğer; isteğe bağlı belge no), aracın kayıtlı sürücüsü (`vehicleId`; belge kayıt anındaki sürücü adına bağlanır) ya da kurum üyesi personel (`membershipId`; rehber ya da üye sürücü). Kişi belgesi ehliyet (sınıf zorunlu), SRC, psikoteknik, adli sicil ya da diğerdir; içerik ve numara saklanmaz (K-497). Bitiş muayene, sigortalar, izin belgesi, ehliyet ve psikoteknikte zorunlu (400). Başlangıç bugünden sonra olamaz (422 `transport_document_start_in_future`). Dosya isteğe bağlı: `POST /files` amaç `document` (PDF) ya da `question_image` (görsel, geçişte yalnız yönetici yükler), en çok 10 MB (422 `transport_document_file_too_large`). "Diğer" dışındaki türde yeni belge aynı öznenin geçerli belgesinin yerine kendiliğinden geçer ve yanıtta `superseded` döner; geçerli belgeden eski tarih 422 `transport_document_older_than_current` (K-496). Ön büro adli sicil ve psikoteknik kaydedemez (403 `transport_document_sensitive_forbidden`). Olmayan ya da arşivli araç 422 `transport_document_vehicle_not_found`; personel 422 `transport_document_staff_not_found`, `transport_document_not_staff`, `transport_document_staff_inactive`. Denetim `finance.transport.document_create` (alan adları) ve `…document_supersede`. `Idempotency-Key` zorunlu. Rol: `yonetici`, `onburo`; adli sicil ve psikoteknik belgesini yalnız yönetici kaydeder ve dosyasını açar (K-497). Modüller `finance` ve `transport` (kapalıysa 403).
+         */
+        post: operations["createTransportDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/transport/documents/{documentId}/file-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Servis belgesinin dosyasını aç
+         * @description Belgenin dosyası için kısa ömürlü imzalı bağlantı. Her üretim denetime `finance.transport.document_file_open` olarak yazılır; denetim yazılamazsa bağlantı dönmez. Adli sicil ve psikoteknik dosyasını yalnız yönetici açar (ön büro 403 `transport_document_sensitive_forbidden`; K-497). Dosyasız belge 422 `transport_document_no_file`. Belge dosyası `GET /files/{fileId}/url` yolundan açılmaz (404). Başka kurumun belgesi 404. Rol: `yonetici`, `onburo`; adli sicil ve psikoteknik belgesini yalnız yönetici kaydeder ve dosyasını açar (K-497). Modüller `finance` ve `transport` (kapalıysa 403).
+         */
+        get: operations["getTransportDocumentFileUrl"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/transport/document-alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Servis belgesi uyarıları ve araç uygunluğu
+         * @description Uyarıya sayılan belgelerde süresi geçen ve kurumun uyarı penceresinde (varsayılan 30 gün) biten belge sayısı; her etkin araç için süresi geçmiş ve yaklaşan zorunlu türler (araç: muayene, trafik ve koltuk sigortası, izin belgesi; şimdiki sürücü: ehliyet, SRC, psikoteknik, adli sicil), eksik türler ve etkin güzergâhlar. Zorunlu belgesi süresi geçmiş araç `fit: false` ("uygun değil"); öğrenci ataması engellenmez (K-498). Bildirim gönderilmez. Rol: `yonetici`, `onburo`; adli sicil ve psikoteknik belgesini yalnız yönetici kaydeder ve dosyasını açar (K-497). Modüller `finance` ve `transport` (kapalıysa 403).
+         */
+        get: operations["getTransportDocumentAlerts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/transport/document-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Servis belgesi uyarı ayarı
+         * @description Uyarı penceresi (gün) ve `If-Match` sürümü; hiç kaydedilmediyse 30 gün, sürüm 1 (K-498). Rol: `yonetici`, `onburo`; adli sicil ve psikoteknik belgesini yalnız yönetici kaydeder ve dosyasını açar (K-497). Modüller `finance` ve `transport` (kapalıysa 403).
+         */
+        get: operations["getTransportDocumentSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Servis belgesi uyarı ayarını değiştir
+         * @description Uyarı penceresi 1–180 gün; değişiklik yoksa 422 `transport_document_settings_unchanged`. `If-Match` ayar sürümü (hiç kaydedilmediyse 1), tutmazsa 409. Denetim `finance.transport.document_settings` (K-498). Rol: yalnız `yonetici` (ön büro 403). Modüller `finance` ve `transport`.
+         */
+        patch: operations["updateTransportDocumentSettings"];
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -157624,6 +157712,860 @@ export interface operations {
                                 /** @description Son düzeltmenin gerekçesi; yalnız yöneticiye döner (K-503) */
                                 correctionReason: string | null;
                             }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listTransportDocuments: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description `vehicle` araç, `driver` aracın kayıtlı sürücüsü, `staff` kurum üyesi personel */
+                subject?: "vehicle" | "driver" | "staff";
+                /** @description Aracın ve sürücüsünün belgeleri */
+                vehicleId?: string;
+                /** @description Personelin belgeleri */
+                membershipId?: string;
+                /** @description `inspection`, `traffic_insurance`, `seat_insurance`, `school_bus_permit`, `driving_license`, `src_certificate`, `psychotechnical`, `criminal_record`, `other` */
+                documentType?: "inspection" | "traffic_insurance" | "seat_insurance" | "school_bus_permit" | "driving_license" | "src_certificate" | "psychotechnical" | "criminal_record" | "other";
+                /** @description `expired` süresi geçen, `expiring` uyarı penceresinde biten, `attention` ikisi, `valid` geçerli ya da süresiz (yalnız sayılan belgeler) */
+                due?: "expired" | "expiring" | "attention" | "valid";
+                /** @description `true` ise yerine geçilen belgeler de döner */
+                history?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /**
+                             * @description `vehicle` araç, `driver` aracın kayıtlı sürücüsü, `staff` kurum üyesi personel
+                             * @enum {string}
+                             */
+                            subject: "vehicle" | "driver" | "staff";
+                            /** @description Araç ve sürücü belgesinde araç */
+                            vehicleId: string | null;
+                            /** @description Aracın plakası (`34ABC123`); arşivli araçta ya da personel belgesinde `null` */
+                            vehiclePlate: string | null;
+                            /** @description Personel belgesinde kurum üyeliği */
+                            membershipId: string | null;
+                            /** @description Sürücü belgesinde kayıt anındaki sürücü adı, personel belgesinde personelin adı */
+                            subjectName: string | null;
+                            /** @description Uyarıya ve uygunluğa sayılıyor mu: önceki sürücünün, pasif personelin ya da yerine geçilen belgede `false` */
+                            counted: boolean;
+                            /**
+                             * @description `inspection`, `traffic_insurance`, `seat_insurance`, `school_bus_permit`, `driving_license`, `src_certificate`, `psychotechnical`, `criminal_record`, `other`
+                             * @enum {string}
+                             */
+                            documentType: "inspection" | "traffic_insurance" | "seat_insurance" | "school_bus_permit" | "driving_license" | "src_certificate" | "psychotechnical" | "criminal_record" | "other";
+                            /** @description Araç belgesinde belge ya da poliçe numarası */
+                            documentNumber: string | null;
+                            /** @description Ehliyette sınıf */
+                            licenseClass: ("M" | "A1" | "A2" | "A" | "B1" | "B" | "BE" | "C1" | "C1E" | "C" | "CE" | "D1" | "D1E" | "D" | "DE" | "F" | "G") | null;
+                            /** @description Belge tarihi ya da başlangıç (YYYY-MM-DD) */
+                            startDate: string;
+                            /** @description Geçerlilik bitişi (dahil); boşsa süresiz */
+                            endDate: string | null;
+                            /**
+                             * @description Bugüne göre: `valid`, `expiring` (bitişi uyarı penceresinde), `expired`, `superseded` (yerine yenisi geçti)
+                             * @enum {string}
+                             */
+                            status: "valid" | "expiring" | "expired" | "superseded";
+                            /** @description Bitişe kalan gün (bugün biten 0, geçen eksi); süresizde `null` */
+                            daysLeft: number | null;
+                            /** @description Özel nitelikli tür (adli sicil, psikoteknik) */
+                            sensitive: boolean;
+                            /** @description Gizli görünüm (K-497): yönetici dışında özel nitelikli belgede dosya bilgisi `null` */
+                            restricted: boolean;
+                            /** @description Dosya eklenmiş mi; gizli görünümde `null` */
+                            hasFile: boolean | null;
+                            /** @description Dosyanın adı ve boyutu; dosya yoksa ya da gizli görünümde `null` */
+                            file: {
+                                name: string;
+                                byteSize: number;
+                            } | null;
+                            /** @description Bu belgenin yerine geçtiği belge */
+                            replacesId: string | null;
+                            /** @description Yerine yeni belge geçtiği an */
+                            supersededAt: string | null;
+                            createdAt: string;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createTransportDocument: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description `vehicle` araç, `driver` aracın kayıtlı sürücüsü (kurum üyesi değil), `staff` kurum üyesi personel (rehber ya da üye sürücü)
+                     * @enum {string}
+                     */
+                    subject: "vehicle" | "driver" | "staff";
+                    /**
+                     * @description Araç ve sürücü belgesinde zorunlu: servis aracı
+                     * @default null
+                     */
+                    vehicleId?: string | null;
+                    /**
+                     * @description Personel belgesinde zorunlu: kurumun etkin yönetici, öğretmen ya da ön büro üyeliği
+                     * @default null
+                     */
+                    membershipId?: string | null;
+                    /**
+                     * @description Araçta `inspection` muayene, `traffic_insurance` zorunlu trafik sigortası, `seat_insurance` koltuk sigortası, `school_bus_permit` okul servis aracı uygunluk/izin belgesi; kişide `driving_license` ehliyet, `src_certificate` SRC, `psychotechnical` psikoteknik, `criminal_record` adli sicil; ikisinde `other`
+                     * @enum {string}
+                     */
+                    documentType: "inspection" | "traffic_insurance" | "seat_insurance" | "school_bus_permit" | "driving_license" | "src_certificate" | "psychotechnical" | "criminal_record" | "other";
+                    /** @description Belge ya da poliçe numarası (yalnız araç belgesinde, isteğe bağlı, en çok 50); kişi belgesinde numara tutulmaz (K-497) */
+                    documentNumber?: string | null;
+                    /**
+                     * @description Yalnız ehliyette ve orada zorunlu: ehliyet sınıfı (`B`, `D1`, `D` …)
+                     * @default null
+                     */
+                    licenseClass?: ("M" | "A1" | "A2" | "A" | "B1" | "B" | "BE" | "C1" | "C1E" | "C" | "CE" | "D1" | "D1E" | "D" | "DE" | "F" | "G") | null;
+                    /** @description Belgenin düzenlendiği ya da başladığı gün; bugünden sonra olamaz */
+                    startDate: string;
+                    /**
+                     * @description Geçerlilik bitişi (dahil); muayene, sigortalar, izin belgesi, ehliyet ve psikoteknikte zorunlu, diğerlerinde boşsa süresiz
+                     * @default null
+                     */
+                    endDate?: string | null;
+                    /**
+                     * @description Yüklenmiş dosya (`POST /files`; amaç `document` PDF ya da `question_image` görsel), en çok 10 MB; isteğe bağlı
+                     * @default null
+                     */
+                    fileId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            document: {
+                                id: string;
+                                /**
+                                 * @description `vehicle` araç, `driver` aracın kayıtlı sürücüsü, `staff` kurum üyesi personel
+                                 * @enum {string}
+                                 */
+                                subject: "vehicle" | "driver" | "staff";
+                                /** @description Araç ve sürücü belgesinde araç */
+                                vehicleId: string | null;
+                                /** @description Aracın plakası (`34ABC123`); arşivli araçta ya da personel belgesinde `null` */
+                                vehiclePlate: string | null;
+                                /** @description Personel belgesinde kurum üyeliği */
+                                membershipId: string | null;
+                                /** @description Sürücü belgesinde kayıt anındaki sürücü adı, personel belgesinde personelin adı */
+                                subjectName: string | null;
+                                /** @description Uyarıya ve uygunluğa sayılıyor mu: önceki sürücünün, pasif personelin ya da yerine geçilen belgede `false` */
+                                counted: boolean;
+                                /**
+                                 * @description `inspection`, `traffic_insurance`, `seat_insurance`, `school_bus_permit`, `driving_license`, `src_certificate`, `psychotechnical`, `criminal_record`, `other`
+                                 * @enum {string}
+                                 */
+                                documentType: "inspection" | "traffic_insurance" | "seat_insurance" | "school_bus_permit" | "driving_license" | "src_certificate" | "psychotechnical" | "criminal_record" | "other";
+                                /** @description Araç belgesinde belge ya da poliçe numarası */
+                                documentNumber: string | null;
+                                /** @description Ehliyette sınıf */
+                                licenseClass: ("M" | "A1" | "A2" | "A" | "B1" | "B" | "BE" | "C1" | "C1E" | "C" | "CE" | "D1" | "D1E" | "D" | "DE" | "F" | "G") | null;
+                                /** @description Belge tarihi ya da başlangıç (YYYY-MM-DD) */
+                                startDate: string;
+                                /** @description Geçerlilik bitişi (dahil); boşsa süresiz */
+                                endDate: string | null;
+                                /**
+                                 * @description Bugüne göre: `valid`, `expiring` (bitişi uyarı penceresinde), `expired`, `superseded` (yerine yenisi geçti)
+                                 * @enum {string}
+                                 */
+                                status: "valid" | "expiring" | "expired" | "superseded";
+                                /** @description Bitişe kalan gün (bugün biten 0, geçen eksi); süresizde `null` */
+                                daysLeft: number | null;
+                                /** @description Özel nitelikli tür (adli sicil, psikoteknik) */
+                                sensitive: boolean;
+                                /** @description Gizli görünüm (K-497): yönetici dışında özel nitelikli belgede dosya bilgisi `null` */
+                                restricted: boolean;
+                                /** @description Dosya eklenmiş mi; gizli görünümde `null` */
+                                hasFile: boolean | null;
+                                /** @description Dosyanın adı ve boyutu; dosya yoksa ya da gizli görünümde `null` */
+                                file: {
+                                    name: string;
+                                    byteSize: number;
+                                } | null;
+                                /** @description Bu belgenin yerine geçtiği belge */
+                                replacesId: string | null;
+                                /** @description Yerine yeni belge geçtiği an */
+                                supersededAt: string | null;
+                                createdAt: string;
+                            };
+                            /** @description Yerine geçilen (artık geçmiş) belge */
+                            superseded: {
+                                id: string;
+                                /**
+                                 * @description `vehicle` araç, `driver` aracın kayıtlı sürücüsü, `staff` kurum üyesi personel
+                                 * @enum {string}
+                                 */
+                                subject: "vehicle" | "driver" | "staff";
+                                /** @description Araç ve sürücü belgesinde araç */
+                                vehicleId: string | null;
+                                /** @description Aracın plakası (`34ABC123`); arşivli araçta ya da personel belgesinde `null` */
+                                vehiclePlate: string | null;
+                                /** @description Personel belgesinde kurum üyeliği */
+                                membershipId: string | null;
+                                /** @description Sürücü belgesinde kayıt anındaki sürücü adı, personel belgesinde personelin adı */
+                                subjectName: string | null;
+                                /** @description Uyarıya ve uygunluğa sayılıyor mu: önceki sürücünün, pasif personelin ya da yerine geçilen belgede `false` */
+                                counted: boolean;
+                                /**
+                                 * @description `inspection`, `traffic_insurance`, `seat_insurance`, `school_bus_permit`, `driving_license`, `src_certificate`, `psychotechnical`, `criminal_record`, `other`
+                                 * @enum {string}
+                                 */
+                                documentType: "inspection" | "traffic_insurance" | "seat_insurance" | "school_bus_permit" | "driving_license" | "src_certificate" | "psychotechnical" | "criminal_record" | "other";
+                                /** @description Araç belgesinde belge ya da poliçe numarası */
+                                documentNumber: string | null;
+                                /** @description Ehliyette sınıf */
+                                licenseClass: ("M" | "A1" | "A2" | "A" | "B1" | "B" | "BE" | "C1" | "C1E" | "C" | "CE" | "D1" | "D1E" | "D" | "DE" | "F" | "G") | null;
+                                /** @description Belge tarihi ya da başlangıç (YYYY-MM-DD) */
+                                startDate: string;
+                                /** @description Geçerlilik bitişi (dahil); boşsa süresiz */
+                                endDate: string | null;
+                                /**
+                                 * @description Bugüne göre: `valid`, `expiring` (bitişi uyarı penceresinde), `expired`, `superseded` (yerine yenisi geçti)
+                                 * @enum {string}
+                                 */
+                                status: "valid" | "expiring" | "expired" | "superseded";
+                                /** @description Bitişe kalan gün (bugün biten 0, geçen eksi); süresizde `null` */
+                                daysLeft: number | null;
+                                /** @description Özel nitelikli tür (adli sicil, psikoteknik) */
+                                sensitive: boolean;
+                                /** @description Gizli görünüm (K-497): yönetici dışında özel nitelikli belgede dosya bilgisi `null` */
+                                restricted: boolean;
+                                /** @description Dosya eklenmiş mi; gizli görünümde `null` */
+                                hasFile: boolean | null;
+                                /** @description Dosyanın adı ve boyutu; dosya yoksa ya da gizli görünümde `null` */
+                                file: {
+                                    name: string;
+                                    byteSize: number;
+                                } | null;
+                                /** @description Bu belgenin yerine geçtiği belge */
+                                replacesId: string | null;
+                                /** @description Yerine yeni belge geçtiği an */
+                                supersededAt: string | null;
+                                createdAt: string;
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getTransportDocumentFileUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Kısa ömürlü imzalı GET bağlantısı */
+                            url: string;
+                            /** @description Bağlantının geçerlilik sonu */
+                            expiresAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getTransportDocumentAlerts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Kurumun uyarı penceresi (gün) */
+                            warningDays: number;
+                            /** @description Süresi geçen sayılan belge */
+                            expiredCount: number;
+                            /** @description Uyarı penceresinde biten sayılan belge */
+                            expiringCount: number;
+                            /** @description Uygun olmayan (zorunlu belgesi geçmiş) araç */
+                            unfitVehicleCount: number;
+                            /** @description Araç ya da sürücüsünde zorunlu belgesi eksik araç */
+                            missingVehicleCount: number;
+                            /** @description Arşivlenmemiş araçlar, plakaya göre */
+                            vehicles: {
+                                vehicleId: string;
+                                plate: string;
+                                /** @description `false`: araç ya da şimdiki sürücüsünde zorunlu belgenin süresi geçmiş (K-498) */
+                                fit: boolean;
+                                /** @description Süresi geçmiş zorunlu türler */
+                                expiredTypes: ("inspection" | "traffic_insurance" | "seat_insurance" | "school_bus_permit" | "driving_license" | "src_certificate" | "psychotechnical" | "criminal_record" | "other")[];
+                                /** @description Bitişi yaklaşan zorunlu türler */
+                                expiringTypes: ("inspection" | "traffic_insurance" | "seat_insurance" | "school_bus_permit" | "driving_license" | "src_certificate" | "psychotechnical" | "criminal_record" | "other")[];
+                                /** @description Aracın eksik zorunlu türleri */
+                                missingVehicleTypes: ("inspection" | "traffic_insurance" | "seat_insurance" | "school_bus_permit" | "driving_license" | "src_certificate" | "psychotechnical" | "criminal_record" | "other")[];
+                                /** @description Şimdiki sürücünün eksik zorunlu türleri */
+                                missingDriverTypes: ("inspection" | "traffic_insurance" | "seat_insurance" | "school_bus_permit" | "driving_license" | "src_certificate" | "psychotechnical" | "criminal_record" | "other")[];
+                                /** @description Aracın etkin güzergâhları */
+                                routes: {
+                                    id: string;
+                                    name: string;
+                                    /** @enum {string} */
+                                    direction: "morning" | "evening";
+                                }[];
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getTransportDocumentSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Uyarı penceresi (gün, 1–180; varsayılan 30) */
+                            warningDays: number;
+                            /** @description `If-Match` ayar sürümü; hiç kaydedilmediyse 1 */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateTransportDocumentSettings: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Bitişine bu kadar gün (dahil) kalan belge "süresi yaklaşıyor" (1–180; varsayılan 30) */
+                    warningDays: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Uyarı penceresi (gün, 1–180; varsayılan 30) */
+                            warningDays: number;
+                            /** @description `If-Match` ayar sürümü; hiç kaydedilmediyse 1 */
+                            version: number;
                         };
                     };
                 };

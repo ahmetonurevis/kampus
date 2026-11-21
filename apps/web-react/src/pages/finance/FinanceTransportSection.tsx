@@ -42,6 +42,11 @@ import { FinanceStudentSearch } from './FinanceStudentSearch.tsx'
 import { FinanceTransportRosterButton } from './FinanceTransportRosterButton.tsx'
 import { TransportTripsView } from './FinanceTransportTripsSection.tsx'
 import {
+  FinanceTransportDocumentsSection,
+  TransportVehicleFitnessBadge,
+  useTransportDocumentsBadge,
+} from './FinanceTransportDocumentsSection.tsx'
+import {
   directionText,
   emptyStop,
   loadText,
@@ -67,6 +72,7 @@ const TABS = [
   { value: 'guzergahlar', label: 'Güzergâhlar' },
   { value: 'araclar', label: 'Araçlar' },
   { value: 'seferler', label: 'Seferler' },
+  { value: 'belgeler', label: 'Belgeler' },
 ] as const
 type Tab = (typeof TABS)[number]['value']
 const STAFF_QUERY = { page: 1, pageSize: 100 } as const
@@ -84,6 +90,7 @@ export function FinanceTransportSection() {
   const [params, setParams] = useSearchParams()
   const requested = params.get(TAB_PARAM)
   const tab: Tab = TABS.find((item) => item.value === requested)?.value ?? 'guzergahlar'
+  const documentAlerts = useTransportDocumentsBadge(session?.modules.transport === true)
   const setTab = (next: Tab) =>
     setParams(
       (current) => {
@@ -117,11 +124,19 @@ export function FinanceTransportSection() {
         </p>
       </header>
       <div className="px-6">
-        <LineTabs label="Servis görünümü" value={tab} options={TABS} onChange={setTab} />
+        <LineTabs
+          label="Servis görünümü"
+          value={tab}
+          options={TABS.map((item) =>
+            item.value === 'belgeler' ? { ...item, count: documentAlerts } : item,
+          )}
+          onChange={setTab}
+        />
       </div>
       {tab === 'guzergahlar' ? <RouteList /> : null}
       {tab === 'araclar' ? <VehicleList /> : null}
       {tab === 'seferler' ? <TransportTripsView /> : null}
+      {tab === 'belgeler' ? <FinanceTransportDocumentsSection /> : null}
     </section>
   )
 }
@@ -168,6 +183,11 @@ function RouteList() {
       { key: 'vehicle', label: 'Araç' },
       { key: 'times', label: 'Saat' },
       { key: 'load', label: 'Doluluk' },
+      {
+        key: 'fitness',
+        label: 'Belge',
+        cell: (row) => <TransportVehicleFitnessBadge vehicleId={row.row.vehicleId} />,
+      },
       {
         key: ACTIONS_KEY,
         label: 'İşlemler',

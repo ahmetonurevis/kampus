@@ -4275,6 +4275,34 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: servis aracı ve personeli belgeleri (ON-147; DOM-FIN-147).
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/transport/documents', 'listOf(a.admin)'],
+        ['gövde', 'POST /api/v1/finance/transport/documents', 'institutionId: b.id'],
+        [
+          'kayıt',
+          'GET /api/v1/finance/transport/documents/:documentId/file-url',
+          '`${DOCS}/${String(bDoc.id)}/file-url`',
+        ],
+        ['liste', 'GET /api/v1/finance/transport/document-alerts', 'get(ALERTS, a.admin)'],
+        ['liste', 'GET /api/v1/finance/transport/document-settings', 'get(SETTINGS, a.admin)'],
+        [
+          'gövde',
+          'PATCH /api/v1/finance/transport/document-settings',
+          'warningDays: 20, institutionId: b.id',
+        ],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-transport-documents.test.ts',
+        'DOM-FIN-147: başka kurumun aracı ve belgesi 404 ve B değişmez; listede yok; gövdedeki institutionId etkisiz',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

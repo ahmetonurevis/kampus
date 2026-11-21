@@ -336944,6 +336944,3771 @@
         }
       }
     },
+    "/api/v1/finance/club-selection/my": {
+      "get": {
+        "operationId": "listMyClubSelections",
+        "summary": "Kendi (çocuğumun) kulüp tercihleri",
+        "tags": [
+          "finance-club-selection"
+        ],
+        "description": "Son 20 tercih döneminde velinin bağlı çocuklarının ya da öğrencinin kendisinin (hedef düzeyde ve kaydı etkin ya da tercihi olan) dönem bilgisi, kulüpler (gün, saat, öğretmen), girilen sıralı tercih ve onaylandıysa sonuç (atandığı kulüpler, yedek sırası) (K-505, K-507). Başka öğrencilerin tercihi ve kura sırası dönmez. Rol: `veli`, `ogrenci`; diğer roller 403. Modüller `finance` ve `clubs`.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "periodId": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "academicYear": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "term": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "openDate": {
+                            "type": "string"
+                          },
+                          "closeDate": {
+                            "type": "string"
+                          },
+                          "phase": {
+                            "type": "string",
+                            "enum": [
+                              "upcoming",
+                              "open",
+                              "closed",
+                              "drawn",
+                              "confirmed"
+                            ],
+                            "description": "`upcoming` açılmadı, `open` tercihe açık, `closed` kapandı, `drawn` kura çekildi, `confirmed` onaylandı"
+                          },
+                          "maxChoices": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "seatsPerStudent": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "clubs": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "teacherName": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "meetingDay": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "startTime": {
+                                  "type": "string"
+                                },
+                                "endTime": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name",
+                                "teacherName",
+                                "meetingDay",
+                                "startTime",
+                                "endTime"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "students": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "studentId": {
+                                  "type": "string"
+                                },
+                                "studentName": {
+                                  "type": "string"
+                                },
+                                "choices": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "enteredAt": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "assignedClubIds": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  },
+                                  "description": "Onaylı dağıtımda atandığı kulüpler"
+                                },
+                                "waitlist": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "clubId": {
+                                        "type": "string"
+                                      },
+                                      "position": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": [
+                                      "clubId",
+                                      "position"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "description": "Onaylı dağıtımda yedek sırası"
+                                }
+                              },
+                              "required": [
+                                "studentId",
+                                "studentName",
+                                "choices",
+                                "enteredAt",
+                                "assignedClubIds",
+                                "waitlist"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "periodId",
+                          "name",
+                          "academicYear",
+                          "term",
+                          "openDate",
+                          "closeDate",
+                          "phase",
+                          "maxChoices",
+                          "seatsPerStudent",
+                          "clubs",
+                          "students"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/club-selection/periods": {
+      "get": {
+        "operationId": "listClubSelectionPeriods",
+        "summary": "Kulüp tercih dönemleri",
+        "tags": [
+          "finance-club-selection"
+        ],
+        "description": "Arşivlenmemiş dönemler, açılış günü yeni önce; aşama, kulüp ve tercih sayısı. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `clubs` (kapalıysa 403).",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "academicYear": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Eğitim yılının başlangıç yılı"
+                          },
+                          "term": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Eğitim dönemi (1, 2); `null` bütün yıl"
+                          },
+                          "openDate": {
+                            "type": "string",
+                            "description": "Açılış günü (YYYY-MM-DD, dahil)"
+                          },
+                          "closeDate": {
+                            "type": "string",
+                            "description": "Kapanış günü (YYYY-MM-DD, dahil)"
+                          },
+                          "maxChoices": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "seatsPerStudent": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Öğrenci başına atanacak kulüp"
+                          },
+                          "gradeLevels": {
+                            "type": "array",
+                            "items": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "description": "Hedef sınıf düzeyleri; boşsa herkes"
+                          },
+                          "phase": {
+                            "type": "string",
+                            "enum": [
+                              "upcoming",
+                              "open",
+                              "closed",
+                              "drawn",
+                              "confirmed"
+                            ],
+                            "description": "`upcoming` açılmadı, `open` tercihe açık, `closed` kapandı, `drawn` kura çekildi, `confirmed` onaylandı"
+                          },
+                          "clubCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "preferenceCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Etkin tercih sayısı"
+                          },
+                          "drawnAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "confirmedAt": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name",
+                          "academicYear",
+                          "term",
+                          "openDate",
+                          "closeDate",
+                          "maxChoices",
+                          "seatsPerStudent",
+                          "gradeLevels",
+                          "phase",
+                          "clubCount",
+                          "preferenceCount",
+                          "drawnAt",
+                          "confirmedAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createClubSelectionPeriod",
+        "summary": "Tercih dönemi aç",
+        "tags": [
+          "finance-club-selection"
+        ],
+        "description": "Ad, eğitim yılı ve dönem, açılış–kapanış günü (Europe/Istanbul, dahil; kapanış bugünden önce 422 `club_selection_closes_past`), kurumun kulüpleri (bulunamayan 422 `club_selection_club_not_found`), en çok tercih (kulüp sayısını aşamaz), atanacak kulüp sayısı (varsayılan 1, tercih sayısını aşamaz) ve isteğe bağlı sınıf düzeyleri (K-505). `Idempotency-Key` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `clubs` (kapalıysa 403).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120,
+                    "description": "Dönem adı (2–120)"
+                  },
+                  "academicYear": {
+                    "type": "integer",
+                    "minimum": 2000,
+                    "maximum": 2100,
+                    "description": "Eğitim yılının başlangıç yılı (2026 → 2026–2027)"
+                  },
+                  "term": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "number",
+                            "enum": [
+                              1
+                            ]
+                          },
+                          {
+                            "type": "number",
+                            "enum": [
+                              2
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Eğitim dönemi (1 ya da 2); `null` bütün yıl"
+                  },
+                  "openDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Açılış günü (YYYY-MM-DD, Europe/Istanbul; dahil)"
+                  },
+                  "closeDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                    "description": "Kapanış günü (YYYY-MM-DD; dahil); bugünden önce olamaz"
+                  },
+                  "clubIds": {
+                    "minItems": 1,
+                    "maxItems": 40,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "description": "Döneme katılan kulüpler (1–40, tekil)"
+                  },
+                  "maxChoices": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10,
+                    "description": "Öğrenci başına en çok tercih (1–10); kulüp sayısını aşamaz"
+                  },
+                  "seatsPerStudent": {
+                    "default": 1,
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5,
+                    "description": "Öğrenci başına atanacak kulüp (1–5); tercih sayısını aşamaz"
+                  },
+                  "gradeLevels": {
+                    "default": [],
+                    "maxItems": 12,
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 12
+                    },
+                    "description": "Hedef sınıf düzeyleri (1–12); boşsa bütün öğrenciler"
+                  }
+                },
+                "required": [
+                  "name",
+                  "academicYear",
+                  "openDate",
+                  "closeDate",
+                  "clubIds",
+                  "maxChoices"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "academicYear": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Eğitim yılının başlangıç yılı"
+                        },
+                        "term": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Eğitim dönemi (1, 2); `null` bütün yıl"
+                        },
+                        "openDate": {
+                          "type": "string",
+                          "description": "Açılış günü (YYYY-MM-DD, dahil)"
+                        },
+                        "closeDate": {
+                          "type": "string",
+                          "description": "Kapanış günü (YYYY-MM-DD, dahil)"
+                        },
+                        "maxChoices": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "seatsPerStudent": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Öğrenci başına atanacak kulüp"
+                        },
+                        "gradeLevels": {
+                          "type": "array",
+                          "items": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "description": "Hedef sınıf düzeyleri; boşsa herkes"
+                        },
+                        "phase": {
+                          "type": "string",
+                          "enum": [
+                            "upcoming",
+                            "open",
+                            "closed",
+                            "drawn",
+                            "confirmed"
+                          ],
+                          "description": "`upcoming` açılmadı, `open` tercihe açık, `closed` kapandı, `drawn` kura çekildi, `confirmed` onaylandı"
+                        },
+                        "clubCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "preferenceCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Etkin tercih sayısı"
+                        },
+                        "drawnAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "confirmedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "seed": {
+                          "description": "Kura tohumu; kura çekilince dolar, sonuç bununla üretilir",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "clubs": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "teacherName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "capacity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "memberCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Güncel etkin üye sayısı"
+                              },
+                              "freeSeats": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Boş yer (kontenjan − üye)"
+                              },
+                              "meetingDay": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "startTime": {
+                                "type": "string"
+                              },
+                              "endTime": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "teacherName",
+                              "capacity",
+                              "memberCount",
+                              "freeSeats",
+                              "meetingDay",
+                              "startTime",
+                              "endTime"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Döneme katılan arşivlenmemiş kulüpler"
+                        },
+                        "eligibleStudentCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Hedef düzeydeki etkin öğrenci sayısı (tercih durumu için)"
+                        },
+                        "preferences": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "studentId": {
+                                "type": "string"
+                              },
+                              "studentName": {
+                                "type": "string"
+                              },
+                              "choices": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "description": "Sıralı kulüp kimlikleri"
+                              },
+                              "enteredByRole": {
+                                "type": "string",
+                                "enum": [
+                                  "yonetici",
+                                  "onburo",
+                                  "veli",
+                                  "ogrenci"
+                                ]
+                              },
+                              "enteredAt": {
+                                "type": "string"
+                              },
+                              "eligible": {
+                                "type": "boolean",
+                                "description": "Kaydı etkin ve hedef düzeyde; değilse tercih dağıtıma girmez"
+                              }
+                            },
+                            "required": [
+                              "studentId",
+                              "studentName",
+                              "choices",
+                              "enteredByRole",
+                              "enteredAt",
+                              "eligible"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Etkin tercihler, öğrenci adına göre"
+                        },
+                        "result": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "clubs": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "clubId": {
+                                        "type": "string"
+                                      },
+                                      "clubName": {
+                                        "type": "string"
+                                      },
+                                      "freeSeats": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "assigned": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "studentId": {
+                                              "type": "string"
+                                            },
+                                            "studentName": {
+                                              "type": "string"
+                                            },
+                                            "rank": {
+                                              "type": "integer",
+                                              "minimum": -9007199254740991,
+                                              "maximum": 9007199254740991
+                                            }
+                                          },
+                                          "required": [
+                                            "studentId",
+                                            "studentName",
+                                            "rank"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      },
+                                      "waitlist": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "studentId": {
+                                              "type": "string"
+                                            },
+                                            "studentName": {
+                                              "type": "string"
+                                            },
+                                            "rank": {
+                                              "type": "integer",
+                                              "minimum": -9007199254740991,
+                                              "maximum": 9007199254740991
+                                            },
+                                            "position": {
+                                              "type": "integer",
+                                              "minimum": -9007199254740991,
+                                              "maximum": 9007199254740991
+                                            },
+                                            "status": {
+                                              "type": "string",
+                                              "enum": [
+                                                "waiting",
+                                                "joined",
+                                                "inactive"
+                                              ],
+                                              "description": "`waiting` bekliyor, `joined` sonradan üye oldu, `inactive` kaydı etkin değil"
+                                            }
+                                          },
+                                          "required": [
+                                            "studentId",
+                                            "studentName",
+                                            "rank",
+                                            "position",
+                                            "status"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      },
+                                      "suggestedStudentId": {
+                                        "description": "Boş yer varsa önerilen ilk bekleyen yedek; otomatik eklenmez",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "suggestedStudentName": {
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "clubId",
+                                      "clubName",
+                                      "freeSeats",
+                                      "assigned",
+                                      "waitlist",
+                                      "suggestedStudentId",
+                                      "suggestedStudentName"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "assignedCount": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "waitlistedStudentCount": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "clubs",
+                                "assignedCount",
+                                "waitlistedStudentCount"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Onaylanan dağıtım; onaydan önce `null`"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "academicYear",
+                        "term",
+                        "openDate",
+                        "closeDate",
+                        "maxChoices",
+                        "seatsPerStudent",
+                        "gradeLevels",
+                        "phase",
+                        "clubCount",
+                        "preferenceCount",
+                        "drawnAt",
+                        "confirmedAt",
+                        "version",
+                        "seed",
+                        "clubs",
+                        "eligibleStudentCount",
+                        "preferences",
+                        "result"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/club-selection/periods/{periodId}": {
+      "get": {
+        "operationId": "getClubSelectionPeriod",
+        "summary": "Tercih dönemi ayrıntısı",
+        "tags": [
+          "finance-club-selection"
+        ],
+        "description": "Kulüpler (güncel üye ve boş yer), hedef düzeydeki etkin öğrenci sayısı, etkin tercihler (girenin rolü, dağıtıma girip girmediği), kura tohumu ve onaylandıysa kulüp başına atananlar ile yedek listesi (sonradan üye olan ve kaydı etkin olmayan işaretli; boş yer varsa ilk bekleyen önerilir, otomatik eklenmez; K-507). Başka kurumun ya da arşivli dönem 404. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `clubs` (kapalıysa 403).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "periodId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "academicYear": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Eğitim yılının başlangıç yılı"
+                        },
+                        "term": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Eğitim dönemi (1, 2); `null` bütün yıl"
+                        },
+                        "openDate": {
+                          "type": "string",
+                          "description": "Açılış günü (YYYY-MM-DD, dahil)"
+                        },
+                        "closeDate": {
+                          "type": "string",
+                          "description": "Kapanış günü (YYYY-MM-DD, dahil)"
+                        },
+                        "maxChoices": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "seatsPerStudent": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Öğrenci başına atanacak kulüp"
+                        },
+                        "gradeLevels": {
+                          "type": "array",
+                          "items": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "description": "Hedef sınıf düzeyleri; boşsa herkes"
+                        },
+                        "phase": {
+                          "type": "string",
+                          "enum": [
+                            "upcoming",
+                            "open",
+                            "closed",
+                            "drawn",
+                            "confirmed"
+                          ],
+                          "description": "`upcoming` açılmadı, `open` tercihe açık, `closed` kapandı, `drawn` kura çekildi, `confirmed` onaylandı"
+                        },
+                        "clubCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "preferenceCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Etkin tercih sayısı"
+                        },
+                        "drawnAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "confirmedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "seed": {
+                          "description": "Kura tohumu; kura çekilince dolar, sonuç bununla üretilir",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "clubs": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "teacherName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "capacity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "memberCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Güncel etkin üye sayısı"
+                              },
+                              "freeSeats": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Boş yer (kontenjan − üye)"
+                              },
+                              "meetingDay": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "startTime": {
+                                "type": "string"
+                              },
+                              "endTime": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "teacherName",
+                              "capacity",
+                              "memberCount",
+                              "freeSeats",
+                              "meetingDay",
+                              "startTime",
+                              "endTime"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Döneme katılan arşivlenmemiş kulüpler"
+                        },
+                        "eligibleStudentCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Hedef düzeydeki etkin öğrenci sayısı (tercih durumu için)"
+                        },
+                        "preferences": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "studentId": {
+                                "type": "string"
+                              },
+                              "studentName": {
+                                "type": "string"
+                              },
+                              "choices": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "description": "Sıralı kulüp kimlikleri"
+                              },
+                              "enteredByRole": {
+                                "type": "string",
+                                "enum": [
+                                  "yonetici",
+                                  "onburo",
+                                  "veli",
+                                  "ogrenci"
+                                ]
+                              },
+                              "enteredAt": {
+                                "type": "string"
+                              },
+                              "eligible": {
+                                "type": "boolean",
+                                "description": "Kaydı etkin ve hedef düzeyde; değilse tercih dağıtıma girmez"
+                              }
+                            },
+                            "required": [
+                              "studentId",
+                              "studentName",
+                              "choices",
+                              "enteredByRole",
+                              "enteredAt",
+                              "eligible"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Etkin tercihler, öğrenci adına göre"
+                        },
+                        "result": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "clubs": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "clubId": {
+                                        "type": "string"
+                                      },
+                                      "clubName": {
+                                        "type": "string"
+                                      },
+                                      "freeSeats": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "assigned": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "studentId": {
+                                              "type": "string"
+                                            },
+                                            "studentName": {
+                                              "type": "string"
+                                            },
+                                            "rank": {
+                                              "type": "integer",
+                                              "minimum": -9007199254740991,
+                                              "maximum": 9007199254740991
+                                            }
+                                          },
+                                          "required": [
+                                            "studentId",
+                                            "studentName",
+                                            "rank"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      },
+                                      "waitlist": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "studentId": {
+                                              "type": "string"
+                                            },
+                                            "studentName": {
+                                              "type": "string"
+                                            },
+                                            "rank": {
+                                              "type": "integer",
+                                              "minimum": -9007199254740991,
+                                              "maximum": 9007199254740991
+                                            },
+                                            "position": {
+                                              "type": "integer",
+                                              "minimum": -9007199254740991,
+                                              "maximum": 9007199254740991
+                                            },
+                                            "status": {
+                                              "type": "string",
+                                              "enum": [
+                                                "waiting",
+                                                "joined",
+                                                "inactive"
+                                              ],
+                                              "description": "`waiting` bekliyor, `joined` sonradan üye oldu, `inactive` kaydı etkin değil"
+                                            }
+                                          },
+                                          "required": [
+                                            "studentId",
+                                            "studentName",
+                                            "rank",
+                                            "position",
+                                            "status"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      },
+                                      "suggestedStudentId": {
+                                        "description": "Boş yer varsa önerilen ilk bekleyen yedek; otomatik eklenmez",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "suggestedStudentName": {
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "clubId",
+                                      "clubName",
+                                      "freeSeats",
+                                      "assigned",
+                                      "waitlist",
+                                      "suggestedStudentId",
+                                      "suggestedStudentName"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "assignedCount": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "waitlistedStudentCount": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "clubs",
+                                "assignedCount",
+                                "waitlistedStudentCount"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Onaylanan dağıtım; onaydan önce `null`"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "academicYear",
+                        "term",
+                        "openDate",
+                        "closeDate",
+                        "maxChoices",
+                        "seatsPerStudent",
+                        "gradeLevels",
+                        "phase",
+                        "clubCount",
+                        "preferenceCount",
+                        "drawnAt",
+                        "confirmedAt",
+                        "version",
+                        "seed",
+                        "clubs",
+                        "eligibleStudentCount",
+                        "preferences",
+                        "result"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateClubSelectionPeriod",
+        "summary": "Tercih dönemini düzenle",
+        "tags": [
+          "finance-club-selection"
+        ],
+        "description": "Gönderilen alanlar değişir. Kura çekildiyse 422 `club_selection_locked`; tercih girilmişse yalnız ad ve tarihler (422 `club_selection_has_preferences`); kapanış açılıştan önce 422 `club_selection_date_order`, tarih değişirse kapanış bugünden önce olamaz; tercih sayısı kulüp sayısını (`club_selection_choices_over_clubs`), atanacak sayı tercih sayısını (`club_selection_seats_over_choices`) aşamaz; değişiklik yoksa 422 `club_selection_unchanged` (K-505). `If-Match` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `clubs` (kapalıysa 403).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120,
+                    "description": "Dönem adı (2–120)"
+                  },
+                  "academicYear": {
+                    "type": "integer",
+                    "minimum": 2000,
+                    "maximum": 2100,
+                    "description": "Eğitim yılının başlangıç yılı (2026 → 2026–2027)"
+                  },
+                  "term": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "number",
+                            "enum": [
+                              1
+                            ]
+                          },
+                          {
+                            "type": "number",
+                            "enum": [
+                              2
+                            ]
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "description": "Eğitim dönemi (1 ya da 2); `null` bütün yıl"
+                  },
+                  "openDate": {
+                    "description": "Açılış günü",
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "closeDate": {
+                    "description": "Kapanış günü",
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "clubIds": {
+                    "minItems": 1,
+                    "maxItems": 40,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "description": "Döneme katılan kulüpler (1–40, tekil)"
+                  },
+                  "maxChoices": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10,
+                    "description": "Öğrenci başına en çok tercih (1–10); kulüp sayısını aşamaz"
+                  },
+                  "seatsPerStudent": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5,
+                    "description": "Öğrenci başına atanacak kulüp (1–5); tercih sayısını aşamaz"
+                  },
+                  "gradeLevels": {
+                    "maxItems": 12,
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 12
+                    },
+                    "description": "Hedef sınıf düzeyleri (1–12); boşsa bütün öğrenciler"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "periodId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "academicYear": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Eğitim yılının başlangıç yılı"
+                        },
+                        "term": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Eğitim dönemi (1, 2); `null` bütün yıl"
+                        },
+                        "openDate": {
+                          "type": "string",
+                          "description": "Açılış günü (YYYY-MM-DD, dahil)"
+                        },
+                        "closeDate": {
+                          "type": "string",
+                          "description": "Kapanış günü (YYYY-MM-DD, dahil)"
+                        },
+                        "maxChoices": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "seatsPerStudent": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Öğrenci başına atanacak kulüp"
+                        },
+                        "gradeLevels": {
+                          "type": "array",
+                          "items": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "description": "Hedef sınıf düzeyleri; boşsa herkes"
+                        },
+                        "phase": {
+                          "type": "string",
+                          "enum": [
+                            "upcoming",
+                            "open",
+                            "closed",
+                            "drawn",
+                            "confirmed"
+                          ],
+                          "description": "`upcoming` açılmadı, `open` tercihe açık, `closed` kapandı, `drawn` kura çekildi, `confirmed` onaylandı"
+                        },
+                        "clubCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "preferenceCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Etkin tercih sayısı"
+                        },
+                        "drawnAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "confirmedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "seed": {
+                          "description": "Kura tohumu; kura çekilince dolar, sonuç bununla üretilir",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "clubs": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "teacherName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "capacity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "memberCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Güncel etkin üye sayısı"
+                              },
+                              "freeSeats": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Boş yer (kontenjan − üye)"
+                              },
+                              "meetingDay": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "startTime": {
+                                "type": "string"
+                              },
+                              "endTime": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "teacherName",
+                              "capacity",
+                              "memberCount",
+                              "freeSeats",
+                              "meetingDay",
+                              "startTime",
+                              "endTime"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Döneme katılan arşivlenmemiş kulüpler"
+                        },
+                        "eligibleStudentCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Hedef düzeydeki etkin öğrenci sayısı (tercih durumu için)"
+                        },
+                        "preferences": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "studentId": {
+                                "type": "string"
+                              },
+                              "studentName": {
+                                "type": "string"
+                              },
+                              "choices": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "description": "Sıralı kulüp kimlikleri"
+                              },
+                              "enteredByRole": {
+                                "type": "string",
+                                "enum": [
+                                  "yonetici",
+                                  "onburo",
+                                  "veli",
+                                  "ogrenci"
+                                ]
+                              },
+                              "enteredAt": {
+                                "type": "string"
+                              },
+                              "eligible": {
+                                "type": "boolean",
+                                "description": "Kaydı etkin ve hedef düzeyde; değilse tercih dağıtıma girmez"
+                              }
+                            },
+                            "required": [
+                              "studentId",
+                              "studentName",
+                              "choices",
+                              "enteredByRole",
+                              "enteredAt",
+                              "eligible"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Etkin tercihler, öğrenci adına göre"
+                        },
+                        "result": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "clubs": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "clubId": {
+                                        "type": "string"
+                                      },
+                                      "clubName": {
+                                        "type": "string"
+                                      },
+                                      "freeSeats": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "assigned": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "studentId": {
+                                              "type": "string"
+                                            },
+                                            "studentName": {
+                                              "type": "string"
+                                            },
+                                            "rank": {
+                                              "type": "integer",
+                                              "minimum": -9007199254740991,
+                                              "maximum": 9007199254740991
+                                            }
+                                          },
+                                          "required": [
+                                            "studentId",
+                                            "studentName",
+                                            "rank"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      },
+                                      "waitlist": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "studentId": {
+                                              "type": "string"
+                                            },
+                                            "studentName": {
+                                              "type": "string"
+                                            },
+                                            "rank": {
+                                              "type": "integer",
+                                              "minimum": -9007199254740991,
+                                              "maximum": 9007199254740991
+                                            },
+                                            "position": {
+                                              "type": "integer",
+                                              "minimum": -9007199254740991,
+                                              "maximum": 9007199254740991
+                                            },
+                                            "status": {
+                                              "type": "string",
+                                              "enum": [
+                                                "waiting",
+                                                "joined",
+                                                "inactive"
+                                              ],
+                                              "description": "`waiting` bekliyor, `joined` sonradan üye oldu, `inactive` kaydı etkin değil"
+                                            }
+                                          },
+                                          "required": [
+                                            "studentId",
+                                            "studentName",
+                                            "rank",
+                                            "position",
+                                            "status"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      },
+                                      "suggestedStudentId": {
+                                        "description": "Boş yer varsa önerilen ilk bekleyen yedek; otomatik eklenmez",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "suggestedStudentName": {
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "clubId",
+                                      "clubName",
+                                      "freeSeats",
+                                      "assigned",
+                                      "waitlist",
+                                      "suggestedStudentId",
+                                      "suggestedStudentName"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "assignedCount": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "waitlistedStudentCount": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "clubs",
+                                "assignedCount",
+                                "waitlistedStudentCount"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Onaylanan dağıtım; onaydan önce `null`"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "academicYear",
+                        "term",
+                        "openDate",
+                        "closeDate",
+                        "maxChoices",
+                        "seatsPerStudent",
+                        "gradeLevels",
+                        "phase",
+                        "clubCount",
+                        "preferenceCount",
+                        "drawnAt",
+                        "confirmedAt",
+                        "version",
+                        "seed",
+                        "clubs",
+                        "eligibleStudentCount",
+                        "preferences",
+                        "result"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "archiveClubSelectionPeriod",
+        "summary": "Tercih dönemini arşivle",
+        "tags": [
+          "finance-club-selection"
+        ],
+        "description": "Dönem listeden kalkar; onaylı dönemde yazılan kulüp üyelikleri kalır (K-505). `If-Match` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `clubs` (kapalıysa 403).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "periodId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/club-selection/periods/{periodId}/preferences": {
+      "post": {
+        "operationId": "setClubSelectionPreference",
+        "summary": "Kulüp tercihi gir",
+        "tags": [
+          "finance-club-selection"
+        ],
+        "description": "Öğrencinin sıralı tercihini yazar; önceki tercih arşivlenir, boş liste geri çeker (tercih yoksa 422 `club_selection_no_preference`). Yalnız dönem açıkken (422 `club_selection_not_open`; kapanınca kimse değiştiremez). Öğrenci kurumun etkin öğrencisi (422 `club_selection_student_not_found`, `club_selection_student_inactive`) ve hedef düzeyde (422 `club_selection_grade_excluded`); tercih sayısı üst sınırı aşamaz (422 `club_selection_too_many_choices`), her tercih dönemin kulübü (422 `club_selection_club_not_in_period`) (K-505). `Idempotency-Key` zorunlu. Rol: `yonetici`, `onburo` herkes adına; `veli` yalnız bağlı çocuğu, `ogrenci` yalnız kendisi (kapsam dışı öğrenci 404); öğretmen 403. Modüller `finance` ve `clubs`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "studentId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100,
+                    "description": "Öğrencinin kaydı (veli yalnız kendi çocuğu, öğrenci yalnız kendisi)"
+                  },
+                  "choices": {
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "description": "Sıralı tercihler (ilk en çok istenen); boş liste tercihi geri çeker"
+                  }
+                },
+                "required": [
+                  "studentId",
+                  "choices"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "periodId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "periodId": {
+                          "type": "string"
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "choices": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "enteredAt": {
+                          "description": "Geri çekildiyse `null`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "periodId",
+                        "studentId",
+                        "choices",
+                        "enteredAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/club-selection/periods/{periodId}/draw": {
+      "post": {
+        "operationId": "drawClubSelection",
+        "summary": "Kulüp kurasını çek",
+        "tags": [
+          "finance-club-selection"
+        ],
+        "description": "Kapanmış dönemde bir kez kura tohumu üretilir ve saklanır; yanıt dağıtım önizlemesidir. Dönem açıksa 422 `club_selection_still_open`, tercih yoksa 422 `club_selection_no_preferences`, ikinci kura 409 `club_selection_already_drawn`, onaylı dönem 409 `club_selection_already_confirmed` (K-506). `Idempotency-Key` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `clubs` (kapalıysa 403).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "periodId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "periodId": {
+                          "type": "string"
+                        },
+                        "seed": {
+                          "type": "string"
+                        },
+                        "digest": {
+                          "type": "string",
+                          "description": "Onayda geri gönderilecek önizleme özeti"
+                        },
+                        "clubs": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "clubId": {
+                                "type": "string"
+                              },
+                              "clubName": {
+                                "type": "string"
+                              },
+                              "capacity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "members": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "seatsBefore": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "assigned": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "seatsAfter": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "waitlisted": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "clubId",
+                              "clubName",
+                              "capacity",
+                              "members",
+                              "seatsBefore",
+                              "assigned",
+                              "seatsAfter",
+                              "waitlisted"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "assignments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "studentId": {
+                                "type": "string"
+                              },
+                              "studentName": {
+                                "type": "string"
+                              },
+                              "clubId": {
+                                "type": "string"
+                              },
+                              "clubName": {
+                                "type": "string"
+                              },
+                              "rank": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "round": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "studentId",
+                              "studentName",
+                              "clubId",
+                              "clubName",
+                              "rank",
+                              "round"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "waitlist": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "clubId": {
+                                "type": "string"
+                              },
+                              "clubName": {
+                                "type": "string"
+                              },
+                              "studentId": {
+                                "type": "string"
+                              },
+                              "studentName": {
+                                "type": "string"
+                              },
+                              "rank": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "clubId",
+                              "clubName",
+                              "studentId",
+                              "studentName",
+                              "rank",
+                              "position"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "students": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "studentId": {
+                                "type": "string"
+                              },
+                              "studentName": {
+                                "type": "string"
+                              },
+                              "lotteryPosition": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "wanted": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "assigned": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "studentId",
+                              "studentName",
+                              "lotteryPosition",
+                              "wanted",
+                              "assigned"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Kura sırası"
+                        }
+                      },
+                      "required": [
+                        "periodId",
+                        "seed",
+                        "digest",
+                        "clubs",
+                        "assignments",
+                        "waitlist",
+                        "students"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/club-selection/periods/{periodId}/allocation": {
+      "get": {
+        "operationId": "getClubSelectionAllocation",
+        "summary": "Dağıtım önizlemesi",
+        "tags": [
+          "finance-club-selection"
+        ],
+        "description": "Saklanan tohumla rastgele kura sırası ve tercih sırasına göre seri diktatörlük (çok kulüpte yılan sıralı turlar); kontenjan güncel üyelerle hesaplanır, üye olunan kulüp atlanır; atamalar, kulüp başına yedek listesi ve onayda gönderilecek özet (`digest`) (K-506). Kura çekilmediyse 422 `club_selection_not_drawn`, onaylı dönem 409 `club_selection_already_confirmed`. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `clubs` (kapalıysa 403).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "periodId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "periodId": {
+                          "type": "string"
+                        },
+                        "seed": {
+                          "type": "string"
+                        },
+                        "digest": {
+                          "type": "string",
+                          "description": "Onayda geri gönderilecek önizleme özeti"
+                        },
+                        "clubs": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "clubId": {
+                                "type": "string"
+                              },
+                              "clubName": {
+                                "type": "string"
+                              },
+                              "capacity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "members": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "seatsBefore": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "assigned": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "seatsAfter": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "waitlisted": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "clubId",
+                              "clubName",
+                              "capacity",
+                              "members",
+                              "seatsBefore",
+                              "assigned",
+                              "seatsAfter",
+                              "waitlisted"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "assignments": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "studentId": {
+                                "type": "string"
+                              },
+                              "studentName": {
+                                "type": "string"
+                              },
+                              "clubId": {
+                                "type": "string"
+                              },
+                              "clubName": {
+                                "type": "string"
+                              },
+                              "rank": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "round": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "studentId",
+                              "studentName",
+                              "clubId",
+                              "clubName",
+                              "rank",
+                              "round"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "waitlist": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "clubId": {
+                                "type": "string"
+                              },
+                              "clubName": {
+                                "type": "string"
+                              },
+                              "studentId": {
+                                "type": "string"
+                              },
+                              "studentName": {
+                                "type": "string"
+                              },
+                              "rank": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "clubId",
+                              "clubName",
+                              "studentId",
+                              "studentName",
+                              "rank",
+                              "position"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "students": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "studentId": {
+                                "type": "string"
+                              },
+                              "studentName": {
+                                "type": "string"
+                              },
+                              "lotteryPosition": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "wanted": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "assigned": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "studentId",
+                              "studentName",
+                              "lotteryPosition",
+                              "wanted",
+                              "assigned"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Kura sırası"
+                        }
+                      },
+                      "required": [
+                        "periodId",
+                        "seed",
+                        "digest",
+                        "clubs",
+                        "assignments",
+                        "waitlist",
+                        "students"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/club-selection/periods/{periodId}/confirm": {
+      "post": {
+        "operationId": "confirmClubSelection",
+        "summary": "Dağıtımı onayla",
+        "tags": [
+          "finance-club-selection"
+        ],
+        "description": "Dağıtım kurum kilidi altında aynı tohumla yeniden hesaplanır; özet önizlemeyle tutmazsa 409 `club_selection_preview_stale`. Atananların kulüp üyelikleri, sonuç ve yedek listesi tek işlemde yazılır; kontenjan aşılmaz. Kura çekilmediyse 422 `club_selection_not_drawn`, ikinci onay 409 `club_selection_already_confirmed` (K-507). `Idempotency-Key` zorunlu. Rol: `yonetici`, `onburo`; diğer roller 403. Modüller `finance` ve `clubs` (kapalıysa 403).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "digest": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{14}$",
+                    "description": "Önizlemenin özeti; sonuç o andan beri değiştiyse 409"
+                  }
+                },
+                "required": [
+                  "digest"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "periodId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "academicYear": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Eğitim yılının başlangıç yılı"
+                        },
+                        "term": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Eğitim dönemi (1, 2); `null` bütün yıl"
+                        },
+                        "openDate": {
+                          "type": "string",
+                          "description": "Açılış günü (YYYY-MM-DD, dahil)"
+                        },
+                        "closeDate": {
+                          "type": "string",
+                          "description": "Kapanış günü (YYYY-MM-DD, dahil)"
+                        },
+                        "maxChoices": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "seatsPerStudent": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Öğrenci başına atanacak kulüp"
+                        },
+                        "gradeLevels": {
+                          "type": "array",
+                          "items": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "description": "Hedef sınıf düzeyleri; boşsa herkes"
+                        },
+                        "phase": {
+                          "type": "string",
+                          "enum": [
+                            "upcoming",
+                            "open",
+                            "closed",
+                            "drawn",
+                            "confirmed"
+                          ],
+                          "description": "`upcoming` açılmadı, `open` tercihe açık, `closed` kapandı, `drawn` kura çekildi, `confirmed` onaylandı"
+                        },
+                        "clubCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "preferenceCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Etkin tercih sayısı"
+                        },
+                        "drawnAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "confirmedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "seed": {
+                          "description": "Kura tohumu; kura çekilince dolar, sonuç bununla üretilir",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "clubs": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "teacherName": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "capacity": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "memberCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Güncel etkin üye sayısı"
+                              },
+                              "freeSeats": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Boş yer (kontenjan − üye)"
+                              },
+                              "meetingDay": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "startTime": {
+                                "type": "string"
+                              },
+                              "endTime": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "name",
+                              "teacherName",
+                              "capacity",
+                              "memberCount",
+                              "freeSeats",
+                              "meetingDay",
+                              "startTime",
+                              "endTime"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Döneme katılan arşivlenmemiş kulüpler"
+                        },
+                        "eligibleStudentCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Hedef düzeydeki etkin öğrenci sayısı (tercih durumu için)"
+                        },
+                        "preferences": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "studentId": {
+                                "type": "string"
+                              },
+                              "studentName": {
+                                "type": "string"
+                              },
+                              "choices": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                },
+                                "description": "Sıralı kulüp kimlikleri"
+                              },
+                              "enteredByRole": {
+                                "type": "string",
+                                "enum": [
+                                  "yonetici",
+                                  "onburo",
+                                  "veli",
+                                  "ogrenci"
+                                ]
+                              },
+                              "enteredAt": {
+                                "type": "string"
+                              },
+                              "eligible": {
+                                "type": "boolean",
+                                "description": "Kaydı etkin ve hedef düzeyde; değilse tercih dağıtıma girmez"
+                              }
+                            },
+                            "required": [
+                              "studentId",
+                              "studentName",
+                              "choices",
+                              "enteredByRole",
+                              "enteredAt",
+                              "eligible"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Etkin tercihler, öğrenci adına göre"
+                        },
+                        "result": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "clubs": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "clubId": {
+                                        "type": "string"
+                                      },
+                                      "clubName": {
+                                        "type": "string"
+                                      },
+                                      "freeSeats": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "assigned": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "studentId": {
+                                              "type": "string"
+                                            },
+                                            "studentName": {
+                                              "type": "string"
+                                            },
+                                            "rank": {
+                                              "type": "integer",
+                                              "minimum": -9007199254740991,
+                                              "maximum": 9007199254740991
+                                            }
+                                          },
+                                          "required": [
+                                            "studentId",
+                                            "studentName",
+                                            "rank"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      },
+                                      "waitlist": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "studentId": {
+                                              "type": "string"
+                                            },
+                                            "studentName": {
+                                              "type": "string"
+                                            },
+                                            "rank": {
+                                              "type": "integer",
+                                              "minimum": -9007199254740991,
+                                              "maximum": 9007199254740991
+                                            },
+                                            "position": {
+                                              "type": "integer",
+                                              "minimum": -9007199254740991,
+                                              "maximum": 9007199254740991
+                                            },
+                                            "status": {
+                                              "type": "string",
+                                              "enum": [
+                                                "waiting",
+                                                "joined",
+                                                "inactive"
+                                              ],
+                                              "description": "`waiting` bekliyor, `joined` sonradan üye oldu, `inactive` kaydı etkin değil"
+                                            }
+                                          },
+                                          "required": [
+                                            "studentId",
+                                            "studentName",
+                                            "rank",
+                                            "position",
+                                            "status"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      },
+                                      "suggestedStudentId": {
+                                        "description": "Boş yer varsa önerilen ilk bekleyen yedek; otomatik eklenmez",
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "suggestedStudentName": {
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "clubId",
+                                      "clubName",
+                                      "freeSeats",
+                                      "assigned",
+                                      "waitlist",
+                                      "suggestedStudentId",
+                                      "suggestedStudentName"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "assignedCount": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                "waitlistedStudentCount": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "clubs",
+                                "assignedCount",
+                                "waitlistedStudentCount"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Onaylanan dağıtım; onaydan önce `null`"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "academicYear",
+                        "term",
+                        "openDate",
+                        "closeDate",
+                        "maxChoices",
+                        "seatsPerStudent",
+                        "gradeLevels",
+                        "phase",
+                        "clubCount",
+                        "preferenceCount",
+                        "drawnAt",
+                        "confirmedAt",
+                        "version",
+                        "seed",
+                        "clubs",
+                        "eligibleStudentCount",
+                        "preferences",
+                        "result"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

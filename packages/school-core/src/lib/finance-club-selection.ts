@@ -37,6 +37,9 @@ export const CLUB_SELECTION_ENTRY_ROLES = [
   'veli',
   'ogrenci',
 ] as const satisfies readonly Role[]
+export type ClubSelectionEntryRole = (typeof CLUB_SELECTION_ENTRY_ROLES)[number]
+export const isClubSelectionEntryRole = (role: string): role is ClubSelectionEntryRole =>
+  (CLUB_SELECTION_ENTRY_ROLES as readonly string[]).includes(role)
 /** Kendi (çocuğunun) tercih dönemlerini okuyan roller; kapsam sunucuda daralır. */
 export const CLUB_SELECTION_FAMILY_ROLES = ['veli', 'ogrenci'] as const satisfies readonly Role[]
 

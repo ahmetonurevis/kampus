@@ -1,4 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
+import {
+  healthAccessReasonHeaders,
+  type HealthAccessReason,
+} from '@kampus/school-core/lib/finance-health-access.ts'
 import { runRequest } from '@kampus/react-shared/api-result.ts'
 import { useKampusClient } from '@kampus/react-shared/kampus-context.ts'
 import { institutionKey } from '@kampus/react-shared/query-keys.ts'
@@ -13,16 +17,26 @@ import {
 
 /**
  * Kaza tutanağı PDF'i (DOM-FIN-146; ON-162). Veri belge açılınca yöneticinin ayrıntı ucundan okunur
- * (okuma denetime düşer); jsPDF yalnız bu noktada dinamik yüklenir. Önbellek tutulmaz: sağlık
+ * (okuma panelde seçilen erişim gerekçesiyle denetime düşer, DOM-FIN-156); jsPDF yalnız bu noktada dinamik yüklenir. Önbellek tutulmaz: sağlık
  * verisi belge kapanınca bellekten düşer.
  */
-export function useIncidentReportPdf(incidentId: string, enabled: boolean) {
+export function useIncidentReportPdf(
+  { incidentId, reason }: { incidentId: string; reason: HealthAccessReason },
+  enabled: boolean,
+) {
   const client = useKampusClient()
   const institutionId = useActiveInstitutionId()
   const { session } = useAuth()
   const institution = session?.institution.name ?? 'Kampüs'
   return useQuery<DocumentPdf, DocumentPdfError>({
-    queryKey: institutionKey(institutionId, 'document-pdf', 'incident-report', incidentId),
+    queryKey: institutionKey(
+      institutionId,
+      'document-pdf',
+      'incident-report',
+      incidentId,
+      reason.code,
+      reason.note,
+    ),
     enabled: institutionId !== null && enabled && incidentId !== '',
     gcTime: 0,
     staleTime: 0,
@@ -34,7 +48,7 @@ export function useIncidentReportPdf(incidentId: string, enabled: boolean) {
         const [response, { renderPdf }] = await Promise.all([
           runRequest(() =>
             client.GET('/api/v1/finance/incidents/{incidentId}', {
-              params: { path: { incidentId } },
+              params: { path: { incidentId }, header: healthAccessReasonHeaders(reason) },
               signal,
             }),
           ),

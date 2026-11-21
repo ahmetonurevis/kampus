@@ -14,6 +14,7 @@ import {
   type IncidentRow,
   type IncidentStaffMember,
 } from '@kampus/react-shared/use-finance-incidents.ts'
+import type { HealthAccessReason } from '@kampus/school-core/lib/finance-health-access.ts'
 import {
   INCIDENT_KIND_LABELS,
   INCIDENT_KINDS,
@@ -52,6 +53,7 @@ import { INCIDENT_REPORT_TITLE } from '@/lib/pdf/templates/finance-incident-repo
 import { RootError } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { PdfDialogButton } from './CorporateParts.tsx'
+import { HealthAccessGate, useRememberHealthReason } from './FinanceHealthAccessReasonDialog.tsx'
 import {
   addendumFormSchema,
   incidentCreateBody,
@@ -89,12 +91,14 @@ const text = (value: unknown) => (typeof value === 'string' && value !== '' ? va
  * Yönetici bütün tutanakları, ön büro yalnız açtıklarını görür (K-494). Tutanak taslak açılır,
  * düzeltilir ve kesinleşir; ağır yaralanan öğrencinin tutanağı veli bildirimi kaydı olmadan
  * kesinleşmez (K-493). Bildirim yalnız kayıttır, veliye ileti gitmez. Kesinleşmiş tutanağa yönetici
- * ek not yazar ve PDF basar. Sağlık grubu sunucudan yalnız yetkili okuyana döner; ayrıntı okuması
- * denetime düşer.
+ * ek not yazar ve PDF basar. Sağlık grubu sunucudan yalnız yetkili okuyana döner; ayrıntı açılışı
+ * erişim gerekçesi ister ve gerekçesiyle denetime düşer (DOM-FIN-156). Tutanağı yeni açan kişinin
+ * gerekçesi "tutanak hazırlama" olarak önceden kaydedilir (K-525).
  */
 export function FinanceIncidentsSection({ isManager }: { isManager: boolean }) {
   const panel = useDetailPanel('tutanak')
   const [creating, setCreating] = useState(false)
+  const rememberReason = useRememberHealthReason()
   return (
     <section
       aria-labelledby="kaza-tutanaklari"
@@ -121,7 +125,16 @@ export function FinanceIncidentsSection({ isManager }: { isManager: boolean }) {
         onOpenChange={(open) => (open ? undefined : panel.close())}
         title="Kaza tutanağı"
       >
-        {panel.selectedId ? <IncidentPanel incidentId={panel.selectedId} /> : null}
+        {panel.selectedId ? (
+          <HealthAccessGate
+            key={panel.selectedId}
+            scope={incidentScope(panel.selectedId)}
+            subject="Kaza tutanağı"
+            askOnOpen
+          >
+            {(reason) => <IncidentPanel incidentId={panel.selectedId} reason={reason} />}
+          </HealthAccessGate>
+        ) : null}
       </SidePanel>
       <Modal
         open={creating}
@@ -134,7 +147,9 @@ export function FinanceIncidentsSection({ isManager }: { isManager: boolean }) {
           <IncidentForm
             onDone={(id) => {
               setCreating(false)
-              if (id) panel.open(id)
+              if (!id) return
+              rememberReason(incidentScope(id), { code: 'incident_report', note: null })
+              panel.open(id)
             }}
           />
         ) : null}
@@ -655,16 +670,24 @@ function StudentChoice({
 
 // --- Ayrıntı -------------------------------------------------------------------------------------
 
-function IncidentPanel({ incidentId }: { incidentId: string }) {
-  const incident = useIncident(incidentId)
+const incidentScope = (incidentId: string) => `incident:${incidentId}`
+
+function IncidentPanel({ incidentId, reason }: { incidentId: string; reason: HealthAccessReason }) {
+  const incident = useIncident(incidentId, reason)
   if (incident.error)
     return <QueryError error={incident.error} onRetry={() => void incident.refetch()} />
   const detail = incident.data?.data
   if (!detail) return <SummaryLoading />
-  return <IncidentDetails key={detail.version} detail={detail} />
+  return <IncidentDetails key={detail.version} detail={detail} reason={reason} />
 }
 
-function IncidentDetails({ detail }: { detail: IncidentDetail }) {
+function IncidentDetails({
+  detail,
+  reason,
+}: {
+  detail: IncidentDetail
+  reason: HealthAccessReason
+}) {
   const [editing, setEditing] = useState(false)
   const finalize = useFinalizeIncident()
   const health = detail.health
@@ -707,7 +730,7 @@ function IncidentDetails({ detail }: { detail: IncidentDetail }) {
           <PdfDialogButton
             label="Tutanak PDF"
             title={INCIDENT_REPORT_TITLE}
-            id={detail.id}
+            id={{ incidentId: detail.id, reason }}
             usePdf={useIncidentReportPdf}
           />
         ) : null}

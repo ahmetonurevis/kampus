@@ -810,20 +810,20 @@ function groupCounts(
  * kendi başına gösterilebiliyorsa döner (tek gizli sınıf toplamdan çıkarılamaz).
  */
 export function healthScreeningReport(classes: readonly HealthScreeningReportInput[]) {
-  const rows = classes.map((item) => {
-    const { rawReferral, ...counts } = groupCounts(item.rosterStudentIds, item.results)
+  const counted = classes.map((item) => groupCounts(item.rosterStudentIds, item.results))
+  const rows = classes.map((item, index) => {
+    const { rawReferral, ...counts } = counted[index] ?? groupCounts([], [])
     const visible = referralVisible(counts.screened, rawReferral)
     return {
       classId: item.classId,
       ...counts,
-      rawReferral,
       referral: visible ? rawReferral : null,
       referralSuppressed: !visible,
     }
   })
   const hidden = rows.filter((row) => row.referralSuppressed).length
   const sum = (key: 'roster' | 'screened' | 'absent' | 'refused' | 'missing' | 'rawReferral') =>
-    rows.reduce((total, row) => total + row[key], 0)
+    counted.reduce((total, row) => total + row[key], 0)
   const screened = sum('screened')
   const referral = sum('rawReferral')
   const totalVisible = referralVisible(screened, referral) && (hidden === 0 || hidden >= 2)
@@ -836,8 +836,5 @@ export function healthScreeningReport(classes: readonly HealthScreeningReportInp
     referral: totalVisible ? referral : null,
     referralSuppressed: !totalVisible,
   }
-  return {
-    classes: rows.map(({ rawReferral: _raw, ...row }) => row),
-    total,
-  }
+  return { classes: rows, total }
 }

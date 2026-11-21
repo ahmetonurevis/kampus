@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useLocation, useSearchParams } from 'react-router'
 import {
   useTripPlan,
   useTripPlanNotice,
@@ -28,6 +29,7 @@ import {
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { FormField } from '@/components/FormField.tsx'
 import { Icon } from '@/components/Icon.tsx'
+import { LineTabs } from '@/components/LineTabs.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
@@ -44,6 +46,7 @@ import { notify } from '@/lib/notify.ts'
 import { RootError } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { PdfDialogButton } from './CorporateParts.tsx'
+import { FinanceTripDayView } from './FinanceTripDaySection.tsx'
 import { TripPlanFormModal } from './FinanceTripPlanForm.tsx'
 import {
   noticeBody,
@@ -56,6 +59,14 @@ import {
 
 /** Ayrıntı paneli adres parametresi (`?gezi=`). */
 export const TRIP_PLAN_PANEL = 'gezi'
+/** Panel sekmesi (`?gezi_sekme=gun`; DOM-FIN-154): plan bilgisi ya da "Gezi günü". */
+const PANEL_TAB = 'gezi_sekme'
+const PANEL_CLEARS = [PANEL_TAB] as const
+type PanelTab = 'plan' | 'gun'
+const PANEL_TABS = [
+  { value: 'plan', label: 'Plan' },
+  { value: 'gun', label: 'Gezi günü' },
+] as const satisfies readonly { value: PanelTab; label: string }[]
 
 const NO_SORT: readonly string[] = []
 const MOBILE = ['number', 'name', 'status']
@@ -100,7 +111,7 @@ export function FinanceTripPlansSection() {
     ...(isStatus(status) ? { status } : {}),
     ...(isState(state) ? { state } : {}),
   })
-  const panel = useDetailPanel(TRIP_PLAN_PANEL)
+  const panel = useDetailPanel(TRIP_PLAN_PANEL, PANEL_CLEARS)
   const openPlan = panel.open
   const [creating, setCreating] = useState(false)
 
@@ -227,9 +238,40 @@ export function FinanceTripPlansSection() {
         onOpenChange={(open) => (open ? undefined : panel.close())}
         title="Gezi planı"
       >
-        {panel.selectedId ? <TripPlanDetailView planId={panel.selectedId} /> : null}
+        {panel.selectedId ? <TripPlanPanel planId={panel.selectedId} /> : null}
       </SidePanel>
     </section>
+  )
+}
+
+/**
+ * Plan paneli iki sekmedir: plan ayrıntısı ve "Gezi günü" (grup, dağıtım, yoklama ve acil kart;
+ * DOM-FIN-154, ON-157). Sekme adreste tutulur; geri/ileri ve yenileme sekmeyi korur.
+ */
+function TripPlanPanel({ planId }: { planId: string }) {
+  const [params, setParams] = useSearchParams()
+  const location = useLocation()
+  const tab: PanelTab = params.get(PANEL_TAB) === 'gun' ? 'gun' : 'plan'
+  const select = (next: PanelTab) =>
+    setParams(
+      (current) => {
+        const updated = new URLSearchParams(current)
+        if (next === 'plan') updated.delete(PANEL_TAB)
+        else updated.set(PANEL_TAB, next)
+        return updated
+      },
+      // Panel işareti korunur: kapatma yine bir adım geri gider.
+      { replace: true, preventScrollReset: true, state: location.state },
+    )
+  return (
+    <div className="grid gap-5">
+      <LineTabs label="Plan görünümü" value={tab} options={PANEL_TABS} onChange={select} />
+      {tab === 'plan' ? (
+        <TripPlanDetailView planId={planId} />
+      ) : (
+        <FinanceTripDayView planId={planId} />
+      )}
+    </div>
   )
 }
 

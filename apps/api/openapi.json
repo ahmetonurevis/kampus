@@ -336944,6 +336944,339 @@
         }
       }
     },
+    "/api/v1/finance/transport/routes/{routeId}/roster": {
+      "get": {
+        "operationId": "getTransportRoster",
+        "summary": "Servis listesi (PDF verisi)",
+        "tags": [
+          "finance-transport"
+        ],
+        "description": "Güzergâhın (araç × yön) etkin atamaları durak sırasıyla; durakta öğrenciler ada göre: ad, sınıf, durak ve saat, acil iletişim (velayetli ve iletişim kısıtı olmayan veli bağları, bağ yoksa öğrenci kaydındaki veli; en çok iki kişi; ad, yakınlık, telefon). Ayrılan, mezun ve arşivli öğrenci listede yok (K-499, K-501). Sağlık ve alerji bilgisi dönmez. `purpose=office` (varsayılan) veli telefonu maskeli; `purpose=driver` sürücüye verilecek liste, veli telefonu tam, yalnız `yonetici` (ön büroya 403 `transport_roster_driver_forbidden`) (K-500). Sürücü telefonu her amaçta maskeli (K-481). Web PDF'i bu veriden üretir. Taze oturum ister (eskiyse 403 `reauthentication_required`), kullanıcı başına 10/dk; her okuma denetime düşer: `office` `finance.transport.roster_export`, `driver` `finance.transport.roster_driver_export` (alan adları ve satır sayısı; telefon ve öğrenci kimliği yazılmaz). Olmayan, arşivli ya da başka kurumun güzergâhı 404. Rol: `yonetici`, `onburo`; modüller `finance` ve `transport` (kapalıysa 403).",
+        "parameters": [
+          {
+            "schema": {
+              "default": "office",
+              "type": "string",
+              "enum": [
+                "office",
+                "driver"
+              ]
+            },
+            "in": "query",
+            "name": "purpose",
+            "required": false,
+            "description": "`office` kurum içi (veli telefonu maskeli, varsayılan), `driver` sürücüye verilecek liste (veli telefonu tam; yalnız yönetici)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "routeId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "route": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "direction": {
+                              "type": "string",
+                              "enum": [
+                                "morning",
+                                "evening"
+                              ]
+                            },
+                            "vehiclePlate": {
+                              "description": "Plaka, boşluksuz büyük harf",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "capacity": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "driverName": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "driverPhoneMasked": {
+                              "description": "Sürücü telefonu, her amaçta maskeli (K-481)",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "guideName": {
+                              "description": "Rehber personelin adı",
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name",
+                            "direction",
+                            "vehiclePlate",
+                            "capacity",
+                            "driverName",
+                            "driverPhoneMasked",
+                            "guideName"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "purpose": {
+                          "type": "string",
+                          "enum": [
+                            "office",
+                            "driver"
+                          ]
+                        },
+                        "phonesMasked": {
+                          "type": "boolean",
+                          "description": "Veli telefonları maskeli mi (`office`)"
+                        },
+                        "listDate": {
+                          "type": "string",
+                          "description": "Listenin günü (YYYY-MM-DD, Europe/Istanbul)"
+                        },
+                        "total": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Listedeki öğrenci sayısı"
+                        },
+                        "stops": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "position": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "name": {
+                                "type": "string",
+                                "description": "Durak adı ya da semt"
+                              },
+                              "time": {
+                                "type": "string",
+                                "description": "Geçiş saati (SS:DD)"
+                              },
+                              "students": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "studentName": {
+                                      "type": "string"
+                                    },
+                                    "className": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "contacts": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "name": {
+                                            "description": "Veli adı (hesap adı, yoksa veli kaydı)",
+                                            "type": [
+                                              "string",
+                                              "null"
+                                            ]
+                                          },
+                                          "relationship": {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "mother",
+                                                  "father",
+                                                  "legal_guardian",
+                                                  "other"
+                                                ]
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ],
+                                            "description": "Yakınlık; bilinmiyorsa boş"
+                                          },
+                                          "phone": {
+                                            "description": "Veli telefonu: `office` amacında maskeli (`0532 *** ** 12`), `driver` amacında tam",
+                                            "type": [
+                                              "string",
+                                              "null"
+                                            ]
+                                          }
+                                        },
+                                        "required": [
+                                          "name",
+                                          "relationship",
+                                          "phone"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      "description": "Acil iletişim, en çok iki kişi (K-501)"
+                                    }
+                                  },
+                                  "required": [
+                                    "studentName",
+                                    "className",
+                                    "contacts"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "description": "Durağın kayıtlı öğrencileri, ada göre"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "position",
+                              "name",
+                              "time",
+                              "students"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Duraklar sırasıyla; boş durak da yazılır"
+                        }
+                      },
+                      "required": [
+                        "route",
+                        "purpose",
+                        "phonesMasked",
+                        "listDate",
+                        "total",
+                        "stops"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/questions": {
       "post": {
         "operationId": "askQuestion",

@@ -10,6 +10,7 @@ import { insertMissingRecords } from '../src/db/records.ts'
 import { ensureGuardianLinks } from '../src/db/student-guardians.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { emergencySummaries } from '../src/db/schema/finance-emergency-summaries.ts'
+import { healthAccessReasons } from '../src/db/schema/finance-health-access.ts'
 import {
   buildTestApp,
   createInstitution,
@@ -72,6 +73,9 @@ describe('DOM-FIN-155: acil durum özeti uçları', () => {
     })
   }
   const get = (url: string, cookie: string | null) => call('GET', url, cookie)
+  /** Yönetim ayrıntısı erişim gerekçesi ister (DOM-FIN-156). */
+  const detail = (url: string, cookie: string, code = 'guardian_meeting') =>
+    call('GET', url, cookie, undefined, { 'x-access-reason': code })
   const post = (url: string, cookie: string | null, body: unknown, key: string = randomUUID()) =>
     call('POST', url, cookie, body, { 'idempotency-key': key })
   const versioned = (
@@ -497,9 +501,9 @@ describe('DOM-FIN-155: acil durum özeti uçları', () => {
     const list = (await get(BASE, t.admin)).json()
     assert.equal(list.data[0].needsReview, true)
     assert.equal(ok(await get(studentUrl('s-1'), t.desk)).needsReview, true)
-    const detail = ok(await get(url(live.id), t.admin))
-    assert.equal(detail.needsReview, true)
-    const reviewed = ok(await approve(t, live.id, detail.version))
+    const opened = ok(await detail(url(live.id), t.admin))
+    assert.equal(opened.needsReview, true)
+    const reviewed = ok(await approve(t, live.id, opened.version))
     assert.equal(reviewed.needsReview, false)
     assert.equal(reviewed.publishedText, ACTION)
     const approvals = await audits(t.id, 'finance.emergency_summary.approve')
@@ -517,7 +521,7 @@ describe('DOM-FIN-155: acil durum özeti uçları', () => {
     assertError(await versioned('DELETE', url(live.id), t.admin, undefined, 99), 409)
     const archived = ok(await versioned('DELETE', url(live.id), t.admin, undefined, live.version))
     assert.deepEqual(archived, { id: live.id, archived: true })
-    assertError(await get(url(live.id), t.admin), 404)
+    assertError(await detail(url(live.id), t.admin), 404)
     assertError(await get(studentUrl('s-1'), t.admin), 404)
     assert.deepEqual(ok(await get(classUrl('9-A'), t.admin)).cards, [])
     ok(await create(t), 201)
@@ -529,7 +533,7 @@ describe('DOM-FIN-155: acil durum özeti uçları', () => {
     const b = await institution()
     const bSummary = await published(b)
     const bUrl = url(bSummary.id)
-    assertError(await get(bUrl, a.admin), 404)
+    assertError(await detail(bUrl, a.admin), 404)
     assertError(
       await versioned('PATCH', bUrl, a.admin, { actionText: NEXT }, bSummary.version),
       404,
@@ -548,5 +552,36 @@ describe('DOM-FIN-155: acil durum özeti uçları', () => {
     assert.notEqual(bRow?.publishedCiphertext, null)
     assert.equal(bRow?.archivedAt, null)
     assert.equal((await rows(a.id)).length, 0)
+  })
+
+  test('DOM-FIN-156: yönetim ayrıntısı gerekçe ister; kart gerekçesiz emergency yazılır (K-521)', async () => {
+    const t = await institution()
+    const live = await published(t)
+    assertError(await get(url(live.id), t.admin), 400, 'health_access_reason_required')
+    assertError(
+      await detail(url(live.id), t.admin, 'bilinmeyen'),
+      400,
+      'health_access_reason_invalid',
+    )
+    ok(await detail(url(live.id), t.admin))
+    ok(await get(studentUrl('s-1'), t.teacher))
+    ok(await call('GET', classUrl('9-A'), t.desk, undefined, { 'x-access-reason': 'first_aid' }))
+    assertError(
+      await call('GET', studentUrl('s-1'), t.teacher, undefined, { 'x-access-reason': 'x' }),
+      400,
+      'health_access_reason_invalid',
+    )
+    const reasons = await db
+      .select()
+      .from(healthAccessReasons)
+      .where(eq(healthAccessReasons.institutionId, t.id))
+    assert.deepEqual(reasons.map((row) => row.reasonCode).sort(), [
+      'emergency',
+      'first_aid',
+      'guardian_meeting',
+    ])
+    assert.ok(reasons.every((row) => row.studentId === 's-1'))
+    // Yazanın kendi yanıtı ve telefon açılışı erişim günlüğüne gerekçeyle düşmez.
+    assert.equal((await audits(t.id, 'finance.emergency_summary.manage_read')).length, 3)
   })
 })

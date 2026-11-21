@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import type { Role } from '../modules/navigation.ts'
 import { DomainError } from './errors.ts'
+import type { HealthAccessReason } from './finance-health-access.ts'
 import {
   TRANSPORT_ROSTER_CONTACTS_MAX,
   transportRosterContacts,
@@ -65,6 +66,17 @@ export const EMERGENCY_ALERT_LABELS = {
   chronic: 'Kronik durum',
   medication: 'Düzenli ilaç',
 } as const satisfies Record<EmergencyAlert, string>
+
+/**
+ * Kart okumasının varsayılan erişim gerekçesi (K-521; DOM-FIN-156): kart, sınıf PDF'i ve tam
+ * telefon yalnız acil müdahale içindir; amaç ekranın kendisinden bellidir. Öğretmenin akışı
+ * ağırlaşmasın diye gerekçe sorulmaz, okuma `emergency` koduyla kaydedilir; istemci başka bir kod
+ * gönderirse o yazılır. Taslak ve profil talimatı taşıyan yönetim ayrıntısında gerekçe zorunludur.
+ */
+export const EMERGENCY_CARD_DEFAULT_REASON = {
+  code: 'emergency',
+  note: null,
+} as const satisfies HealthAccessReason
 
 // --- Şemalar -------------------------------------------------------------------------------------
 

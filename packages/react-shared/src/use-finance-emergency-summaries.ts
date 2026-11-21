@@ -1,14 +1,17 @@
 import type { operations } from '@kampus/api-client/schema.d.ts'
+import type { HealthAccessReason } from '@kampus/school-core/lib/finance-health-access.ts'
 
 import { requireIfMatch, type CommandHeaders } from './commands.ts'
 import { useApiCommand } from './use-api-command.ts'
 import { useApiQuery } from './use-api-query.ts'
+import { healthReasonHeaders, healthReasonKey } from './use-finance-health-access.ts'
 import { useFinanceListQuery } from './use-finance-list-query.ts'
 
 // Acil durum özeti kancaları (`/finance/emergency-summaries/*`; DOM-FIN-155, ON-165). Açma
 // `Idempotency-Key`; düzeltme, onay ve arşiv `If-Match` ile gider. Kart okumaları (sınıf, PDF,
 // tam telefon) her çağrıda sunucuda öğrenci başına denetime düştüğü için sorgu önbelleğine
 // alınmaz: kullanıcının açtığı anda bir kez çağrılır, tam telefon yalnız bileşen belleğinde kalır.
+// Kart okuması gerekçe göndermez, sunucu `emergency` yazar (K-521); yönetim ayrıntısı gerekçe ister.
 
 type JsonBody<TOperation extends keyof operations> =
   NonNullable<operations[TOperation]['requestBody']> extends {
@@ -57,13 +60,14 @@ export function useEmergencySummaries(query: EmergencySummaryQuery, enabled = tr
   )
 }
 
-export function useEmergencySummary(summaryId: string, enabled = true) {
+/** Yönetim ayrıntısı: taslak ve profil talimatı taşıdığından erişim gerekçesi ister (DOM-FIN-156). */
+export function useEmergencySummary(summaryId: string, reason: HealthAccessReason | null) {
   return useApiQuery({
-    key: [...EMERGENCY_SUMMARIES_KEY, 'detail', summaryId],
-    enabled: enabled && summaryId !== '',
+    key: [...EMERGENCY_SUMMARIES_KEY, 'detail', summaryId, ...healthReasonKey(reason)],
+    enabled: summaryId !== '' && reason !== null,
     request: (client, signal) =>
       client.GET('/api/v1/finance/emergency-summaries/{summaryId}', {
-        params: { path: { summaryId } },
+        params: { path: { summaryId }, header: healthReasonHeaders(reason) },
         signal,
       }),
   })

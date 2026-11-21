@@ -17,9 +17,11 @@ import {
   type EmergencySummaryRow,
 } from '@kampus/react-shared/use-finance-emergency-summaries.ts'
 import {
+  EMERGENCY_CARD_DEFAULT_REASON,
   EMERGENCY_SUMMARY_STATE_LABELS,
   EMERGENCY_SUMMARY_STATES,
 } from '@kampus/school-core/lib/finance-emergency-summaries.ts'
+import type { HealthAccessReason } from '@kampus/school-core/lib/finance-health-access.ts'
 import { useAuth } from '@/auth/use-auth.ts'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { FormField } from '@/components/FormField.tsx'
@@ -54,6 +56,7 @@ import {
   type ActionFormValues,
   type SummaryFormValues,
 } from './finance-emergency-summary-forms.ts'
+import { HealthAccessGate, useRememberHealthReason } from './FinanceHealthAccessReasonDialog.tsx'
 import { FinanceStudentSearch } from './FinanceStudentSearch.tsx'
 
 const NO_SORT: readonly string[] = []
@@ -68,6 +71,7 @@ const STATE_FILTERS = [
     })),
   },
 ]
+const summaryScope = (summaryId: string) => `emergency-summary:${summaryId}`
 const text = (value: unknown) => (typeof value === 'string' && value !== '' ? value : null)
 
 /**
@@ -266,6 +270,7 @@ type SummaryTableRow = { id: string; row: EmergencySummaryRow; student: string; 
 
 function Summaries() {
   const panel = useDetailPanel('acil')
+  const rememberReason = useRememberHealthReason()
   const [creating, setCreating] = useState(false)
   const list = useListState('acil-durum-ozetleri', { urlPrefix: 'acil_' })
   const state = EMERGENCY_SUMMARY_STATES.find((value) => value === text(list.state.filters.state))
@@ -350,7 +355,16 @@ function Summaries() {
         title="Acil durum özeti"
       >
         {panel.selectedId ? (
-          <SummaryPanel summaryId={panel.selectedId} onArchived={panel.close} />
+          <HealthAccessGate
+            key={panel.selectedId}
+            scope={summaryScope(panel.selectedId)}
+            subject="Acil durum özeti"
+            askOnOpen
+          >
+            {(reason) => (
+              <SummaryPanel summaryId={panel.selectedId} reason={reason} onArchived={panel.close} />
+            )}
+          </HealthAccessGate>
         ) : null}
       </SidePanel>
       <Modal
@@ -363,7 +377,10 @@ function Summaries() {
           <CreateForm
             onDone={(id) => {
               setCreating(false)
-              if (id) panel.open(id)
+              if (!id) return
+              // Özeti yazan kişinin amacı bellidir: ayrıntı açılınca gerekçe yeniden sorulmaz.
+              rememberReason(summaryScope(id), EMERGENCY_CARD_DEFAULT_REASON)
+              panel.open(id)
             }}
           />
         ) : null}
@@ -438,8 +455,16 @@ function CreateForm({ onDone }: { onDone: (id?: string) => void }) {
   )
 }
 
-function SummaryPanel({ summaryId, onArchived }: { summaryId: string; onArchived: () => void }) {
-  const summary = useEmergencySummary(summaryId)
+function SummaryPanel({
+  summaryId,
+  reason,
+  onArchived,
+}: {
+  summaryId: string
+  reason: HealthAccessReason
+  onArchived: () => void
+}) {
+  const summary = useEmergencySummary(summaryId, reason)
   if (summary.error)
     return <QueryError error={summary.error} onRetry={() => void summary.refetch()} />
   const detail = summary.data?.data

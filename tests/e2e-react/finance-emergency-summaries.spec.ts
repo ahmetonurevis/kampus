@@ -5,7 +5,8 @@ import { expectNoHorizontalOverflow } from './support/ui.ts'
 
 // Acil durum özeti (ON-165; DOM-FIN-155). Kural dalları birim ve API testlerindedir
 // (`tests/finance-emergency-summaries.test.ts`, `apps/api/test/finance-emergency-summaries.test.ts`);
-// burada yönetici dar ekranda API'den açılmış özeti onaylar (onaydan önce kartta görünmez; K-520),
+// burada yönetici dar ekranda API'den açılmış özeti gerekçe seçerek açar ve onaylar (onaydan önce
+// kartta görünmez; K-520, DOM-FIN-156); kart okuması gerekçe sormaz,
 // ön büro sınıf kartını açar ve sınıf PDF'ini indirir (K-521, K-522).
 
 const ADMIN = '/yonetici/finans?gorunum=acil-durum-ozetleri'
@@ -35,10 +36,17 @@ test.describe('DOM-FIN-155: acil durum özeti', () => {
     await page.goto(ADMIN)
     const section = page.getByRole('region', { name: 'Acil durum özetleri' })
     await section.getByRole('button', { name: /acil durum özetini aç/ }).click()
+    // Yönetim ayrıntısı taslak ve profil talimatı taşır: erişim gerekçesi sorulur (DOM-FIN-156).
+    const reason = page
+      .getByRole('dialog', { name: 'Sağlık bilgisine erişim gerekçesi' })
+      .getByRole('form', { name: 'Erişim gerekçesi' })
+    await reason.getByLabel('Erişim gerekçesi').selectOption({ label: 'Veli görüşmesi' })
+    await reason.getByRole('button', { name: 'Bilgiyi aç' }).click()
     const panel = page.getByRole('dialog', { name: 'Acil durum özeti' })
     await expect(panel.getByText(ACTION)).toBeVisible()
     await panel.getByRole('button', { name: 'Onayla ve yayınla' }).click()
-    await expect(panel.getByText('Yayında')).toBeVisible()
+    await expect(panel.getByText('Yayında', { exact: true })).toBeVisible()
+    await expect(panel.getByRole('button', { name: 'Onayla ve yayınla' })).toHaveCount(0)
     await expectNoHorizontalOverflow(page)
 
     const classes = await admin.context.get('/api/v1/finance/emergency-summaries/classes')

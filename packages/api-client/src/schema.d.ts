@@ -15529,7 +15529,7 @@ export interface paths {
         };
         /**
          * Sınıfın acil durum özetleri
-         * @description Yalnız yayında özeti olan kayıtlı öğrenciler, ada göre: ad, sınıf, onaylı acil eylem, uyarı türü işaretleri (alerji, kronik durum, düzenli ilaç; ad ve tanı yok), bugün okulda verilecek onaylı ilaç var mı ve acil iletişim (en çok iki kişi, telefon maskeli; K-501, K-522). `purpose=view` ekranda (denetim `finance.emergency_summary.read`), `purpose=print` sınıf PDF'i (denetim `finance.emergency_summary.print`); öğrenci başına bir denetim satırı (alan adları). Kullanıcı başına 20/dk. Kapsam dışı, olmayan ya da başka kurumun sınıfı 404. Rol: `yonetici` ve `onburo` (bütün sınıflar), `ogretmen` (sınıf öğretmeni olduğu ve derse girdiği sınıflar; başkası 404). Veli ve öğrenci 403. Modül `finance`.
+         * @description Yalnız yayında özeti olan kayıtlı öğrenciler, ada göre: ad, sınıf, onaylı acil eylem, uyarı türü işaretleri (alerji, kronik durum, düzenli ilaç; ad ve tanı yok), bugün okulda verilecek onaylı ilaç var mı ve acil iletişim (en çok iki kişi, telefon maskeli; K-501, K-522). `purpose=view` ekranda (denetim `finance.emergency_summary.read`), `purpose=print` sınıf PDF'i (denetim `finance.emergency_summary.print`); öğrenci başına bir denetim satırı (alan adları) ve sağlık erişim günlüğü kaydı; gerekçe başlığı isteğe bağlıdır, gönderilmezse `emergency` yazılır (K-521). Kullanıcı başına 20/dk. Kapsam dışı, olmayan ya da başka kurumun sınıfı 404. Rol: `yonetici` ve `onburo` (bütün sınıflar), `ogretmen` (sınıf öğretmeni olduğu ve derse girdiği sınıflar; başkası 404). Veli ve öğrenci 403. Modül `finance`.
          */
         get: operations["getEmergencyClassCards"];
         put?: never;
@@ -15549,7 +15549,7 @@ export interface paths {
         };
         /**
          * Öğrencinin acil durum özeti
-         * @description Sınıf kartıyla aynı alanlar. Özet yayında değilse, öğrenci kapsam dışı, ayrılmış, olmayan ya da başka kurumdaysa 404. Denetim `finance.emergency_summary.read` (öğrenci, alan adları). Rol: `yonetici` ve `onburo` (bütün sınıflar), `ogretmen` (sınıf öğretmeni olduğu ve derse girdiği sınıflar; başkası 404). Veli ve öğrenci 403. Modül `finance`.
+         * @description Sınıf kartıyla aynı alanlar. Özet yayında değilse, öğrenci kapsam dışı, ayrılmış, olmayan ya da başka kurumdaysa 404. Denetim `finance.emergency_summary.read` (öğrenci, alan adları) ve sağlık erişim günlüğü; gerekçe başlığı isteğe bağlı, yoksa `emergency` (K-521). Rol: `yonetici` ve `onburo` (bütün sınıflar), `ogretmen` (sınıf öğretmeni olduğu ve derse girdiği sınıflar; başkası 404). Veli ve öğrenci 403. Modül `finance`.
          */
         get: operations["getStudentEmergencyCard"];
         put?: never;
@@ -15589,7 +15589,7 @@ export interface paths {
         };
         /**
          * Acil durum özeti ayrıntısı
-         * @description Onay bekleyen ve yayındaki metin, sağlık profilindeki acil talimat (metne kaynak; kopyalanmaz), uyarı işaretleri, bugünkü ilaç, acil iletişim ve gözden geçirme işareti. Okuma aynı transaction'da `finance.emergency_summary.manage_read` denetimine düşer (öğrenci, alan adları). Olmayan, arşivli ya da başka kurumun özeti 404. Rol: yalnız `yonetici`. Modül `finance`.
+         * @description Onay bekleyen ve yayındaki metin, sağlık profilindeki acil talimat (metne kaynak; kopyalanmaz), uyarı işaretleri, bugünkü ilaç, acil iletişim ve gözden geçirme işareti. Erişim gerekçesi zorunlu (`X-Access-Reason`; DOM-FIN-156). Okuma aynı transaction'da `finance.emergency_summary.manage_read` denetimine ve gerekçesiyle sağlık erişim günlüğüne düşer (öğrenci, alan adları). Olmayan, arşivli ya da başka kurumun özeti 404. Rol: yalnız `yonetici`. Modül `finance`.
          */
         get: operations["getEmergencySummary"];
         put?: never;
@@ -163386,7 +163386,12 @@ export interface operations {
                 /** @description `view` ekranda görüntüleme (varsayılan), `print` sınıf PDF’i */
                 purpose?: "view" | "print";
             };
-            header?: never;
+            header?: {
+                /** @description İsteğe bağlı sağlık verisi erişim gerekçesi; gönderilmezse `emergency` (acil durum) yazılır. Geçersizse 400 `health_access_reason_invalid`. */
+                "x-access-reason"?: "emergency" | "first_aid" | "guardian_meeting" | "incident_report" | "official_request" | "other";
+                /** @description Yalnız `other` gerekçede açıklama (5–200, yüzde kodlu UTF-8). */
+                "x-access-reason-note"?: string;
+            };
             path: {
                 classId: string;
             };
@@ -163520,7 +163525,12 @@ export interface operations {
     getStudentEmergencyCard: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description İsteğe bağlı sağlık verisi erişim gerekçesi; gönderilmezse `emergency` (acil durum) yazılır. Geçersizse 400 `health_access_reason_invalid`. */
+                "x-access-reason"?: "emergency" | "first_aid" | "guardian_meeting" | "incident_report" | "official_request" | "other";
+                /** @description Yalnız `other` gerekçede açıklama (5–200, yüzde kodlu UTF-8). */
+                "x-access-reason-note"?: string;
+            };
             path: {
                 studentId: string;
             };
@@ -163750,7 +163760,12 @@ export interface operations {
     getEmergencySummary: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                /** @description Zorunlu. Sağlık verisi erişim gerekçesi: `emergency` acil durum, `first_aid` ilk yardım / revir işlemi, `guardian_meeting` veli görüşmesi, `incident_report` tutanak hazırlama, `official_request` resmî talep, `other` diğer. Yoksa 400 `health_access_reason_required`, geçersizse 400 `health_access_reason_invalid`. Gerekçe başlıkta taşınır, sorgu dizesine konmaz; istek logunda başlık yer almaz. */
+                "x-access-reason": "emergency" | "first_aid" | "guardian_meeting" | "incident_report" | "official_request" | "other";
+                /** @description Yalnız `other` gerekçede zorunlu açıklama: yüzde kodlu UTF-8 (`encodeURIComponent`), çözülmüş hâli kırpılınca 5–200 karakter. Kodlu gerekçede gönderilirse 400 `health_access_reason_invalid`. */
+                "x-access-reason-note"?: string;
+            };
             path: {
                 summaryId: string;
             };

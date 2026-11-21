@@ -5,6 +5,11 @@ import {
   emergencyCardPurposeSchema,
   emergencyContactPositionSchema,
 } from '@kampus/school-core/lib/finance-emergency-summaries.ts'
+import {
+  HEALTH_ACCESS_NOTE_HEADER,
+  HEALTH_ACCESS_REASON_CODES,
+  HEALTH_ACCESS_REASON_HEADER,
+} from '@kampus/school-core/lib/finance-health-access.ts'
 import { GUARDIAN_RELATIONSHIP_KEYS } from '@kampus/school-core/lib/guardianship.ts'
 
 import { dataResponse, pageMetaSchema, pageQuerySchema } from './common.schemas.ts'
@@ -134,4 +139,21 @@ export const emergencyStudentParams = z.object({ studentId: recordId('Öğrenci 
 export const emergencyContactParams = z.object({
   studentId: recordId('Öğrenci geçersiz.'),
   position: emergencyContactPositionSchema,
+})
+
+/**
+ * Kart okumalarının isteğe bağlı erişim gerekçesi (K-521, DOM-FIN-156): gönderilmezse okuma
+ * `emergency` koduyla kaydedilir; gönderilirse ON-164 kuralıyla doğrulanır.
+ */
+export const emergencyCardHeaders = z.looseObject({
+  [HEALTH_ACCESS_REASON_HEADER]: z
+    .enum(HEALTH_ACCESS_REASON_CODES)
+    .optional()
+    .describe(
+      'İsteğe bağlı sağlık verisi erişim gerekçesi; gönderilmezse `emergency` (acil durum) yazılır. Geçersizse 400 `health_access_reason_invalid`.',
+    ),
+  [HEALTH_ACCESS_NOTE_HEADER]: z
+    .string()
+    .optional()
+    .describe('Yalnız `other` gerekçede açıklama (5–200, yüzde kodlu UTF-8).'),
 })

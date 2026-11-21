@@ -22,6 +22,7 @@ import {
   type EmergencyViewer,
   type HealthProfileStamp,
 } from '@kampus/school-core/lib/finance-emergency-summaries.ts'
+import type { HealthAccessReason } from '@kampus/school-core/lib/finance-health-access.ts'
 import type { RosterParentRecord } from '@kampus/school-core/lib/finance-transport-roster.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 
@@ -52,6 +53,7 @@ import {
   type CommandResponse,
   type IdempotencyRequest,
 } from './operation-runner.ts'
+import { recordHealthRead } from './finance-health-access.ts'
 import { readScope, readSource } from './read-scope.ts'
 import { auditWork } from './task-work.ts'
 
@@ -65,12 +67,13 @@ import { auditWork } from './task-work.ts'
  *
  * Sağlık ayrıntısı dönen her okuma öğrenci başına aynı transaction'da denetime düşer (kim, hangi
  * öğrenci, hangi alanlar; değer yok); denetim yazılamazsa yanıt dönmez. Sağlık profili okuması ve
- * okuma denetimi bu dosyada tek yerdedir (`readHealthSignals`, `auditSensitiveRead`): ON-164'ün
- * okuma gerekçesi geldiğinde gerekçe yalnız bu iki fonksiyona eklenir. Rol ve modül rotadadır.
+ * okuma denetimi bu dosyada tek yerdedir (`readHealthSignals`, `auditSensitiveRead`); gerekçe
+ * ON-164 yardımcısıyla (`recordHealthRead`) erişim günlüğüne yazılır. Rol ve modül rotadadır.
  */
 
 const TABLE = 'emergency_summaries'
 const STUDENT = 'students'
+const entityOf = (studentId: string) => ({ type: STUDENT, id: studentId })
 
 export interface EmergencySummaryDeps {
   cipher: FieldCipher
@@ -176,16 +179,27 @@ const NO_SIGNALS: HealthSignals = {
   instructions: '',
 }
 
-/** Hassas okuma denetimi (DOM-YTK-052): öğrenci başına bir satır, yalnız alan adları. */
+/**
+ * Sağlık okuması denetimi (DOM-YTK-052, DOM-FIN-156): öğrenci başına bir satır, yalnız alan adları;
+ * gerekçe verildiyse erişim günlüğüne de düşer (`recordHealthRead`, ON-164). Yazanın kendi
+ * yanıtında gerekçe yoktur (`null`): metni yazan zaten odur.
+ */
 async function auditSensitiveRead(
   tx: Database,
   ctx: ServiceContext,
   action: string,
   studentIds: readonly string[],
   fields: readonly string[],
+  reason: HealthAccessReason | null,
 ) {
   for (const studentId of new Set(studentIds))
-    await auditWork(tx, ctx, action, { type: STUDENT, id: studentId }, [...fields])
+    await recordHealthRead(tx, ctx, {
+      action,
+      entity: { type: STUDENT, id: studentId },
+      fields: [...fields],
+      studentId,
+      reason,
+    })
 }
 
 // --- Kapsam ve kayıtlar --------------------------------------------------------------------------
@@ -392,6 +406,7 @@ export async function classEmergencyCardsFor(
   deps: EmergencySummaryDeps,
   classId: string,
   purpose: EmergencyCardPurpose,
+  reason: HealthAccessReason,
 ) {
   try {
     const [viewer, source] = await Promise.all([viewerOf(ctx), readSource(ctx)])
@@ -416,6 +431,7 @@ export async function classEmergencyCardsFor(
         CARD_ACTIONS[purpose],
         cards.map((card) => card.studentId),
         CARD_FIELDS,
+        reason,
       )
       ctx.log.info({ event: CARD_ACTIONS[purpose], classId, count: cards.length })
       return { classId, className, listDate: dayKey(ctx.now), purpose, cards }
@@ -430,6 +446,7 @@ export async function studentEmergencyCardFor(
   ctx: ServiceContext,
   deps: EmergencySummaryDeps,
   studentId: string,
+  reason: HealthAccessReason,
 ) {
   try {
     const viewer = await viewerOf(ctx)
@@ -441,7 +458,7 @@ export async function studentEmergencyCardFor(
       const row = await findStudentEmergencySummary(tx, ctx.institutionId, studentId)
       const [card] = await buildCards(tx, ctx, deps, row === null ? [] : [row], students)
       if (card === undefined) throw new NotFoundError()
-      await auditSensitiveRead(tx, ctx, CARD_ACTIONS.view, [studentId], CARD_FIELDS)
+      await auditSensitiveRead(tx, ctx, CARD_ACTIONS.view, [studentId], CARD_FIELDS, reason)
       return card
     })
   } catch (error) {
@@ -470,13 +487,10 @@ export async function revealEmergencyContactFor(
       if (row === null || row.published === null) throw new NotFoundError()
       const contactsOf = await contactSources(tx, ctx, students, [studentId])
       const contact = emergencyContactPhone(contactsOf(studentId), position)
-      await auditSensitiveRead(
-        tx,
-        ctx,
-        'finance.emergency_summary.contact_reveal',
-        [studentId],
-        [`contacts.${String(position)}.phone`],
-      )
+      // Telefon sağlık verisi değildir: erişim günlüğüne değil yalnız denetime düşer.
+      await auditWork(tx, ctx, 'finance.emergency_summary.contact_reveal', entityOf(studentId), [
+        `contacts.${String(position)}.phone`,
+      ])
       return contact
     })
   } catch (error) {
@@ -619,6 +633,7 @@ export async function getEmergencySummaryFor(
   ctx: ServiceContext,
   deps: EmergencySummaryDeps,
   id: string,
+  reason: HealthAccessReason | null,
 ) {
   return ctx.db.transaction(async (tx) => {
     const row = await summaryOf(tx, ctx, id)
@@ -629,6 +644,7 @@ export async function getEmergencySummaryFor(
       'finance.emergency_summary.manage_read',
       [row.studentId],
       MANAGE_FIELDS,
+      reason,
     )
     return body
   })
@@ -666,6 +682,7 @@ async function respondDetail(
     'finance.emergency_summary.manage_read',
     [row.studentId],
     MANAGE_FIELDS,
+    null,
   )
   return { data: body }
 }

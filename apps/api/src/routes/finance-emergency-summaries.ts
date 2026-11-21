@@ -8,13 +8,21 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
 
 import {
+  EMERGENCY_CARD_DEFAULT_REASON,
   EMERGENCY_SUMMARY_MANAGE_ROLES,
   EMERGENCY_SUMMARY_VIEW_ROLES,
   emergencySummaryCreateSchema,
   emergencySummaryUpdateSchema,
 } from '@kampus/school-core/lib/finance-emergency-summaries.ts'
+import {
+  HEALTH_ACCESS_NOTE_HEADER,
+  HEALTH_ACCESS_REASON_HEADER,
+  parseHealthAccessReasonHeaders,
+  type HealthAccessReason,
+} from '@kampus/school-core/lib/finance-health-access.ts'
 
 import type { Role } from '../auth.ts'
+import { AppError } from '../errors.ts'
 import { fieldCipherFromConfig } from '../lib/field-crypto.ts'
 import { contextOf } from '../plugins/authenticate.ts'
 import {
@@ -33,7 +41,10 @@ import {
 import type { CommandResponse } from '../services/operation-runner.ts'
 import { captureInput, options, rejectIfMatch, requireIfMatch } from './commands.ts'
 import { commandErrors, commandHeadersSchema } from './commands.schemas.ts'
+import { healthAccessReasonOf, requireHealthAccessReason } from './finance-health-access.ts'
+import { healthAccessHeadersSchema } from './finance-health-access.schemas.ts'
 import {
+  emergencyCardHeaders,
   emergencyCardQuery,
   emergencyCardResponse,
   emergencyClassCardsResponse,
@@ -63,6 +74,32 @@ const VIEW =
 const BASE = '/api/v1/finance/emergency-summaries'
 const REVEALS_PER_MINUTE = 10
 const PRINTS_PER_MINUTE = 20
+
+const cardReasons = new WeakMap<FastifyRequest, HealthAccessReason>()
+
+/**
+ * Kart okumalarının gerekçesi (K-521): başlık yoksa `emergency`; varsa ON-164 kuralıyla çözülür
+ * (geçersizse 400). Öğretmenin acil akışında gerekçe penceresi açılmaz.
+ */
+const cardReason: preValidationAsyncHookHandler = async (request) => {
+  const code = request.headers[HEALTH_ACCESS_REASON_HEADER]
+  if (code === undefined) {
+    cardReasons.set(request, EMERGENCY_CARD_DEFAULT_REASON)
+    return
+  }
+  const parsed = parseHealthAccessReasonHeaders({
+    code,
+    note: request.headers[HEALTH_ACCESS_NOTE_HEADER],
+  })
+  if (!parsed.ok) throw new AppError(400, parsed.code, parsed.message, { issues: parsed.issues })
+  cardReasons.set(request, parsed.reason)
+}
+
+function cardReasonOf(request: FastifyRequest): HealthAccessReason {
+  const reason = cardReasons.get(request)
+  if (reason === undefined) throw new Error('cardReason hook did not run')
+  return reason
+}
 
 function sendBody(reply: FastifyReply, result: CommandResponse): unknown {
   if (result.replayed) reply.header('idempotent-replayed', 'true')
@@ -171,12 +208,13 @@ export function registerFinanceEmergencySummaryRoutes(app: FastifyInstance) {
     `${BASE}/classes/:classId`,
     {
       config: perUser('emergency-class', PRINTS_PER_MINUTE),
-      preValidation: view,
+      preValidation: [...view, cardReason],
       schema: {
         operationId: 'getEmergencyClassCards',
         tags,
         summary: 'Sınıfın acil durum özetleri',
-        description: `Yalnız yayında özeti olan kayıtlı öğrenciler, ada göre: ad, sınıf, onaylı acil eylem, uyarı türü işaretleri (alerji, kronik durum, düzenli ilaç; ad ve tanı yok), bugün okulda verilecek onaylı ilaç var mı ve acil iletişim (en çok iki kişi, telefon maskeli; K-501, K-522). \`purpose=view\` ekranda (denetim \`finance.emergency_summary.read\`), \`purpose=print\` sınıf PDF'i (denetim \`finance.emergency_summary.print\`); öğrenci başına bir denetim satırı (alan adları). Kullanıcı başına 20/dk. Kapsam dışı, olmayan ya da başka kurumun sınıfı 404. ${VIEW}`,
+        description: `Yalnız yayında özeti olan kayıtlı öğrenciler, ada göre: ad, sınıf, onaylı acil eylem, uyarı türü işaretleri (alerji, kronik durum, düzenli ilaç; ad ve tanı yok), bugün okulda verilecek onaylı ilaç var mı ve acil iletişim (en çok iki kişi, telefon maskeli; K-501, K-522). \`purpose=view\` ekranda (denetim \`finance.emergency_summary.read\`), \`purpose=print\` sınıf PDF'i (denetim \`finance.emergency_summary.print\`); öğrenci başına bir denetim satırı (alan adları) ve sağlık erişim günlüğü kaydı; gerekçe başlığı isteğe bağlıdır, gönderilmezse \`emergency\` yazılır (K-521). Kullanıcı başına 20/dk. Kapsam dışı, olmayan ya da başka kurumun sınıfı 404. ${VIEW}`,
+        headers: emergencyCardHeaders,
         params: emergencyClassParams,
         querystring: emergencyCardQuery,
         response: { 200: emergencyClassCardsResponse, ...commandErrors },
@@ -188,6 +226,7 @@ export function registerFinanceEmergencySummaryRoutes(app: FastifyInstance) {
         deps,
         request.params.classId,
         request.query.purpose,
+        cardReasonOf(request),
       ),
     }),
   )
@@ -195,18 +234,24 @@ export function registerFinanceEmergencySummaryRoutes(app: FastifyInstance) {
   typed.get(
     `${BASE}/students/:studentId`,
     {
-      preValidation: view,
+      preValidation: [...view, cardReason],
       schema: {
         operationId: 'getStudentEmergencyCard',
         tags,
         summary: 'Öğrencinin acil durum özeti',
-        description: `Sınıf kartıyla aynı alanlar. Özet yayında değilse, öğrenci kapsam dışı, ayrılmış, olmayan ya da başka kurumdaysa 404. Denetim \`finance.emergency_summary.read\` (öğrenci, alan adları). ${VIEW}`,
+        description: `Sınıf kartıyla aynı alanlar. Özet yayında değilse, öğrenci kapsam dışı, ayrılmış, olmayan ya da başka kurumdaysa 404. Denetim \`finance.emergency_summary.read\` (öğrenci, alan adları) ve sağlık erişim günlüğü; gerekçe başlığı isteğe bağlı, yoksa \`emergency\` (K-521). ${VIEW}`,
+        headers: emergencyCardHeaders,
         params: emergencyStudentParams,
         response: { 200: emergencyCardResponse, ...commandErrors },
       },
     },
     async (request) => ({
-      data: await studentEmergencyCardFor(contextOf(request), deps, request.params.studentId),
+      data: await studentEmergencyCardFor(
+        contextOf(request),
+        deps,
+        request.params.studentId,
+        cardReasonOf(request),
+      ),
     }),
   )
 
@@ -238,18 +283,24 @@ export function registerFinanceEmergencySummaryRoutes(app: FastifyInstance) {
   typed.get(
     `${BASE}/:summaryId`,
     {
-      preValidation: manage,
+      preValidation: [...manage, requireHealthAccessReason()],
       schema: {
         operationId: 'getEmergencySummary',
         tags,
         summary: 'Acil durum özeti ayrıntısı',
-        description: `Onay bekleyen ve yayındaki metin, sağlık profilindeki acil talimat (metne kaynak; kopyalanmaz), uyarı işaretleri, bugünkü ilaç, acil iletişim ve gözden geçirme işareti. Okuma aynı transaction'da \`finance.emergency_summary.manage_read\` denetimine düşer (öğrenci, alan adları). Olmayan, arşivli ya da başka kurumun özeti 404. ${MANAGE}`,
+        description: `Onay bekleyen ve yayındaki metin, sağlık profilindeki acil talimat (metne kaynak; kopyalanmaz), uyarı işaretleri, bugünkü ilaç, acil iletişim ve gözden geçirme işareti. Erişim gerekçesi zorunlu (\`X-Access-Reason\`; DOM-FIN-156). Okuma aynı transaction'da \`finance.emergency_summary.manage_read\` denetimine ve gerekçesiyle sağlık erişim günlüğüne düşer (öğrenci, alan adları). Olmayan, arşivli ya da başka kurumun özeti 404. ${MANAGE}`,
+        headers: healthAccessHeadersSchema(true),
         params: emergencySummaryParams,
         response: { 200: emergencySummaryResponse, ...commandErrors },
       },
     },
     async (request) => ({
-      data: await getEmergencySummaryFor(contextOf(request), deps, request.params.summaryId),
+      data: await getEmergencySummaryFor(
+        contextOf(request),
+        deps,
+        request.params.summaryId,
+        healthAccessReasonOf(request),
+      ),
     }),
   )
 

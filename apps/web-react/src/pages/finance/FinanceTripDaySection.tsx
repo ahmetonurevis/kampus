@@ -132,8 +132,9 @@ function TripDayDetails({ day }: { day: TripDay }) {
           ))}
         </ol>
       )}
-      {editable && (day.groups.length > 0 || day.unassigned.length > 0) ? (
-        <AssignForm day={day} />
+      {/* Grup listesi değişince form yeniden kurulur: hedef seçeneği güncel gruplarla başlar. */}
+      {editable && day.groups.length > 0 ? (
+        <AssignForm key={day.groups.map((group) => group.id).join(':')} day={day} />
       ) : null}
       <Modal open={creating} onOpenChange={setCreating} title="Grup ekle">
         {creating ? <GroupForm day={day} onDone={() => setCreating(false)} /> : null}

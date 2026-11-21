@@ -265,6 +265,15 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/finance/interview-templates',
   'POST /api/v1/finance/job-applications/{applicationId}/interviews',
   'POST /api/v1/finance/candidate-interviews/{interviewId}/evaluation',
+  // Servis aracı, güzergâh ve öğrenci ataması; kulüp, üyelik ve yoklama; çift tıklama ikinci
+  // aracı, güzergâhı, atamayı, üyeliği ya da oturumu açmaz (routes/finance-transport.ts,
+  // routes/finance-clubs.ts; DOM-FIN-142, ON-098).
+  'POST /api/v1/finance/transport/vehicles',
+  'POST /api/v1/finance/transport/routes',
+  'POST /api/v1/finance/transport/routes/{routeId}/assignments',
+  'POST /api/v1/finance/clubs',
+  'POST /api/v1/finance/clubs/{clubId}/members',
+  'POST /api/v1/finance/clubs/{clubId}/sessions',
 ]
 // Onur: kayıt ve finans sonu
 

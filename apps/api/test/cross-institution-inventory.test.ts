@@ -4237,6 +4237,12 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  // Onur: servis listesi (ON-148; DOM-FIN-148).
+  'GET /api/v1/finance/transport/routes/:routeId/roster': kayit(
+    'finance-transport-roster.test.ts',
+    'DOM-FIN-148: başka kurumun ya da arşivli güzergâhı 404',
+    'get(rosterUrl(route.id), a.admin)',
+  ),
 }
 
 /**
